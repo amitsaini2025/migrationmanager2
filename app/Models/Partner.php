@@ -31,6 +31,6 @@ class Partner extends Authenticatable
 	
 	public function workflow()
     {
-        return $this->belongsTo('App\Workflow','service_workflow','id');
+        return $this->belongsTo('App\\Models\\Workflow','service_workflow','id');
     }
 }

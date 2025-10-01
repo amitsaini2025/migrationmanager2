@@ -15,11 +15,11 @@ class Tag extends Authenticatable
 
 	public function createddetail()
     {
-        return $this->belongsTo('App\Admin','created_by', 'id');
+        return $this->belongsTo('App\\Models\\\Models\\Admin','created_by', 'id');
     }	
 	
 	public function updateddetail()
     {
-        return $this->belongsTo('App\Admin','updated_by', 'id');
+        return $this->belongsTo('App\\Models\\\Models\\Admin','updated_by', 'id');
     }
 }

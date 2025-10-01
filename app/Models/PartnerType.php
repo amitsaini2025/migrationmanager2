@@ -25,6 +25,6 @@ class PartnerType extends Authenticatable
  
 	public function categorydata()
     {
-        return $this->belongsTo('App\Category','category_id','id'); 
+        return $this->belongsTo('App\\Models\\Category','category_id','id'); 
     }
 }

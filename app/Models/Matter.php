@@ -19,6 +19,6 @@ class Matter extends Model
 	// Relationship with MatterOtherEmailTemplate
 	public function otherEmailTemplates()
 	{
-		return $this->hasMany('App\MatterOtherEmailTemplate', 'matter_id');
+		return $this->hasMany('App\\Models\\MatterOtherEmailTemplate', 'matter_id');
 	}
 }

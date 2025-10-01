@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.admin_client_detail')
 @section('title', 'Products')
 
 @section('content')
@@ -6,10 +6,8 @@
 .filter_panel {background: #f7f7f7;margin-bottom: 10px;border: 1pxsolid #eee;display: none;}
 .card .card-body .filter_panel { padding: 20px;}
 </style>
-<!-- Main Content -->
-<div class="main-content">
-	<section class="section">
-		<div class="section-body">
+<div class="crm-container">
+	<div class="main-content">
 			<div class="server-error">
 				@include('../Elements/flash-message')
 			</div>
@@ -125,8 +123,7 @@
 					</div>
 				</div>
 			</div>
-		</div>
-	</section>
+	</div>
 </div>
 
 <div class="modal fade clientemail custom_modal" tabindex="-1" role="dialog" aria-labelledby="clientModalLabel" aria-hidden="true">

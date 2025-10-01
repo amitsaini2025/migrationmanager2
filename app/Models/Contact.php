@@ -25,21 +25,21 @@ class Contact extends Authenticatable
  
 	 public function currencydata() 
     {
-        return $this->belongsTo('App\Currency','currency','id');
+        return $this->belongsTo('App\\Models\\Currency','currency','id');
     }
 	
 	public function company()
     {
-        return $this->belongsTo('App\Admin','user_id','id');
+        return $this->belongsTo('App\\Models\\\Models\\Admin','user_id','id');
     }
 	
 	/*public function desmedia() 
     {
-        return $this->belongsTo('App\MediaImage','dest_image','id');
+        return $this->belongsTo('App\\Models\\MediaImage','dest_image','id');
     }
 	
 	public function mypackage() 
     {
-        return $this->hasMany('App\Package','destination','id');
+        return $this->hasMany('App\\Models\\Package','destination','id');
     } */
 } 

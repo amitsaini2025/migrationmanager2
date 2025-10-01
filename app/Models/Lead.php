@@ -18,30 +18,30 @@ class Lead extends Authenticatable
 	
 	public function package_detail()
     {
-        return $this->belongsTo('App\Package','package_id','id');
+        return $this->belongsTo('App\\Models\\Package','package_id','id');
     }
 	
 	public function user()
     {
-        return $this->belongsTo('App\User','user_id','id');
+        return $this->belongsTo('App\\Models\\User','user_id','id');
     }
 	
 	public function agentdetail()
     {
-        return $this->belongsTo('App\User','agent_id','id');
+        return $this->belongsTo('App\\Models\\User','agent_id','id');
     }
 	
 	public function staffuser()
     {
-        return $this->belongsTo('App\Admin','assign_to','id');
+        return $this->belongsTo('App\\Models\\\Models\\Admin','assign_to','id');
     }
 	public function followupload()
     {
-        return $this->belongsTo('App\Followup','id','lead_id');
+        return $this->belongsTo('App\\Models\\Followup','id','lead_id');
     }
     public function likes()
     {
-        return $this->hasMany('App\Followup','id');
+        return $this->hasMany('App\\Models\\Followup','id');
     } 
    
 }

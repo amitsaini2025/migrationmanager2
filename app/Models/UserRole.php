@@ -18,6 +18,6 @@ class UserRole extends Authenticatable
 	
 	public function usertypedata()
     {
-        return $this->belongsTo('App\UserType','usertype','id');
+        return $this->belongsTo('App\\Models\\UserType','usertype','id');
     }
 }

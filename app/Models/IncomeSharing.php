@@ -26,11 +26,11 @@ class IncomeSharing extends Authenticatable
  
 	public function branch()
     {
-        return $this->belongsTo('App\Branch','rec_id','id');
+        return $this->belongsTo('App\\Models\\Branch','rec_id','id');
     }
 	
 	public function invoice()
     {
-        return $this->belongsTo('App\Invoice','invoice_id','id');
+        return $this->belongsTo('App\\Models\\Invoice','invoice_id','id');
     }
 }

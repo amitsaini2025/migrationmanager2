@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.admin_client_detail')
 @section('title', 'Matter')
 
 @section('content')
@@ -20,20 +20,18 @@
         font-weight: 600;
     }
 </style>
-<!-- Main Content -->
-<div class="main-content">
-	<section class="section">
-		<div class="section-body">
-			<div class="server-error">
-				@include('../Elements/flash-message')
-			</div>
-			<div class="custom-error-msg">
-			</div>
-			<div class="row">
-			    <div class="col-3 col-md-3 col-lg-3">
-			        	@include('../Elements/Admin/setting')
-		        </div>
-				<div class="col-9 col-md-9 col-lg-9">
+<div class="crm-container">
+	<div class="main-content">
+		<div class="server-error">
+			@include('../Elements/flash-message')
+		</div>
+		<div class="custom-error-msg">
+		</div>
+		<div class="row">
+		    <div class="col-3 col-md-3 col-lg-3">
+		        	@include('../Elements/Admin/setting')
+	        </div>
+			<div class="col-9 col-md-9 col-lg-9">
 					<div class="card">
 						<div class="card-header">
 							<h4>All Matters</h4>
@@ -116,10 +114,9 @@
 							{!! $lists->appends(\Request::except('page'))->render() !!}
 						</div>
 					</div>
-				</div>
 			</div>
 		</div>
-	</section>
+	</div>
 </div>
 
 @endsection

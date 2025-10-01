@@ -18,22 +18,22 @@ class Note extends Model
 
     public function noteClient()
     {
-        return $this->belongsTo('App\Models\Admin','client_id','id');
+        return $this->belongsTo('App\\Models\\Models\Admin','client_id','id');
     }
 
     public function noteUser()
     {
-        return $this->belongsTo('App\Models\Admin','user_id','id');
+        return $this->belongsTo('App\\Models\\Models\Admin','user_id','id');
     }
 
     public function assigned_user()
     {
-        return $this->belongsTo('App\Models\Admin','assigned_to','id');
+        return $this->belongsTo('App\\Models\\Models\Admin','assigned_to','id');
     }
 
     public function lead()
     {
-        return $this->belongsTo('App\Models\Appointment','lead_id','id');
+        return $this->belongsTo('App\\Models\\Models\Appointment','lead_id','id');
     }
 
 }

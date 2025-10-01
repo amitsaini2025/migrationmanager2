@@ -1996,7 +1996,7 @@ use App\Http\Controllers\Controller;
                                                 //dd($relationship->related_client_id);
                                                 if(isset($relationship->related_client_id) && $relationship->related_client_id != "")
                                                 { //Existing Client
-                                                    $relatedClientInfo = App\Admin::select('client_id','first_name','last_name')->where('id', $relationship->related_client_id)->first();
+                                                    $relatedClientInfo = App\\Models\\Admin::select('client_id','first_name','last_name')->where('id', $relationship->related_client_id)->first();
                                                     //dd($relatedClientInfo);
                                                     if($relatedClientInfo){
                                                         $relatedClientId = $relatedClientInfo->client_id;

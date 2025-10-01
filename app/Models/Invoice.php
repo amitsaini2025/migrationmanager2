@@ -25,25 +25,25 @@ class Invoice extends Authenticatable
  
 	public function user()
     {
-        return $this->belongsTo('App\Admin','user_id','id');
+        return $this->belongsTo('App\\Models\\\Models\\Admin','user_id','id');
     }
 	
 	public function company()
     {
-        return $this->belongsTo('App\Admin','user_id','id');
+        return $this->belongsTo('App\\Models\\\Models\\Admin','user_id','id');
     }
 	
 	public function staff()
     {
-        return $this->belongsTo('App\Admin','seller_id','id');
+        return $this->belongsTo('App\\Models\\\Models\\Admin','seller_id','id');
     }
 	
 	public function customer()
     {
-        return $this->belongsTo('App\Admin','client_id','id');
+        return $this->belongsTo('App\\Models\\\Models\\Admin','client_id','id');
     }
 	public function invoicedetail() 
     {
-        return $this->hasMany('App\InvoiceDetail','invoice_id','id');
+        return $this->hasMany('App\\Models\\InvoiceDetail','invoice_id','id');
     }
 }

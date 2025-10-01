@@ -35,12 +35,12 @@ class User extends Authenticatable
 	
 	public function countryData()
     {
-        return $this->belongsTo('App\Country','country');
+        return $this->belongsTo('App\\Models\\Country','country');
     }
 	
 	public function stateData()
     {
-        return $this->belongsTo('App\State','state');
+        return $this->belongsTo('App\\Models\\State','state');
     }
 	
 }

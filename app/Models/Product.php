@@ -33,11 +33,11 @@ class Product extends Authenticatable
 	
 	public function branchdetail()
     {
-        return $this->belongsTo('App\PartnerBranch','branches','id');
+        return $this->belongsTo('App\\Models\\PartnerBranch','branches','id');
     }
 	
 	public function partnerdetail()
     {
-        return $this->belongsTo('App\Partner','partner','id');
+        return $this->belongsTo('App\\Models\\Partner','partner','id');
     }
 }

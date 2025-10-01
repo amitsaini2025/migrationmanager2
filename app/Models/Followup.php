@@ -18,15 +18,15 @@ class Followup extends Authenticatable
 	
 	public function user()
     {
-        return $this->belongsTo('App\Admin','user_id','id');
+        return $this->belongsTo('App\\Models\\\Models\\Admin','user_id','id');
     }
 	 public function post()
     {
-        return $this->belongsTo('App\Lead','lead_id');
+        return $this->belongsTo('App\\Models\\Lead','lead_id');
     }
 	public function followutype()
     {
-        return $this->belongsTo('App\FollowupType','followup_type','type');
+        return $this->belongsTo('App\\Models\\FollowupType','followup_type','type');
     }
 
 }

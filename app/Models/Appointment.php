@@ -26,31 +26,31 @@ class Appointment extends Authenticatable
 
 	public function clients()
     {
-        return $this->belongsTo('App\Admin','client_id','id');
+        return $this->belongsTo('App\\Models\\\Models\\Admin','client_id','id');
     }
 
 	public function partners()
     {
-        return $this->belongsTo('App\Partner','client_id','id');
+        return $this->belongsTo('App\\Models\\Partner','client_id','id');
     }
 
     public function user()
     {
-        return $this->belongsTo('App\Admin','user_id','id');
+        return $this->belongsTo('App\\Models\\\Models\\Admin','user_id','id');
     }
 
     public function assignee_user()
     {
-        return $this->belongsTo('App\Admin','assignee','id');
+        return $this->belongsTo('App\\Models\\\Models\\Admin','assignee','id');
     }
 
     public function service()
     {
-        return $this->belongsTo('App\BookService','service_id','id');
+        return $this->belongsTo('App\\Models\\BookService','service_id','id');
     }
 
     public function natureOfEnquiry()
     {
-        return $this->belongsTo('App\NatureOfEnquiry','noe_id','id');
+        return $this->belongsTo('App\\Models\\NatureOfEnquiry','noe_id','id');
     }
 }

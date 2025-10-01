@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.admin_client_detail')
 @section('title', 'Users')
 
 @section('content')
@@ -11,10 +11,8 @@
 }
 
 </style>
-<!-- Main Content -->
-<div class="main-content">
-	<section class="section">
-		<div class="section-body">
+<div class="crm-container">
+	<div class="main-content">
 			<div class="server-error">
 				@include('../Elements/flash-message')
 			</div>
@@ -300,8 +298,7 @@
 					</div>
 				</div>
 			</div>
-		</div>
-	</section>
+	</div>
 </div>
 
 <div class="modal fade requiment_modal custom_modal" tabindex="-1" role="dialog" aria-labelledby="requiment_ModalLabel" aria-hidden="true">

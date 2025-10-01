@@ -1,0 +1,33 @@
+{
+  "timestamp": "2025-09-09T15:52:52.592905",
+  "hostname": "imap.zoho.com",
+  "port": 993,
+  "tests": {
+    "network": {
+      "hostname": "imap.zoho.com",
+      "port": 993,
+      "dns_resolution": {
+        "hostname": "imap.zoho.com",
+        "port": 993,
+        "resolved_ips": [
+          "136.143.190.29"
+        ],
+        "method": "gethostbyname",
+        "error": null
+      },
+      "socket_connection": "SUCCESS",
+      "ssl_connection": "SUCCESS",
+      "error_details": []
+    },
+    "imap": {
+      "hostname": "imap.zoho.com",
+      "port": 993,
+      "imap_connection": "SUCCESS",
+      "error_details": []
+    }
+  },
+  "overall_status": "SUCCESS",
+  "summary": {
+    "message": "All tests passed successfully"
+  }
+}

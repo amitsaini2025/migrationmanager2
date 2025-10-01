@@ -9,7 +9,6 @@
                 <div style="width: 50px;" class="dropdown-menu dropdown-list dropdown-menu-right pullDown">
                     <div class="">
                         <a href="{{URL::to('/admin/clients')}}" class="dropdown-item">Client</a>
-                        <a href="{{URL::to('/admin/tasks')}}" class="dropdown-item">Task</a>
                         <a href="#" class="dropdown-item">Appointment</a>
                         <a href="{{URL::to('/admin/partners')}}" class="dropdown-item">Partner</a>
                         <a href="{{URL::to('/admin/products')}}" class="dropdown-item">Product</a>

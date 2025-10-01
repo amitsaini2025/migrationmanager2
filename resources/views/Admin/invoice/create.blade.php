@@ -59,7 +59,7 @@
 								<div class="row"> 
 									@if(@Auth::user()->is_business_gst == 'yes')
 										<?php
-										$que = \App\TaxRate::where('user_id',Auth::user()->id);
+										$que = \App\Models\TaxRate::where('user_id',Auth::user()->id);
 										$tocoun = $que->count();
 										$taxresult = $que->get();
 										
@@ -85,7 +85,7 @@
 											<div class="col-sm-9">
 											<select id="customer_name" name="customer_name" data-valid="required" class="form-control select2bs4" style="width: 100%;">
 												<option value="">Select Customer</option>
-												@foreach(\App\Contact::all() as $clist)
+												@foreach(\App\Models\Contact::all() as $clist)
 													<option value="{{@$clist->id}}">{{@$clist->first_name}} {{@$clist->last_name}}</option>
 												@endforeach
 											</select>
@@ -453,7 +453,7 @@
 					<label for="currency" class="col-sm-2 col-form-label">Currency</label>
 					<div class="col-sm-10">
 					<select name="currency" data-valid="required" class="form-control">
-							@foreach(\App\Currency::where('is_base','=','1' )->orwhere('user_id',Auth::user()->id)->orderby('currency_code','ASC')->get() as $cclist)
+							@foreach(\App\Models\Currency::where('is_base','=','1' )->orwhere('user_id',Auth::user()->id)->orderby('currency_code','ASC')->get() as $cclist)
 								<option value="{{$cclist->id}}" @if($cclist->is_base == 1) selected @endif>{{$cclist->currency_code}}-{{$cclist->name}}</option>
 							@endforeach
 					</select>

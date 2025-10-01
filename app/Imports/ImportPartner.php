@@ -1,7 +1,6 @@
 <?php
 namespace App\Imports;
 use App\Models\PartnerType;
-use App\Models\Category;
 use App\Models\PartnerBranch;
 use App\Models\ProductType;
 use App\Models\Product;

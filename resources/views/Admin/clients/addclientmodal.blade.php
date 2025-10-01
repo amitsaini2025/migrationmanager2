@@ -19,7 +19,7 @@
 								<label for="workflow">Select Workflow <span class="span_req">*</span></label>
 								<select data-valid="required" class="form-control workflow applicationselect2" id="workflow" name="workflow">
 									<option value="">Please Select a Workflow</option>
-									@foreach(\App\Workflow::all() as $wlist)
+									@foreach(\App\Models\Workflow::all() as $wlist)
 										<option value="{{$wlist->id}}">{{$wlist->name}}</option>
 									@endforeach
 								</select>
@@ -162,7 +162,7 @@
 								<label for="intrested_workflow">Select Workflow <span class="span_req">*</span></label>
 								<select data-valid="required" class="form-control workflowselect2" id="intrested_workflow" name="workflow">
 									<option value="">Please Select a Workflow</option>
-									@foreach(\App\Workflow::all() as $wlist)
+									@foreach(\App\Models\Workflow::all() as $wlist)
 										<option value="{{$wlist->id}}">{{$wlist->name}}</option>
 									@endforeach
 								</select>
@@ -292,7 +292,7 @@
                                 <div class="col-sm-9">
                                     <select class="form-control enquiry_item" name="noe_id" data-valid="required">
                                         <option value="">Select</option>
-                                        @foreach(\App\NatureOfEnquiry::where('status',1)->get() as $enquiry)
+                                        @foreach(\App\Models\NatureOfEnquiry::where('status',1)->get() as $enquiry)
                                             <option value="{{$enquiry->id}}">{{$enquiry->title}}</option>
                                         @endforeach
                                     </select>
@@ -303,7 +303,7 @@
                         <div class="col-12 col-md-12 col-lg-12 services_row" id="services" style="display: none;">
 							<div class="form-group">
 								<label for="service_id">Services <span class="span_req">*</span></label>
-                                @foreach(\App\BookService::where('status',1)->get() as $bookservices)
+                                @foreach(\App\Models\BookService::where('status',1)->get() as $bookservices)
                                     <div class="services_item_header" id="serviceval_{{$bookservices->id}}">
                                         <div class="services_item_title">
                                             <input type="radio" class="services_item" name="radioGroup"  value="{{$bookservices->id}}">
@@ -742,7 +742,7 @@
 				</button>
 			</div>
 			<div class="modal-body">
-				<form method="post" action="{{URL::to('/admin/tasks/store/')}}" name="taskform" autocomplete="off" id="tasktermform" enctype="multipart/form-data">
+				<form method="post" action="#" name="taskform" autocomplete="off" id="tasktermform" enctype="multipart/form-data">
 				@csrf
 				<input type="hidden" name="mailid" value="">
 
@@ -780,7 +780,7 @@
 								<select data-valid="" class="form-control assignee select2" name="assignee">
 									<option value="">Select</option>
 									<?php
-									$headoffice = \App\Admin::where('role','!=',7)->get();
+									$headoffice = \App\Models\Admin::where('role','!=',7)->get();
 									foreach($headoffice as $holist){
 										?>
 										<option value="{{$holist->id}}">{{$holist->first_name}} ({{$holist->email}})</option>
@@ -941,7 +941,7 @@
 								<select data-valid="" multiple class="form-control followers  select2" name="followers">
 
 									<?php
-										$headoffice = \App\Admin::where('role','!=',7)->get();
+										$headoffice = \App\Models\Admin::where('role','!=',7)->get();
 									foreach($headoffice as $holist){
 										?>
 										<option value="{{$holist->id}}">{{$holist->first_name}} {{$holist->last_name}} ({{$holist->email}})</option>
@@ -1170,12 +1170,12 @@
 								<label for="description">Application <span class="span_req">*</span></label>
 								<select data-valid="required" class="form-control select2" name="application">
 									<option value="">Select</option>
-									@foreach(\App\Application::where('client_id',$fetchedData->id)->get() as $aplist)
+									@foreach(\App\Models\Application::where('client_id',$fetchedData->id)->get() as $aplist)
 									<?php
-									$productdetail = \App\Product::where('id', $aplist->product_id)->first();
-				$partnerdetail = \App\Partner::where('id', $aplist->partner_id)->first();
-				$PartnerBranch = \App\PartnerBranch::where('id', $aplist->branch)->first();
-				$workflow = \App\Workflow::where('id', $aplist->workflow)->first();
+									$productdetail = \App\Models\Product::where('id', $aplist->product_id)->first();
+				$partnerdetail = \App\Models\Partner::where('id', $aplist->partner_id)->first();
+				$PartnerBranch = \App\Models\PartnerBranch::where('id', $aplist->branch)->first();
+				$workflow = \App\Models\Workflow::where('id', $aplist->workflow)->first();
 									?>
 										<option value="{{$aplist->id}}">{{@$productdetail->name}} ({{@$partnerdetail->partner_name}})</option>
 									@endforeach
@@ -1241,10 +1241,10 @@
 								<label for="description">Service <span class="span_req">*</span></label>
 								<select data-valid="required" class="form-control select2" name="application">
 									<option value="">Select</option>
-									@foreach(\App\Application::where('client_id',$fetchedData->id)->groupby('workflow')->get() as $aplist)
+									@foreach(\App\Models\Application::where('client_id',$fetchedData->id)->groupby('workflow')->get() as $aplist)
 									<?php
 
-				$workflow = \App\Workflow::where('id', $aplist->workflow)->first();
+				$workflow = \App\Models\Workflow::where('id', $aplist->workflow)->first();
 									?>
 										<option value="{{$workflow->id}}">{{$workflow->name}}</option>
 									@endforeach
@@ -1505,7 +1505,7 @@
 								<select class="form-control select2" name="invitees">
 									<option value="">Select Invitees</option>
 									<?php
-										$headoffice = \App\Admin::where('role','!=',7)->get();
+										$headoffice = \App\Models\Admin::where('role','!=',7)->get();
 									foreach($headoffice as $holist){
 										?>
 										<option value="{{$holist->id}}">{{$holist->first_name}} {{$holist->last_name}} ({{$holist->email}})</option>
@@ -1549,7 +1549,7 @@
 								<label for="document_type">Document Type <span class="span_req">*</span></label>
 								<select class="form-control " id="document_type" name="document_type" data-valid="required">
 									<option value="">Please Select Document Type</option>
-									<?php foreach(\App\Checklist::all() as $checklist){ ?>
+									<?php foreach(\App\Models\Checklist::all() as $checklist){ ?>
 									<option value="{{$checklist->name}}">{{$checklist->name}}</option>
 									<?php } ?>
 								</select>
@@ -1873,7 +1873,7 @@
 								<label for="email_from">From <span class="span_req">*</span></label>
 								<select class="form-control" name="email_from">
 									<?php
-									$emails = \App\Email::select('email')->where('status', 1)->get();
+									$emails = \App\Models\Email::select('email')->where('status', 1)->get();
 									foreach($emails as $nemail){
 										?>
 											<option value="<?php echo $nemail->email; ?>"><?php echo $nemail->email; ?></option>
@@ -1914,7 +1914,7 @@
 								<label for="template">Templates </label>
 								<select data-valid="" class="form-control select2 selectapplicationtemplate" name="template">
 									<option value="">Select</option>
-									@foreach(\App\CrmEmailTemplate::all() as $list)
+									@foreach(\App\Models\CrmEmailTemplate::all() as $list)
 										<option value="{{$list->id}}">{{$list->name}}</option>
 									@endforeach
 								</select>
@@ -2257,7 +2257,7 @@
 								<select data-valid="required" class="form-control select2" name="checklist[]" id="checklist" multiple>
 									<option value="">Select</option>
 									<?php
-									$eduChkList = \App\DocumentChecklist::where('status',1)->where('doc_type',1)->get();
+									$eduChkList = \App\Models\DocumentChecklist::where('status',1)->where('doc_type',1)->get();
 									foreach($eduChkList as $edulist){
 									?>
 										<option value="{{$edulist->name}}">{{$edulist->name}}</option>
@@ -2310,7 +2310,7 @@
 								<select data-valid="required" class="form-control select2" name="visa_checklist[]" id="visa_checklist" multiple>
 									<option value="">Select</option>
 									<?php
-									$visaChkList = \App\DocumentChecklist::where('status',1)->where('doc_type',2)->get();
+									$visaChkList = \App\Models\DocumentChecklist::where('status',1)->where('doc_type',2)->get();
 									foreach($visaChkList as $visalist){
 									?>
 										<option value="{{$visalist->name}}">{{$visalist->name}}</option>
@@ -3361,7 +3361,7 @@
                                 <label for="migration_agent">Migration Agent <span class="span_req">*</span></label>
                                 <select data-valid="required" class="form-control select2" name="migration_agent" id="sel_migration_agent_id">
                                     <option value="">Select Migration Agent</option>
-                                    @foreach(\App\Admin::where('role',16)->select('id','first_name','last_name','email')->where('status',1)->get() as $migAgntlist)
+                                    @foreach(\App\Models\Admin::where('role',16)->select('id','first_name','last_name','email')->where('status',1)->get() as $migAgntlist)
                                         <option value="{{$migAgntlist->id}}">{{@$migAgntlist->first_name}} {{@$migAgntlist->last_name}} ({{@$migAgntlist->email}})</option>
                                     @endforeach
                                 </select>
@@ -3373,7 +3373,7 @@
                                 <label for="person_responsible">Person Responsible <span class="span_req">*</span></label>
                                 <select data-valid="required" class="form-control select2" name="person_responsible" id="sel_person_responsible_id">
                                     <option value="">Select Person Responsible</option>
-                                    @foreach(\App\Admin::where('role',12)->select('id','first_name','last_name','email')->where('status',1)->get() as $perreslist)
+                                    @foreach(\App\Models\Admin::where('role',12)->select('id','first_name','last_name','email')->where('status',1)->get() as $perreslist)
                                         <option value="{{$perreslist->id}}">{{@$perreslist->first_name}} {{@$perreslist->last_name}} ({{@$perreslist->email}})</option>
                                     @endforeach
                                 </select>
@@ -3385,7 +3385,7 @@
                                 <label for="person_assisting">Person Assisting <span class="span_req">*</span></label>
                                 <select data-valid="required" class="form-control select2" name="person_assisting" id="sel_person_assisting_id">
                                     <option value="">Select Person Assisting</option>
-                                    @foreach(\App\Admin::where('role',13)->select('id','first_name','last_name','email')->where('status',1)->get() as $perassislist)
+                                    @foreach(\App\Models\Admin::where('role',13)->select('id','first_name','last_name','email')->where('status',1)->get() as $perassislist)
                                         <option value="{{$perassislist->id}}">{{@$perassislist->first_name}} {{@$perassislist->last_name}} ({{@$perassislist->email}})</option>
                                     @endforeach
                                 </select>
@@ -3404,7 +3404,7 @@
 
                                 <select data-valid="required" class="form-control select2" name="matter_id" id="sel_matter_id">
                                     <option value="">Select Matter</option>
-                                    @foreach(\App\Matter::select('id','title')->where('status',1)->get() as $matterlist)
+                                    @foreach(\App\Models\Matter::select('id','title')->where('status',1)->get() as $matterlist)
                                         <option value="{{$matterlist->id}}">{{@$matterlist->title}}</option>
                                     @endforeach
                                 </select>
@@ -3607,8 +3607,8 @@
                                     <hr style="margin: 8px 0;">
                                     <!-- Users list -->
                                     <div id="users-list" style="margin-left: 0; padding-left: 0;">
-                                        @foreach(\App\Admin::where('role','!=',7)->where('status',1)->orderby('first_name','ASC')->get() as $admin)
-                                        <?php $branchname = \App\Branch::where('id',$admin->office_id)->first(); ?>
+                                        @foreach(\App\Models\Admin::where('role','!=',7)->where('status',1)->orderby('first_name','ASC')->get() as $admin)
+                                        <?php $branchname = \App\Models\Branch::where('id',$admin->office_id)->first(); ?>
                                         <div class="user-item" data-name="{{ strtolower($admin->first_name.' '.$admin->last_name.' '.@$branchname->office_name) }}" style="margin-bottom: 8px; padding-left: 0;">
                                             <label style="margin-bottom: 0; cursor: pointer; display: flex; align-items: center; padding-left: 0; margin-left: 0; text-align: left;">
                                                 <input type="checkbox" class="checkbox-item" value="{{ $admin->id }}" data-name="{{ $admin->first_name }} {{ $admin->last_name }} ({{ @$branchname->office_name }})" style="margin-right: 8px; margin-left: 0; flex-shrink: 0;">
@@ -3623,8 +3623,8 @@
 
                         <!-- Hidden input to store selected values -->
                         <select class="d-none" id="rem_cat" name="rem_cat[]" multiple="multiple">
-                            @foreach(\App\Admin::where('role','!=',7)->where('status',1)->orderby('first_name','ASC')->get() as $admin)
-                            <?php $branchname = \App\Branch::where('id',$admin->office_id)->first(); ?>
+                            @foreach(\App\Models\Admin::where('role','!=',7)->where('status',1)->orderby('first_name','ASC')->get() as $admin)
+                            <?php $branchname = \App\Models\Branch::where('id',$admin->office_id)->first(); ?>
                             <option value="{{ $admin->id }}">{{ $admin->first_name }} {{ $admin->last_name }} ({{ @$branchname->office_name }})</option>
                             @endforeach
                         </select>
@@ -4374,7 +4374,7 @@
                                 <label for="migration_agent">Migration Agent <span class="span_req">*</span></label>
                                 <select data-valid="required" class="form-control select2" name="migration_agent" id="change_sel_migration_agent_id">
                                     <option value="">Select Migration Agent</option>
-                                    @foreach(\App\Admin::where('role',16)->select('id','first_name','last_name','email')->where('status',1)->get() as $migAgntlist)
+                                    @foreach(\App\Models\Admin::where('role',16)->select('id','first_name','last_name','email')->where('status',1)->get() as $migAgntlist)
                                         <option value="{{$migAgntlist->id}}">{{@$migAgntlist->first_name}} {{@$migAgntlist->last_name}} ({{@$migAgntlist->email}})</option>
                                     @endforeach
                                 </select>
@@ -4386,7 +4386,7 @@
                                 <label for="person_responsible">Person Responsible <span class="span_req">*</span></label>
                                 <select data-valid="required" class="form-control select2" name="person_responsible" id="change_sel_person_responsible_id">
                                     <option value="">Select Person Responsible</option>
-                                    @foreach(\App\Admin::where('role',12)->select('id','first_name','last_name','email')->where('status',1)->get() as $perreslist)
+                                    @foreach(\App\Models\Admin::where('role',12)->select('id','first_name','last_name','email')->where('status',1)->get() as $perreslist)
                                         <option value="{{$perreslist->id}}">{{@$perreslist->first_name}} {{@$perreslist->last_name}} ({{@$perreslist->email}})</option>
                                     @endforeach
                                 </select>
@@ -4398,7 +4398,7 @@
                                 <label for="person_assisting">Person Assisting <span class="span_req">*</span></label>
                                 <select data-valid="required" class="form-control select2" name="person_assisting" id="change_sel_person_assisting_id">
                                     <option value="">Select Person Assisting</option>
-                                    @foreach(\App\Admin::where('role',13)->select('id','first_name','last_name','email')->where('status',1)->get() as $perassislist)
+                                    @foreach(\App\Models\Admin::where('role',13)->select('id','first_name','last_name','email')->where('status',1)->get() as $perassislist)
                                         <option value="{{$perassislist->id}}">{{@$perassislist->first_name}} {{@$perassislist->last_name}} ({{@$perassislist->email}})</option>
                                     @endforeach
                                 </select>
@@ -4522,7 +4522,7 @@
                                 <label for="migration_agent">Select Migration Agent <span class="span_req">*</span></label>
                                 <select data-valid="required" class="form-control select2" name="migration_agent" id="sel_migration_agent_id_lead">
                                     <option value="">Select Migration Agent</option>
-                                    @foreach(\App\Admin::where('role',16)->select('id','first_name','last_name','email')->where('status',1)->get() as $migAgntlist)
+                                    @foreach(\App\Models\Admin::where('role',16)->select('id','first_name','last_name','email')->where('status',1)->get() as $migAgntlist)
                                         <option value="{{$migAgntlist->id}}">{{@$migAgntlist->first_name}} {{@$migAgntlist->last_name}} ({{@$migAgntlist->email}})</option>
                                     @endforeach
                                 </select>
@@ -4534,7 +4534,7 @@
                                 <label for="person_responsible">Select Person Responsible <span class="span_req">*</span></label>
                                 <select data-valid="required" class="form-control select2" name="person_responsible" id="sel_person_responsible_id_lead">
                                     <option value="">Select Person Responsible</option>
-                                    @foreach(\App\Admin::where('role',12)->select('id','first_name','last_name','email')->where('status',1)->get() as $perreslist)
+                                    @foreach(\App\Models\Admin::where('role',12)->select('id','first_name','last_name','email')->where('status',1)->get() as $perreslist)
                                         <option value="{{$perreslist->id}}">{{@$perreslist->first_name}} {{@$perreslist->last_name}} ({{@$perreslist->email}})</option>
                                     @endforeach
                                 </select>
@@ -4546,7 +4546,7 @@
                                 <label for="person_assisting">Select Person Assisting <span class="span_req">*</span></label>
                                 <select data-valid="required" class="form-control select2" name="person_assisting" id="sel_person_assisting_id_lead">
                                     <option value="">Select Person Assisting</option>
-                                    @foreach(\App\Admin::where('role',13)->select('id','first_name','last_name','email')->where('status',1)->get() as $perassislist)
+                                    @foreach(\App\Models\Admin::where('role',13)->select('id','first_name','last_name','email')->where('status',1)->get() as $perassislist)
                                         <option value="{{$perassislist->id}}">{{@$perassislist->first_name}} {{@$perassislist->last_name}} ({{@$perassislist->email}})</option>
                                     @endforeach
                                 </select>
@@ -4558,7 +4558,7 @@
                                 <label for="matter_id">Select Matter <span class="span_req">*</span></label>
                                 <select data-valid="required" class="form-control select2" name="matter_id" id="sel_matter_id_lead">
                                     <option value="">Select Matter</option>
-                                    @foreach(\App\Matter::select('id','title')->where('status',1)->get() as $matterlist)
+                                    @foreach(\App\Models\Matter::select('id','title')->where('status',1)->get() as $matterlist)
                                         <option value="{{$matterlist->id}}">{{@$matterlist->title}}</option>
                                     @endforeach
                                 </select>

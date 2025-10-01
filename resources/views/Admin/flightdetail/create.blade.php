@@ -95,7 +95,7 @@
 								<div class="col-sm-10">
 								<select id="flight_source" name="flight_source" data-valid="required" class="form-control select2_source" style="width: 100%;">
 									<option value="">Select Source</option>
-									@foreach(\App\Airport::all() as $slist)
+									@foreach(\App\Models\Airport::all() as $slist)
 										<option value="{{$slist->id}}">{{$slist->city_name}} ({{$slist->airport_code}})</option>
 									@endforeach
 								</select>
@@ -106,7 +106,7 @@
 								<div class="col-sm-10">
 								<select id="flight_destination" name="flight_destination" data-valid="required" class="form-control select2_destination" style="width: 100%;">
 									<option value="">Select Destination</option>
-									@foreach(\App\Airport::all() as $slist)
+									@foreach(\App\Models\Airport::all() as $slist)
 										<option value="{{$slist->id}}">{{$slist->city_name}} ({{$slist->airport_code}})</option>
 									@endforeach
 								</select>

@@ -223,7 +223,7 @@
                                 @if(isset($fetchedData->age) && $fetchedData->age != '')
                                     {{ $fetchedData->age }}
                                     @php
-                                        $verifiedDob = \App\Admin::where('id',$fetchedData->id)->whereNotNull('dob_verified_date')->first();
+                                        $verifiedDob = \App\Models\Admin::where('id',$fetchedData->id)->whereNotNull('dob_verified_date')->first();
                                     @endphp
                                     @if($verifiedDob)
                                         <i class="fas fa-check-circle"></i>
@@ -277,11 +277,11 @@
                             <div class="info-label">Email Addresses:</div>
                             <div class="info-value">
                                 @php
-                                    if( \App\ClientEmail::where('client_id', $fetchedData->id)->exists()) {
-                                        $clientEmails = \App\ClientEmail::select('email','email_type')->where('client_id', $fetchedData->id)->get();
+                                    if( \App\Models\ClientEmail::where('client_id', $fetchedData->id)->exists()) {
+                                        $clientEmails = \App\Models\ClientEmail::select('email','email_type')->where('client_id', $fetchedData->id)->get();
                                     } else {
-                                        if( \App\Admin::where('id', $fetchedData->id)->exists()){
-                                            $clientEmails = \App\Admin::select('email','email_type')->where('id', $fetchedData->id)->get();
+                                        if( \App\Models\Admin::where('id', $fetchedData->id)->exists()){
+                                            $clientEmails = \App\Models\Admin::select('email','email_type')->where('id', $fetchedData->id)->get();
                                         } else {
                                             $clientEmails = array();
                                         }
@@ -290,7 +290,7 @@
                                 @if(!empty($clientEmails) && count($clientEmails) > 0)
                                     @foreach($clientEmails as $emailVal)
                                         @php
-                                            $verifiedEmail = \App\Admin::where('id',$fetchedData->id)->whereNotNull('email_verified_date')->first();
+                                            $verifiedEmail = \App\Models\Admin::where('id',$fetchedData->id)->whereNotNull('email_verified_date')->first();
                                         @endphp
                                         <div style="margin-bottom: 5px;">
                                             {{ $emailVal->email }}
@@ -317,11 +317,11 @@
                             <div class="info-label">Phone Numbers:</div>
                             <div class="info-value">
                                 @php
-                                    if( \App\ClientContact::where('client_id', $fetchedData->id)->exists()) {
-                                        $clientContacts = \App\ClientContact::select('phone','country_code','contact_type')->where('client_id', $fetchedData->id)->where('contact_type', '!=', 'Not In Use')->get();
+                                    if( \App\Models\ClientContact::where('client_id', $fetchedData->id)->exists()) {
+                                        $clientContacts = \App\Models\ClientContact::select('phone','country_code','contact_type')->where('client_id', $fetchedData->id)->where('contact_type', '!=', 'Not In Use')->get();
                                     } else {
-                                        if( \App\Admin::where('id', $fetchedData->id)->exists()){
-                                            $clientContacts = \App\Admin::select('phone','country_code','contact_type')->where('id', $fetchedData->id)->get();
+                                        if( \App\Models\Admin::where('id', $fetchedData->id)->exists()){
+                                            $clientContacts = \App\Models\Admin::select('phone','country_code','contact_type')->where('id', $fetchedData->id)->get();
                                         } else {
                                             $clientContacts = array();
                                         }
@@ -330,7 +330,7 @@
                                 @if(!empty($clientContacts) && count($clientContacts) > 0)
                                     @foreach($clientContacts as $conVal)
                                         @php
-                                            $verifiedNumber = \App\Admin::where('id',$fetchedData->id)->whereNotNull('phone_verified_date')->first();
+                                            $verifiedNumber = \App\Models\Admin::where('id',$fetchedData->id)->whereNotNull('phone_verified_date')->first();
                                             $country_code = isset($conVal->country_code) && $conVal->country_code != "" ? $conVal->country_code : "";
                                         @endphp
                                         <div style="margin-bottom: 5px;">
@@ -399,7 +399,7 @@
                                     @endphp
                                     @if(!empty($Matter_get))
                                         @php
-                                            $verifiedVisa = \App\Admin::where('id',$fetchedData->id)->whereNotNull('visa_expiry_verified_at')->first();
+                                            $verifiedVisa = \App\Models\Admin::where('id',$fetchedData->id)->whereNotNull('visa_expiry_verified_at')->first();
                                         @endphp
                                         {{ $Matter_get->title }} ({{ $Matter_get->nick_name }})
                                         @if($verifiedVisa)

@@ -81,11 +81,11 @@
 													<a class="dropdown-item has-icon" href="{{URL::to('/admin/matter/edit/'.base64_encode(convert_uuencode(@$list->id)))}}"><i class="far fa-edit"></i> Edit</a>
 													<a class="dropdown-item has-icon" href="javascript:;" onClick="deleteAction({{@$list->id}}, 'matters')"><i class="fas fa-trash"></i> Delete</a>
 													<?php
-													$hasTemplate = \App\MatterEmailTemplate::where('matter_id', $list->id)->exists();
+													$hasTemplate = \App\Models\MatterEmailTemplate::where('matter_id', $list->id)->exists();
 													?>
 													@if($hasTemplate)
 													<?php
-													$Template_info = \App\MatterEmailTemplate::where('matter_id', $list->id)->first();
+													$Template_info = \App\Models\MatterEmailTemplate::where('matter_id', $list->id)->first();
 													?>
 													<a class="dropdown-item has-icon" href="{{URL::to('/admin/matter_email_template/edit/'.$Template_info->id.'/'.$list->id)}}"><i class="far fa-edit"></i> Edit First Email</a>
 													@else

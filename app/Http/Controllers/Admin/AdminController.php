@@ -198,9 +198,9 @@ class AdminController extends Controller
 
     public function fetchInPersonWaitingCount(Request $request){
         //if(\Auth::user()->role == 1){
-            $InPersonwaitingCount = \App\CheckinLog::where('status',0)->count();
+            $InPersonwaitingCount = \App\Models\CheckinLog::where('status',0)->count();
         /*}else{
-            $InPersonwaitingCount = \App\CheckinLog::where('user_id',Auth::user()->id)->where('status',0)->count();
+            $InPersonwaitingCount = \App\Models\CheckinLog::where('user_id',Auth::user()->id)->where('status',0)->count();
         }*/
         $data = array('InPersonwaitingCount'  => $InPersonwaitingCount);
         echo json_encode($data);
@@ -208,9 +208,9 @@ class AdminController extends Controller
 
     public function fetchTotalActivityCount(Request $request){
         if(\Auth::user()->role == 1){
-            $assigneesCount = \App\Note::where('type','client')->whereNotNull('client_id')->where('folloup',1)->where('status',0)->count();
+            $assigneesCount = \App\Models\Note::where('type','client')->whereNotNull('client_id')->where('folloup',1)->where('status',0)->count();
         }else{
-            $assigneesCount = \App\Note::where('assigned_to',Auth::user()->id)->where('type','client')->where('folloup',1)->where('status',0)->count();
+            $assigneesCount = \App\Models\Note::where('assigned_to',Auth::user()->id)->where('type','client')->where('folloup',1)->where('status',0)->count();
         }
         $data = array('assigneesCount'  => $assigneesCount);
         echo json_encode($data);
@@ -227,7 +227,7 @@ class AdminController extends Controller
         $data = array();
         foreach($notifications as $notification) {
             // Get the checkin log directly
-            $checkinLog = \App\CheckinLog::find($notification->module_id);
+            $checkinLog = \App\Models\CheckinLog::find($notification->module_id);
             
             // Only show notifications for waiting status
             if (!$checkinLog || $checkinLog->status != 0) {
@@ -237,13 +237,13 @@ class AdminController extends Controller
             // Get client information
             $client = null;
             if ($checkinLog->contact_type == 'Lead') {
-                $client = \App\Lead::find($checkinLog->client_id);
+                $client = \App\Models\Lead::find($checkinLog->client_id);
             } else {
-                $client = \App\Admin::where('role', '7')->where('id', $checkinLog->client_id)->first();
+                $client = \App\Models\Admin::where('role', '7')->where('id', $checkinLog->client_id)->first();
             }
             
             // Get sender information
-            $sender = \App\Admin::find($notification->sender_id);
+            $sender = \App\Models\Admin::find($notification->sender_id);
             
             $data[] = array(
                 'id' => $notification->id,
@@ -274,7 +274,7 @@ class AdminController extends Controller
 
     public function checkCheckinStatus(Request $request){
         try {
-            $checkinLog = \App\CheckinLog::where('id', $request->checkin_id)->first();
+            $checkinLog = \App\Models\CheckinLog::where('id', $request->checkin_id)->first();
             
             if ($checkinLog) {
                 return response()->json([
@@ -291,7 +291,7 @@ class AdminController extends Controller
 
     public function updateCheckinStatus(Request $request){ 
         try {
-            $checkinLog = \App\CheckinLog::where('id', $request->checkin_id)->first();
+            $checkinLog = \App\Models\CheckinLog::where('id', $request->checkin_id)->first();
             
             if ($checkinLog) {
                 
@@ -1130,7 +1130,7 @@ class AdminController extends Controller
                     if($recordExist)
 					{
 						if($requestData['table'] == 'admins'){
-                            $o = \App\Admin::where('id', $requestData['id'])->first();
+                            $o = \App\Models\Admin::where('id', $requestData['id'])->first();
 							if($o->status == 1){
 								$is_status = 0;
 							}else{
@@ -1459,7 +1459,7 @@ class AdminController extends Controller
 
 	public function getpartner(Request $request){
 		$catid = $request->cat_id;
-		$lists = \App\Partner::where('service_workflow', $catid)->orderby('partner_name','ASC')->get();
+		$lists = \App\Models\Partner::where('service_workflow', $catid)->orderby('partner_name','ASC')->get();
 		ob_start();
 		?>
 		<option value="">Select a Partner</option>
@@ -1474,13 +1474,13 @@ class AdminController extends Controller
 
 	public function getpartnerbranch(Request $request){
 		$catid = $request->cat_id;
-		$lists = \App\Partner::where('service_workflow', $catid)->orderby('partner_name','ASC')->get();
+		$lists = \App\Models\Partner::where('service_workflow', $catid)->orderby('partner_name','ASC')->get();
 		ob_start();
 		?>
 		<option value="">Select Partner & Branch</option>
 		<?php
 		foreach($lists as $list){
-			$listsbranchs = \App\PartnerBranch::where('partner_id', $list->id)->get();
+			$listsbranchs = \App\Models\PartnerBranch::where('partner_id', $list->id)->get();
 			foreach($listsbranchs as $listsbranch){
 			?>
 			<option value="<?php echo $listsbranch->id; ?>_<?php echo $list->id; ?>"><?php echo $list->partner_name.' ('.$listsbranch->name.')'; ?></option>
@@ -1492,7 +1492,7 @@ class AdminController extends Controller
 
 	public function getbranchproduct(Request $request){
 		$catid = $request->cat_id;
-		$lists = \App\Product::whereRaw('FIND_IN_SET("'.$catid.'", branches)')->orderby('name','ASC')->get();
+		$lists = \App\Models\Product::whereRaw('FIND_IN_SET("'.$catid.'", branches)')->orderby('name','ASC')->get();
 		ob_start();
 		?>
 		<option value="">Select Product</option>
@@ -1509,7 +1509,7 @@ class AdminController extends Controller
 
 	public function getproduct(Request $request){
 		$catid = $request->cat_id;
-		$lists = \App\Product::where('partner', $catid)->orderby('name','ASC')->get();
+		$lists = \App\Models\Product::where('partner', $catid)->orderby('name','ASC')->get();
 		ob_start();
 		?>
 		<option value="">Select a Product</option>
@@ -1524,7 +1524,7 @@ class AdminController extends Controller
 
 	public function gettemplates(Request $request){
 		$id = $request->id;
-		$CrmEmailTemplate = \App\CrmEmailTemplate::where('id',$id)->first();
+		$CrmEmailTemplate = \App\Models\CrmEmailTemplate::where('id',$id)->first();
 		if($CrmEmailTemplate){
 			echo json_encode(array('subject'=>$CrmEmailTemplate->subject, 'description'=>$CrmEmailTemplate->description));
 		}else{
@@ -1555,23 +1555,23 @@ class AdminController extends Controller
         }
 
         if(isset($requestData['invreceipt'])){
-            $invoicedetail = \App\Invoice::where('id', '=', $requestData['invreceipt'])->first();
+            $invoicedetail = \App\Models\Invoice::where('id', '=', $requestData['invreceipt'])->first();
             if($invoicedetail->type == 3){
-                $workflowdaa = \App\Workflow::where('id', $invoicedetail->application_id)->first();
+                $workflowdaa = \App\Models\Workflow::where('id', $invoicedetail->application_id)->first();
                 $applicationdata = array();
                 $partnerdata = array();
                 $productdata = array();
                 $branchdata = array();
             }else{
-                $applicationdata = \App\Application::where('id', $invoicedetail->application_id)->first();
-                $partnerdata = \App\Partner::where('id', @$applicationdata->partner_id)->first();
-                $productdata = \App\Product::where('id', @$applicationdata->product_id)->first();
-                $branchdata = \App\PartnerBranch::where('id', @$applicationdata->branch)->first();
-                $workflowdaa = \App\Workflow::where('id', @$applicationdata->workflow)->first();
+                $applicationdata = \App\Models\Application::where('id', $invoicedetail->application_id)->first();
+                $partnerdata = \App\Models\Partner::where('id', @$applicationdata->partner_id)->first();
+                $productdata = \App\Models\Product::where('id', @$applicationdata->product_id)->first();
+                $branchdata = \App\Models\PartnerBranch::where('id', @$applicationdata->branch)->first();
+                $workflowdaa = \App\Models\Workflow::where('id', @$applicationdata->workflow)->first();
             }
 
-			$clientdata = \App\Admin::where('role', 7)->where('id', $invoicedetail->client_id)->first();
-			$admindata = \App\Admin::where('role', 1)->where('id', $invoicedetail->user_id)->first();
+			$clientdata = \App\Models\Admin::where('role', 7)->where('id', $invoicedetail->client_id)->first();
+			$admindata = \App\Models\Admin::where('role', 1)->where('id', $invoicedetail->user_id)->first();
 
             $pdf = PDF::setOptions([
             'isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true,
@@ -1589,7 +1589,7 @@ class AdminController extends Controller
             $array['file_name'] = $invoicefilename;
         }
 
-		$obj = new \App\MailReport;
+		$obj = new \App\Models\MailReport;
 		$obj->user_id 		=  $user_id;
 		$obj->from_mail 	=  $requestData['email_from'];
 		$obj->to_mail 		=  implode(',',$requestData['email_to']);
@@ -1613,7 +1613,7 @@ class AdminController extends Controller
                 $checklistfiles = $requestData['checklistfile'];
                 $attachments = array();
                 foreach($checklistfiles as $checklistfile){
-                    $filechecklist =  \App\UploadChecklist::where('id', $checklistfile)->first();
+                    $filechecklist =  \App\Models\UploadChecklist::where('id', $checklistfile)->first();
                     if($filechecklist){
                         $attachments[] = array('file_name' => $filechecklist->name,'file_url' => $filechecklist->file);
                     }
@@ -1628,7 +1628,7 @@ class AdminController extends Controller
                 $checklistfiles_documents = $requestData['checklistfile_document'];
                 $attachments2 = array();
                 foreach($checklistfiles_documents as $checklistfile1){
-                    $filechecklist_doc =  \App\Document::where('id', $checklistfile1)->first();
+                    $filechecklist_doc =  \App\Models\Document::where('id', $checklistfile1)->first();
                     if($filechecklist_doc){
                         if( $filechecklist_doc->doc_type == "education" || $filechecklist_doc->doc_type == "migration" ){
                             $attachments2[] = array('file_name' => $filechecklist_doc->name,'file_url' => $filechecklist_doc->file);
@@ -1650,7 +1650,7 @@ class AdminController extends Controller
         $saved	=	$obj->save();
         if(isset($requestData['checklistfile'])){
             if(!empty($requestData['checklistfile'])){
-                $objs = new \App\ActivitiesLog;
+                $objs = new \App\Models\ActivitiesLog;
                 $objs->client_id = $obj->to_mail;
                 $objs->created_by = Auth::user()->id;
                 $objs->subject = "Checklist sent to client";
@@ -1660,7 +1660,7 @@ class AdminController extends Controller
 
         if(isset($requestData['checklistfile_document'])){
             if(!empty($requestData['checklistfile_document'])){
-                $objs = new \App\ActivitiesLog;
+                $objs = new \App\Models\ActivitiesLog;
                 $objs->client_id = $obj->to_mail;
                 $objs->created_by = Auth::user()->id;
                 $objs->subject = "Document Checklist sent to client";
@@ -1672,7 +1672,7 @@ class AdminController extends Controller
 		$message = $requestData['message'];
 		foreach($requestData['email_to'] as $l){
 			if(@$requestData['type'] == 'partner'){
-				$client = \App\Partner::Where('id', $l)->first();
+				$client = \App\Models\Partner::Where('id', $l)->first();
 			    $subject = str_replace('{Client First Name}',$client->partner_name, $subject);
 			    $message = str_replace('{Client First Name}',$client->partner_name, $message);
 			}else if(@$requestData['type'] == 'agent'){
@@ -1680,7 +1680,7 @@ class AdminController extends Controller
 			    $subject = str_replace('{Client First Name}',$client->full_name, $subject);
 			    $message = str_replace('{Client First Name}',$client->full_name, $message);
 			}else{
-				$client = \App\Admin::Where('id', $l)->first();
+				$client = \App\Models\Admin::Where('id', $l)->first();
 			    $subject = str_replace('{Client First Name}',$client->first_name, $subject);
 			    $message = str_replace('{Client First Name}',$client->first_name, $message);
 			}
@@ -1690,7 +1690,7 @@ class AdminController extends Controller
 			$ccarray = array();
 			if(isset($requestData['email_cc']) && !empty($requestData['email_cc'])){
 				foreach($requestData['email_cc'] as $cc){
-					$clientcc = \App\Admin::Where('id', $cc)->first();
+					$clientcc = \App\Models\Admin::Where('id', $cc)->first();
 					$ccarray[] = $clientcc;
 				}
 			}
@@ -1699,7 +1699,7 @@ class AdminController extends Controller
     		    if(!empty($requestData['checklistfile'])){
     		       $checklistfiles = $requestData['checklistfile'];
     		        foreach($checklistfiles as $checklistfile){
-    		           $filechecklist =  \App\UploadChecklist::where('id', $checklistfile)->first();
+    		           $filechecklist =  \App\Models\UploadChecklist::where('id', $checklistfile)->first();
     		           if($filechecklist){
     		            $array['files'][] =  public_path() . '/' .'checklists/'.$filechecklist->file;
     		           }
@@ -1711,7 +1711,7 @@ class AdminController extends Controller
                 if(!empty($requestData['checklistfile_document'])){
                     $checklistfiles_documents = $requestData['checklistfile_document'];
                     foreach($checklistfiles_documents as $checklistfile1){
-                        $filechecklist_doc =  \App\Document::where('id', $checklistfile1)->first();
+                        $filechecklist_doc =  \App\Models\Document::where('id', $checklistfile1)->first();
                         if($filechecklist_doc){
                             if( $filechecklist_doc->doc_type == "education" || $filechecklist_doc->doc_type == "migration" ){
                                 $array['files'][] =  public_path() . '/' .'img/documents/'.$filechecklist_doc->myfile;
@@ -1773,7 +1773,7 @@ class AdminController extends Controller
                 $ccarray = [];
                 if(isset($requestData['email_cc']) && !empty($requestData['email_cc'])){
                     foreach($requestData['email_cc'] as $cc){
-                        $clientcc = \App\Admin::Where('id', $cc)->first();
+                        $clientcc = \App\Models\Admin::Where('id', $cc)->first();
                         if($clientcc) {
                             $ccarray[] = $clientcc->email;
                         }
@@ -1807,10 +1807,10 @@ class AdminController extends Controller
 
 	public function getbranch(Request $request){
 		$catid = $request->cat_id;
-		$pro = \App\Product::where('id', $catid)->first();
+		$pro = \App\Models\Product::where('id', $catid)->first();
 		if($pro){
 		$user_array = explode(',',$pro->branches);
-		$lists = \App\PartnerBranch::WhereIn('id',$user_array)->Where('partner_id',$pro->partner)->orderby('name','ASC')->get();
+		$lists = \App\Models\PartnerBranch::WhereIn('id',$user_array)->Where('partner_id',$pro->partner)->orderby('name','ASC')->get();
 		ob_start();
 		?>
 		<option value="">Select a Branch</option>
@@ -1830,7 +1830,7 @@ class AdminController extends Controller
 
 	public function getnewPartnerbranch(Request $request){
 		$catid = $request->cat_id;
-		$lists = \App\PartnerBranch::Where('partner_id',$catid)->orderby('name','ASC')->get();
+		$lists = \App\Models\PartnerBranch::Where('partner_id',$catid)->orderby('name','ASC')->get();
 
 
 
@@ -1850,7 +1850,7 @@ class AdminController extends Controller
 
 	public function getsubjects(Request $request){
 		$catid = $request->cat_id;
-		$lists = \App\Subject::where('subject_area', $catid)->orderby('name','ASC')->get();
+		$lists = \App\Models\Subject::where('subject_area', $catid)->orderby('name','ASC')->get();
 		ob_start();
 		?>
 		<option value="">Please select a subject</option>
@@ -1867,9 +1867,9 @@ class AdminController extends Controller
 
 	public function getproductbranch(Request $request){
 		$catid = $request->cat_id;
-		$sss = \App\Product::where('id', $catid)->first();
+		$sss = \App\Models\Product::where('id', $catid)->first();
 		if($sss){
-		$lists = \App\PartnerBranch::where('id', $sss->branches)->get();
+		$lists = \App\Models\PartnerBranch::where('id', $sss->branches)->get();
 		ob_start();
 		?>
 		<option value="">Please select branch</option>
@@ -1891,7 +1891,7 @@ class AdminController extends Controller
 
 	public function getsubcategories(Request $request){
 		$catid = $request->cat_id;
-		$lists = \App\SubCategory::where('cat_id', $catid)->get();
+		$lists = \App\Models\SubCategory::where('cat_id', $catid)->get();
 		ob_start();
 		?>
 
@@ -1908,7 +1908,7 @@ class AdminController extends Controller
 
 
 		public function getpartnerajax(Request $request){
-	    $fetchedData = \App\Partner::where('partner_name','LIKE', '%'.$request->likevalue.'%')->get();
+	    $fetchedData = \App\Models\Partner::where('partner_name','LIKE', '%'.$request->likevalue.'%')->get();
 		$agents = array();
 		foreach($fetchedData as $list){
 			$agents[] = array(
@@ -1923,7 +1923,7 @@ class AdminController extends Controller
 
 		public function getassigneeajax(Request $request){
 		    $squery = $request->likevalue;
-		     $fetchedData = \App\Admin::where('role', '!=', 7)
+		     $fetchedData = \App\Models\Admin::where('role', '!=', 7)
        ->where(
            function($query) use ($squery) {
              return $query
@@ -1972,21 +1972,21 @@ class AdminController extends Controller
 
     public function checkclientexist(Request $request){
         if($request->type == 'email'){
-         $clientexists = \App\Admin::where('email', $request->vl)->where('role',7)->exists();
+         $clientexists = \App\Models\Admin::where('email', $request->vl)->where('role',7)->exists();
             if($clientexists){
                 echo 1;
             }else{
                 echo 0;
             }
         }else if($request->type == 'clientid'){
-         $clientexists = \App\Admin::where('client_id', $request->vl)->where('role',7)->exists();
+         $clientexists = \App\Models\Admin::where('client_id', $request->vl)->where('role',7)->exists();
             if($clientexists){
                 echo 1;
             }else{
                 echo 0;
             }
         }else{
-            $clientexists = \App\Admin::where('phone', $request->vl)->where('role',7)->exists();
+            $clientexists = \App\Models\Admin::where('phone', $request->vl)->where('role',7)->exists();
             if($clientexists){
                 echo 1;
             }else{
@@ -2004,18 +2004,18 @@ class AdminController extends Controller
     public function extenddeadlinedate(Request $request)
     {
         $requestData = $request->all(); //dd($requestData);
-        if( \App\Note::where('unique_group_id',$requestData['unique_group_id']) 
+        if( \App\Models\Note::where('unique_group_id',$requestData['unique_group_id']) 
 				->whereNotNull('assigned_to')
         		->whereNotNull('unique_group_id')
 				->count() >0 ){
-            $note_data = \App\Note::where('unique_group_id',$requestData['unique_group_id'])
+            $note_data = \App\Models\Note::where('unique_group_id',$requestData['unique_group_id'])
 			->whereNotNull('assigned_to')
 			->whereNotNull('unique_group_id')
 			->get();
             //dd($note_data);
             if( !empty($note_data) && count($note_data) >0 ){
                 foreach ($note_data as $note_val) {  //dd($note_val->unique_group_id);
-                    $updated = \App\Note::where('unique_group_id', $note_val->unique_group_id)
+                    $updated = \App\Models\Note::where('unique_group_id', $note_val->unique_group_id)
 					->whereNotNull('assigned_to')
                     ->whereNotNull('unique_group_id')
 					->update([
@@ -2024,7 +2024,7 @@ class AdminController extends Controller
                         'user_id' => Auth::user()->id
                     ]);
                     if( $updated ){
-                        $note_info = \App\Note::where('id',$note_val->id)->first(); //dd($note_info);
+                        $note_info = \App\Models\Note::where('id',$note_val->id)->first(); //dd($note_info);
                         // Create a notification for the current assignee
                         $o = new \App\Models\Notification;
                         $o->sender_id = Auth::user()->id;
@@ -2064,7 +2064,7 @@ class AdminController extends Controller
             'stage_id' => 'required|integer',
         ]);
 
-        $item = \App\ClientMatter::find($validated['item_id']); // Replace with your model
+        $item = \App\Models\ClientMatter::find($validated['item_id']); // Replace with your model
         if ($item) {
             $item->workflow_stage_id = $validated['stage_id'];
             $item->save();
@@ -2104,7 +2104,7 @@ class AdminController extends Controller
 	//Get matter templates
 	public function getmattertemplates(Request $request){
 		$id = $request->id;
-		$CrmEmailTemplate = \App\MatterEmailTemplate::where('id',$id)->first();
+		$CrmEmailTemplate = \App\Models\MatterEmailTemplate::where('id',$id)->first();
 		if($CrmEmailTemplate){
 			echo json_encode(array('subject'=>$CrmEmailTemplate->subject, 'description'=>$CrmEmailTemplate->description));
 		}else{

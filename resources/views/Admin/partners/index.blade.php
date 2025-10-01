@@ -99,9 +99,9 @@
 										<?php $i=0; ?>
 										@foreach (@$lists as $list)
 										<?php
-											$partnertype = \App\PartnerType::where('id', $list->partner_type)->first();
-											$workflow = \App\Workflow::where('id', $list->service_workflow)->first();
-											$product = \App\Product::where('partner', $list->id)->count();
+											$partnertype = \App\Models\PartnerType::where('id', $list->partner_type)->first();
+											$workflow = \App\Models\Workflow::where('id', $list->service_workflow)->first();
+											$product = \App\Models\Product::where('partner', $list->id)->count();
 										?>
 										<tr id="id_{{@$list->id}}">
 											<td style="white-space: initial;" class="text-center">
@@ -114,7 +114,7 @@
 											<td style="white-space: initial;"><a href="{{URL::to('/admin/partners/detail/'.base64_encode(convert_uuencode(@$list->id)))}}">{{ @$list->partner_name == "" ? config('constants.empty') : str_limit(@$list->partner_name, '50', '...') }}</a><br/><a data-id="{{@$list->id}}" data-email="{{@$list->email}}" data-name="{{@$list->partner_name}}" href="javascript:;" class="partneremail">{{ @$list->email == "" ? config('constants.empty') : str_limit(@$list->email, '50', '...') }}</a></td>
 											<td style="white-space: initial;">
 											<?php
-											$branchesquery = \App\PartnerBranch::where('partner_id', $list->id)->orderby('created_at', 'DESC')->get();
+											$branchesquery = \App\Models\PartnerBranch::where('partner_id', $list->id)->orderby('created_at', 'DESC')->get();
 											$branches = '';
 											foreach($branchesquery as $branch){
 												$branches .= $branch->name.', ';
@@ -223,7 +223,7 @@
 								<label for="email_from">From <span class="span_req">*</span></label>
 								<select class="form-control" name="email_from">
 									<?php
-									$emails = \App\Email::select('email')->where('status', 1)->get();
+									$emails = \App\Models\Email::select('email')->where('status', 1)->get();
 									foreach($emails as $nemail){
 										?>
 											<option value="<?php echo $nemail->email; ?>"><?php echo $nemail->email; ?></option>
@@ -269,7 +269,7 @@
 								<label for="template">Templates </label>
 								<select data-valid="" class="form-control select2 selecttemplate" name="template">
 									<option value="">Select</option>
-									@foreach(\App\CrmEmailTemplate::all() as $list)
+									@foreach(\App\Models\CrmEmailTemplate::all() as $list)
 										<option value="{{$list->id}}">{{$list->name}}</option>
 									@endforeach
 								</select>

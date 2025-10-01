@@ -117,7 +117,7 @@
 								<div class="form-group">
 									<label for="invoice_due_date">Select Profile:</label>
 									<select class="form-control" name="profile">
-										@foreach(\App\Profile::all() as $profiles)
+										@foreach(\App\Models\Profile::all() as $profiles)
 											<option value="{{$profiles->id}}">{{$profiles->company_name}}</option>
 										@endforeach
 									</select>

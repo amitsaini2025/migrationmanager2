@@ -4524,8 +4524,8 @@ class ClientsController extends Controller
     {
 
         if (isset($request->t)) {
-            if (\App\Notification::where('id', $request->t)->exists()) {
-                $ovv = \App\Notification::find($request->t);
+            if (\App\Models\Notification::where('id', $request->t)->exists()) {
+                $ovv = \App\Models\Notification::find($request->t);
                 $ovv->receiver_status = 1;
                 $ovv->save();
             }
@@ -8693,7 +8693,7 @@ public function followupstore(Request $request)
             }
 
             // Create a notification for the current assignee
-            $o = new \App\Notification;
+            $o = new \App\Models\Notification;
             $o->sender_id = Auth::user()->id;
             $o->receiver_id = $assigneeId;
             $o->module_id = $clientId;
@@ -8769,7 +8769,7 @@ protected function getAssigneeName($assigneeId)
                 $Lead->save();
 			}
 
-			$o = new \App\Notification;
+			$o = new \App\Models\Notification;
 	    	$o->sender_id = Auth::user()->id;
 	    	$o->receiver_id = @$requestData['rem_cat'];
 	    	$o->module_id = $this->decodeString(@$requestData['client_id']);
@@ -8836,7 +8836,7 @@ protected function getAssigneeName($assigneeId)
                 $Lead->save();
 			}
 
-			$o = new \App\Notification;
+			$o = new \App\Models\Notification;
 	    	$o->sender_id = Auth::user()->id;
 	    	$o->receiver_id = @$requestData['rem_cat'];
 	    	$o->module_id = $this->decodeString(@$requestData['client_id']);
@@ -8907,7 +8907,7 @@ protected function getAssigneeName($assigneeId)
 		}
 		else
 		{
-			$o = new \App\Notification;
+			$o = new \App\Models\Notification;
 	    	$o->sender_id = Auth::user()->id;
 	    	$o->receiver_id = @$requestData['rem_cat'];
 	    	$o->module_id = '';//$this->decodeString(@$requestData['client_id']);
@@ -8971,7 +8971,7 @@ public function personalfollowup(Request $request){
             $saved = $followup->save();
 
             if ($saved) {
-                $o = new \App\Notification;
+                $o = new \App\Models\Notification;
                 $o->sender_id = Auth::user()->id;
                 $o->receiver_id = $rem_cat;
                 $o->module_id = '';
@@ -9042,7 +9042,7 @@ private function getUserName($userId) {
 		   $objnote->status = 1;
 		   $objnote->save();*/
 		    $newassignee = Admin::find($requestData['changeassignee']);
-			$o = new \App\Notification;
+			$o = new \App\Models\Notification;
 	    	$o->sender_id = Auth::user()->id;
 	    	$o->receiver_id = @$requestData['changeassignee'];
 	    	$o->module_id = @$requestData['client_id'];
@@ -9079,7 +9079,7 @@ private function getUserName($userId) {
                 if ( is_array($request->assinee) && count($request->assinee) >=1) {
                     $assigneeArr = $request->assinee;
                     foreach($assigneeArr as $key=>$val) {
-                        $o = new \App\Notification;
+                        $o = new \App\Models\Notification;
                         $o->sender_id = Auth::user()->id;
                         $o->receiver_id = $val; //$request->assinee;
                         $o->module_id = $request->id;

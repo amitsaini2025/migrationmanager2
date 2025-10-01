@@ -164,8 +164,8 @@ class AdminController extends Controller
 
 
     public function fetchnotification(Request $request){
-        // $notificalists = \App\Notification::where('receiver_id', Auth::user()->id)->where('receiver_status', 0)->orderby('created_at','DESC')->paginate(5);
-         $notificalistscount = \App\Notification::where('receiver_id', Auth::user()->id)->where('receiver_status', 0)->count();
+        // $notificalists = \App\Models\Notification::where('receiver_id', Auth::user()->id)->where('receiver_status', 0)->orderby('created_at','DESC')->paginate(5);
+         $notificalistscount = \App\Models\Notification::where('receiver_id', Auth::user()->id)->where('receiver_status', 0)->count();
         /* $output = '';
 	    foreach($notificalists as $listnoti){
 	        $output .= '<a href="'.$listnoti->url.'?t='.$listnoti->id.'" class="dropdown-item dropdown-item-unread">
@@ -184,9 +184,9 @@ class AdminController extends Controller
     }
 
     public function fetchmessages(Request $request){
-        $notificalists = \App\Notification::where('receiver_id', Auth::user()->id)->where('seen', 0)->first();
+        $notificalists = \App\Models\Notification::where('receiver_id', Auth::user()->id)->where('seen', 0)->first();
         if($notificalists){
-            $obj = \App\Notification::find($notificalists->id);
+            $obj = \App\Models\Notification::find($notificalists->id);
             $obj->seen = 1;
             $obj->save();
             return $notificalists->message;
@@ -218,7 +218,7 @@ class AdminController extends Controller
 
     //In-Person Notification related  start
 	public function fetchOfficeVisitNotifications(Request $request){
-        $notifications = \App\Notification::where('receiver_id', Auth::user()->id)
+        $notifications = \App\Models\Notification::where('receiver_id', Auth::user()->id)
             ->where('notification_type', 'officevisit')
             ->where('receiver_status', 0)
             ->orderBy('created_at', 'DESC')
@@ -262,7 +262,7 @@ class AdminController extends Controller
     }
 
     public function markNotificationSeen(Request $request){
-        $notification = \App\Notification::find($request->notification_id);
+        $notification = \App\Models\Notification::find($request->notification_id);
         if ($notification && $notification->receiver_id == Auth::user()->id) {
             $notification->receiver_status = 1;
 			//$notification->seen = 1;
@@ -1996,7 +1996,7 @@ class AdminController extends Controller
     }
 
 	public function allnotification(Request $request){
-		$lists = \App\Notification::where('receiver_id', Auth::user()->id)->orderby('created_at','DESC')->paginate(20);
+		$lists = \App\Models\Notification::where('receiver_id', Auth::user()->id)->orderby('created_at','DESC')->paginate(20);
 		return view('Admin.notifications', compact(['lists']));
 	}
 
@@ -2026,7 +2026,7 @@ class AdminController extends Controller
                     if( $updated ){
                         $note_info = \App\Note::where('id',$note_val->id)->first(); //dd($note_info);
                         // Create a notification for the current assignee
-                        $o = new \App\Notification;
+                        $o = new \App\Models\Notification;
                         $o->sender_id = Auth::user()->id;
                         $o->receiver_id = $note_info['assigned_to'];
                         $o->module_id = $note_info['client_id'];

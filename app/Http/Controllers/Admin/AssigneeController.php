@@ -873,7 +873,7 @@ public function change_assignee(Request $request){
 
     $saved = $objs->save();
     if($saved){
-        $o = new \App\Notification;
+        $o = new \App\Models\Notification;
         $o->sender_id = \Auth::user()->id;
         $o->receiver_id = $request->assinee;
         $o->module_id = $request->id;

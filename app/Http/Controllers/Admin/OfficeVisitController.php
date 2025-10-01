@@ -48,7 +48,7 @@ class OfficeVisitController extends Controller
 		}
 		else
 		{
-		    $o = new \App\Notification;
+		    $o = new \App\Models\Notification;
 	    	$o->sender_id = Auth::user()->id;
 	    	$o->receiver_id = $requestData['assignee'];
 	    	$o->module_id = $obj->id;
@@ -356,7 +356,7 @@ class OfficeVisitController extends Controller
 		    $t = 'waiting';
 		}
 		if($saved){
-		    $o = new \App\Notification;
+		    $o = new \App\Models\Notification;
 	    	$o->sender_id = Auth::user()->id;
 	    	$o->receiver_id = $request->assinee;
 	    	$o->module_id = $request->id;
@@ -391,7 +391,7 @@ class OfficeVisitController extends Controller
         $saved = $obj->save();
 
         if($saved){
-		    $o = new \App\Notification;
+		    $o = new \App\Models\Notification;
 	    	$o->sender_id = Auth::user()->id;
 	    	$o->receiver_id = 36608; // to receptionist id  //info@bansaleducation.com.au 36730 (for live)
 	    	$o->module_id = $request->id;
@@ -440,8 +440,8 @@ class OfficeVisitController extends Controller
 	public function waiting(Request $request)
 	{
 	      if(isset($request->t)){
-    	    if(\App\Notification::where('id', $request->t)->exists()){
-    	       $ovv =  \App\Notification::find($request->t);
+    	    if(\App\Models\Notification::where('id', $request->t)->exists()){
+    	       $ovv =  \App\Models\Notification::find($request->t);
     	       $ovv->receiver_status = 1;
     	       $ovv->save();
     	    }
@@ -463,8 +463,8 @@ class OfficeVisitController extends Controller
 	public function attending(Request $request)
 	{
 	      if(isset($request->t)){
-    	    if(\App\Notification::where('id', $request->t)->exists()){
-    	       $ovv =  \App\Notification::find($request->t);
+    	    if(\App\Models\Notification::where('id', $request->t)->exists()){
+    	       $ovv =  \App\Models\Notification::find($request->t);
     	       $ovv->receiver_status = 1;
     	       $ovv->save();
     	    }
@@ -486,8 +486,8 @@ class OfficeVisitController extends Controller
 	public function completed(Request $request)
 	{
 	      if(isset($request->t)){
-    	    if(\App\Notification::where('id', $request->t)->exists()){
-    	       $ovv =  \App\Notification::find($request->t);
+    	    if(\App\Models\Notification::where('id', $request->t)->exists()){
+    	       $ovv =  \App\Models\Notification::find($request->t);
     	       $ovv->receiver_status = 1;
     	       $ovv->save();
     	    }

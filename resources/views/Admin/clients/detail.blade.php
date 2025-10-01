@@ -2121,7 +2121,7 @@ use App\Http\Controllers\Controller;
                             <span class="field-label">Residential Address</span>
                             <span class="field-value">
                                 <?php
-                                $postcode_Info = App\ClientAddress::select('zip','address')->where('client_id', $fetchedData->id)->latest('id')->first();
+                                $postcode_Info = App\Models\ClientAddress::select('zip','address')->where('client_id', $fetchedData->id)->latest('id')->first();
                                 if( $postcode_Info && $postcode_Info->zip != "" ){ echo $postcode_Info->zip; } else { echo 'N/A'; }
                                 ?>
 
@@ -2139,7 +2139,7 @@ use App\Http\Controllers\Controller;
                             <span class="field-label">Country Of Passport</span>
                             <span class="field-value">
                                 <?php
-                                $visa_Info = App\ClientVisaCountry::select('visa_country','visa_type','visa_expiry_date','visa_grant_date','visa_description')->where('client_id', $fetchedData->id)->latest('id')->first();
+                                $visa_Info = App\Models\ClientVisaCountry::select('visa_country','visa_type','visa_expiry_date','visa_grant_date','visa_description')->where('client_id', $fetchedData->id)->latest('id')->first();
                                 if( $visa_Info && $visa_Info->visa_country != "" ){ echo $visa_Info->visa_country; } else { echo 'N/A'; }
                                 ?>
                             </span>
@@ -2149,7 +2149,7 @@ use App\Http\Controllers\Controller;
                             <span class="field-value">
                                 <?php
                                 if( $visa_Info && $visa_Info->visa_type != "" ){
-                                    $Matter_get = App\Matter::select('id','title','nick_name')->where('id',$visa_Info->visa_type)->first();
+                                    $Matter_get = App\Models\Matter::select('id','title','nick_name')->where('id',$visa_Info->visa_type)->first();
                                     if(!empty($Matter_get)){
                                         $verifiedVisa = \App\Models\Admin::where('id',$fetchedData->id)->whereNotNull('visa_expiry_verified_at')->first();
                                         if ( $verifiedVisa) {
@@ -2210,7 +2210,7 @@ use App\Http\Controllers\Controller;
                             <span class="field-label">Nomi Occupation / Code / Assessing Authority</span>
                             <span class="field-value">
                                 <?php
-                                $clientOccupation_Info = App\ClientOccupation::select('skill_assessment','nomi_occupation','occupation_code','list','visa_subclass','dates')->where('client_id', $fetchedData->id)->latest('id')->first();
+                                $clientOccupation_Info = App\Models\ClientOccupation::select('skill_assessment','nomi_occupation','occupation_code','list','visa_subclass','dates')->where('client_id', $fetchedData->id)->latest('id')->first();
                                 if( $clientOccupation_Info && $clientOccupation_Info->nomi_occupation != "" ){ echo $clientOccupation_Info->nomi_occupation; } else { echo 'N/A'; }
                                 ?>
                                 <?php
@@ -2226,7 +2226,7 @@ use App\Http\Controllers\Controller;
                             <span class="field-label">English Test Score</span>
                             <span class="field-value">
                                 <?php
-                                $clientTest_Info = App\ClientTestScore::select('test_type','listening','reading','writing','speaking','overall_score','test_date')->where('client_id', $fetchedData->id)->latest('id')->first();
+                                $clientTest_Info = App\Models\ClientTestScore::select('test_type','listening','reading','writing','speaking','overall_score','test_date')->where('client_id', $fetchedData->id)->latest('id')->first();
                                 if( $clientTest_Info && $clientTest_Info->test_type != "" ){ echo $clientTest_Info->test_type.": "; } else { echo 'N/A'; }
                                 ?>
 
@@ -2254,7 +2254,7 @@ use App\Http\Controllers\Controller;
 
 
                     <?php
-                    $clientQualification_Info = App\ClientQualification::select('level','name','qual_campus','finish_date')->where('client_id', $fetchedData->id)->orderBy('id','desc')->get();
+                    $clientQualification_Info = App\Models\ClientQualification::select('level','name','qual_campus','finish_date')->where('client_id', $fetchedData->id)->orderBy('id','desc')->get();
                     ?>
                     @if(!empty($clientQualification_Info) && $clientQualification_Info->count() > 0)
                     <div class="card">
@@ -2312,7 +2312,7 @@ use App\Http\Controllers\Controller;
 
 
                     <?php
-                    $clientExperience_Info = App\ClientExperience::select('job_title','job_country','job_start_date','job_finish_date')->where('client_id', $fetchedData->id)->orderBy('id','desc')->get();
+                    $clientExperience_Info = App\Models\ClientExperience::select('job_title','job_country','job_start_date','job_finish_date')->where('client_id', $fetchedData->id)->orderBy('id','desc')->get();
                     ?>
                     @if(!empty($clientExperience_Info) && $clientExperience_Info->count() > 0)
                     <div class="card">
@@ -2388,7 +2388,7 @@ use App\Http\Controllers\Controller;
                                             //dd($relationship->related_client_id);
                                             if(isset($relationship->related_client_id) && $relationship->related_client_id != "")
                                             { //Existing Client
-                                                $relatedClientInfo = App\Admin::select('client_id','first_name','last_name')->where('id', $relationship->related_client_id)->first();
+                                                $relatedClientInfo = App\Models\Admin::select('client_id','first_name','last_name')->where('id', $relationship->related_client_id)->first();
                                                 //dd($relatedClientInfo);
                                                 if($relatedClientInfo){
                                                     $relatedClientId = $relatedClientInfo->client_id;
@@ -2604,7 +2604,7 @@ use App\Http\Controllers\Controller;
 
 
                     <?php
-                    $clientEoi_Info = App\ClientEoiReference::where('client_id', $fetchedData->id)->orderBy('id','desc')->get();
+                    $clientEoi_Info = App\Models\ClientEoiReference::where('client_id', $fetchedData->id)->orderBy('id','desc')->get();
                     ?>
                     @if(!empty($clientEoi_Info) && $clientEoi_Info->count() > 0)
                     <div class="card">
@@ -5421,7 +5421,7 @@ use App\Http\Controllers\Controller;
 								<label for="super_agent">Super Agent <span class="span_req">*</span></label>
 								<select data-valid="required" class="form-control super_agent" id="super_agent" name="super_agent">
 									<option value="">Please Select</option>
-									<?php $sagents = \App\Agent::whereRaw('FIND_IN_SET("Super Agent", agent_type)')->get(); ?>
+									<?php $sagents = \App\Models\AgentDetails::whereRaw('FIND_IN_SET("Super Agent", agent_type)')->get(); ?>
 									@foreach($sagents as $sa)
 										<option value="{{$sa->id}}">{{$sa->full_name}} {{$sa->email}}</option>
 									@endforeach
@@ -5462,7 +5462,7 @@ use App\Http\Controllers\Controller;
 								<label for="sub_agent">Sub Agent <span class="span_req">*</span></label>
 								<select data-valid="required" class="form-control sub_agent" id="sub_agent" name="sub_agent">
 									<option value="">Please Select</option>
-									<?php $sagents = \App\Agent::whereRaw('FIND_IN_SET("Sub Agent", agent_type)')->where('is_acrchived',0)->get(); ?>
+									<?php $sagents = \App\Models\AgentDetails::whereRaw('FIND_IN_SET("Sub Agent", agent_type)')->where('is_acrchived',0)->get(); ?>
 									@foreach($sagents as $sa)
 										<option value="{{$sa->id}}">{{$sa->full_name}} {{$sa->email}}</option>
 									@endforeach

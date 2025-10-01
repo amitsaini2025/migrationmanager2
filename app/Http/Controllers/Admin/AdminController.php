@@ -9,23 +9,23 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Redirect;
 
-use App\Lead;
-use App\Admin;
-use App\WebsiteSetting;
-use App\SeoPage;
-use App\City;
-use App\Contact;
-use App\TaxRate;
+use App\Models\Lead;
+use App\Models\Admin;
+use App\Models\WebsiteSetting;
+use App\Models\SeoPage;
+use App\Models\City;
+use App\Models\Contact;
+use App\Models\TaxRate;
 use PDF;
-use App\InvoicePayment;
-use App\Setting;
+use App\Models\InvoicePayment;
+use App\Models\Setting;
 use Auth;
 use Config;
-use App\ActivitiesLog;
-use App\Note;
-use App\ClientMatter;
+use App\Models\ActivitiesLog;
+use App\Models\Note;
+use App\Models\ClientMatter;
 use Carbon\Carbon;
-use App\ClientVisaCountry;
+use App\Models\ClientVisaCountry;
 use App\Services\EmailService;
 
 class AdminController extends Controller

@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Routing\Route;
 
-use App\Appointment;
-use App\Admin;
+use App\Models\Appointment;
+use App\Models\Admin;
 use Helper;
 use Auth;
 use Config;

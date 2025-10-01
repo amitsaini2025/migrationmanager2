@@ -4,7 +4,7 @@ namespace App\Http\Controllers\API;
 use Illuminate\Http\Request;
 use App\Http\Controllers\API\BaseController as BaseController;
 
-use App\Product;
+use App\Models\Product;
 use App\Professor;
 use App\ModeProduct;
 use App\ProductOtherInformation;

@@ -19,11 +19,11 @@ return [
     ],
 	'admins' => [
         'driver' => 'eloquent',
-        'model' => App\Admin::class,
+        'model' => App\Models\Admin::class,
     ],
     'agents' => [
         'driver' => 'eloquent',
-        'model' => App\Agent::class,
+        'model' => App\Models\Agent::class,
     ],
     'email_users' => [
         'driver' => 'eloquent',
@@ -95,11 +95,11 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\User::class,
+            'model' => App\Models\User::class,
         ],
 		'admins' => [
             'driver' => 'eloquent',
-            'model' => App\Admin::class,
+            'model' => App\Models\Admin::class,
         ],
 		'providers' => [
             'driver' => 'eloquent',
@@ -107,7 +107,7 @@ return [
         ],
         'agents' => [
             'driver' => 'eloquent',
-            'model' => App\Agent::class,
+            'model' => App\Models\Agent::class,
         ],
         'email_users' => [
             'driver' => 'eloquent',

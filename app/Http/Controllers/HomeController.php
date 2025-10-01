@@ -9,16 +9,16 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Redirect;
 
-use App\WebsiteSetting;
-use App\Slider;
-use App\Blog;
-use App\Contact;
-use App\BlogCategory;
-use App\OurService;
-use App\Testimonial;
-use App\WhyChooseus;
-use App\HomeContent;
-use App\CmsPage;
+use App\Models\WebsiteSetting;
+use App\Models\Slider;
+use App\Models\Blog;
+use App\Models\Contact;
+use App\Models\BlogCategory;
+use App\Models\OurService;
+use App\Models\Testimonial;
+use App\Models\WhyChooseus;
+use App\Models\HomeContent;
+use App\Models\CmsPage;
 use App\Mail\CommonMail;
 
 use Illuminate\Support\Facades\Session;

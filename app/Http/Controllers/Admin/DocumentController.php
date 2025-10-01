@@ -2,8 +2,8 @@
 namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 
-use App\Document;
-use App\Signer;
+use App\Models\Document;
+use App\Models\Signer;
 use Illuminate\Http\Request;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Illuminate\Support\Str;
@@ -13,13 +13,13 @@ use Illuminate\Support\Facades\Storage;
 use Smalot\PdfParser\Parser;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use App\ActivitiesLog;
-use App\ClientMatter;
-use App\Admin;
+use App\Models\ActivitiesLog;
+use App\Models\ClientMatter;
+use App\Models\Admin;
 use Illuminate\Support\Facades\Auth;
-use App\UploadChecklist;
-use App\Email;
-use App\MailReport;
+use App\Models\UploadChecklist;
+use App\Models\Email;
+use App\Models\MailReport;
 
 class DocumentController extends Controller
 {

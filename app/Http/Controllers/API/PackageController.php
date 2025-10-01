@@ -7,9 +7,9 @@ use Illuminate\Http\Request;
 
 use App\Destination;
 use App\Package;
-use App\Admin;
+use App\Models\Admin;
 use App\Topinclusion;
-use App\Lead;
+use App\Models\Lead;
 use App\Holidaytype;
 use App\HolidayTheme;
 use App\PackageTheme;

@@ -9,14 +9,14 @@ use Illuminate\Support\Facades\Redirect;
 
 use Tzsk\Payu\Facade\Payment;
 
-use App\State;
-use App\Country;
-use App\Product;
+use App\Models\State;
+use App\Models\Country;
+use App\Models\Product;
 use App\ProductOtherInformation;
 use App\MyCart;
 use App\ProductOrder;
 use App\ProductTransactionHistory;
-use App\WebsiteSetting;
+use App\Models\WebsiteSetting;
 
 
 

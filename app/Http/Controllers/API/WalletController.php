@@ -5,7 +5,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\API\BaseController as BaseController;
 
 use Config;
-use App\Admin;
+use App\Models\Admin;
 use App\Wallet;
 use App\WalletHistory;
 //use Log;

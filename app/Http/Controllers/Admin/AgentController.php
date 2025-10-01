@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use App\Imports\ImportUser;
-use App\Admin;
-use App\RepresentingPartner;
+use App\Models\Admin;
+use App\Models\RepresentingPartner;
 
 use Auth;
 use Config;

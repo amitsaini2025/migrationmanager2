@@ -20,6 +20,10 @@ Route::post('/get_product_other_info', 'HomeController@getProductOtherInformatio
 Route::post('/delete_action', 'HomeController@deleteAction')->middleware('auth');
  */
 
+// Root route - redirect to admin login
+Route::get('/', function() {
+    return redirect()->route('admin.login');
+});
 
 Route::get('/clear-cache', function() {
 

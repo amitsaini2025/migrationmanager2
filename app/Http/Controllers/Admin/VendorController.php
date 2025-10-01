@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 
-use App\Admin;
-use App\Subject;
-use App\Country;
+use App\Models\Admin;
+use App\Models\Subject;
+use App\Models\Country;
 use App\VendorSubject;
 
 use Auth;

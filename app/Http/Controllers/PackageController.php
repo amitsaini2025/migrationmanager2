@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Redirect;
 
 use App\Destination;
 use App\Package;
-use App\WebsiteSetting;
+use App\Models\WebsiteSetting;
 use Illuminate\Support\Facades\Session;
 
 use Config;

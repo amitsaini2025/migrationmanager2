@@ -4,7 +4,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\API\BaseController as BaseController;
 use Illuminate\Http\Request;
 use App\Hotel;
-use App\Admin;
+use App\Models\Admin;
 use App\Location;
 use App\Amenitie;
 use DB;

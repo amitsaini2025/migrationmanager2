@@ -8,23 +8,23 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Str;
 
-use App\Admin;
-use App\ActivitiesLog;
-use App\ServiceFeeOption;
-use App\ServiceFeeOptionType;
-use App\OnlineForm;
+use App\Models\Admin;
+use App\Models\ActivitiesLog;
+use App\Models\ServiceFeeOption;
+use App\Models\ServiceFeeOptionType;
+use App\Models\OnlineForm;
 use Auth;
 use Config;
 use PDF;
-use App\CheckinLog;
-use App\Note;
-use App\clientServiceTaken;
-use App\AccountClientReceipt;
+use App\Models\CheckinLog;
+use App\Models\Note;
+use App\Models\clientServiceTaken;
+use App\Models\AccountClientReceipt;
 
-use App\Matter;
-use App\ClientMatter;
+use App\Models\Matter;
+use App\Models\ClientMatter;
 
-use App\FileStatus;
+use App\Models\FileStatus;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 
@@ -38,19 +38,19 @@ use Hfig\MAPI\MapiMessageFactory;
 use DateTime;
 use DateTimeZone;
 
-use App\ClientAddress; // Import the ClientAddress model
-use App\ClientContact; // Import the ClientAddress model
-use App\ClientEmail; // Import the ClientAddress model
-use App\ClientQualification; // Import the ClientAddress model
-use App\ClientExperience; // Import the ClientAddress model
-use App\ClientTestScore; // Import the ClientAddress model
-use App\ClientVisaCountry; // Import the ClientAddress model
-use App\ClientOccupation; // Import the ClientAddress model
-use App\ClientSpouseDetail; // Import the ClientAddress model
+use App\Models\ClientAddress; // Import the ClientAddress model
+use App\Models\ClientContact; // Import the ClientAddress model
+use App\Models\ClientEmail; // Import the ClientAddress model
+use App\Models\ClientQualification; // Import the ClientAddress model
+use App\Models\ClientExperience; // Import the ClientAddress model
+use App\Models\ClientTestScore; // Import the ClientAddress model
+use App\Models\ClientVisaCountry; // Import the ClientAddress model
+use App\Models\ClientOccupation; // Import the ClientAddress model
+use App\Models\ClientSpouseDetail; // Import the ClientAddress model
 
-use App\EmailRecord;
-use App\ClientPoint;
-use App\VisaDocChecklist;
+use App\Models\EmailRecord;
+use App\Models\ClientPoint;
+use App\Models\VisaDocChecklist;
 use Carbon\Carbon;
 use Illuminate\Validation\Rule;
 
@@ -58,22 +58,22 @@ use Illuminate\Support\Facades\Validator;
 use GuzzleHttp\Client;
 
 
-use App\ClientPassportInformation;
-use App\ClientTravelInformation;
-use App\ClientCharacter;
-use App\ClientRelationship;
+use App\Models\ClientPassportInformation;
+use App\Models\ClientTravelInformation;
+use App\Models\ClientCharacter;
+use App\Models\ClientRelationship;
 
-use App\AiChat;
-use App\AiChatMessage;
+use App\Models\AiChat;
+use App\Models\AiChatMessage;
 use Illuminate\Support\Facades\Http;
 
-use App\Form956;
+use App\Models\Form956;
 use PhpOffice\PhpWord\TemplateProcessor;
 use Illuminate\Support\Facades\Log;
-use App\CostAssignmentForm;
-use App\PersonalDocumentType;
-use App\VisaDocumentType;
-use App\ClientEoiReference;
+use App\Models\CostAssignmentForm;
+use App\Models\PersonalDocumentType;
+use App\Models\VisaDocumentType;
+use App\Models\ClientEoiReference;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
 use App\Mail\HubdocInvoiceMail;

@@ -9,17 +9,17 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Redirect;
 
-use App\Admin;
+use App\Models\Admin;
 use App\Models\EmailUser;
-use App\EmailRecord;
-use App\MailReport;
+use App\Models\EmailRecord;
+use App\Models\MailReport;
 
 use Auth;
 use Config;
 use Illuminate\Support\Facades\Storage;
 
-use App\Matter;
-use App\ClientMatter;
+use App\Models\Matter;
+use App\Models\ClientMatter;
 
 
 class EmailListController extends Controller

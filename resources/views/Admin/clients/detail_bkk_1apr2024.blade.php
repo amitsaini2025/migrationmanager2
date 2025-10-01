@@ -2600,7 +2600,7 @@ use App\Http\Controllers\Controller;
 											</thead>
 											<tbody class="tdata">
 												<?php
-												$qlists = \App\Quotation::where('client_id', $fetchedData->id)->orderby('created_at','DESC')->get();
+												$qlists = \App\Models\QuotationInfo::where('client_id', $fetchedData->id)->orderby('created_at','DESC')->get();
 												foreach($qlists as $qlist){
 													$client = \App\Models\Admin::where('id',$qlist->client_id)->where('role', 7)->first();
                                                     $createdby = \App\Models\Admin::where('id',$qlist->user_id)->first();
@@ -3213,7 +3213,7 @@ use App\Http\Controllers\Controller;
 											</thead>-->
 											<tbody class="taskdata ">
 											<?php
-											foreach(\App\Task::where('client_id', $fetchedData->id)->orderby('created_at','Desc')->get() as $alist){
+											foreach(\App\Models\Task::where('client_id', $fetchedData->id)->orderby('created_at','Desc')->get() as $alist){
 												$admin = \App\Models\Admin::where('id', $alist->user_id)->first();
 												?>
 												<tr class="opentaskview" style="cursor:pointer;" id="{{$alist->id}}">
@@ -3277,7 +3277,7 @@ use App\Http\Controllers\Controller;
 
 										foreach($edulists as $edulist){
 											$subjectdetail = \App\Models\Subject::where('id',$edulist->subject)->first();
-											$subjectareadetail = \App\SubjectArea::where('id',$edulist->subject_area)->first();
+											$subjectareadetail = \App\Models\SubjectArea::where('id',$edulist->subject_area)->first();
 											?>
 											<div class="education_item" id="edu_id_<?php echo $edulist->id; ?>">
 										<div class="row">
@@ -4800,7 +4800,7 @@ use App\Http\Controllers\Controller;
 								<label for="super_agent">Super Agent <span class="span_req">*</span></label>
 								<select data-valid="required" class="form-control super_agent" id="super_agent" name="super_agent">
 									<option value="">Please Select</option>
-									<?php $sagents = \App\Agent::whereRaw('FIND_IN_SET("Super Agent", agent_type)')->get(); ?>
+									<?php $sagents = \App\Models\AgentDetails::whereRaw('FIND_IN_SET("Super Agent", agent_type)')->get(); ?>
 									@foreach($sagents as $sa)
 										<option value="{{$sa->id}}">{{$sa->full_name}} {{$sa->email}}</option>
 									@endforeach
@@ -4841,7 +4841,7 @@ use App\Http\Controllers\Controller;
 								<label for="sub_agent">Sub Agent <span class="span_req">*</span></label>
 								<select data-valid="required" class="form-control sub_agent" id="sub_agent" name="sub_agent">
 									<option value="">Please Select</option>
-									<?php $sagents = \App\Agent::whereRaw('FIND_IN_SET("Sub Agent", agent_type)')->where('is_acrchived',0)->get(); ?>
+									<?php $sagents = \App\Models\AgentDetails::whereRaw('FIND_IN_SET("Sub Agent", agent_type)')->where('is_acrchived',0)->get(); ?>
 									@foreach($sagents as $sa)
 										<option value="{{$sa->id}}">{{$sa->full_name}} {{$sa->email}}</option>
 									@endforeach

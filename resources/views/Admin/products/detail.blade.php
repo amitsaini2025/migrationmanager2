@@ -469,7 +469,7 @@ use App\Http\Controllers\Controller;
 										<?php 
 										
 										if($subjectareadata){ 
-										$subjectarea = \App\SubjectArea::where('id', $subjectareadata->subject_area)->first();
+										$subjectarea = \App\Models\SubjectArea::where('id', $subjectareadata->subject_area)->first();
 				$subject = \App\Models\Subject::where('id', $subjectareadata->subject)->first();
 				echo '<div class="row"><div class="col-md-4"><strong>Subject Area</strong><p>'.$subjectarea->name.'</p></div><div class="col-md-4"><strong>Subject</strong><p>'.$subject->name.'</p></div><div class="col-md-4"><strong>Degree Level</strong><p>'.$subjectareadata->degree.'</p></div></div>';
 									} ?>

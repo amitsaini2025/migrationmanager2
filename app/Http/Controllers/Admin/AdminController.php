@@ -1676,7 +1676,7 @@ class AdminController extends Controller
 			    $subject = str_replace('{Client First Name}',$client->partner_name, $subject);
 			    $message = str_replace('{Client First Name}',$client->partner_name, $message);
 			}else if(@$requestData['type'] == 'agent'){
-				$client = \App\Agent::Where('id', $l)->first();
+				$client = \App\Models\AgentDetails::Where('id', $l)->first();
 			    $subject = str_replace('{Client First Name}',$client->full_name, $subject);
 			    $message = str_replace('{Client First Name}',$client->full_name, $message);
 			}else{

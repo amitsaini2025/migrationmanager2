@@ -676,7 +676,7 @@
 														<label for="subagent">Sub Agent <span class="span_req">*</span></label>
 														<select class="form-control select2" name="subagent">
 															<option>-- Choose a sub agent --</option>
-															@foreach(\App\Agent::all() as $agentlist)
+															@foreach(\App\Models\AgentDetails::all() as $agentlist)
 																<option value="{{$agentlist->id}}">{{$agentlist->full_name}}</option>
 															@endforeach
 														</select>

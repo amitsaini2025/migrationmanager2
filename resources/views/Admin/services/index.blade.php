@@ -41,7 +41,7 @@
 												$servicecat = \App\Models\Partner::select('master_category')->distinct()->get()->toArray();
 												$catid = array();
 												?>
-													@foreach(\App\Category::whereIn('id', $servicecat)->get() as $clist)
+													@foreach(\App\Models\Category::whereIn('id', $servicecat)->get() as $clist)
 														<?php
 														$catid[] = $clist->id;
 														?>

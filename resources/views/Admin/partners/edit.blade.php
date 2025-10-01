@@ -61,7 +61,7 @@
 															<div class="form-group">
 																<label for="master_category">Master Category <span class="span_req">*</span></label>
 																<?php
-																$cat = \App\Category::where('id', $fetchedData->master_category)->first();
+																$cat = \App\Models\Category::where('id', $fetchedData->master_category)->first();
 																?>
 																<input type="text" class="form-control" disabled name="" value="{{@$cat->category_name}}">
 																@if ($errors->has('master_category'))

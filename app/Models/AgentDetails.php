@@ -15,6 +15,8 @@ class AgentDetails extends Model
     protected $fillable = [
 		'business_name',
 		'agent_name',
+		'full_name',
+		'email',
 		'marn_number',
 		'legal_practitioner_number',
 		'exempt_person_reason',
@@ -23,6 +25,12 @@ class AgentDetails extends Model
 		'business_mobile',
 		'business_email',
 		'business_fax',
+		'agent_type',
+		'related_office',
+		'struture',
+		'tax_number',
+		'contract_expiry_date',
+		'is_acrchived',
         'status'
 	];
 

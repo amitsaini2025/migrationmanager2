@@ -985,7 +985,7 @@ use App\Http\Controllers\Controller;
 											</thead>
 											<tbody class="taskdata ">
 											<?php
-											foreach(\App\Task::where('client_id', $fetchedData->id)->where('type','partner')->orderby('created_at','Desc')->get() as $alist){
+											foreach(\App\Models\Task::where('client_id', $fetchedData->id)->where('type','partner')->orderby('created_at','Desc')->get() as $alist){
 												$admin = \App\Models\Admin::where('id', $alist->user_id)->first();
 												?>
 												<tr class="opentaskview" style="cursor:pointer;" id="{{$alist->id}}">

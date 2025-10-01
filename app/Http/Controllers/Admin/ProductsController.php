@@ -334,7 +334,7 @@ class ProductsController extends Controller
 			}
 			else
 			{
-				$subjectarea = \App\SubjectArea::where('id', $obj->subject_area)->first();
+				$subjectarea = \App\Models\SubjectArea::where('id', $obj->subject_area)->first();
 				$subject = \App\Models\Subject::where('id', $obj->subject)->first();
 				$data = '<div class="row"><div class="col-md-4"><strong>Subject Area</strong><p>'.$subjectarea->name.'</p></div><div class="col-md-4"><strong>Subject</strong><p>'.$subject->name.'</p></div><div class="col-md-4"><strong>Degree Level</strong><p>'.$obj->degree.'</p></div></div>';
 				$response['status'] 	= 	true;
@@ -355,7 +355,7 @@ class ProductsController extends Controller
 							<select data-valid="" class="form-control subject_area select2" id="subjectlist" name="subject_area">
 									<option value="">Please Select Subject Area</option>
 									<?php
-									foreach(\App\SubjectArea::all() as $sublist){
+									foreach(\App\Models\SubjectArea::all() as $sublist){
 										?>
 										<option <?php if($ac->subject_area == $sublist->id){ echo 'selected'; } ?> value="<?php echo $sublist->id; ?>"><?php echo $sublist->name; ?></option>
 										<?php

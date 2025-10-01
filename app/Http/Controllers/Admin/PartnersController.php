@@ -1038,7 +1038,7 @@ class PartnersController extends Controller
 	public function gettasks(Request $request){
 		$client_id = $request->clientid;
 
-		$notelist = \App\Task::where('client_id',$client_id)->where('type','partner')->orderby('created_at', 'DESC')->get();
+		$notelist = \App\Models\Task::where('client_id',$client_id)->where('type','partner')->orderby('created_at', 'DESC')->get();
 		ob_start();
 		foreach($notelist as $alist){
 			$admin = \App\Models\Admin::where('id', $alist->user_id)->first();
@@ -1068,7 +1068,7 @@ class PartnersController extends Controller
 	}
 
 	public function taskdetail(Request $request){
-		$notedetail = \App\Task::where('id',$request->task_id)->where('type','partner')->first();
+		$notedetail = \App\Models\Task::where('id',$request->task_id)->where('type','partner')->first();
 		?>
 		<div class="modal-header">
 				<h5 class="modal-title" id="taskModalLabel"><i class="fa fa-bag"></i> <?php echo $notedetail->title; ?></h5>

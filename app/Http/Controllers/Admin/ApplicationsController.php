@@ -597,7 +597,7 @@ class ApplicationsController extends Controller
 			$obj->super_agent = $request->super_agent;
 			$saved = $obj->save();
 			if($saved){
-				$agent = \App\Agent::where('id',$request->super_agent)->first();
+				$agent = \App\Models\AgentDetails::where('id',$request->super_agent)->first();
 				$response['status'] 	= 	true;
 				$response['message']	=	'Application successfully updated.';
 				$response['data']	=	'<div class="client_info">
@@ -640,7 +640,7 @@ class ApplicationsController extends Controller
 			$obj->sub_agent = $request->sub_agent;
 			$saved = $obj->save();
 			if($saved){
-				$agent = \App\Agent::where('id',$request->sub_agent)->first();
+				$agent = \App\Models\AgentDetails::where('id',$request->sub_agent)->first();
 				$response['status'] 	= 	true;
 				$response['message']	=	'Application successfully updated.';
 				$response['data']	=	'<div class="client_info">

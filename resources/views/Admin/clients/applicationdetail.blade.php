@@ -719,7 +719,7 @@ $workflow = \App\Models\Workflow::where('id', $fetchData->workflow)->first();
 				<span class="float-right text-muted">
 					<a href="javascript:;" data-id="{{$fetchData->id}}" class="btn btn-primary btn-sm opensuperagent"><i class="fa fa-plus"></i> Add</a>
 					<?php
-					$agent = \App\Agent::where('id',$fetchData->super_agent)->first();
+					$agent = \App\Models\AgentDetails::where('id',$fetchData->super_agent)->first();
 					if($agent){
 					?>
 					<div class="supagent_data">
@@ -745,7 +745,7 @@ $workflow = \App\Models\Workflow::where('id', $fetchData->workflow)->first();
 					<a href="javascript:;" data-id="{{$fetchData->id}}" class="btn btn-primary btn-sm opensubagent"><i class="fa fa-plus"></i> Add</a>
 					<div class="subagent_data">
 						<?php
-					$subagent = \App\Agent::where('id',$fetchData->sub_agent)->first();
+					$subagent = \App\Models\AgentDetails::where('id',$fetchData->sub_agent)->first();
 					if($subagent){
 					?>
 					<div class="client_info">

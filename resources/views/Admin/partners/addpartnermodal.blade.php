@@ -926,7 +926,7 @@
 								<select data-valid="" class="form-control subject_area select2" id="subjectlist" name="subject_area">
 									<option value="">Please Select Subject Area</option>
 									<?php
-									foreach(\App\SubjectArea::all() as $sublist){
+									foreach(\App\Models\SubjectArea::all() as $sublist){
 										?>
 										<option value="{{$sublist->id}}">{{$sublist->name}}</option>
 										<?php

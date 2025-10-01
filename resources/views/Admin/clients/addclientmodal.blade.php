@@ -423,28 +423,30 @@
 
                                                     <div class="slotTimeOverwriteDivCls" style="display: none;">
 														<?php
-                                                        function generateTimeDropdown($interval = 15) {
-                                                            $start = new DateTime('00:00');
-                                                            $end = new DateTime('23:45'); // Set the end time to 11:45 PM
+                                                        if (!function_exists('generateTimeDropdown')) {
+                                                            function generateTimeDropdown($interval = 15) {
+                                                                $start = new DateTime('00:00');
+                                                                $end = new DateTime('23:45'); // Set the end time to 11:45 PM
 
-                                                            $intervalDuration = new DateInterval('PT' . $interval . 'M');
-                                                            $times = new DatePeriod($start, $intervalDuration, $end);
+                                                                $intervalDuration = new DateInterval('PT' . $interval . 'M');
+                                                                $times = new DatePeriod($start, $intervalDuration, $end);
 
-                                                            echo '<select class="slot_overwrite_time_dropdown" style="margin-left: 50px;margin-top: 50px;">';
-                                                            echo '<option value="">Select Time</option>';
-                                                            foreach ($times as $time) {
-                                                                // Calculate the end time for each option
-                                                                $endTime = clone $time;
-                                                                $endTime->add($intervalDuration);
+                                                                echo '<select class="slot_overwrite_time_dropdown" style="margin-left: 50px;margin-top: 50px;">';
+                                                                echo '<option value="">Select Time</option>';
+                                                                foreach ($times as $time) {
+                                                                    // Calculate the end time for each option
+                                                                    $endTime = clone $time;
+                                                                    $endTime->add($intervalDuration);
 
-                                                                // Format both start and end times for display
-                                                                echo '<option value="' . $time->format('g:i A') . ' - ' . $endTime->format('g:i A') . '">';
-                                                                echo $time->format('g:i A') . ' - ' . $endTime->format('g:i A');
-                                                                echo '</option>';
+                                                                    // Format both start and end times for display
+                                                                    echo '<option value="' . $time->format('g:i A') . ' - ' . $endTime->format('g:i A') . '">';
+                                                                    echo $time->format('g:i A') . ' - ' . $endTime->format('g:i A');
+                                                                    echo '</option>';
 
-                                                                //echo '<option value="' . $time->format('g:i A') . '">' . $time->format('g:i A') . '</option>';
+                                                                    //echo '<option value="' . $time->format('g:i A') . '">' . $time->format('g:i A') . '</option>';
+                                                                }
+                                                                echo '</select>';
                                                             }
-                                                            echo '</select>';
                                                         }
 
                                                         generateTimeDropdown(15); // 15-minute interval
@@ -1069,7 +1071,7 @@
 								<select data-valid="" class="form-control subject_area select2" id="subjectlist" name="subject_area">
 									<option value="">Please Select Subject Area</option>
 									<?php
-									foreach(\App\SubjectArea::all() as $sublist){
+									foreach(\App\Models\SubjectArea::all() as $sublist){
 										?>
 										<option value="{{$sublist->id}}">{{$sublist->name}}</option>
 										<?php
@@ -2841,7 +2843,7 @@
                                 <label for="agent_id">Agent <span class="span_req">*</span></label>
                                 <select data-valid="required" class="form-control select2" name="agent_id" id="sel_client_agent_id">
                                     <option value="">Select Agent</option>
-                                    @foreach(\App\Agent::where('status',1)->get() as $aplist)
+                                    @foreach(\App\Models\AgentDetails::where('status',1)->get() as $aplist)
                                         <option value="{{$aplist->id}}">{{@$aplist->full_name}} ({{@$aplist->email}})</option>
                                     @endforeach
                                 </select>
@@ -2973,7 +2975,7 @@
                                 <label for="agent_id">Agent <span class="span_req">*</span></label>
                                 <select data-valid="required" class="form-control select2" name="agent_id" id="sel_invoice_agent_id">
                                     <option value="">Select Agent</option>
-                                    @foreach(\App\Agent::where('status',1)->get() as $aplist)
+                                    @foreach(\App\Models\AgentDetails::where('status',1)->get() as $aplist)
                                         <option value="{{$aplist->id}}">{{@$aplist->full_name}} ({{@$aplist->email}})</option>
                                     @endforeach
                                 </select>
@@ -3113,7 +3115,7 @@
                                 <label for="agent_id">Agent <span class="span_req">*</span></label>
                                 <select data-valid="required" class="form-control select2" name="agent_id" id="sel_office_agent_id">
                                     <option value="">Select Agent</option>
-                                    @foreach(\App\Agent::where('status',1)->get() as $aplist)
+                                    @foreach(\App\Models\AgentDetails::where('status',1)->get() as $aplist)
                                         <option value="{{$aplist->id}}">{{@$aplist->full_name}} ({{@$aplist->email}})</option>
                                     @endforeach
                                 </select>
@@ -3246,7 +3248,7 @@
                                 <label for="agent_id">Agent <span class="span_req">*</span></label>
                                 <select data-valid="required" class="form-control select2" name="agent_id" id="sel_journal_agent_id">
                                     <option value="">Select Agent</option>
-                                    @foreach(\App\Agent::where('status',1)->get() as $aplist)
+                                    @foreach(\App\Models\AgentDetails::where('status',1)->get() as $aplist)
                                         <option value="{{$aplist->id}}">{{@$aplist->full_name}} ({{@$aplist->email}})</option>
                                     @endforeach
                                 </select>

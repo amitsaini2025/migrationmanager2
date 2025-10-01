@@ -64,7 +64,7 @@
 																<label for="master_category">Master Category <span class="span_req">*</span></label>
 																<select data-valid="required" id="getpartnertype" class="form-control addressselect2" name="master_category">
 																	<option value="">Select a Master Category</option>
-																	@foreach(\App\Category::all() as $clist)
+																	@foreach(\App\Models\Category::all() as $clist)
 																	<option value="{{$clist->id}}">{{$clist->category_name}}</option>
 																@endforeach
 																</select>

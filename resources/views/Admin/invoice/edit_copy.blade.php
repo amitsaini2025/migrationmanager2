@@ -188,7 +188,7 @@
 												<td>
 													<select name="tax[]" class="form-control">
 														<option value="">Select A Tax Code</option>
-														@foreach(\App\Tax::all() as $taxlist)
+														@foreach(\App\Models\TaxRate::all() as $taxlist)
 															<option <?php if($invoiceitemdetail->tax == $taxlist->amount){ echo 'selected'; } ?> value="{{$taxlist->amount}}">{{$taxlist->name}}</option>
 														@endforeach
 													</select>
@@ -538,7 +538,7 @@
 													<select class="form-control" id="share_user" name="share_user">
 													<option value="no">Select a receiver</option>
 													<?php 
-													$branches = \App\Agent::where('id','!=', '')->get();
+													$branches = \App\Models\AgentDetails::where('id','!=', '')->get();
 													foreach($branches as $branch){
 													?>
 														<option data-v="{{$branch->income_sharing}}" <?php if($IncomeSharing && $IncomeSharing->rec_id == $branch->id){ echo 'selected'; } ?> value="{{$branch->id}}">{{$branch->full_name}}</option>
@@ -561,7 +561,7 @@
 													<div class="input_field ifcheckedtax" style="display:none;">
 														<select id="taxget" class="form-control">
 														    <option value="">Select Tax</option>
-														 	@foreach(\App\Tax::all() as $taxlist)
+														 	@foreach(\App\Models\TaxRate::all() as $taxlist)
 															<option value="{{$taxlist->amount}}">{{$taxlist->name}}</option>
 														@endforeach   
 														</select>

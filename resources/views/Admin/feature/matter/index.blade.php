@@ -19,6 +19,35 @@
         margin-bottom: 20px;
         font-weight: 600;
     }
+    
+    /* Fix table header and text visibility */
+    .table thead th {
+        background-color: #f8f9fa !important;
+        color: #343a40 !important;
+        font-weight: 600 !important;
+        border-bottom: 2px solid #dee2e6 !important;
+        padding: 12px 15px !important;
+    }
+    
+    .table tbody td {
+        color: #495057 !important;
+        padding: 12px 15px !important;
+        border-bottom: 1px solid #dee2e6 !important;
+    }
+    
+    /* Fix form label visibility */
+    .form-group label {
+        color: #495057 !important;
+        font-weight: 500 !important;
+        margin-bottom: 8px !important;
+    }
+    
+    /* Card header styling */
+    .card-header h4 {
+        color: #343a40 !important;
+        font-weight: 600 !important;
+        margin: 0 !important;
+    }
 </style>
 <div class="crm-container">
 	<div class="main-content">
@@ -46,7 +75,7 @@
                                     <div class="row">
                                         <div class="col-md-6">
                                             <div class="form-group">
-                                                <label for="title" class="col-form-label" style="color:#4a5568 !important;">Matter Name</label>
+                                                <label for="title" class="col-form-label" style="color:#495057 !important; font-weight: 500 !important;">Matter Name</label>
                                                 <input type="text" name="title" value="{{ old('title', Request::get('title')) }}" class="form-control" data-valid="" autocomplete="off" placeholder="Select Matter" id="title">
                                             </div>
                                         </div>

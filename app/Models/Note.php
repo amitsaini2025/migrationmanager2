@@ -66,7 +66,7 @@ class Note extends Model
 
     public function lead()
     {
-        return $this->belongsTo('App\\Models\\Models\Appointment','lead_id','id');
+        return $this->belongsTo('App\\Models\\Appointment','lead_id','id');
     }
 
 }

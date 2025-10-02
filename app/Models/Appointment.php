@@ -26,7 +26,7 @@ class Appointment extends Authenticatable
 
 	public function clients()
     {
-        return $this->belongsTo('App\\Models\\\Models\\Admin','client_id','id');
+        return $this->belongsTo('App\\Models\\Admin','client_id','id');
     }
 
 	public function partners()
@@ -36,12 +36,12 @@ class Appointment extends Authenticatable
 
     public function user()
     {
-        return $this->belongsTo('App\\Models\\\Models\\Admin','user_id','id');
+        return $this->belongsTo('App\\Models\\Admin','user_id','id');
     }
 
     public function assignee_user()
     {
-        return $this->belongsTo('App\\Models\\\Models\\Admin','assignee','id');
+        return $this->belongsTo('App\\Models\\Admin','assignee','id');
     }
 
     public function service()

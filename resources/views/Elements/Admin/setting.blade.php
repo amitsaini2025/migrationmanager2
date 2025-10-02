@@ -18,8 +18,10 @@
 		<li class="{{(Route::currentRouteName() == 'admin.feature.source.index' || Route::currentRouteName() == 'admin.feature.source.create' || Route::currentRouteName() == 'admin.feature.source.edit') ? 'active' : ''}}"><a class="nav-link" href="{{route('admin.feature.source.index')}}">Source</a></li>
 		--}}
 		<li class="{{(Route::currentRouteName() == 'admin.feature.tags.index' || Route::currentRouteName() == 'admin.feature.tags.create' || Route::currentRouteName() == 'admin.feature.tags.edit') ? 'active' : ''}}"><a class="nav-link" href="{{route('admin.feature.tags.index')}}">Tags</a></li>
-		<!--<li class="{{(Route::currentRouteName() == 'admin.checklist.index' || Route::currentRouteName() == 'admin.checklist.create' || Route::currentRouteName() == 'admin.checklist.edit') ? 'active' : ''}}"><a class="nav-link" href="{{route('admin.checklist.index')}}">Checklist</a></li>
-		<li class="{{(Route::currentRouteName() == 'admin.enquirysource.index' || Route::currentRouteName() == 'admin.enquirysource.create' || Route::currentRouteName() == 'admin.enquirysource.edit') ? 'active' : ''}}"><a class="nav-link" href="{{route('admin.enquirysource.index')}}">Enquiry Source</a></li>-->
+		{{-- Commented out routes that don't exist yet
+		<li class="{{(Route::currentRouteName() == 'admin.checklist.index' || Route::currentRouteName() == 'admin.checklist.create' || Route::currentRouteName() == 'admin.checklist.edit') ? 'active' : ''}}"><a class="nav-link" href="{{route('admin.checklist.index')}}">Checklist</a></li>
+		<li class="{{(Route::currentRouteName() == 'admin.enquirysource.index' || Route::currentRouteName() == 'admin.enquirysource.create' || Route::currentRouteName() == 'admin.enquirysource.edit') ? 'active' : ''}}"><a class="nav-link" href="{{route('admin.enquirysource.index')}}">Enquiry Source</a></li>
+		--}}
 
         <li class="{{(Route::currentRouteName() == 'admin.workflow.index' || Route::currentRouteName() == 'admin.workflow.create' || Route::currentRouteName() == 'admin.workflow.edit') ? 'active' : ''}}"><a class="nav-link" href="{{route('admin.workflow.index')}}">Workflow</a></li>
 

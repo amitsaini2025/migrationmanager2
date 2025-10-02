@@ -59,8 +59,6 @@ EmailTemplate.php
 FeeOption.php
 FeeOptionType.php
 FileStatus.php
-Followup.php
-FollowupType.php
 Form956.php
 FreeDownload.php
 Group.php

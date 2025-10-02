@@ -25,7 +25,6 @@ Branch.php
 CheckinHistory.php
 CheckinLog.php
 Checklist.php
-City.php
 Client.php
 ClientAddress.php
 ClientCharacter.php
@@ -49,7 +48,6 @@ CostAssignmentForm.php
 Country.php
 Course.php
 CrmEmailTemplate.php
-Currency.php
 DeviceToken.php
 Document.php
 DocumentChecklist.php
@@ -59,11 +57,8 @@ EmailDraft.php
 EmailRecord.php
 EmailSignature.php
 EmailTemplate.php
-Enquiry.php
-EnquirySource.php
 FeeOption.php
 FeeOptionType.php
-FeeType.php
 FileStatus.php
 Followup.php
 FollowupType.php
@@ -80,7 +75,6 @@ InvoicePayment.php
 InvoiceSchedule.php
 Label.php
 Lead.php
-LeadService.php
 MailReport.php
 Matter.php
 MatterEmailTemplate.php
@@ -96,12 +90,8 @@ PartnerBranch.php
 PartnerType.php
 PasswordResetLink.php
 PersonalDocumentType.php
-Product.php
-ProductAreaLevel.php
-ProductType.php
 Profile.php
 PromoCode.php
-Promotion.php
 QuotationInfo.php
 RefreshToken.php
 Relationship.php
@@ -117,7 +107,6 @@ ShareInvoice.php
 SignatureField.php
 Signer.php
 Slider.php
-Source.php
 State.php
 SubCategory.php
 Subject.php

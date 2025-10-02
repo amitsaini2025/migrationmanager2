@@ -15,8 +15,6 @@ use App\Http\Controllers\Admin\ClientsController;
 
 /*********************General Function for Both (Front-end & Back-end) ***********************/
 /* Route::post('/get_states', 'HomeController@getStates');
-Route::post('/get_product_views', 'HomeController@getProductViews');
-Route::post('/get_product_other_info', 'HomeController@getProductOtherInformation');
 Route::post('/delete_action', 'HomeController@deleteAction')->middleware('auth');
  */
 
@@ -51,19 +49,18 @@ Auth::routes();
 // Frontend Route
 
 Route::get('/book-an-appointment', 'HomeController@bookappointment')->name('bookappointment');
-Route::post('/book-an-appointment/store', 'AppointmentBookController@store');
-Route::post('/book-an-appointment/storepaid', 'AppointmentBookController@storepaid')->name('stripe.post');
+// Removed appointment booking submission routes
+// Route::post('/book-an-appointment/store', 'AppointmentBookController@store');
+// Route::post('/book-an-appointment/storepaid', 'AppointmentBookController@storepaid')->name('stripe.post');
 Route::post('/getdatetime', 'HomeController@getdatetime');
 
-//Route::post('/contact', 'HomeController@contact');
+
 Route::post('/getdisableddatetime', 'HomeController@getdisableddatetime');
 Route::get('/refresh-captcha', 'HomeController@refresh_captcha');
 
 //Route::get('page/{slug}', 'HomeController@Page')->name('page.slug');
 Route::get('sicaptcha', 'HomeController@sicaptcha')->name('sicaptcha');
-Route::get('invoice/secure/{slug}', 'InvoiceController@invoice')->name('invoice');
-Route::get('/invoice/download/{id}', 'InvoiceController@customer_invoice_download')->name('invoice.customer_invoice_download');
-Route::get('/invoice/print/{id}', 'InvoiceController@customer_invoice_print')->name('invoice.customer_invoice_print');
+// Removed invoice frontend routes
 Route::get('/profile', 'HomeController@myprofile')->name('profile');
 
 Route::post('/getdatetime', 'HomeController@getdatetime');
@@ -97,18 +94,17 @@ Route::prefix('admin')->group(function() {
     Route::post('/dashboard/update-stage', 'Admin\DashboardController@updateStage')->name('admin.dashboard.update-stage');
     Route::post('/dashboard/extend-deadline', 'Admin\DashboardController@extendDeadlineDate')->name('admin.dashboard.extend-deadline');
     Route::post('/dashboard/update-task-completed', 'Admin\DashboardController@updateTaskCompleted')->name('admin.dashboard.update-task-completed');
-    Route::get('/dashboard/fetch-notifications', 'Admin\DashboardController@fetchNotifications')->name('admin.dashboard.fetch-notifications');
-    Route::get('/dashboard/fetch-office-visit-notifications', 'Admin\DashboardController@fetchOfficeVisitNotifications')->name('admin.dashboard.fetch-office-visit-notifications');
-    Route::post('/dashboard/mark-notification-seen', 'Admin\DashboardController@markNotificationSeen')->name('admin.dashboard.mark-notification-seen');
-    Route::get('/dashboard/fetch-visa-expiry-messages', 'Admin\DashboardController@fetchVisaExpiryMessages')->name('admin.dashboard.fetch-visa-expiry-messages');
-    Route::get('/dashboard/fetch-in-person-waiting-count', 'Admin\DashboardController@fetchInPersonWaitingCount')->name('admin.dashboard.fetch-in-person-waiting-count');
-    Route::get('/dashboard/fetch-total-activity-count', 'Admin\DashboardController@fetchTotalActivityCount')->name('admin.dashboard.fetch-total-activity-count');
+    Route::get('/dashboard/fetch-notifications', 'Admin\AdminController@fetchnotification')->name('admin.dashboard.fetch-notifications');
+    Route::get('/dashboard/fetch-office-visit-notifications', 'Admin\AdminController@fetchOfficeVisitNotifications')->name('admin.dashboard.fetch-office-visit-notifications');
+    Route::post('/dashboard/mark-notification-seen', 'Admin\AdminController@markNotificationSeen')->name('admin.dashboard.mark-notification-seen');
+    Route::get('/dashboard/fetch-visa-expiry-messages', 'Admin\AdminController@fetchvisaexpirymessages')->name('admin.dashboard.fetch-visa-expiry-messages');
+    Route::get('/dashboard/fetch-in-person-waiting-count', 'Admin\AdminController@fetchInPersonWaitingCount')->name('admin.dashboard.fetch-in-person-waiting-count');
+    Route::get('/dashboard/fetch-total-activity-count', 'Admin\AdminController@fetchTotalActivityCount')->name('admin.dashboard.fetch-total-activity-count');
     Route::post('/dashboard/check-checkin-status', 'Admin\DashboardController@checkCheckinStatus')->name('admin.dashboard.check-checkin-status');
     Route::post('/dashboard/update-checkin-status', 'Admin\DashboardController@updateCheckinStatus')->name('admin.dashboard.update-checkin-status');
 
 	//General Admin Routes
 
-    Route::get('/get_customer_detail', 'Admin\AdminController@CustomerDetail')->name('admin.get_customer_detail');
     Route::get('/my_profile', 'Admin\AdminController@myProfile')->name('admin.my_profile');
     Route::post('/my_profile', 'Admin\AdminController@myProfile')->name('admin.my_profile');
     Route::get('/change_password', 'Admin\AdminController@change_password')->name('admin.change_password');
@@ -134,27 +130,12 @@ Route::prefix('admin')->group(function() {
     Route::post('/website_setting', 'Admin\AdminController@websiteSetting')->name('admin.website_setting');
     Route::post('/get_states', 'Admin\AdminController@getStates');
     Route::get('/settings/taxes/returnsetting', 'Admin\AdminController@returnsetting')->name('admin.returnsetting');
-    Route::get('/settings/taxes/taxrates', 'Admin\AdminController@taxrates')->name('admin.taxrates');
-    Route::get('/settings/taxes/taxrates/create', 'Admin\AdminController@taxratescreate')->name('admin.taxrates.create');
-    Route::post('/settings/taxes/taxrates/store', 'Admin\AdminController@savetaxrate')->name('admin.taxrates.store');
-    Route::get('/settings/taxes/taxrates/edit/{id}', 'Admin\AdminController@edittaxrates')->name('admin.edittaxrates');
-    Route::post('/settings/taxes/taxrates/edit', 'Admin\AdminController@edittaxrates')->name('admin.edittaxrates');
     Route::post('/settings/taxes/savereturnsetting', 'Admin\AdminController@returnsetting')->name('admin.savereturnsetting');
     Route::get('/getsubcategories', 'Admin\AdminController@getsubcategories');
-    Route::get('/getproductbranch', 'Admin\AdminController@getproductbranch');
-    Route::get('/getservicemodal', 'Admin\ServicesController@servicemodal');
     Route::get('/getassigneeajax', 'Admin\AdminController@getassigneeajax');
     Route::get('/getpartnerajax', 'Admin\AdminController@getpartnerajax');
-    Route::get('/settings/currencies', 'Admin\CurrencyController@index')->name('admin.currency.index');
-    Route::get('/settings/currencies/edit/{id}', 'Admin\CurrencyController@edit')->name('admin.currency.edit');
-    Route::post('/settings/currencies/edit', 'Admin\CurrencyController@edit')->name('admin.currency.edit');
-    Route::get('/settings/currencies/create', 'Admin\CurrencyController@create')->name('admin.currency.create');
-    Route::post('/settings/currencies/store', 'Admin\CurrencyController@store')->name('admin.currency.store');
     Route::get('/checkclientexist', 'Admin\AdminController@checkclientexist');
 /*CRM route start*/
-    Route::post('/uploadfile/store', 'Admin\MediaController@store')->name('admin.media.store');
-    Route::get('/uploadfile/index', 'Admin\MediaController@index')->name('admin.media.index');
-    Route::get('/uploadfile/delete', 'Admin\MediaController@deleteAction')->name('admin.media.delete');
 
     Route::get('/users', 'Admin\UserController@index')->name('admin.users.index');
     Route::get('/users/create', 'Admin\UserController@create')->name('admin.users.create');
@@ -174,12 +155,6 @@ Route::prefix('admin')->group(function() {
     Route::get('/staff/edit/{id}', 'Admin\StaffController@edit')->name('admin.staff.edit');
     Route::post('/staff/edit', 'Admin\StaffController@edit')->name('admin.staff.edit');
 
-    Route::get('/customer', 'Admin\CustomerController@index')->name('admin.customer.index');
-    Route::get('/customer/create', 'Admin\CustomerController@create')->name('admin.customer.create');
-    Route::post('/customer/store', 'Admin\CustomerController@store')->name('admin.customer.store');
-    Route::get('/customer/edit/{id}', 'Admin\CustomerController@edit')->name('admin.customer.edit');
-    Route::post('/customer/edit', 'Admin\CustomerController@edit')->name('admin.customer.edit');
-    Route::post('/customer/upload', 'Admin\CustomerController@uploadcsv')->name('admin.customer.upload');
 
     Route::get('/users/clientlist', 'Admin\UserController@clientlist')->name('admin.users.clientlist');
     Route::get('/users/createclient', 'Admin\UserController@createclient')->name('admin.users.createclient');
@@ -203,21 +178,7 @@ Route::prefix('admin')->group(function() {
     Route::get('/userrole/edit/{id}', 'Admin\UserroleController@edit')->name('admin.userrole.edit');
     Route::post('/userrole/edit', 'Admin\UserroleController@edit')->name('admin.userrole.edit');
 
-//Services Start
-    Route::get('/services', 'Admin\ServicesController@index')->name('admin.services.index');
-    Route::get('/services/create', 'Admin\ServicesController@create')->name('admin.services.create');
-    Route::post('/services/store', 'Admin\ServicesController@store')->name('admin.services.store');
-    Route::get('/services/edit/{id}', 'Admin\ServicesController@edit')->name('admin.services.edit');
-    Route::post('/services/edit', 'Admin\ServicesController@edit')->name('admin.services.edit');
 
-    //Manage Contacts Start
-    Route::get('/contact', 'Admin\ContactController@index')->name('admin.managecontact.index');
-    Route::get('/contact/create', 'Admin\ContactController@create')->name('admin.managecontact.create');
-    Route::post('/managecontact/store', 'Admin\ContactController@store')->name('admin.managecontact.store');
-    Route::post('/contact/add', 'Admin\ContactController@add')->name('admin.managecontact.add');
-    Route::get('/contact/edit/{id}', 'Admin\ContactController@edit')->name('admin.managecontact.edit');
-    Route::post('/contact/edit', 'Admin\ContactController@edit')->name('admin.managecontact.edit');
-    Route::post('/contact/storeaddress', 'Admin\ContactController@storeaddress')->name('admin.managecontact.edit');
 
     //Leads Start
     Route::get('/leads', 'Admin\LeadController@index')->name('admin.leads.index');
@@ -233,34 +194,7 @@ Route::prefix('admin')->group(function() {
     Route::post('/leads/store', 'Admin\LeadController@store')->name('admin.leads.store');
     Route::get('/leads/convert', 'Admin\LeadController@convertoClient');
     Route::get('/leads/pin/{id}', 'Admin\LeadController@leadPin');
-    //Invoices Start
-
-    Route::get('/invoice/lists/{id}', 'Admin\InvoiceController@lists')->name('admin.invoice.lists');
-    Route::get('/invoice/edit/{id}', 'Admin\InvoiceController@edit')->name('admin.invoice.edit');
-    Route::post('/invoice/edit', 'Admin\InvoiceController@edit')->name('admin.invoice.edit');
-    Route::get('/invoice/create', 'Admin\InvoiceController@create')->name('admin.invoice.create');
-    Route::post('/invoice/store', 'Admin\InvoiceController@store')->name('admin.invoice.store');
-    Route::get('/invoice/detail', 'Admin\InvoiceController@detail')->name('admin.invoice.detail');
-    Route::get('/invoice/email/{id}', 'Admin\InvoiceController@email')->name('admin.invoice.email');
-    Route::post('/invoice/email', 'Admin\InvoiceController@email')->name('admin.invoice.email');
-    Route::get('/invoice/editpayment', 'Admin\InvoiceController@editpayment')->name('admin.invoice.editpayment');
-    Route::get('/invoice/invoicebyid', 'Admin\InvoiceController@invoicebyid')->name('admin.invoice.invoicebyid');
-    Route::get('/invoice/history', 'Admin\InvoiceController@history')->name('admin.invoice.history');
-    Route::post('/invoice/paymentsave', 'Admin\InvoiceController@paymentsave')->name('admin.invoice.paymentsave');
-    Route::post('/invoice/editpaymentsave', 'Admin\InvoiceController@editpaymentsave')->name('admin.invoice.editpaymentsave');
-    Route::post('/invoice/addcomment', 'Admin\InvoiceController@addcomment')->name('admin.invoice.addcomment');
-    Route::post('/invoice/sharelink', 'Admin\InvoiceController@sharelink')->name('admin.invoice.sharelink');
-    Route::post('/invoice/disablelink', 'Admin\InvoiceController@disablelink')->name('admin.invoice.disablelink');
-    Route::get('/invoice/download/{id}', 'Admin\InvoiceController@customer_invoice_download')->name('admin.invoice.customer_invoice_download');
-    Route::get('/invoice/exportall', 'Admin\InvoiceController@exportall')->name('admin.invoice.exportall');
-    Route::get('/invoice/printall', 'Admin\InvoiceController@customer_invoice_printall')->name('admin.invoice.customer_invoice_printall');
-    Route::get('/invoice/print/{id}', 'Admin\InvoiceController@customer_invoice_print')->name('admin.invoice.customer_invoice_print');
-    Route::get('/invoice/reminder/{id}', 'Admin\InvoiceController@reminder')->name('admin.invoice.reminder');
-    Route::post('/invoice/reminder', 'Admin\InvoiceController@reminder')->name('admin.invoice.reminder');
-    Route::post('/invoice/attachfile', 'Admin\InvoiceController@attachfile')->name('admin.invoice.attachfile');
-    Route::get('/invoice/getattachfile', 'Admin\InvoiceController@getattachfile')->name('admin.invoice.getattachfile');
-    Route::get('/invoice/removeattachfile', 'Admin\InvoiceController@removeattachfile')->name('admin.invoice.removeattachfile');
-    Route::get('/invoice/attachfileemail', 'Admin\InvoiceController@attachfileemail')->name('admin.invoice.attachfileemail');
+    // Removed admin invoice routes
     //Manage Api key
     // Route::get('/api-key', 'Admin\ApiController@index')->name('admin.apikey.index');
     //Manage Api key
@@ -305,6 +239,7 @@ Route::prefix('admin')->group(function() {
 
         //Route::get('/clients/detail/{id}', 'Admin\ClientsController@detail')->name('admin.clients.detail');
 		Route::get('/clients/detail/{client_id}/{client_unique_matter_ref_no?}', 'Admin\ClientsController@detail')->name('admin.clients.detail');
+		Route::get('/clients/detail-test/{client_id}/{client_unique_matter_ref_no?}', 'Admin\ClientsController@detail')->name('admin.clients.detail-test');
 		Route::get('/clients/summary/{client_id}', 'Admin\ClientsController@summary')->name('admin.clients.summary');
 		
         Route::get('/clients/get-recipients', 'Admin\ClientsController@getrecipients')->name('admin.clients.getrecipients');
@@ -323,8 +258,8 @@ Route::prefix('admin')->group(function() {
 
         Route::post('/not-picked-call', 'Admin\ClientsController@notpickedcall')->name('admin.clients.notpickedcall');
 
-		//prospects Start
-		Route::get('/prospects', 'Admin\ClientsController@prospects')->name('admin.clients.prospects');
+		//prospects Start - REMOVED
+		//Route::get('/prospects', 'Admin\ClientsController@prospects')->name('admin.clients.prospects');
 		Route::get('/viewnotedetail', 'Admin\ClientsController@viewnotedetail');
 		Route::get('/viewapplicationnote', 'Admin\ClientsController@viewapplicationnote');
 		Route::post('/saveprevvisa', 'Admin\ClientsController@saveprevvisa');
@@ -355,30 +290,7 @@ Route::prefix('admin')->group(function() {
 		Route::post('/savetoapplication', 'Admin\ClientsController@savetoapplication');
 
 
-		//products Start
-		Route::get('/products', 'Admin\ProductsController@index')->name('admin.products.index');
-		Route::get('/products/create', 'Admin\ProductsController@create')->name('admin.products.create');
-		Route::post('/products/store', 'Admin\ProductsController@store')->name('admin.products.store');
-		Route::get('/products/edit/{id}', 'Admin\ProductsController@edit')->name('admin.products.edit');
-		Route::post('/products/edit', 'Admin\ProductsController@edit')->name('admin.products.edit');
-		Route::post('/products-import', 'Admin\ProductsController@import')->name('admin.products.import');
 
-
-		Route::get('/products/detail/{id}', 'Admin\ProductsController@detail')->name('admin.products.detail');
-		 Route::get('/products/get-recipients', 'Admin\ProductsController@getrecipients')->name('admin.products.getrecipients');
-		Route::get('/products/get-allclients', 'Admin\ProductsController@getallclients')->name('admin.products.getallclients');
-
-		//Partner Start
-		Route::get('/partners', 'Admin\PartnersController@index')->name('admin.partners.index');
-		Route::get('/partners/create', 'Admin\PartnersController@create')->name('admin.partners.create');
-		Route::post('/partners/store', 'Admin\PartnersController@store')->name('admin.partners.store');
-		Route::get('/partners/edit/{id}', 'Admin\PartnersController@edit')->name('admin.partners.edit');
-		Route::post('/partners/edit', 'Admin\PartnersController@edit')->name('admin.partners.edit');
-		Route::get('/getpaymenttype', 'Admin\PartnersController@getpaymenttype')->name('admin.partners.getpaymenttype');
-
-		Route::get('/partners/detail/{id}', 'Admin\PartnersController@detail')->name('admin.partners.detail');
-		 Route::get('/partners/get-recipients', 'Admin\PartnersController@getrecipients')->name('admin.partners.getrecipients');
-		Route::get('/partners/get-allclients', 'Admin\PartnersController@getallclients')->name('admin.partners.getallclients');
 
 		//Branch Start
 		Route::get('/branch', 'Admin\BranchesController@index')->name('admin.branch.index');
@@ -393,14 +305,13 @@ Route::prefix('admin')->group(function() {
 
 
 
-		//General Invoice Start
-		Route::get('/invoice/general-invoice', 'Admin\InvoiceController@general_invoice')->name('admin.invoice.general-invoice');
+        // Removed general invoice route
 
 		Route::get('/applications/detail/{id}', 'Admin\ApplicationsController@detail')->name('admin.applications.detail');
 		Route::post('/interested-service', 'Admin\ClientsController@interestedService');
 		Route::post('/edit-interested-service', 'Admin\ClientsController@editinterestedService');
 		Route::get('/get-services', 'Admin\ClientsController@getServices');
-		Route::get('/showproductfeeserv', 'Admin\ClientsController@showproductfeeserv');Route::post('/servicesavefee', 'Admin\ClientsController@servicesavefee');
+		Route::post('/servicesavefee', 'Admin\ClientsController@servicesavefee');
 		Route::get('/deleteappointment', 'Admin\ClientsController@deleteappointment');
 		Route::post('/add-appointment', 'Admin\ClientsController@addAppointment');
         Route::post('/add-appointment-book', 'Admin\ClientsController@addAppointmentBook');
@@ -421,24 +332,7 @@ Route::prefix('admin')->group(function() {
 		Route::post('/application/saleforcastservice', 'Admin\ClientsController@saleforcastservice');
 		Route::get('/getintrestedserviceedit', 'Admin\ClientsController@getintrestedserviceedit');
 		Route::get('/getAppointmentdetail', 'Admin\ClientsController@getAppointmentdetail');
-		Route::post('/create-invoice', 'Admin\InvoiceController@createInvoice');
-		Route::get('/application/invoice/{client_id}/{application}/{invoice_type}', 'Admin\InvoiceController@getInvoice');
-		Route::get('/invoice/view/{id}', 'Admin\InvoiceController@show');
-		Route::get('/invoice/preview/{id}', 'Admin\InvoiceController@getinvoicespdf');
-		Route::get('/invoice/edit/{id}', 'Admin\InvoiceController@edit');
-		Route::post('/invoice/general-store', 'Admin\InvoiceController@generalStore');
-		Route::get('/invoice/delete-payment', 'Admin\InvoiceController@deletepayment');
-		Route::post('/invoice/payment-store', 'Admin\InvoiceController@invoicepaymentstore');
-		Route::get('/get-invoices', 'Admin\InvoiceController@getinvoices');
-		Route::get('/get-invoices-pdf', 'Admin\InvoiceController@getinvoicespdf');
-		Route::get('/delete-invoice', 'Admin\InvoiceController@deleteinvoice');
-		Route::post('/invoice/general-edit', 'Admin\InvoiceController@updategeninvoices');
-		Route::post('/invoice/com-store', 'Admin\InvoiceController@updatecominvoices');
-		Route::get('/invoice/paid', 'Admin\InvoiceController@paid')->name('admin.invoice.paid');
-		Route::get('/invoice/unpaid', 'Admin\InvoiceController@unpaid')->name('admin.invoice.unpaid');
-		//Route::get('/invoice/unpaid', 'Admin\InvoiceController@unpaid')->name('admin.invoice.unpaid');
-		Route::get('/invoice/', 'Admin\InvoiceController@index')->name('admin.invoice.index');
-		Route::get('/payment/view/{id}', 'Admin\AccountController@preview');
+        // Removed admin invoice routes
 
 
 		Route::get('/getapplicationdetail', 'Admin\ApplicationsController@getapplicationdetail');
@@ -461,7 +355,6 @@ Route::prefix('admin')->group(function() {
 		Route::post('/application/saleforcast', 'Admin\ApplicationsController@saleforcast');
 		Route::get('/superagent', 'Admin\ApplicationsController@superagent');
 		Route::get('/subagent', 'Admin\ApplicationsController@subagent');
-		Route::get('/showproductfee', 'Admin\ApplicationsController@showproductfee');
 		Route::post('/applicationsavefee', 'Admin\ApplicationsController@applicationsavefee');
 		Route::get('/application/export/pdf/{id}', 'Admin\ApplicationsController@exportapplicationpdf');
 		Route::post('/add-checklists', 'Admin\ApplicationsController@addchecklists');
@@ -470,71 +363,21 @@ Route::prefix('admin')->group(function() {
 		Route::get('/application/publishdoc', 'Admin\ApplicationsController@publishdoc');
 
 
-		//Account Start
-		Route::get('/payment', 'Admin\AccountController@payment')->name('admin.account.payment');
-		Route::get('/income-sharing/payables/unpaid', 'Admin\AccountController@payableunpaid')->name('admin.account.payableunpaid');
-		Route::get('/income-sharing/payables/paid', 'Admin\AccountController@payablepaid')->name('admin.account.payablepaid');
-		Route::post('/income-payment-store', 'Admin\AccountController@incomepaymentstore');
-		Route::get('/revert-payment', 'Admin\AccountController@revertpayment');
-		Route::get('/income-sharing/receivables/unpaid', 'Admin\AccountController@receivableunpaid')->name('admin.account.receivableunpaid');
-		Route::get('/income-sharing/receivables/paid', 'Admin\AccountController@receivablepaid')->name('admin.account.receivablepaid');
-		Route::get('/group-invoice/unpaid', 'Admin\InvoiceController@unpaidgroupinvoice')->name('admin.invoice.unpaidgroupinvoice');
-		Route::get('/group-invoice/paid', 'Admin\InvoiceController@paidgroupinvoice')->name('admin.invoice.paidgroupinvoice');
-		Route::post('/group-invoice/create', 'Admin\InvoiceController@creategroupinvoice')->name('admin.invoice.creategroupinvoice');
+        // Removed group invoice routes
         //Route::post('/group-invoice/save', 'Admin\InvoiceController@savegroupinvoice')->name('admin.invoice.savegroupinvoice');
 
-		Route::get('/invoice-schedules', 'Admin\InvoiceController@invoiceschedules')->name('admin.invoice.invoiceschedules');
-		Route::post('/paymentschedule', 'Admin\InvoiceController@paymentschedule')->name('admin.invoice.paymentschedule');
-		Route::post('/setup-paymentschedule', 'Admin\InvoiceController@setuppaymentschedule');
-		Route::post('/editpaymentschedule', 'Admin\InvoiceController@editpaymentschedule')->name('admin.invoice.editpaymentschedule');
-		Route::get('/scheduleinvoicedetail', 'Admin\InvoiceController@scheduleinvoicedetail');
-		Route::get('/addscheduleinvoicedetail', 'Admin\InvoiceController@addscheduleinvoicedetail');
-		Route::get('/get-all-paymentschedules', 'Admin\InvoiceController@getallpaymentschedules');
-		Route::get('/deletepaymentschedule', 'Admin\InvoiceController@deletepaymentschedule');
-		Route::get('/applications/preview-schedules/{id}', 'Admin\InvoiceController@apppreviewschedules');
+        // Removed invoice schedule routes
 
 
 		//Product Type Start
-		Route::get('/product-type', 'Admin\ProductTypeController@index')->name('admin.feature.producttype.index');
-		Route::get('/product-type/create', 'Admin\ProductTypeController@create')->name('admin.feature.producttype.create');
-		Route::post('/product-type/store', 'Admin\ProductTypeController@store')->name('admin.feature.producttype.store');
-		Route::get('/product-type/edit/{id}', 'Admin\ProductTypeController@edit')->name('admin.feature.producttype.edit');
-		Route::post('/product-type/edit', 'Admin\ProductTypeController@edit')->name('admin.feature.producttype.edit');
 
 		Route::get('/profiles', 'Admin\ProfileController@index')->name('admin.feature.profiles.index');
 		Route::get('/profiles/create', 'Admin\ProfileController@create')->name('admin.feature.profiles.create');
 		Route::post('/profiles/store', 'Admin\ProfileController@store')->name('admin.feature.profiles.store');
 		Route::get('/profiles/edit/{id}', 'Admin\ProfileController@edit')->name('admin.feature.profiles.edit');
 		Route::post('/profiles/edit', 'Admin\ProfileController@edit')->name('admin.feature.profiles.edit');
-		//Partner Type Start
-		Route::get('/partner-type', 'Admin\PartnerTypeController@index')->name('admin.feature.partnertype.index');
-		Route::get('/partner-type/create', 'Admin\PartnerTypeController@create')->name('admin.feature.partnertype.create');
-		Route::post('/partner-type/store', 'Admin\PartnerTypeController@store')->name('admin.feature.partnertype.store');
-		Route::get('/partner-type/edit/{id}', 'Admin\PartnerTypeController@edit')->name('admin.feature.partnertype.edit');
-	Route::post('/partner-type/edit', 'Admin\PartnerTypeController@edit')->name('admin.feature.partnertype.edit');
-
-	//Lead Service Start
-		Route::get('/lead-service', 'Admin\LeadServiceController@index')->name('admin.feature.leadservice.index');
-		Route::get('/lead-service/create', 'Admin\LeadServiceController@create')->name('admin.feature.leadservice.create');
-		Route::post('/lead-service/store', 'Admin\LeadServiceController@store')->name('admin.feature.leadservice.store');
-		Route::get('/lead-service/edit/{id}', 'Admin\LeadServiceController@edit')->name('admin.feature.leadservice.edit');
-		Route::post('/lead-service/edit', 'Admin\LeadServiceController@edit')->name('admin.feature.leadservice.edit');
 
 
-
-		//Subject Start
-		Route::get('/subject', 'Admin\SubjectController@index')->name('admin.feature.subject.index');
-		Route::get('/subject/create', 'Admin\SubjectController@create')->name('admin.feature.subject.create');
-		Route::post('/subject/store', 'Admin\SubjectController@store')->name('admin.feature.subject.store');
-		Route::get('/subject/edit/{id}', 'Admin\SubjectController@edit')->name('admin.feature.subject.edit');
-		Route::post('/subject/edit', 'Admin\SubjectController@edit')->name('admin.feature.subject.edit');
-
-		//Source Start
-		Route::get('/source', 'Admin\SourceController@index')->name('admin.feature.source.index');
-		Route::get('/source/create', 'Admin\SourceController@create')->name('admin.feature.source.create');
-		Route::post('source/store', 'Admin\SourceController@store')->name('admin.feature.source.store');
-		Route::get('/source/edit/{id}', 'Admin\SourceController@edit')->name('admin.feature.source.edit');
-		Route::post('/source/edit', 'Admin\SourceController@edit')->name('admin.feature.source.edit');
 
 		//Tags Start
 		Route::get('/tags', 'Admin\TagController@index')->name('admin.feature.tags.index');
@@ -550,19 +393,7 @@ Route::prefix('admin')->group(function() {
 		Route::get('/checklist/edit/{id}', 'Admin\ChecklistController@edit')->name('admin.checklist.edit');
 		Route::post('/checklist/edit', 'Admin\ChecklistController@edit')->name('admin.checklist.edit');
 
-		//Enquiry Source Start
-		Route::get('/enquirysource', 'Admin\EnquirySourceController@index')->name('admin.enquirysource.index');
-		Route::get('/enquirysource/create', 'Admin\EnquirySourceController@create')->name('admin.enquirysource.create');
-		Route::post('enquirysource/store', 'Admin\EnquirySourceController@store')->name('admin.enquirysource.store');
-		Route::get('/enquirysource/edit/{id}', 'Admin\EnquirySourceController@edit')->name('admin.enquirysource.edit');
-		Route::post('/enquirysource/edit', 'Admin\EnquirySourceController@edit')->name('admin.enquirysource.edit');
 
-		//FeeType Start
-		Route::get('/feetype', 'Admin\FeeTypeController@index')->name('admin.feetype.index');
-		Route::get('/feetype/create', 'Admin\FeeTypeController@create')->name('admin.feetype.create');
-		Route::post('feetype/store', 'Admin\FeeTypeController@store')->name('admin.feetype.store');
-		Route::get('/feetype/edit/{id}', 'Admin\FeeTypeController@edit')->name('admin.enquirysource.edit');
-		Route::post('/feetype/edit', 'Admin\FeeTypeController@edit')->name('admin.feetype.edit');
 
 
 		//workflow Start
@@ -574,44 +405,7 @@ Route::prefix('admin')->group(function() {
 		Route::get('/workflow/activate-workflow/{id}', 'Admin\WorkflowController@activateWorkflow')->name('admin.workflow.activate');
 		Route::post('/workflow/edit', 'Admin\WorkflowController@edit')->name('admin.workflow.edit');
 
-		Route::post('/partner/saveagreement', 'Admin\PartnersController@saveagreement');
-		Route::post('/partner/create-contact', 'Admin\PartnersController@createcontact');
-		Route::get('/get-contacts', 'Admin\PartnersController@getcontacts');
-		Route::get('/deletecontact', 'Admin\PartnersController@deletecontact');
-		Route::get('/getcontactdetail', 'Admin\PartnersController@getcontactdetail');
-		Route::post('/partners-import', 'Admin\PartnersController@import')->name('admin.partners.import');
 
-		Route::post('/partner/create-branch', 'Admin\PartnersController@createbranch');
-		Route::get('/get-branches', 'Admin\PartnersController@getbranch');
-		Route::get('/getbranchdetail', 'Admin\PartnersController@getbranchdetail');
-		Route::get('/deletebranch', 'Admin\PartnersController@deletebranch');
-
-		Route::post('/saveacademic', 'Admin\ProductsController@saveacademic');
-		Route::post('/saveotherinfo', 'Admin\ProductsController@saveotherinfo');
-		Route::get('/product/getotherinfo', 'Admin\ProductsController@getotherinfo');
-		Route::get('/get-all-fees', 'Admin\ProductsController@getallfees');
-		Route::post('/savefee', 'Admin\ProductsController@savefee');
-
-		Route::get('/getfeeoptionedit', 'Admin\ProductsController@editfee');
-		Route::post('/editfee', 'Admin\ProductsController@editfeeform');
-		Route::get('/deletefee', 'Admin\ProductsController@deletefee');
-
-		Route::post('/add-partner-appointment', 'Admin\PartnersController@addappointment');
-		Route::get('/partner/get-appointments', 'Admin\PartnersController@getappointment');
-		Route::get('/partner/getAppointmentdetail', 'Admin\PartnersController@getAppointmentdetail');
-
-		Route::post('/partner/addtask', 'Admin\PartnersController@addTask');
-		Route::get('/partner/get-tasks', 'Admin\PartnersController@gettasks');
-		Route::get('/partner/get-task-detail', 'Admin\PartnersController@taskdetail');
-		Route::post('/partner/savecomment', 'Admin\PartnersController@savecomment');
-		Route::get('/change-task-status', 'Admin\PartnersController@changetaskstatus');
-		Route::get('/change-task-priority', 'Admin\PartnersController@changetaskpriority');
-
-		Route::post('/promotion/store', 'Admin\PromotionController@store');
-		Route::post('/promotion/edit', 'Admin\PromotionController@edit');
-		Route::get('/get-promotions', 'Admin\PromotionController@getpromotions');
-		Route::get('/getpromotioneditform', 'Admin\PromotionController@getpromotioneditform');
-		Route::get('/change-promotion-status', 'Admin\PromotionController@changepromotionstatus');
 
 
 		//Applications Start
@@ -620,9 +414,6 @@ Route::prefix('admin')->group(function() {
 		Route::post('/discontinue_application', 'Admin\ApplicationsController@discontinue_application');
 		Route::post('/revert_application', 'Admin\ApplicationsController@revert_application');
 		Route::post('/applications-import', 'Admin\ApplicationsController@import')->name('admin.applications.import');
-		//Route::post('/product-type/store', 'Admin\ProductTypeController@store')->name('admin.feature.producttype.store');
-		//Route::get('/product-type/edit/{id}', 'Admin\ProductTypeController@edit')->name('admin.feature.producttype.edit');
-		//Route::post('/product-type/edit', 'Admin\ProductTypeController@edit')->name('admin.feature.producttype.edit');
 		Route::get('/migration', 'Admin\ApplicationsController@migrationindex')->name('admin.migration.index');
 		Route::get('/office-visits', 'Admin\OfficeVisitController@index')->name('admin.officevisits.index');
 		Route::get('/office-visits/waiting', 'Admin\OfficeVisitController@waiting')->name('admin.officevisits.waiting');
@@ -638,10 +429,6 @@ Route::prefix('admin')->group(function() {
 		Route::post('/complete_session', 'Admin\OfficeVisitController@complete_session');
 		Route::get('/office-visits/change_assignee', 'Admin\OfficeVisitController@change_assignee');
 
-		Route::get('/enquiries', 'Admin\EnquireController@index')->name('admin.enquiries.index');
-		Route::get('/enquiries/archived-enquiries', 'Admin\EnquireController@Archived')->name('admin.enquiries.archived');
-		Route::get('/enquiries/covertenquiry/{id}', 'Admin\EnquireController@covertenquiry');
-		Route::get('/enquiries/archived/{id}', 'Admin\EnquireController@archivedenquiry');
 
 		//Audit Logs Start
 		Route::get('/audit-logs', 'Admin\AuditLogController@index')->name('admin.auditlogs.index');

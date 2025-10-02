@@ -91,12 +91,12 @@ $admin = \App\Models\Admin::where('role',1)->where('id',$fetchedData->user_id)->
 									$exgrw = $netfare * $exg_rate;
 									$totfare += $exgrw;
 								$workflowdata = \App\Models\Workflow::where('id',$q->workflow)->first();	
-								$Productdata = \App\Models\Product::where('id',$q->product)->first();	
-								$Partnerdata = \App\Models\Partner::where('id',$q->partner)->first();	
+									
+								// Partner functionality removed	
 									?>
 									<tr >
 										
-										<td class="show_{{$l}}"><div class="productinfo"><div class="productdet"><b>{{@$Productdata->name}}</b></div>{{@$Partnerdata->partner_name}}<div class="prodescription">({{@$workflowdata->name}})</div></div></td>
+										<td class="show_{{$l}}"><div class="productinfo"><div class="productdet"><b>Service</b></div>Partner<div class="prodescription">({{@$workflowdata->name}})</div></div></td>
 										<td>{{@$q->description}}</td>
 										<td style="border-left: 1px solid #d3cccc;">AUD</td>
 										<td style="border-left: 1px solid #d3cccc;">{{number_format($servicefee,2,'.','')}}</td>

@@ -15,7 +15,6 @@ ApplicationFeeOption.php
 ApplicationFeeOptionType.php
 Appointment.php
 AppointmentLog.php
-AttachFile.php
 Attachment.php
 AuditLog.php
 BookService.php
@@ -66,8 +65,6 @@ Form956.php
 FreeDownload.php
 Group.php
 HomeContent.php
-IncomeSharing.php
-InterestedService.php
 Invoice.php
 InvoiceDetail.php
 InvoiceFollowup.php
@@ -92,12 +89,10 @@ PasswordResetLink.php
 PersonalDocumentType.php
 Profile.php
 PromoCode.php
-QuotationInfo.php
 RefreshToken.php
 Relationship.php
 Report.php
 RepresentingPartner.php
-ScheduleItem.php
 SeoPage.php
 Service.php
 ServiceFeeOption.php

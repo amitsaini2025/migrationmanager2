@@ -80,7 +80,7 @@ $admin = \App\Models\Admin::where('role',1)->where('id',$fetchedData->user_id)->
 													<?php
 								$i=1;
 								$l=0;
-								$getq = \App\Models\QuotationInfo::where('quotation_id',$fetchedData->id)->get();
+								$getq = collect(); // QuotationInfo model removed
 								$totfare = 0;
 								foreach($getq as $q){
 									$servicefee = $q->service_fee;

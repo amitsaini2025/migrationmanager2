@@ -437,7 +437,6 @@ $workflow = \App\Models\Workflow::where('id', $fetchData->workflow)->first();
 							<?php
 							$invoiceschedules = \App\Models\InvoiceSchedule::where('application_id', $fetchData->id)->get();
 							foreach($invoiceschedules as $invoiceschedule){
-								$scheduleitem = \App\Models\ScheduleItem::where('schedule_id', $invoiceschedule->id)->get();
 
 							?>
 								<tr id="{{@$invoiceschedule->id}}">

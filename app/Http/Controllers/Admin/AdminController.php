@@ -1387,16 +1387,8 @@ class AdminController extends Controller
 	}
 
 		public function getpartnerajax(Request $request){
-	    $fetchedData = ;
-		$agents = array();
-		foreach($fetchedData as $list){
-			$agents[] = array(
-				'id' => $list->id,
-				'agent_id' => $list->partner_name,
-				'agent_company_name' => $list->partner_name,
-			);
-		}
-
+	    // Partner functionality removed - no partners available
+	    $agents = array();
 		echo json_encode($agents);
 	}
 

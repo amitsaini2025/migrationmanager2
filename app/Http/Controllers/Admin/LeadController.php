@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Redirect;
 
 use App\Models\Admin;
 use App\Models\Lead;
-use App\Package;
 
 use Auth;
 use Config;

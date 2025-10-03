@@ -35,7 +35,6 @@ return [
 	'themes_img' => public_path().'/img/themes_img',
 	'attach_files' => public_path().'/img/attach_files',
 	'attacment_file' => public_path().'/img/attacment_file',
-	'flights' => public_path().'/img/flights',
 	'checklists' => public_path().'/checklists',
 	'blog' => public_path().'/img/blog',
 	'free_imgs' => public_path().'/img/free_downloads/free_imgs',

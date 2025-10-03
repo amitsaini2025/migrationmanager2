@@ -794,57 +794,9 @@ use App\Http\Controllers\Controller;
 	</div>
 </div>
 
-<div class="modal fade custom_modal" id="application_opensaleforcast" tabindex="-1" role="dialog" aria-labelledby="applicationModalLabel" aria-hidden="true">
-	<div class="modal-dialog">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h5 class="modal-title" id="appliationModalLabel">Sales Forecast</h5>
-				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-					<span aria-hidden="true">&times;</span>
-				</button>
-			</div>
-			<div class="modal-body">
-				<form method="post" action="{{URL::to('/admin/application/saleforcast')}}" name="saleforcast" id="saleforcast" autocomplete="off" enctype="multipart/form-data">
-				@csrf
-				<input type="hidden" name="fapp_id" id="fapp_id" value="">
-					<div class="row">
-						<div class="col-4 col-md-4 col-lg-4">
-							<div class="form-group">
-								<label for="sus_agent">Client Revenue</label>
-								<input type="number" value="0.00" max="100" min="0" step="0.01" class="form-control " id="client_revenue" name="client_revenue">
-								<span class="custom-error workflow_error" role="alert">
-									<strong></strong>
-								</span>
-							</div>
-						</div>
-						<div class="col-4 col-md-4 col-lg-4">
-							<div class="form-group">
-								<label for="sus_agent">Partner Revenue</label>
-								<input type="number" value="0.00" max="100" min="0" step="0.01" class="form-control " id="partner_revenue" name="partner_revenue">
-								<span class="custom-error workflow_error" role="alert">
-									<strong></strong>
-								</span>
-							</div>
-						</div>
-						<div class="col-4 col-md-4 col-lg-4">
-							<div class="form-group">
-								<label for="sus_agent">Discounts</label>
-								<input type="number" value="0.00" max="100" min="0" step="0.01" class="form-control " id="discounts" name="discounts">
-								<span class="custom-error workflow_error" role="alert">
-									<strong></strong>
-								</span>
-							</div>
-						</div>
-						<div class="col-12 col-md-12 col-lg-12">
-							<button onclick="customValidate('saleforcast')" type="button" class="btn btn-primary">Save</button>
-							<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-						</div>
-					</div>
-				</form>
-			</div>
-		</div>
-	</div>
-</div>
+ 
+    
+ 
 
 <div class="modal fade custom_modal" id="application_ownership" tabindex="-1" role="dialog" aria-labelledby="applicationModalLabel" aria-hidden="true">
 	<div class="modal-dialog">
@@ -1008,109 +960,13 @@ use App\Http\Controllers\Controller;
 </div>
 
 
-<div class="modal fade custom_modal" id="application_opensaleforcast" tabindex="-1" role="dialog" aria-labelledby="applicationModalLabel" aria-hidden="true">
-	<div class="modal-dialog">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h5 class="modal-title" id="appliationModalLabel">Sales Forecast</h5>
-				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-					<span aria-hidden="true">&times;</span>
-				</button>
-			</div>
-			<div class="modal-body">
-				<form method="post" action="{{URL::to('/admin/application/saleforcast')}}" name="saleforcast" id="saleforcast" autocomplete="off" enctype="multipart/form-data">
-				@csrf
-				<input type="hidden" name="fapp_id" id="fapp_id" value="">
-					<div class="row">
-						<div class="col-4 col-md-4 col-lg-4">
-							<div class="form-group">
-								<label for="sus_agent">Client Revenue</label>
-								<input type="number" value="0.00" max="100" min="0" step="0.01" class="form-control " id="client_revenue" name="client_revenue">
-								<span class="custom-error workflow_error" role="alert">
-									<strong></strong>
-								</span>
-							</div>
-						</div>
-						<div class="col-4 col-md-4 col-lg-4">
-							<div class="form-group">
-								<label for="sus_agent">Partner Revenue</label>
-								<input type="number" value="0.00" max="100" min="0" step="0.01" class="form-control " id="partner_revenue" name="partner_revenue">
-								<span class="custom-error workflow_error" role="alert">
-									<strong></strong>
-								</span>
-							</div>
-						</div>
-						<div class="col-4 col-md-4 col-lg-4">
-							<div class="form-group">
-								<label for="sus_agent">Discounts</label>
-								<input type="number" value="0.00" max="100" min="0" step="0.01" class="form-control " id="discounts" name="discounts">
-								<span class="custom-error workflow_error" role="alert">
-									<strong></strong>
-								</span>
-							</div>
-						</div>
-						<div class="col-12 col-md-12 col-lg-12">
-							<button onclick="customValidate('saleforcast')" type="button" class="btn btn-primary">Save</button>
-							<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-						</div>
-					</div>
-				</form>
-			</div>
-		</div>
-	</div>
-</div>
+ 
+    
+ 
 
-<div class="modal fade custom_modal" id="application_opensaleforcastservice" tabindex="-1" role="dialog" aria-labelledby="applicationModalLabel" aria-hidden="true">
-	<div class="modal-dialog">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h5 class="modal-title" id="appliationModalLabel">Sales Forecast</h5>
-				<button type="button" class="close closeservmodal" >
-					<span aria-hidden="true">&times;</span>
-				</button>
-			</div>
-			<div class="modal-body">
-				<form method="post" action="{{URL::to('/admin/application/saleforcastservice')}}" name="saleforcastservice" id="saleforcastservice" autocomplete="off" enctype="multipart/form-data">
-				@csrf
-				<input type="hidden" name="fapp_id" id="fapp_id" value="">
-					<div class="row">
-						<div class="col-4 col-md-4 col-lg-4">
-							<div class="form-group">
-								<label for="sus_agent">Client Revenue</label>
-								<input type="number" value="0.00" max="100" min="0" step="0.01" class="form-control " id="client_revenue" name="client_revenue">
-								<span class="custom-error workflow_error" role="alert">
-									<strong></strong>
-								</span>
-							</div>
-						</div>
-						<div class="col-4 col-md-4 col-lg-4">
-							<div class="form-group">
-								<label for="sus_agent">Partner Revenue</label>
-								<input type="number" value="0.00" max="100" min="0" step="0.01" class="form-control " id="partner_revenue" name="partner_revenue">
-								<span class="custom-error workflow_error" role="alert">
-									<strong></strong>
-								</span>
-							</div>
-						</div>
-						<div class="col-4 col-md-4 col-lg-4">
-							<div class="form-group">
-								<label for="sus_agent">Discounts</label>
-								<input type="number" value="0.00" max="100" min="0" step="0.01" class="form-control " id="discounts" name="discounts">
-								<span class="custom-error workflow_error" role="alert">
-									<strong></strong>
-								</span>
-							</div>
-						</div>
-						<div class="col-12 col-md-12 col-lg-12">
-							<button onclick="customValidate('saleforcastservice')" type="button" class="btn btn-primary">Save</button>
-							<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-						</div>
-					</div>
-				</form>
-			</div>
-		</div>
-	</div>
-</div>
+ 
+    
+ 
 
 
 <div class="modal fade custom_modal" id="serviceTaken" tabindex="-1" role="dialog" aria-labelledby="create_interestModalLabel" aria-hidden="true">
@@ -1363,6 +1219,7 @@ use App\Http\Controllers\Controller;
 {{-- Newly added external JS placeholders for progressive migration --}}
 <script src="{{ URL::asset('js/admin/clients/shared.js') }}" defer></script>
 <script src="{{ URL::asset('js/admin/clients/detail.js') }}" defer></script>
+<script src="{{ URL::asset('js/admin/clients/tabs/application.js') }}" defer></script>
 
 <!-- JavaScript to switch forms -->
 <script>
@@ -8957,7 +8814,7 @@ Bansal Immigration`;
         });
 
 	    $(document).delegate('#new_fee_option .fee_option_addbtn a', 'click', function(){
-		    var html = '<tr class="add_fee_option cus_fee_option"><td><select data-valid="required" class="form-control course_fee_type" name="course_fee_type[]"><option value="">Select Type</option><option value="Accommodation Fee">Accommodation Fee</option><option value="Administration Fee">Administration Fee</option><option value="Airline Ticket">Airline Ticket</option><option value="Airport Transfer Fee">Airport Transfer Fee</option><option value="Application Fee">Application Fee</option><option value="Bond">Bond</option></select></td><td><input type="number" value="0" class="form-control semester_amount" name="semester_amount[]"></td><td><input type="number" value="1" class="form-control no_semester" name="no_semester[]"></td><td class="total_fee"><span>0.00</span><input type="hidden"  class="form-control total_fee_am" value="0" name="total_fee[]"></td><td><input type="number" value="1" class="form-control claimable_terms" name="claimable_semester[]"></td><td><input type="number" class="form-control commission" name="commission[]"></td><td> <a href="javascript:;" class="removefeetype"><i class="fa fa-trash"></i></a></td></tr>';
+		    var html = '<tr class="add_fee_option cus_fee_option"><td><select data-valid="required" class="form-control course_fee_type" name="course_fee_type[]"><option value="">Select Type</option><option value="Accommodation Fee">Accommodation Fee</option><option value="Administration Fee">Administration Fee</option><option value="Application Fee">Application Fee</option><option value="Bond">Bond</option></select></td><td><input type="number" value="0" class="form-control semester_amount" name="semester_amount[]"></td><td><input type="number" value="1" class="form-control no_semester" name="no_semester[]"></td><td class="total_fee"><span>0.00</span><input type="hidden"  class="form-control total_fee_am" value="0" name="total_fee[]"></td><td><input type="number" value="1" class="form-control claimable_terms" name="claimable_semester[]"></td><td><input type="number" class="form-control commission" name="commission[]"></td><td> <a href="javascript:;" class="removefeetype"><i class="fa fa-trash"></i></a></td></tr>';
 		    $('#new_fee_option #productitemview tbody').append(html);
         });
 
@@ -9198,7 +9055,7 @@ Bansal Immigration`;
 
 
         $(document).delegate('#new_fee_option_serv .fee_option_addbtn a', 'click', function(){
-            var html = '<tr class="add_fee_option cus_fee_option"><td><select data-valid="required" class="form-control course_fee_type" name="course_fee_type[]"><option value="">Select Type</option><option value="Accommodation Fee">Accommodation Fee</option><option value="Administration Fee">Administration Fee</option><option value="Airline Ticket">Airline Ticket</option><option value="Airport Transfer Fee">Airport Transfer Fee</option><option value="Application Fee">Application Fee</option><option value="Bond">Bond</option></select></td><td><input type="number" value="0" class="form-control semester_amount" name="semester_amount[]"></td><td><input type="number" value="1" class="form-control no_semester" name="no_semester[]"></td><td class="total_fee"><span>0.00</span><input type="hidden"  class="form-control total_fee_am" value="0" name="total_fee[]"></td><td><input type="number" value="1" class="form-control claimable_terms" name="claimable_semester[]"></td><td><input type="number" class="form-control commission" name="commission[]"></td><td> <a href="javascript:;" class="removefeetype"><i class="fa fa-trash"></i></a></td></tr>';
+            var html = '<tr class="add_fee_option cus_fee_option"><td><select data-valid="required" class="form-control course_fee_type" name="course_fee_type[]"><option value="">Select Type</option><option value="Accommodation Fee">Accommodation Fee</option><option value="Administration Fee">Administration Fee</option><option value="Application Fee">Application Fee</option><option value="Bond">Bond</option></select></td><td><input type="number" value="0" class="form-control semester_amount" name="semester_amount[]"></td><td><input type="number" value="1" class="form-control no_semester" name="no_semester[]"></td><td class="total_fee"><span>0.00</span><input type="hidden"  class="form-control total_fee_am" value="0" name="total_fee[]"></td><td><input type="number" value="1" class="form-control claimable_terms" name="claimable_semester[]"></td><td><input type="number" class="form-control commission" name="commission[]"></td><td> <a href="javascript:;" class="removefeetype"><i class="fa fa-trash"></i></a></td></tr>';
             $('#new_fee_option_serv #productitemview tbody').append(html);
         });
 

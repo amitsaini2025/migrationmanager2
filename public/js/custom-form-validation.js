@@ -10,6 +10,12 @@ function customValidate(formName, savetype = '')
 	{ //alert(formName);
 		$(".popuploader").show(); //all form submit
 
+		// Legacy sales forecast flows are disabled
+		if (formName === 'saleforcast' || formName === 'saleforcastservice') {
+			$(".popuploader").hide();
+			return false;
+		}
+
 		var i = 0;
 		$(".custom-error").remove(); //remove all errors when submit the button
 

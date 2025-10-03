@@ -172,8 +172,7 @@
 											<ul>
 												<li><label><input type="checkbox" name="module_access[30]" <?php if(array_key_exists('30',  $module_access)) { echo "checked"; } ?> class="interested_service"> Can view commission in product fees of Interested Services.</label></li>
 												<li><label><input type="checkbox" name="module_access[31]" <?php if(array_key_exists('31',  $module_access)) { echo "checked"; } ?> class="interested_service">  Can edit commission in product fees of Interested Services.</label></li>
-												<li><label><input type="checkbox" name="module_access[32]" <?php if(array_key_exists('32',  $module_access)) { echo "checked"; } ?> class="interested_service"> Can view sales forecast of interested services.</label></li>
-												<li><label><input type="checkbox" name="module_access[33]" <?php if(array_key_exists('33',  $module_access)) { echo "checked"; } ?> class="interested_service"> Can edit sales forecast of interested services.</label></li>
+									{{-- Removed legacy sales forecast permissions (interested services) --}}
 											</ul>
 										</div>
 									</div>
@@ -198,8 +197,7 @@
 												<li><label><input type="checkbox" name="module_access[41]" <?php if(array_key_exists('41',  $module_access)) { echo "checked"; } ?> class="applications"> Can view/edit assigned and added application by the users of secondary office.</label></li>
 												<li><label><input type="checkbox" name="module_access[42]" <?php if(array_key_exists('42',  $module_access)) { echo "checked"; } ?> class="applications"> Can view commission in product fees and payment schedule of application.</label></li>
 												<li><label><input type="checkbox" name="module_access[43]" <?php if(array_key_exists('43',  $module_access)) { echo "checked"; } ?> class="applications"> Can edit commission in product fees and payment schedule of application.</label></li>
-												<li><label><input type="checkbox" name="module_access[44]" <?php if(array_key_exists('44',  $module_access)) { echo "checked"; } ?> class="applications"> Can view sales forecast of application.</label></li>
-												<li><label><input type="checkbox" name="module_access[45]" <?php if(array_key_exists('45',  $module_access)) { echo "checked"; } ?> class="applications"> Can edit sales forecast of application.</label></li>
+									{{-- Removed legacy sales forecast permissions (applications) --}}
 											</ul>
 										</div>
 									</div>
@@ -260,8 +258,7 @@
 												<li><label><input type="checkbox" name="module_access[62]" <?php if(array_key_exists('62',  $module_access)) { echo "checked"; } ?> class="reports"> Can view Client and Application Reports.</label></li>
 												<li><label><input type="checkbox" name="module_access[63]" <?php if(array_key_exists('63',  $module_access)) { echo "checked"; } ?> class="reports"> Can view Invoice Report.</label></li>
 												<li><label><input type="checkbox" name="module_access[64]" <?php if(array_key_exists('64',  $module_access)) { echo "checked"; } ?> class="reports"> Can view Office Check-In Report.</label></li>
-												<li><label><input type="checkbox" name="module_access[65]" <?php if(array_key_exists('65',  $module_access)) { echo "checked"; } ?> class="reports"> Can view application sales forecast report.</label></li>
-												<li><label><input type="checkbox" name="module_access[66]" <?php if(array_key_exists('66',  $module_access)) { echo "checked"; } ?> class="reports"> Can view interested service sales forecast report</label></li>
+									{{-- Removed legacy sales forecast report permissions --}}
 												<li><label><input type="checkbox" name="module_access[67]" <?php if(array_key_exists('67',  $module_access)) { echo "checked"; } ?> class="reports"> Can view personal task report.</label></li>
 												<li><label><input type="checkbox" name="module_access[68]" <?php if(array_key_exists('68',  $module_access)) { echo "checked"; } ?> class="reports"> Can view all task report.</label></li>
 												<li><label><input type="checkbox" name="module_access[69]" <?php if(array_key_exists('69',  $module_access)) { echo "checked"; } ?> class="reports"> Can export all reports.</label></li>

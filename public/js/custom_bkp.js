@@ -1457,7 +1457,7 @@ if (uri.indexOf("?") > 0) {
 	});
 	/*Hotel End*/
 	var isitenery = false;
-	/*Itinerary Start*/
+/*Itinerary Start - LEGACY (removed) */
 	$('.itineraryshow').on('click', function(){
 		$('#itinerary_title').val('');
 		$('#itinerary_detail').val('');
@@ -1511,7 +1511,7 @@ if (uri.indexOf("?") > 0) {
 				console.log(itinerarydata);
 				$('#hide_itinerary').hide();
 				
-				var html = '<tr id="itinerary_'+is+'"><td class="itenery_day"></td><td>'+itinerary_title+'</td><td><a class="remove_itinerary" id="'+is+'" href="javascript:;"><i class="fa fa-trash"></i></a> / <a href="javascript:;" class="edit_itinerary" id="'+is+'"><i class="fa fa-edit"></i></a><input type="hidden" name="itinerary_title[]" value="'+itinerary_title+'"><textarea style="display:none;" type="hidden" name="all_itinerary_detail[]" value="">'+itinerary_detail+'</textarea><input type="hidden" name="all_itinerary_img[]" value="'+itinerary_img+'"><input type="hidden" name="all_itinerary_food[]" value="'+foodtype+'"></td></tr>';
+        var html = '<tr id="itinerary_'+is+'"><td class="itenery_day"></td><td>'+itinerary_title+'</td><td><input type="hidden" name="itinerary_title[]" value="'+itinerary_title+'"><textarea style="display:none;" type="hidden" name="all_itinerary_detail[]" value="">'+itinerary_detail+'</textarea><input type="hidden" name="all_itinerary_img[]" value="'+itinerary_img+'"><input type="hidden" name="all_itinerary_food[]" value="'+foodtype+'"></td></tr>';
 				$('.itinerarydata').append(html);
 				$('#itinerary_title').val('');
 				$('#itinerary_detail').val(''); 

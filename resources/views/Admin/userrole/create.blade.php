@@ -166,8 +166,7 @@
 											<ul>
 												<li><label><input type="checkbox" name="module_access[30]" class="interested_service"> Can view commission in product fees of Interested Services.</label></li>
 												<li><label><input type="checkbox" name="module_access[31]" class="interested_service">  Can edit commission in product fees of Interested Services.</label></li>
-												<li><label><input type="checkbox" name="module_access[32]" class="interested_service"> Can view sales forecast of interested services.</label></li>
-												<li><label><input type="checkbox" name="module_access[33]" class="interested_service"> Can edit sales forecast of interested services.</label></li>
+									{{-- Removed legacy sales forecast permissions (interested services) --}}
 											</ul>
 										</div>
 									</div>
@@ -192,8 +191,7 @@
 												<li><label><input type="checkbox" name="module_access[41]" class="applications"> Can view/edit assigned and added application by the users of secondary office.</label></li>
 												<li><label><input type="checkbox" name="module_access[42]" class="applications"> Can view commission in product fees and payment schedule of application.</label></li>
 												<li><label><input type="checkbox" name="module_access[43]" class="applications"> Can edit commission in product fees and payment schedule of application.</label></li>
-												<li><label><input type="checkbox" name="module_access[44]" class="applications"> Can view sales forecast of application.</label></li>
-												<li><label><input type="checkbox" name="module_access[45]" class="applications"> Can edit sales forecast of application.</label></li>
+									{{-- Removed legacy sales forecast permissions (applications) --}}
 											</ul>
 										</div>
 									</div>
@@ -254,8 +252,7 @@
 												<li><label><input type="checkbox" name="module_access[62]" class="reports"> Can view Client and Application Reports.</label></li>
 												<li><label><input type="checkbox" name="module_access[63]" class="reports"> Can view Invoice Report.</label></li>
 												<li><label><input type="checkbox" name="module_access[64]" class="reports"> Can view Office Check-In Report.</label></li>
-												<li><label><input type="checkbox" name="module_access[65]" class="reports"> Can view application sales forecast report.</label></li>
-												<li><label><input type="checkbox" name="module_access[66]" class="reports"> Can view interested service sales forecast report</label></li>
+									{{-- Removed legacy sales forecast report permissions --}}
 												<li><label><input type="checkbox" name="module_access[67]" class="reports"> Can view personal task report.</label></li>
 												<li><label><input type="checkbox" name="module_access[68]" class="reports"> Can view all task report.</label></li>
 												<li><label><input type="checkbox" name="module_access[69]" class="reports"> Can export all reports.</label></li>

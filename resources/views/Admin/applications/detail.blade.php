@@ -48,14 +48,7 @@
 									<a href="#" title="Edit"><i class="fa fa-edit"></i></a>
 									<a href="javascript:;" onclick="" title="Archive"><i class="fas fa-archive"></i></a>
 								</div>
-								<p class="clearfix" style="text-align:left;">
-									<span class="float-left">Application Sales Forecast</span>
-									<span class="float-right text-muted"> 0.00  USD</span>
-								</p>
-								<p class="clearfix" style="text-align:left;">
-									<span class="float-left">Interested Services Sales Forecast</span>
-									<span class="float-right text-muted"> 0.00  USD</span>
-								</p>
+								{{-- Removed legacy Sales Forecast summary rows --}}
 							</div>
 						</div>
 					</div>
@@ -777,11 +770,7 @@
 													<span class="float-right text-muted">0.00</span>
 												</p>
 												<div class="divider"></div>
-												<div class="cus_prod_fees">
-													<h5>Sales Forecast <span>USD</span></h5>
-													<a href="#"><i class="fa fa-edit"></i></a>
-													<div class="clearfix"></div>
-												</div>
+								{{-- Removed legacy Sales Forecast section --}}
 												<p class="clearfix"> 
 													<span class="float-left">Partner Revenue</span>
 													<span class="float-right text-muted">0.00</span>
@@ -870,10 +859,7 @@
 													<span class="cus_label">Product Fees</span>
 													<span class="cus_value">AUD: 0.00</span>
 												</div>
-												<div class="fees_col cus_col">
-													<span class="cus_label">Sales Forecast</span>
-													<span class="cus_value">AUD: 0.00</span>
-												</div>
+								{{-- Removed legacy Sales Forecast value --}}
 											</div>
 											<div class="interest_serv_date">
 												<div class="date_col cus_col">
@@ -920,10 +906,7 @@
 													<span class="cus_label">Product Fees</span>
 													<span class="cus_value">AUD: 0.00</span>
 												</div>
-												<div class="fees_col cus_col">
-													<span class="cus_label">Sales Forecast</span>
-													<span class="cus_value">AUD: 0.00</span>
-												</div>
+								{{-- Removed legacy Sales Forecast value --}}
 											</div>
 											<div class="interest_serv_date">
 												<div class="date_col cus_col">

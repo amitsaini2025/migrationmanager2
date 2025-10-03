@@ -46,30 +46,7 @@ Route::post('/exception', 'ExceptionController@index')->name('exception');
 Auth::routes();
 
 
-// Frontend Route
-
-Route::get('/book-an-appointment', 'HomeController@bookappointment')->name('bookappointment');
-// Removed appointment booking submission routes
-// Route::post('/book-an-appointment/store', 'AppointmentBookController@store');
-// Route::post('/book-an-appointment/storepaid', 'AppointmentBookController@storepaid')->name('stripe.post');
-Route::post('/getdatetime', 'HomeController@getdatetime');
-
-
-Route::post('/getdisableddatetime', 'HomeController@getdisableddatetime');
-Route::get('/refresh-captcha', 'HomeController@refresh_captcha');
-
-//Route::get('page/{slug}', 'HomeController@Page')->name('page.slug');
-Route::get('sicaptcha', 'HomeController@sicaptcha')->name('sicaptcha');
-// Removed invoice frontend routes
-Route::get('/profile', 'HomeController@myprofile')->name('profile');
-
-Route::post('/getdatetime', 'HomeController@getdatetime');
-Route::post('/getdatetimebackend', 'HomeController@getdatetimebackend');
-Route::post('/getdisableddatetime', 'HomeController@getdisableddatetime');
-
-
-Route::get('stripe/{appointmentId}', 'HomeController@stripe');
-Route::post('stripe', 'HomeController@stripePost')->name('stripe.post1');
+// Frontend routes removed - no frontend website
 
 /*---------------Email manager Route-------------------*/
 include_once 'emailUser.php';
@@ -126,8 +103,7 @@ Route::prefix('admin')->group(function() {
 
     Route::post('/add_ckeditior_image', 'Admin\AdminController@addCkeditiorImage')->name('add_ckeditior_image');
     Route::post('/get_chapters', 'Admin\AdminController@getChapters')->name('admin.get_chapters');
-    Route::get('/website_setting', 'Admin\AdminController@websiteSetting')->name('admin.website_setting');
-    Route::post('/website_setting', 'Admin\AdminController@websiteSetting')->name('admin.website_setting');
+    // Removed website settings routes
     Route::post('/get_states', 'Admin\AdminController@getStates');
     Route::get('/settings/taxes/returnsetting', 'Admin\AdminController@returnsetting')->name('admin.returnsetting');
     Route::post('/settings/taxes/savereturnsetting', 'Admin\AdminController@returnsetting')->name('admin.savereturnsetting');
@@ -234,7 +210,7 @@ Route::prefix('admin')->group(function() {
 		Route::get('/clients/removetag', 'Admin\ClientsController@removetag');
 
         //Route::get('/clients/detail/{id}', 'Admin\ClientsController@detail')->name('admin.clients.detail');
-		Route::get('/clients/detail/{client_id}/{client_unique_matter_ref_no?}', 'Admin\ClientsController@detail')->name('admin.clients.detail');
+		Route::get('/clients/detail/{client_id}/{client_unique_matter_ref_no?}/{tab?}', 'Admin\ClientsController@detail')->name('admin.clients.detail');
 		Route::get('/clients/detail-test/{client_id}/{client_unique_matter_ref_no?}', 'Admin\ClientsController@detail')->name('admin.clients.detail-test');
 		Route::get('/clients/summary/{client_id}', 'Admin\ClientsController@summary')->name('admin.clients.summary');
 		
@@ -325,7 +301,7 @@ Route::prefix('admin')->group(function() {
         Route::get('/pinactivitylog', 'Admin\ClientsController@pinactivitylog');
 
 		Route::get('/getintrestedservice', 'Admin\ClientsController@getintrestedservice');
-		Route::post('/application/saleforcastservice', 'Admin\ClientsController@saleforcastservice');
+		// Removed legacy: saleforcastservice
 		Route::get('/getintrestedserviceedit', 'Admin\ClientsController@getintrestedserviceedit');
 		Route::get('/getAppointmentdetail', 'Admin\ClientsController@getAppointmentdetail');
         // Removed admin invoice routes
@@ -348,7 +324,7 @@ Route::prefix('admin')->group(function() {
 		Route::post('/application/spagent_application', 'Admin\ApplicationsController@spagent_application');
 		Route::post('/application/sbagent_application', 'Admin\ApplicationsController@sbagent_application');
 		Route::post('/application/application_ownership', 'Admin\ApplicationsController@application_ownership');
-		Route::post('/application/saleforcast', 'Admin\ApplicationsController@saleforcast');
+		// Removed legacy: saleforcast
 		Route::get('/superagent', 'Admin\ApplicationsController@superagent');
 		Route::get('/subagent', 'Admin\ApplicationsController@subagent');
 		Route::post('/applicationsavefee', 'Admin\ApplicationsController@applicationsavefee');
@@ -1075,10 +1051,8 @@ Route::get('/test-mark-read/{id}', function ($id) {
     }
 });
 
-Route::get('/{slug}', 'HomeController@Page')->name('page.slug');
+// Frontend dynamic routing removed - no frontend website
 Auth::routes();
-
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
 //Frontend Document Controller
 Route::get('/sign/{id}/{token}', [App\Http\Controllers\DocumentController::class, 'sign'])->name('documents.sign');

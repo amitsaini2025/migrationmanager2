@@ -612,8 +612,6 @@ Route::prefix('admin')->group(function() {
         Route::post('/clients/clientdetailsinfo/{id}', 'Admin\ClientsController@clientdetailsinfo')->name('admin.clients.clientdetailsinfo');
         Route::post('/clients/clientdetailsinfo', 'Admin\ClientsController@clientdetailsinfo')->name('admin.clients.clientdetailsinfo');
 
-        Route::post('/client/saveRating', 'Admin\ClientsController@saveRating')->name('admin.clients.saveRating');
-        Route::get('/ratings', [ClientsController::class, 'showRatings'])->name('client.ratings');
 
         Route::post('/reassiginboxemail', 'Admin\ClientsController@reassiginboxemail')->name('admin.clients.reassiginboxemail');
         Route::post('/reassigsentemail', 'Admin\ClientsController@reassigsentemail')->name('admin.clients.reassigsentemail');
@@ -688,11 +686,6 @@ Route::prefix('admin')->group(function() {
 
         Route::post('/admin/clients/search-partner', 'Admin\ClientsController@searchPartner')->name('admin.clients.searchPartner');
 
-        //Matter AI Tab
-        Route::post('/admin/load-matter-ai-data','Admin\ClientsController@loadMatterAiData');
-        Route::post('/admin/get-chat-history', 'Admin\ClientsController@getChatHistory');
-        Route::post('/admin/get-chat-messages', 'Admin\ClientsController@getChatMessages');
-        Route::post('/admin/send-ai-message', 'Admin\ClientsController@sendAiMessage');
 
         //Client receipt delete by Celesty
         Route::post('/delete_receipt','Admin\ClientsController@delete_receipt');

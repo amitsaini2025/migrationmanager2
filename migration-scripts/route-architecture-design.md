@@ -155,11 +155,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::post('/addvisadocchecklist', [ClientsController::class, 'addvisadocchecklist'])->name('addvisadocchecklist');
         Route::post('/uploadvisadocument', [ClientsController::class, 'uploadvisadocument'])->name('uploadvisadocument');
         
-        // AI and advanced features
-        Route::post('/load-matter-ai-data', [ClientsController::class, 'loadMatterAiData']);
-        Route::post('/get-chat-history', [ClientsController::class, 'getChatHistory']);
-        Route::post('/get-chat-messages', [ClientsController::class, 'getChatMessages']);
-        Route::post('/send-ai-message', [ClientsController::class, 'sendAiMessage']);
         
         // And many more client-specific routes...
     });

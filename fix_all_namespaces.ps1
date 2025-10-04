@@ -14,7 +14,7 @@ Write-Host "[INFO] Created backup directory: $backupDir" -ForegroundColor Green
 # List of all valid models that exist in App\Models
 $validModels = @(
     'AcademicRequirement', 'AccountClientReceipt', 'ActivitiesLog', 'Admin', 'AgentDetails',
-    'AiChat', 'AiChatMessage', 'Airport', 'Application', 'ApplicationActivitiesLog',
+ 'Airport', 'Application', 'ApplicationActivitiesLog',
     'ApplicationDocument', 'ApplicationDocumentList', 'ApplicationFeeOption', 'ApplicationFeeOptionType',
     'Appointment', 'AppointmentLog', 'Attachment', 'AuditLog',
     'BookService', 'BookServiceDisableSlot', 'BookServiceSlotPerPerson', 'Branch',

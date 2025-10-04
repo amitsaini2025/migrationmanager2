@@ -556,25 +556,10 @@ use App\Http\Controllers\Controller;
                             </div>
 						</div>
 
-                        <!-- Inline ChatGPT Section (hidden by default) -->
-                        <div id="chatGptSection" class="collapse mt-3 col-9 col-md-9 col-lg-9">
-                            <div class="card card-body">
-                                <div class="form-group">
-                                    <label for="chatGptInput" style="color: #FFF;">Enter your message to enhance:</label>
-                                    <textarea class="form-control" id="chatGptInput" rows="5" placeholder="Type your message here..."></textarea>
-                                </div>
-                                <div class="mt-2 text-end">
-                                    <button type="button" class="btn btn-primary" id="enhanceMessageBtn" style="margin:0px !important;">Enhance</button>
-                                    <button type="button" class="btn btn-secondary" id="chatGptClose">Close</button>
-                                </div>
-                            </div>
-                        </div>
 
 						<div class="col-12 col-md-12 col-lg-12">
 							<div class="form-group">
-								<label for="subject">Subject <span class="span_req">*</span>
-                                    <button type="button" class="btn btn-info" id="chatGptToggle">ChatGPT Enhance</button>
-                                </label>
+								<label for="subject">Subject <span class="span_req">*</span></label>
 								<input type="text" name="subject" id="compose_email_subject" class="form-control selectedsubject" data-valid="required" autocomplete="off" placeholder="Enter Subject" value="" />
 								@if ($errors->has('subject'))
 									<span class="custom-error" role="alert">
@@ -1060,55 +1045,6 @@ use App\Http\Controllers\Controller;
 </div>
 
 
-<div id="rating-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="ratingModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="ratingModalLabel">Client Rating</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-           <div class="modal-body">
-                <div class="rating-section">
-                    <h3 class="rating-title">Education Client Rating</h3>
-                    <div class="star-rating">
-                        <input type="radio" id="education-star-5" name="education_rating" value="5">
-                        <label for="education-star-5" title="5 stars"><i class="fas fa-star"></i></label>
-                        <input type="radio" id="education-star-4" name="education_rating" value="4">
-                        <label for="education-star-4" title="4 stars"><i class="fas fa-star"></i></label>
-                        <input type="radio" id="education-star-3" name="education_rating" value="3">
-                        <label for="education-star-3" title="3 stars"><i class="fas fa-star"></i></label>
-                        <input type="radio" id="education-star-2" name="education_rating" value="2">
-                        <label for="education-star-2" title="2 stars"><i class="fas fa-star"></i></label>
-                        <input type="radio" id="education-star-1" name="education_rating" value="1">
-                        <label for="education-star-1" title="1 star"><i class="fas fa-star"></i></label>
-                    </div>
-                </div>
-                <div class="rating-section">
-                    <h3 class="rating-title">Migration Client Rating</h3>
-                    <div class="star-rating">
-                        <input type="radio" id="migration-star-5" name="migration_rating" value="5">
-                        <label for="migration-star-5" title="5 stars"><i class="fas fa-star"></i></label>
-                        <input type="radio" id="migration-star-4" name="migration_rating" value="4">
-                        <label for="migration-star-4" title="4 stars"><i class="fas fa-star"></i></label>
-                        <input type="radio" id="migration-star-3" name="migration_rating" value="3">
-                        <label for="migration-star-3" title="3 stars"><i class="fas fa-star"></i></label>
-                        <input type="radio" id="migration-star-2" name="migration_rating" value="2">
-                        <label for="migration-star-2" title="2 stars"><i class="fas fa-star"></i></label>
-                        <input type="radio" id="migration-star-1" name="migration_rating" value="1">
-                        <label for="migration-star-1" title="1 star"><i class="fas fa-star"></i></label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button id="submit-rating" type="button" class="btn btn-primary">Submit Rating</button>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="modal fade" id="inbox_reassignemail_modal">
 	<div class="modal-dialog modal-lg">
@@ -1243,10 +1179,6 @@ use App\Http\Controllers\Controller;
             base: '{{ URL::to("/") }}',
             admin: '{{ URL::to("/admin") }}',
             fetchVisaExpiryMessages: '{{ URL::to("/admin/fetch-visa_expiry_messages") }}',
-            loadMatterAiData: '{{ URL::to("/admin/load-matter-ai-data") }}',
-            getChatHistory: '{{ URL::to("/admin/get-chat-history") }}',
-            getChatMessages: '{{ URL::to("/admin/get-chat-messages") }}',
-            sendAiMessage: '{{ URL::to("/admin/send-ai-message") }}',
             downloadDocument: '{{ url("/admin/download-document") }}',
             getTopInvoiceNo: '{{ URL::to("/admin/clients/getTopInvoiceNoFromDB") }}',
             getTopReceiptVal: '{{ URL::to("/admin/clients/getTopReceiptValInDB") }}',
@@ -1273,7 +1205,6 @@ use App\Http\Controllers\Controller;
             deleteNote: '{{ URL::to("/admin/deletenote") }}',
             filterEmails: '{{ URL::to("/admin/clients/filter/emails") }}',
             filterSentMails: '{{ URL::to("/admin/clients/filter/sentmails") }}',
-            saveRating: '{{ route("admin.clients.saveRating") }}',
             checkStarClient: '{{ route("check.star.client") }}',
             getInfoByReceiptId: '{{ URL::to("/admin/clients/getInfoByReceiptId") }}',
             notPickedCall: '{{ URL::to("/admin/not-picked-call") }}',

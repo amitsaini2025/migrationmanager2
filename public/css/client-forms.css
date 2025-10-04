@@ -18,6 +18,243 @@
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
+/* Phone Verification Styles */
+.btn-verify-phone {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: background-color 0.2s;
+}
+
+.btn-verify-phone:hover {
+    background: #0056b3;
+}
+
+.btn-verify-phone:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.verified-badge {
+    background: #28a745;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+}
+
+.verified-badge i {
+    color: #ffffff;
+}
+
+/* Phone number summary items - inline layout for verification buttons */
+#phoneNumbersSummary .summary-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    flex-direction: row !important;
+}
+
+#phoneNumbersSummary .summary-item .summary-label {
+    font-weight: 600;
+    min-width: 80px;
+    margin-bottom: 0;
+}
+
+#phoneNumbersSummary .summary-item .summary-value {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+#phoneNumbersSummary .summary-item .btn-verify-phone {
+    margin-left: auto;
+    margin-right: 0;
+}
+
+#phoneNumbersSummary .summary-item .verified-badge {
+    margin-left: auto;
+    margin-right: 0;
+}
+
+/* OTP Modal Styles */
+.otp-modal {
+    max-width: 450px;
+    margin: 50px auto;
+}
+
+.otp-info {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.phone-display {
+    font-weight: bold;
+    font-size: 16px;
+    color: #007bff;
+    margin: 10px 0;
+}
+
+.otp-timer {
+    color: #666;
+    font-size: 14px;
+    margin: 10px 0;
+}
+
+.otp-instruction {
+    background: #e3f2fd;
+    border: 1px solid #bbdefb;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 15px 0;
+    text-align: center;
+}
+
+.otp-instruction p {
+    margin: 0;
+    color: #1565c0;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.otp-input-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.otp-digit {
+    width: 45px;
+    height: 45px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    transition: border-color 0.2s;
+}
+
+.otp-digit:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.otp-digit.filled {
+    border-color: #28a745;
+    background-color: #f8f9fa;
+}
+
+.otp-actions {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.btn-resend-otp {
+    background: transparent;
+    border: none;
+    color: #007bff;
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: underline;
+    padding: 5px 10px;
+}
+
+.btn-resend-otp:hover:not(:disabled) {
+    color: #0056b3;
+}
+
+.btn-resend-otp:disabled {
+    color: #6c757d;
+    cursor: not-allowed;
+    text-decoration: none;
+}
+
+.resend-timer {
+    color: #666;
+    font-size: 14px;
+    margin-left: 10px;
+}
+
+.otp-messages {
+    margin: 15px 0;
+    text-align: center;
+}
+
+.otp-messages .error-message {
+    color: #dc3545;
+    font-size: 14px;
+}
+
+.otp-messages .success-message {
+    color: #28a745;
+    font-size: 14px;
+}
+
+/* Modal header close button */
+.otp-modal .close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.otp-modal .close-btn:hover {
+    color: #333;
+}
+
+/* Modal footer buttons */
+.otp-modal .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.otp-modal .modal-footer .btn {
+    padding: 10px 20px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.otp-modal .modal-footer .btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.otp-modal .modal-footer .btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.otp-modal .modal-footer .btn:hover {
+    opacity: 0.9;
+}
+
 :root {
     --primary-color: #005792;
     --secondary-color: #00BBF0;

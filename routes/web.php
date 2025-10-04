@@ -199,6 +199,14 @@ Route::prefix('admin')->group(function() {
 		Route::post('/clients/edit', 'Admin\ClientsController@edit')->name('admin.clients.edit');
 		Route::post('/clients/save-section', 'Admin\ClientPersonalDetailsController@saveSection')->name('admin.clients.saveSection');
 
+        // Phone Verification Routes
+        Route::prefix('clients/phone')->name('clients.phone.')->group(function () {
+            Route::post('/send-otp', 'Admin\PhoneVerificationController@sendOTP')->name('sendOTP');
+            Route::post('/verify-otp', 'Admin\PhoneVerificationController@verifyOTP')->name('verifyOTP');
+            Route::post('/resend-otp', 'Admin\PhoneVerificationController@resendOTP')->name('resendOTP');
+            Route::get('/status/{contactId}', 'Admin\PhoneVerificationController@getStatus')->name('status');
+        });
+
         Route::post('/clients/followup/store', 'Admin\ClientsController@followupstore');
 
 

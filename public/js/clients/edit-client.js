@@ -1637,18 +1637,33 @@ window.savePhoneNumbers = function() {
         const summaryGrid = summaryView.querySelector('.summary-grid');
         
         if (phoneNumbers.length > 0) {
-            summaryGrid.innerHTML = phoneNumbers.map((phone, index) => `
-                <div class="summary-item">
-                    <span class="summary-label">${phone.contact_type}:</span>
-                    <span class="summary-value">${phone.country_code}${phone.phone}</span>
-                </div>
-            `).join('');
+            summaryGrid.innerHTML = phoneNumbers.map((phone, index) => {
+                // For newly saved numbers, show verify button for +61 numbers
+                // The actual verification status will be loaded from the server on page refresh
+                const verificationButton = phone.country_code === '+61' ? 
+                    `<button type="button" class="btn-verify-phone" onclick="sendOTP('${phone.id || 'pending'}', '${phone.phone}', '${phone.country_code}')" data-contact-id="${phone.id || 'pending'}">
+                        <i class="fas fa-lock"></i> Verify
+                     </button>` : '';
+                
+                return `
+                    <div class="summary-item">
+                        <span class="summary-label">${phone.contact_type}:</span>
+                        <span class="summary-value">${phone.country_code}${phone.phone}</span>
+                        ${verificationButton}
+                    </div>
+                `;
+            }).join('');
         } else {
             summaryView.innerHTML = '<div class="empty-state"><p>No phone numbers added yet.</p></div>';
         }
         
         // Return to summary view
         cancelEdit('phoneNumbers');
+        
+        // Refresh the page to get updated verification status from server
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
     });
 };
 
@@ -2959,6 +2974,347 @@ $(document).ready(function() {
         // Initial validation on page load
         validatePersonalPhoneNumbers();
     }
+
+    // Phone Verification Functions
+    let currentContactId = null;
+    let otpTimer = null;
+    let resendTimer = null;
+    let otpExpiryTime = null;
+
+    /**
+     * Send OTP to phone number
+     */
+    function sendOTP(contactId, phone, countryCode) {
+        currentContactId = contactId;
+        const fullPhone = countryCode + phone;
+        
+        // Show modal
+        document.getElementById('otpPhoneDisplay').textContent = fullPhone;
+        document.getElementById('otpVerificationModal').style.display = 'block';
+        
+        // Clear any previous messages
+        hideOTPMessages();
+        
+        // Clear OTP inputs
+        clearOTPInputs();
+        
+        // Disable verify button initially
+        document.getElementById('verifyOTPBtn').disabled = true;
+        
+        // Send OTP request
+        fetch('/admin/clients/phone/send-otp', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                contact_id: contactId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showOTPSuccessMessage('Verification code sent to client! Please ask them to provide the code.');
+                startOTPTimer(data.expires_in_seconds || 300);
+                startResendTimer(30);
+            } else {
+                showOTPErrorMessage(data.message || 'Failed to send verification code');
+            }
+        })
+        .catch(error => {
+            console.error('Error sending OTP:', error);
+            showOTPErrorMessage('Network error. Please try again.');
+        });
+    }
+
+    /**
+     * Verify OTP
+     */
+    function verifyOTP() {
+        const otpCode = getOTPCode();
+        
+        if (otpCode.length !== 6) {
+            showOTPErrorMessage('Please enter all 6 digits');
+            return;
+        }
+        
+        // Disable verify button
+        document.getElementById('verifyOTPBtn').disabled = true;
+        
+        fetch('/admin/clients/phone/verify-otp', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                contact_id: currentContactId,
+                otp_code: otpCode
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showOTPSuccessMessage('Phone number verified successfully!');
+                
+                // Update UI after a short delay
+                setTimeout(() => {
+                    updateVerificationStatus(currentContactId, true);
+                    closeOTPModal();
+                }, 1500);
+            } else {
+                showOTPErrorMessage(data.message || 'Invalid verification code');
+                document.getElementById('verifyOTPBtn').disabled = false;
+                
+                // Clear OTP inputs on error
+                if (data.message && data.message.includes('Invalid')) {
+                    clearOTPInputs();
+                    document.querySelector('.otp-digit[data-index="0"]').focus();
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error verifying OTP:', error);
+            showOTPErrorMessage('Network error. Please try again.');
+            document.getElementById('verifyOTPBtn').disabled = false;
+        });
+    }
+
+    /**
+     * Resend OTP
+     */
+    function resendOTP() {
+        if (!currentContactId) return;
+        
+        // Disable resend button temporarily
+        document.getElementById('resendOTPBtn').disabled = true;
+        
+        fetch('/admin/clients/phone/resend-otp', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                contact_id: currentContactId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showOTPSuccessMessage('New verification code sent to client! Please ask them for the updated code.');
+                clearOTPInputs();
+                startOTPTimer(data.expires_in_seconds || 300);
+                startResendTimer(30);
+            } else {
+                showOTPErrorMessage(data.message || 'Failed to resend verification code');
+                document.getElementById('resendOTPBtn').disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error resending OTP:', error);
+            showOTPErrorMessage('Network error. Please try again.');
+            document.getElementById('resendOTPBtn').disabled = false;
+        });
+    }
+
+    /**
+     * Close OTP modal
+     */
+    function closeOTPModal() {
+        document.getElementById('otpVerificationModal').style.display = 'none';
+        currentContactId = null;
+        clearOTPTimers();
+        clearOTPInputs();
+        hideOTPMessages();
+    }
+
+    /**
+     * Get OTP code from inputs
+     */
+    function getOTPCode() {
+        let otpCode = '';
+        for (let i = 0; i < 6; i++) {
+            const digit = document.querySelector(`.otp-digit[data-index="${i}"]`).value;
+            otpCode += digit || '';
+        }
+        return otpCode;
+    }
+
+    /**
+     * Clear OTP inputs
+     */
+    function clearOTPInputs() {
+        for (let i = 0; i < 6; i++) {
+            const input = document.querySelector(`.otp-digit[data-index="${i}"]`);
+            input.value = '';
+            input.classList.remove('filled');
+        }
+    }
+
+    /**
+     * Start OTP expiry timer
+     */
+    function startOTPTimer(seconds) {
+        clearOTPTimers();
+        
+        let timeLeft = seconds;
+        const timerElement = document.getElementById('timerCountdown');
+        
+        otpTimer = setInterval(() => {
+            const minutes = Math.floor(timeLeft / 60);
+            const secs = timeLeft % 60;
+            timerElement.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
+            
+            if (timeLeft <= 0) {
+                clearInterval(otpTimer);
+                showOTPErrorMessage('Verification code has expired');
+                document.getElementById('verifyOTPBtn').disabled = true;
+            }
+            
+            timeLeft--;
+        }, 1000);
+    }
+
+    /**
+     * Start resend timer
+     */
+    function startResendTimer(seconds) {
+        let timeLeft = seconds;
+        const resendBtn = document.getElementById('resendOTPBtn');
+        const resendTimer = document.getElementById('resendTimer');
+        const countdownElement = document.getElementById('resendCountdown');
+        
+        resendBtn.disabled = true;
+        resendTimer.style.display = 'inline';
+        
+        resendTimer = setInterval(() => {
+            countdownElement.textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                clearInterval(resendTimer);
+                resendBtn.disabled = false;
+                resendTimer.style.display = 'none';
+            }
+            
+            timeLeft--;
+        }, 1000);
+    }
+
+    /**
+     * Clear OTP timers
+     */
+    function clearOTPTimers() {
+        if (otpTimer) {
+            clearInterval(otpTimer);
+            otpTimer = null;
+        }
+        if (resendTimer) {
+            clearInterval(resendTimer);
+            resendTimer = null;
+        }
+    }
+
+    /**
+     * Show OTP error message
+     */
+    function showOTPErrorMessage(message) {
+        const errorElement = document.getElementById('otpErrorMessage');
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+        document.getElementById('otpSuccessMessage').style.display = 'none';
+    }
+
+    /**
+     * Show OTP success message
+     */
+    function showOTPSuccessMessage(message) {
+        const successElement = document.getElementById('otpSuccessMessage');
+        successElement.textContent = message;
+        successElement.style.display = 'block';
+        document.getElementById('otpErrorMessage').style.display = 'none';
+    }
+
+    /**
+     * Hide OTP messages
+     */
+    function hideOTPMessages() {
+        document.getElementById('otpErrorMessage').style.display = 'none';
+        document.getElementById('otpSuccessMessage').style.display = 'none';
+    }
+
+    /**
+     * Update verification status in UI
+     */
+    function updateVerificationStatus(contactId, isVerified) {
+        const verifyBtn = document.querySelector(`button[data-contact-id="${contactId}"]`);
+        if (verifyBtn) {
+            if (isVerified) {
+                const summaryItem = verifyBtn.closest('.summary-item');
+                if (summaryItem) {
+                    const verifiedBadge = document.createElement('span');
+                    verifiedBadge.className = 'verified-badge';
+                    verifiedBadge.innerHTML = '<i class="fas fa-check-circle"></i> Verified';
+                    verifiedBadge.title = 'Verified on ' + new Date().toLocaleString();
+                    
+                    verifyBtn.replaceWith(verifiedBadge);
+                }
+            }
+        }
+    }
+
+    // OTP Input Event Listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle OTP input auto-focus and validation
+        document.addEventListener('input', function(e) {
+            if (e.target.classList.contains('otp-digit')) {
+                const index = parseInt(e.target.dataset.index);
+                const value = e.target.value;
+                
+                // Add filled class for styling
+                if (value) {
+                    e.target.classList.add('filled');
+                } else {
+                    e.target.classList.remove('filled');
+                }
+                
+                // Auto-focus next input
+                if (value && index < 5) {
+                    const nextInput = document.querySelector(`.otp-digit[data-index="${index + 1}"]`);
+                    if (nextInput) {
+                        nextInput.focus();
+                    }
+                }
+                
+                // Enable verify button when all digits are entered
+                const otpCode = getOTPCode();
+                document.getElementById('verifyOTPBtn').disabled = otpCode.length !== 6;
+            }
+        });
+        
+        // Handle backspace navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.target.classList.contains('otp-digit') && e.key === 'Backspace') {
+                const index = parseInt(e.target.dataset.index);
+                
+                if (!e.target.value && index > 0) {
+                    // Move to previous input if current is empty
+                    const prevInput = document.querySelector(`.otp-digit[data-index="${index - 1}"]`);
+                    if (prevInput) {
+                        prevInput.focus();
+                    }
+                }
+            }
+        });
+        
+        // Close modal on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('otpVerificationModal').style.display === 'block') {
+                closeOTPModal();
+            }
+        });
+    });
 
     // Add event listeners for real-time validation and form submission (emails)
     const emailAddressesContainer = document.getElementById('emailAddressesContainer');

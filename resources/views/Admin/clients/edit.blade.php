@@ -236,6 +236,18 @@
                                         <div class="summary-item">
                                             <span class="summary-label">{{ $contact->contact_type }}:</span>
                                             <span class="summary-value">{{ $contact->country_code }}{{ $contact->phone }}</span>
+                                            <!-- Verification Button/Badge -->
+                                            @if($contact->country_code == '+61')
+                                                @if($contact->is_verified)
+                                                    <span class="verified-badge" title="Verified on {{ $contact->verified_at ? $contact->verified_at->format('M j, Y g:i A') : 'Unknown' }}">
+                                                        <i class="fas fa-check-circle"></i> Verified
+                                                    </span>
+                                                @else
+                                                    <button type="button" class="btn-verify-phone" onclick="sendOTP({{ $contact->id }}, '{{ $contact->phone }}', '{{ $contact->country_code }}')" data-contact-id="{{ $contact->id }}">
+                                                        <i class="fas fa-lock"></i> Verify
+                                                    </button>
+                                                @endif
+                                            @endif
                                         </div>
                                     @endforeach
                                 </div>
@@ -1444,6 +1456,51 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="closeSummaryModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OTP Verification Modal -->
+    <div id="otpVerificationModal" class="modal" style="display: none;">
+        <div class="modal-content otp-modal">
+            <div class="modal-header">
+                <h3>Verify Phone Number</h3>
+                <button type="button" class="close-btn" onclick="closeOTPModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="otp-info">
+                    <p>We've sent a 6-digit verification code to:</p>
+                    <p class="phone-display" id="otpPhoneDisplay"></p>
+                    <p class="otp-timer" id="otpTimer">Code expires in <span id="timerCountdown">5:00</span></p>
+                    <div class="otp-instruction">
+                        <p><strong>Please ask the client to provide the verification code they received via SMS.</strong></p>
+                    </div>
+                </div>
+                
+                <div class="otp-input-container">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="0" autocomplete="off">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="1" autocomplete="off">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="2" autocomplete="off">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="3" autocomplete="off">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="4" autocomplete="off">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="5" autocomplete="off">
+                </div>
+                
+                <div class="otp-actions">
+                    <button type="button" class="btn-resend-otp" id="resendOTPBtn" onclick="resendOTP()" disabled>
+                        Resend Code
+                    </button>
+                    <span class="resend-timer" id="resendTimer" style="display: none;">Resend available in <span id="resendCountdown">30</span>s</span>
+                </div>
+                
+                <div class="otp-messages">
+                    <div id="otpErrorMessage" class="error-message" style="display: none;"></div>
+                    <div id="otpSuccessMessage" class="success-message" style="display: none;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeOTPModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" id="verifyOTPBtn" onclick="verifyOTP()">Verify</button>
             </div>
         </div>
     </div>

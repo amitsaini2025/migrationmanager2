@@ -494,9 +494,6 @@ class Controller extends BaseController
             ->get();
     }
 
-
-
-
 	public static function time_elapsed_string($datetime, $full = false) {
     $now = new \DateTime;
     $ago = new \DateTime($datetime);

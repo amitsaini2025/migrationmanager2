@@ -3616,28 +3616,7 @@ class ClientsController extends Controller
         }
     }
 
-    public function getVisaTypes()
-    {
-        $visaTypes = \App\Models\Matter::select('id', 'title', 'nick_name')
-            ->where('title', 'not like', '%skill assessment%')
-            ->where('status', 1)
-            ->orderBy('title', 'ASC')
-            ->get();
 
-        return response()->json($visaTypes);
-    }
-
-    public function getCountries()
-    {
-        $countries = \App\Models\Country::all()->pluck('name')->toArray();
-
-        // Ensure "India" and "Australia" are at the top of the list
-        $priorityCountries = ['Australia','India'];
-        $otherCountries = array_diff($countries, $priorityCountries);
-        $sortedCountries = array_merge($priorityCountries, $otherCountries);
-
-        return response()->json($sortedCountries);
-    }
 
 
     public function saveSection(Request $request)
@@ -3708,16 +3687,40 @@ class ClientsController extends Controller
                 'dob' => 'nullable|date_format:d/m/Y',
                 'age' => 'nullable|string',
                 'gender' => 'nullable|in:Male,Female,Other',
-                'marital_status' => 'nullable|in:Single,Married,De Facto,Divorced,Widowed,Separated'
+                'marital_status' => 'nullable|in:Single,Married,De Facto,Defacto,Divorced,Widowed,Separated'
             ]);
 
-            // Map marital_status to martial_status for the database (column has typo)
-            if (isset($validated['marital_status'])) {
-                $validated['martial_status'] = $validated['marital_status'];
-                unset($validated['marital_status']);
+            // Convert DOB format and calculate age (like the working methods)
+            $dob = null;
+            $age = null;
+            if (!empty($validated['dob'])) {
+                try {
+                    $dobDate = \Carbon\Carbon::createFromFormat('d/m/Y', $validated['dob']);
+                    $dob = $dobDate->format('Y-m-d');
+                    $age = $dobDate->diff(\Carbon\Carbon::now())->format('%y years %m months');
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid date format. Must be dd/mm/yyyy.'
+                    ], 422);
+                }
             }
 
-            $client->update($validated);
+            // Map marital status values for backward compatibility
+            $martialStatus = $validated['marital_status'] ?? null;
+            if ($martialStatus === 'Defacto') {
+                $martialStatus = 'De Facto';
+            }
+
+            // Use direct assignment pattern (like the working old methods)
+            $client->first_name = $validated['first_name'];
+            $client->last_name = $validated['last_name'] ?? null;
+            $client->client_id = $validated['client_id'];
+            $client->dob = $dob;
+            $client->age = $age;
+            $client->gender = $validated['gender'] ?? null;
+            $client->martial_status = $martialStatus;
+            $client->save();
 
             return response()->json([
                 'success' => true,
@@ -4071,24 +4074,6 @@ class ClientsController extends Controller
 
 
 
-    public function saveRelationship(Request $request)
-    {
-        $clientId = auth()->user()->id; // Assuming the logged-in user is the client
-
-        // Loop through the relationship data to insert each relationship
-        foreach ($request->relationship_type as $index => $relationshipType) {
-            ClientRelationship::create([
-                'client_id' => $clientId,
-                'relationship_type' => $relationshipType,
-                'name' => $request->name[$index],
-                'phone_number' => $request->phone_number[$index],
-                'email_address' => $request->email_address[$index],
-                'crm_reference' => $request->crm_reference[$index] ?? null,
-            ]);
-        }
-
-        return response()->json(['success' => 'Relationship data saved successfully!']);
-    }
 
     //Update session to be complete
     public function updatesessioncompleted(Request $request,CheckinLog $checkinLog)
@@ -11222,49 +11207,7 @@ private function getUserName($userId) {
     }
 
     //Fetch all contact list of any client at create note popup
-    public function fetchClientContactNo(Request $request){ //dd($request->all());
-        if( ClientContact::where('client_id', $request->client_id)->exists()){
-            //Fetch All client contacts
-            $clientContacts = ClientContact::select('phone')->where('client_id', $request->client_id)->get();
-            //dd($clientContacts);
-            if( !empty($clientContacts) && count($clientContacts)>0 ){
-                $response['status'] 	= 	true;
-                $response['message']	=	'Client contact is successfully fetched.';
-                $response['clientContacts']	=	$clientContacts;
-            } else {
-                $response['status'] 	= 	false;
-                $response['message']	=	'Please try again';
-                $response['clientContacts']	=	array();
-            }
-        } else {
-            $response['status'] 	= 	false;
-            $response['message']	=	'Please try again';
-            $response['clientContacts']	=	array();
-        }
-        echo json_encode($response);
-	}
 
-    public function updateAddress(Request $request)
-    {
-        $postcode = $request->input('postcode');
-        // Fetch data based on the postcode
-        // Replace this with your actual API call to get address details
-        $apiKey = 'acb06506-edb3-4965-856e-db81ade1b45b';
-        $urlPrefix = 'digitalapi.auspost.com.au';
-        $url = 'https://' . $urlPrefix . '/postcode/search.json?q=' . $postcode;
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['AUTH-KEY: ' . $apiKey]);
-        $response = curl_exec($ch);  //dd($response);
-        curl_close($ch);
-        if (!$response) {
-            return response()->json(['localities' => []]);
-        }
-        $data = json_decode($response, true); //dd($data);
-        return response()->json($data);
-    }
 
 
     //Re-assign inbox email
@@ -11534,17 +11477,6 @@ private function getUserName($userId) {
         echo json_encode($response);
 	}
 
-    public function updateOccupation(Request $request)
-    {
-        $occupation = $request->input('occupation');
-
-        // Example: Replace this with actual search logic based on your database schema
-        $occupations = \DB::table('client_occupation_lists')
-            ->where('occupation', 'like', "%{$occupation}%")
-            ->get(['occupation', 'occupation_code', 'list', 'visa_subclass','access_authority']);
-
-        return response()->json(['occupations' => $occupations]);
-    }
 
     public function checkEmail(Request $request)
     {
@@ -12360,34 +12292,6 @@ private function getUserName($userId) {
 
 
     //Seach Client Relationship
-    public function searchPartner(Request $request)
-    {
-        // Validate the incoming query
-        $request->validate([
-            'query' => 'required|string|min:3|max:255',
-        ]);
-
-        $query = $request->input('query');
-
-        // Search the admins table for matching records
-        $partners = Admin::where('role', '=', '7') // Assuming role 7 is for clients
-            ->where(function ($q) use ($query) {
-                $q->where('email', 'like', '%' . $query . '%')
-                    ->orWhere('first_name', 'like', '%' . $query . '%')
-                    ->orWhere('last_name', 'like', '%' . $query . '%')
-                    ->orWhere('phone', 'like', '%' . $query . '%')
-                    ->orWhere('client_id', 'like', '%' . $query . '%');
-            })
-            ->where('id', '!=', Auth::user()->id) // Exclude the current user
-            ->select('id', 'email', 'first_name', 'last_name', 'phone', 'client_id')
-            ->limit(10) // Limit results to prevent overload
-            ->get();
-
-        // Return JSON response with consistent structure
-        return response()->json([
-            'partners' => $partners->toArray(),
-        ], 200);
-    }
 
 
 
@@ -13195,55 +13099,7 @@ private function getUserName($userId) {
     }
 
     //Fetch client matter assignee
-    public function fetchClientMatterAssignee(Request $request)
-    {
-        $requestData = $request->all();
-        $matter_info = DB::table('client_matters')->where('id',$requestData['client_matter_id'])->first();
-        //dd($matter_info);
-        if(!empty($matter_info)) {
-            $response['matter_info'] = $matter_info;
-            $response['status'] 	= 	true;
-            $response['message']	=	'Record is exist';
-        }else{
-            $response['matter_info'] 	= array();
-            $response['status'] 	= 	false;
-            $response['message']	=	'Record is not exist.Please try again';
-        }
-        echo json_encode($response);
-    }
 
-    //update client matter assignee
-    public function updateClientMatterAssignee(Request $request){
-        //dd($request->all());
-        $requstData = $request->all();
-        if(ClientMatter::where('id', '=', $requstData['selectedMatterLM'])->exists()) {
-            $obj = ClientMatter::find($requstData['selectedMatterLM']);
-            $obj->sel_migration_agent = $requstData['migration_agent'];
-            $obj->sel_person_responsible = $requstData['person_responsible'];
-            $obj->sel_person_assisting = $requstData['person_assisting'];
-            $obj->user_id = $requstData['user_id'];
-            $saved = $obj->save();
-            if($saved) {
-
-                $objs = new \App\Models\ActivitiesLog;
-                $objs->client_id = $requstData['client_id'];
-                $objs->created_by = Auth::user()->id;
-                $objs->description = '';
-                $objs->subject = 'updated client matter assignee';
-                $objs->save();
-
-                $response['status'] 	= 	true;
-                $response['message']	=	'Record is exist';
-            }else{
-                $response['status'] 	= 	false;
-                $response['message']	=	'Record is not exist.Please try again';
-            }
-        } else {
-            $response['status'] 	= 	false;
-            $response['message']	=	'Record is not exist.Please try again';
-        }
-        echo json_encode($response);
-    }
 
     //Add Personal Doucment Category
     public function addPersonalDocCategory(Request $request)

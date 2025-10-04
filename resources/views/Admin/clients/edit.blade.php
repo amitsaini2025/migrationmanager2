@@ -16,7 +16,7 @@
                         : {{ $fetchedData->client_id }}</div>
                 </div>
                 <div class="client-status">
-                    <button class="btn btn-secondary" onclick="window.history.back()"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button class="btn btn-secondary" onclick="goBackWithRefresh()"><i class="fas fa-arrow-left"></i> Back</button>
                 </div>
             </div>
 
@@ -198,7 +198,7 @@
                                         <option value="">Select Marital Status</option>
                                         <option value="Single" {{ $fetchedData->martial_status == 'Single' ? 'selected' : '' }}>Single</option>
                                         <option value="Married" {{ $fetchedData->martial_status == 'Married' ? 'selected' : '' }}>Married</option>
-                                        <option value="Defacto" {{ $fetchedData->martial_status == 'Defacto' ? 'selected' : '' }}>Defacto</option>
+                                        <option value="Defacto" {{ ($fetchedData->martial_status == 'Defacto' || $fetchedData->martial_status == 'De Facto') ? 'selected' : '' }}>De Facto</option>
                                         <option value="Divorced" {{ $fetchedData->martial_status == 'Divorced' ? 'selected' : '' }}>Divorced</option>
                                         <option value="Widowed" {{ $fetchedData->martial_status == 'Widowed' ? 'selected' : '' }}>Widowed</option>
                                     </select>
@@ -278,7 +278,23 @@
                                                 <label>Number</label>
                                                 <div class="cus_field_input" style="display:flex;">
                                                     <div class="country_code">
-                                                        <input class="telephone country-code-input" type="tel" name="country_code[{{ $index }}]" value="{{ $contact->country_code }}" style="width: 55px;height: 42px;" readonly>
+                                                        <select name="country_code[{{ $index }}]" class="country-code-input">
+                                                            <option value="+61" {{ $contact->country_code == '+61' ? 'selected' : '' }}>🇦🇺 +61</option>
+                                                            <option value="+91" {{ $contact->country_code == '+91' ? 'selected' : '' }}>🇮🇳 +91</option>
+                                                            <option value="+1" {{ $contact->country_code == '+1' ? 'selected' : '' }}>🇺🇸 +1</option>
+                                                            <option value="+44" {{ $contact->country_code == '+44' ? 'selected' : '' }}>🇬🇧 +44</option>
+                                                            <option value="+49" {{ $contact->country_code == '+49' ? 'selected' : '' }}>🇩🇪 +49</option>
+                                                            <option value="+33" {{ $contact->country_code == '+33' ? 'selected' : '' }}>🇫🇷 +33</option>
+                                                            <option value="+86" {{ $contact->country_code == '+86' ? 'selected' : '' }}>🇨🇳 +86</option>
+                                                            <option value="+81" {{ $contact->country_code == '+81' ? 'selected' : '' }}>🇯🇵 +81</option>
+                                                            <option value="+82" {{ $contact->country_code == '+82' ? 'selected' : '' }}>🇰🇷 +82</option>
+                                                            <option value="+65" {{ $contact->country_code == '+65' ? 'selected' : '' }}>🇸🇬 +65</option>
+                                                            <option value="+60" {{ $contact->country_code == '+60' ? 'selected' : '' }}>🇲🇾 +60</option>
+                                                            <option value="+66" {{ $contact->country_code == '+66' ? 'selected' : '' }}>🇹🇭 +66</option>
+                                                            <option value="+63" {{ $contact->country_code == '+63' ? 'selected' : '' }}>🇵🇭 +63</option>
+                                                            <option value="+84" {{ $contact->country_code == '+84' ? 'selected' : '' }}>🇻🇳 +84</option>
+                                                            <option value="+62" {{ $contact->country_code == '+62' ? 'selected' : '' }}>🇮🇩 +62</option>
+                                                        </select>
                                                     </div>
                                                     <input type="tel" name="phone[{{ $index }}]" value="{{ $contact->phone }}" placeholder="Phone Number" class="phone-number-input" style="width: 140px;" autocomplete="off">
                                                 </div>
@@ -391,27 +407,27 @@
                         
                         <!-- Summary View -->
                         <div id="passportInfoSummary" class="summary-view">
-                            <div class="summary-grid">
-                                <div class="summary-item">
-                                    <span class="summary-label">Country of Passport:</span>
-                                    <span class="summary-value">{{ $fetchedData->country_passport ?: 'Not set' }}</span>
-                                </div>
-                            </div>
                             @if($clientPassports->count() > 0)
                                 <div style="margin-top: 15px;">
                                     @foreach($clientPassports as $index => $passport)
-                                        <div class="passport-entry">
-                                            <div class="summary-item">
-                                                <span class="summary-label">Passport #:</span>
-                                                <span class="summary-value">{{ $passport->passport ?: 'Not set' }}</span>
-                                            </div>
-                                            <div class="summary-item">
-                                                <span class="summary-label">Issue Date:</span>
-                                                <span class="summary-value">{{ $passport->passport_issue_date ? date('d/m/Y', strtotime($passport->passport_issue_date)) : 'Not set' }}</span>
-                                            </div>
-                                            <div class="summary-item">
-                                                <span class="summary-label">Expiry Date:</span>
-                                                <span class="summary-value">{{ $passport->passport_expiry_date ? date('d/m/Y', strtotime($passport->passport_expiry_date)) : 'Not set' }}</span>
+                                        <div class="passport-entry-compact" style="margin-bottom: 12px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #007bff;">
+                                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: center;">
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">COUNTRY:</span>
+                                                    <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $passport->passport_country ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">PASSPORT #:</span>
+                                                    <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $passport->passport ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">ISSUE DATE:</span>
+                                                    <span class="summary-value" style="color: #212529;">{{ $passport->passport_issue_date ? date('d/m/Y', strtotime($passport->passport_issue_date)) : 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">EXPIRY DATE:</span>
+                                                    <span class="summary-value" style="color: #212529;">{{ $passport->passport_expiry_date ? date('d/m/Y', strtotime($passport->passport_expiry_date)) : 'Not set' }}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     @endforeach
@@ -425,21 +441,6 @@
 
                         <!-- Edit View -->
                         <div id="passportInfoEdit" class="edit-view" style="display: none;">
-                            <div class="content-grid">
-                                <div class="form-group">
-                                    <label for="passportCountry">Country of Passport</label>
-                                    <select id="passportCountry" name="country_passport">
-                                        <option value="">Select Country</option>
-                                        <option value="Australia" {{ $fetchedData->country_passport == 'Australia' ? 'selected' : '' }}>Australia</option>
-                                        <option value="India" {{ $fetchedData->country_passport == 'India' ? 'selected' : '' }}>India</option>
-                                        <!-- Add more countries as needed -->
-                                    </select>
-                                    @error('country_passport')
-                                        <span class="text-danger">{{ $message }}</span>
-                                    @enderror
-                                </div>
-                            </div>
-
                             <!-- Passport Details -->
                             <div id="passportDetailsContainer">
                                 @foreach($clientPassports as $index => $passport)
@@ -447,6 +448,19 @@
                                         <button type="button" class="remove-item-btn" title="Remove Passport" onclick="removePassportField(this)"><i class="fas fa-trash"></i></button>
                                         <input type="hidden" name="passport_id[{{ $index }}]" value="{{ $passport->id }}">
                                         <div class="content-grid">
+                                            <div class="form-group">
+                                                <label>Country</label>
+                                                <select name="passports[{{ $index }}][passport_country]" class="passport-country-field">
+                                                    <option value="">Select Country</option>
+                                                    <option value="India" {{ $passport->passport_country == 'India' ? 'selected' : '' }}>India</option>
+                                                    <option value="Australia" {{ $passport->passport_country == 'Australia' ? 'selected' : '' }}>Australia</option>
+                                                    @foreach(\App\Models\Country::all() as $country)
+                                                        @if($country->name != 'India' && $country->name != 'Australia')
+                                                            <option value="{{ $country->name }}" {{ $passport->passport_country == $country->name ? 'selected' : '' }}>{{ $country->name }}</option>
+                                                        @endif
+                                                    @endforeach
+                                                </select>
+                                            </div>
                                             <div class="form-group">
                                                 <label>Passport #</label>
                                                 <input type="text" name="passports[{{ $index }}][passport_number]" value="{{ $passport->passport }}" placeholder="Passport Number">

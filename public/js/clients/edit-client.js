@@ -599,7 +599,7 @@ function addPartnerRow(type) {
                 <option value="Husband">Husband</option>
                 <option value="Wife">Wife</option>
                 <option value="Ex-Wife">Ex-Wife</option>
-                <option value="Defacto">Defacto</option>
+                <option value="Defacto">De Facto</option>
             `;
     }
 
@@ -788,10 +788,28 @@ function addPassportDetail() {
     const container = document.getElementById('passportDetailsContainer');
     const index = container.children.length;
 
+    // Get country options from existing select if available, otherwise use default
+    let countryOptions = '<option value="">Select Country</option>';
+    const existingSelect = document.querySelector('.passport-country-field');
+    if (existingSelect) {
+        Array.from(existingSelect.options).forEach(option => {
+            countryOptions += `<option value="${option.value}">${option.text}</option>`;
+        });
+    } else {
+        // Fallback if no existing select found
+        countryOptions += '<option value="India">India</option><option value="Australia">Australia</option>';
+    }
+
     container.insertAdjacentHTML('beforeend', `
         <div class="repeatable-section">
             <button type="button" class="remove-item-btn" title="Remove Passport" onclick="removePassportField(this)"><i class="fas fa-trash"></i></button>
             <div class="content-grid">
+                <div class="form-group">
+                    <label>Country</label>
+                    <select name="passports[${index}][passport_country]" class="passport-country-field">
+                        ${countryOptions}
+                    </select>
+                </div>
                 <div class="form-group">
                     <label>Passport #</label>
                     <input type="text" name="passports[${index}][passport_number]" placeholder="Passport Number">
@@ -985,15 +1003,30 @@ function addPhoneNumber() {
                     <label>Number</label>
                     <div class="cus_field_input" style="display:flex;">
                         <div class="country_code">
-                            <input class="telephone country-code-input" id="telephone" type="tel" name="country_code[${index}]" style="width: 55px;height: 42px;" readonly >
+                            <select name="country_code[${index}]" class="country-code-input">
+                                <option value="+61">🇦🇺 +61</option>
+                                <option value="+91">🇮🇳 +91</option>
+                                <option value="+1">🇺🇸 +1</option>
+                                <option value="+44">🇬🇧 +44</option>
+                                <option value="+49">🇩🇪 +49</option>
+                                <option value="+33">🇫🇷 +33</option>
+                                <option value="+86">🇨🇳 +86</option>
+                                <option value="+81">🇯🇵 +81</option>
+                                <option value="+82">🇰🇷 +82</option>
+                                <option value="+65">🇸🇬 +65</option>
+                                <option value="+60">🇲🇾 +60</option>
+                                <option value="+66">🇹🇭 +66</option>
+                                <option value="+63">🇵🇭 +63</option>
+                                <option value="+84">🇻🇳 +84</option>
+                                <option value="+62">🇮🇩 +62</option>
+                            </select>
                         </div>
-                                                    <input type="tel" name="phone[${index}]" placeholder="Phone Number" style="width: 140px;" autocomplete="off">
+                                                    <input type="tel" name="phone[${index}]" placeholder="Phone Number" class="phone-number-input" style="width: 140px;" autocomplete="off">
                     </div>
                 </div>
             </div>
         </div>
     `);
-    $(".telephone").intlTelInput();
     validatePersonalPhoneNumbers();
 }
 
@@ -1022,7 +1055,7 @@ function validatePersonalPhoneNumbers() {
             if (personalPhones[fullPhone]) {
                 // Duplicate found
                 const errorMessage = `<span class="text-danger">Personal phone number ${fullPhone} is already used in another entry.</span>`;
-                section.querySelector('.input-group').insertAdjacentHTML('afterend', errorMessage);
+                section.querySelector('.content-grid').insertAdjacentHTML('afterend', errorMessage);
                 // Disable the submit button
                 document.querySelector('button[type="submit"]').disabled = true;
             } else {
@@ -1230,10 +1263,13 @@ function toggleSpouseDetailsSection() {
     const maritalStatus = document.getElementById('martialStatus').value;
     const spouseDetailsSection = document.getElementById('spouseDetailsSection');
 
-    if (maritalStatus === 'Married' || maritalStatus === 'Defacto') {
-        spouseDetailsSection.style.display = 'block';
-    } else {
-        spouseDetailsSection.style.display = 'none';
+    // Check if the spouseDetailsSection element exists before trying to access its style
+    if (spouseDetailsSection) {
+        if (maritalStatus === 'Married' || maritalStatus === 'Defacto') {
+            spouseDetailsSection.style.display = 'block';
+        } else {
+            spouseDetailsSection.style.display = 'none';
+        }
     }
 
     // Reinitialize datepickers when showing spouse details
@@ -1584,7 +1620,7 @@ window.savePhoneNumbers = function() {
         
         if (type && phone) {
             phoneNumbers.push({
-                contact_id: contactId || '',
+                id: contactId || '',
                 contact_type: type,
                 country_code: countryCode,
                 phone: phone
@@ -1755,9 +1791,6 @@ window.removeEmailAddress = function(id, index) {
  * Save passport information and update summary
  */
 window.savePassportInfo = function() {
-    // Get form values
-    const passportCountry = document.getElementById('passportCountry').value;
-    
     // Get all passport entries
     const container = document.getElementById('passportDetailsContainer');
     const sections = container.querySelectorAll('.repeatable-section');
@@ -1765,13 +1798,15 @@ window.savePassportInfo = function() {
     
     sections.forEach(section => {
         const passportId = section.querySelector('input[name*="passport_id"]')?.value;
+        const passportCountry = section.querySelector('select[name*="passport_country"]')?.value;
         const passportNumber = section.querySelector('input[name*="passport_number"]').value;
         const issueDate = section.querySelector('input[name*="issue_date"]').value;
         const expiryDate = section.querySelector('input[name*="expiry_date"]').value;
         
-        if (passportNumber || issueDate || expiryDate) {
+        if (passportNumber || issueDate || expiryDate || passportCountry) {
             passports.push({
                 passport_id: passportId || '',
+                passport_country: passportCountry || '',
                 passport_number: passportNumber,
                 issue_date: issueDate,
                 expiry_date: expiryDate
@@ -1780,36 +1815,37 @@ window.savePassportInfo = function() {
     });
     
     const formData = new FormData();
-    formData.append('passport_country', passportCountry);
     formData.append('passports', JSON.stringify(passports));
     
     saveSectionData('passportInfo', formData, function() {
         // Update summary view on success
         const summaryView = document.getElementById('passportInfoSummary');
-        const summaryGrid = summaryView.querySelector('.summary-grid');
         
-        let summaryHTML = `
-            <div class="summary-item">
-                <span class="summary-label">Country of Passport:</span>
-                <span class="summary-value">${passportCountry || 'Not set'}</span>
-            </div>
-        `;
+        let summaryHTML = '';
         
         if (passports.length > 0) {
-            summaryHTML += '<div class="summary-grid" style="margin-top: 15px;">';
+            summaryHTML += '<div style="margin-top: 15px;">';
             passports.forEach(passport => {
                 summaryHTML += `
-                    <div class="summary-item">
-                        <span class="summary-label">Passport #:</span>
-                        <span class="summary-value">${passport.passport_number || 'Not set'}</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Issue Date:</span>
-                        <span class="summary-value">${passport.issue_date || 'Not set'}</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Expiry Date:</span>
-                        <span class="summary-value">${passport.expiry_date || 'Not set'}</span>
+                    <div class="passport-entry-compact" style="margin-bottom: 12px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #007bff;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: center;">
+                            <div class="summary-item-inline">
+                                <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">COUNTRY:</span>
+                                <span class="summary-value" style="color: #212529; font-weight: 500;">${passport.passport_country || 'Not set'}</span>
+                            </div>
+                            <div class="summary-item-inline">
+                                <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">PASSPORT #:</span>
+                                <span class="summary-value" style="color: #212529; font-weight: 500;">${passport.passport_number || 'Not set'}</span>
+                            </div>
+                            <div class="summary-item-inline">
+                                <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">ISSUE DATE:</span>
+                                <span class="summary-value" style="color: #212529;">${passport.issue_date || 'Not set'}</span>
+                            </div>
+                            <div class="summary-item-inline">
+                                <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">EXPIRY DATE:</span>
+                                <span class="summary-value" style="color: #212529;">${passport.expiry_date || 'Not set'}</span>
+                            </div>
+                        </div>
                     </div>
                 `;
             });
@@ -1818,7 +1854,7 @@ window.savePassportInfo = function() {
             summaryHTML += '<div class="empty-state" style="margin-top: 15px;"><p>No passport details added yet.</p></div>';
         }
         
-        summaryGrid.innerHTML = summaryHTML;
+        summaryView.innerHTML = summaryHTML;
         
         // Return to summary view
         cancelEdit('passportInfo');
@@ -1982,6 +2018,7 @@ window.saveTravelInfo = function() {
     const travels = [];
     
     sections.forEach(section => {
+        const travelId = section.querySelector('input[name*="travel_id"]')?.value;
         const countryVisited = section.querySelector('input[name*="travel_country_visited"]').value;
         const arrivalDate = section.querySelector('input[name*="travel_arrival_date"]').value;
         const departureDate = section.querySelector('input[name*="travel_departure_date"]').value;
@@ -1989,50 +2026,53 @@ window.saveTravelInfo = function() {
         
         if (countryVisited || arrivalDate || departureDate || travelPurpose) {
             travels.push({
-                countryVisited: countryVisited,
-                arrivalDate: arrivalDate,
-                departureDate: departureDate,
-                travelPurpose: travelPurpose
+                travel_id: travelId || '',
+                country_visited: countryVisited,
+                arrival_date: arrivalDate,
+                departure_date: departureDate,
+                purpose: travelPurpose
             });
         }
     });
     
-    // Update summary view
-    const summaryView = document.getElementById('travelInfoSummary');
-    const summaryGrid = summaryView.querySelector('.summary-grid');
+    const formData = new FormData();
+    formData.append('travels', JSON.stringify(travels));
     
-    if (travels.length > 0) {
-        let summaryHTML = '';
-        travels.forEach(travel => {
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">Country Visited:</span>
-                    <span class="summary-value">${travel.countryVisited || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Arrival Date:</span>
-                    <span class="summary-value">${travel.arrivalDate || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Departure Date:</span>
-                    <span class="summary-value">${travel.departureDate || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Travel Purpose:</span>
-                    <span class="summary-value">${travel.travelPurpose || 'Not set'}</span>
-                </div>
-            `;
-        });
-        summaryGrid.innerHTML = summaryHTML;
-    } else {
-        summaryView.innerHTML = '<div class="empty-state"><p>No travel details added yet.</p></div>';
-    }
-    
-    // Return to summary view
-    cancelEdit('travelInfo');
-    
-    // Show success message
-    showNotification('Travel information updated successfully!', 'success');
+    saveSectionData('travelInfo', formData, function() {
+        // Update summary view on success
+        const summaryView = document.getElementById('travelInfoSummary');
+        const summaryGrid = summaryView.querySelector('.summary-grid');
+        
+        if (travels.length > 0) {
+            let summaryHTML = '';
+            travels.forEach(travel => {
+                summaryHTML += `
+                    <div class="summary-item">
+                        <span class="summary-label">Country Visited:</span>
+                        <span class="summary-value">${travel.country_visited || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Arrival Date:</span>
+                        <span class="summary-value">${travel.arrival_date || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Departure Date:</span>
+                        <span class="summary-value">${travel.departure_date || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Travel Purpose:</span>
+                        <span class="summary-value">${travel.purpose || 'Not set'}</span>
+                    </div>
+                `;
+            });
+            summaryGrid.innerHTML = summaryHTML;
+        } else {
+            summaryView.innerHTML = '<div class="empty-state"><p>No travel details added yet.</p></div>';
+        }
+        
+        // Return to summary view
+        cancelEdit('travelInfo');
+    });
 };
 
 /**
@@ -2045,6 +2085,7 @@ window.saveQualificationsInfo = function() {
     const qualifications = [];
     
     sections.forEach(section => {
+        const qualId = section.querySelector('input[name*="qualification_id"]')?.value;
         const qualification = section.querySelector('input[name*="qualification"]').value;
         const institution = section.querySelector('input[name*="institution"]').value;
         const country = section.querySelector('input[name*="qual_country"]').value;
@@ -2052,6 +2093,7 @@ window.saveQualificationsInfo = function() {
         
         if (qualification || institution || country || year) {
             qualifications.push({
+                qualification_id: qualId || '',
                 qualification: qualification,
                 institution: institution,
                 country: country,
@@ -2060,42 +2102,44 @@ window.saveQualificationsInfo = function() {
         }
     });
     
-    // Update summary view
-    const summaryView = document.getElementById('qualificationsInfoSummary');
-    const summaryGrid = summaryView.querySelector('.summary-grid');
+    const formData = new FormData();
+    formData.append('qualifications', JSON.stringify(qualifications));
     
-    if (qualifications.length > 0) {
-        let summaryHTML = '';
-        qualifications.forEach(qual => {
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">Qualification:</span>
-                    <span class="summary-value">${qual.qualification || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Institution:</span>
-                    <span class="summary-value">${qual.institution || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Country:</span>
-                    <span class="summary-value">${qual.country || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Year:</span>
-                    <span class="summary-value">${qual.year || 'Not set'}</span>
-                </div>
-            `;
-        });
-        summaryGrid.innerHTML = summaryHTML;
-    } else {
-        summaryView.innerHTML = '<div class="empty-state"><p>No qualifications added yet.</p></div>';
-    }
-    
-    // Return to summary view
-    cancelEdit('qualificationsInfo');
-    
-    // Show success message
-    showNotification('Qualifications updated successfully!', 'success');
+    saveSectionData('qualificationsInfo', formData, function() {
+        // Update summary view on success
+        const summaryView = document.getElementById('qualificationsInfoSummary');
+        const summaryGrid = summaryView.querySelector('.summary-grid');
+        
+        if (qualifications.length > 0) {
+            let summaryHTML = '';
+            qualifications.forEach(qual => {
+                summaryHTML += `
+                    <div class="summary-item">
+                        <span class="summary-label">Qualification:</span>
+                        <span class="summary-value">${qual.qualification || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Institution:</span>
+                        <span class="summary-value">${qual.institution || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Country:</span>
+                        <span class="summary-value">${qual.country || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Year:</span>
+                        <span class="summary-value">${qual.year || 'Not set'}</span>
+                    </div>
+                `;
+            });
+            summaryGrid.innerHTML = summaryHTML;
+        } else {
+            summaryView.innerHTML = '<div class="empty-state"><p>No qualifications added yet.</p></div>';
+        }
+        
+        // Return to summary view
+        cancelEdit('qualificationsInfo');
+    });
 };
 
 /**
@@ -2108,6 +2152,7 @@ window.saveExperienceInfo = function() {
     const experiences = [];
     
     sections.forEach(section => {
+        const expId = section.querySelector('input[name*="experience_id"]')?.value;
         const company = section.querySelector('input[name*="company"]').value;
         const position = section.querySelector('input[name*="position"]').value;
         const startDate = section.querySelector('input[name*="exp_start_date"]').value;
@@ -2115,50 +2160,53 @@ window.saveExperienceInfo = function() {
         
         if (company || position || startDate || endDate) {
             experiences.push({
+                experience_id: expId || '',
                 company: company,
                 position: position,
-                startDate: startDate,
-                endDate: endDate
+                start_date: startDate,
+                end_date: endDate
             });
         }
     });
     
-    // Update summary view
-    const summaryView = document.getElementById('experienceInfoSummary');
-    const summaryGrid = summaryView.querySelector('.summary-grid');
+    const formData = new FormData();
+    formData.append('experiences', JSON.stringify(experiences));
     
-    if (experiences.length > 0) {
-        let summaryHTML = '';
-        experiences.forEach(exp => {
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">Company:</span>
-                    <span class="summary-value">${exp.company || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Position:</span>
-                    <span class="summary-value">${exp.position || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Start Date:</span>
-                    <span class="summary-value">${exp.startDate || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">End Date:</span>
-                    <span class="summary-value">${exp.endDate || 'Not set'}</span>
-                </div>
-            `;
-        });
-        summaryGrid.innerHTML = summaryHTML;
-    } else {
-        summaryView.innerHTML = '<div class="empty-state"><p>No work experience added yet.</p></div>';
-    }
-    
-    // Return to summary view
-    cancelEdit('experienceInfo');
-    
-    // Show success message
-    showNotification('Work experience updated successfully!', 'success');
+    saveSectionData('experienceInfo', formData, function() {
+        // Update summary view on success
+        const summaryView = document.getElementById('experienceInfoSummary');
+        const summaryGrid = summaryView.querySelector('.summary-grid');
+        
+        if (experiences.length > 0) {
+            let summaryHTML = '';
+            experiences.forEach(exp => {
+                summaryHTML += `
+                    <div class="summary-item">
+                        <span class="summary-label">Company:</span>
+                        <span class="summary-value">${exp.company || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Position:</span>
+                        <span class="summary-value">${exp.position || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Start Date:</span>
+                        <span class="summary-value">${exp.start_date || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">End Date:</span>
+                        <span class="summary-value">${exp.end_date || 'Not set'}</span>
+                    </div>
+                `;
+            });
+            summaryGrid.innerHTML = summaryHTML;
+        } else {
+            summaryView.innerHTML = '<div class="empty-state"><p>No work experience added yet.</p></div>';
+        }
+        
+        // Return to summary view
+        cancelEdit('experienceInfo');
+    });
 };
 
 /**
@@ -2171,34 +2219,39 @@ window.saveAdditionalInfo = function() {
     const pyTest = document.getElementById('pyTest').value;
     const pyDate = document.getElementById('pyDate').value;
     
-    // Update summary view
-    const summaryView = document.getElementById('additionalInfoSummary');
-    const summaryGrid = summaryView.querySelector('.summary-grid');
+    const formData = new FormData();
+    formData.append('naati_test', naatiTest);
+    formData.append('naati_date', naatiDate);
+    formData.append('py_test', pyTest);
+    formData.append('py_date', pyDate);
     
-    summaryGrid.innerHTML = `
-        <div class="summary-item">
-            <span class="summary-label">NAATI Test:</span>
-            <span class="summary-value">${naatiTest == '1' ? 'Yes' : 'No'}</span>
-        </div>
-        <div class="summary-item">
-            <span class="summary-label">NAATI Date:</span>
-            <span class="summary-value">${naatiDate || 'Not set'}</span>
-        </div>
-        <div class="summary-item">
-            <span class="summary-label">PY Test:</span>
-            <span class="summary-value">${pyTest == '1' ? 'Yes' : 'No'}</span>
-        </div>
-        <div class="summary-item">
-            <span class="summary-label">PY Date:</span>
-            <span class="summary-value">${pyDate || 'Not set'}</span>
-        </div>
-    `;
-    
-    // Return to summary view
-    cancelEdit('additionalInfo');
-    
-    // Show success message
-    showNotification('Additional information updated successfully!', 'success');
+    saveSectionData('additionalInfo', formData, function() {
+        // Update summary view on success
+        const summaryView = document.getElementById('additionalInfoSummary');
+        const summaryGrid = summaryView.querySelector('.summary-grid');
+        
+        summaryGrid.innerHTML = `
+            <div class="summary-item">
+                <span class="summary-label">NAATI Test:</span>
+                <span class="summary-value">${naatiTest == '1' ? 'Yes' : 'No'}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">NAATI Date:</span>
+                <span class="summary-value">${naatiDate || 'Not set'}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">PY Test:</span>
+                <span class="summary-value">${pyTest == '1' ? 'Yes' : 'No'}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">PY Date:</span>
+                <span class="summary-value">${pyDate || 'Not set'}</span>
+            </div>
+        `;
+        
+        // Return to summary view
+        cancelEdit('additionalInfo');
+    });
 };
 
 /**
@@ -2211,39 +2264,43 @@ window.saveCharacterInfo = function() {
     const characters = [];
     
     sections.forEach(section => {
+        const charId = section.querySelector('input[name*="character_id"]')?.value;
         const detail = section.querySelector('textarea[name*="character_detail"]').value;
         
         if (detail) {
             characters.push({
+                character_id: charId || '',
                 detail: detail
             });
         }
     });
     
-    // Update summary view
-    const summaryView = document.getElementById('characterInfoSummary');
-    const summaryGrid = summaryView.querySelector('.summary-grid');
+    const formData = new FormData();
+    formData.append('characters', JSON.stringify(characters));
     
-    if (characters.length > 0) {
-        let summaryHTML = '';
-        characters.forEach(character => {
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">Detail:</span>
-                    <span class="summary-value">${character.detail || 'Not set'}</span>
-                </div>
-            `;
-        });
-        summaryGrid.innerHTML = summaryHTML;
-    } else {
-        summaryView.innerHTML = '<div class="empty-state"><p>No character information added yet.</p></div>';
-    }
-    
-    // Return to summary view
-    cancelEdit('characterInfo');
-    
-    // Show success message
-    showNotification('Character information updated successfully!', 'success');
+    saveSectionData('characterInfo', formData, function() {
+        // Update summary view on success
+        const summaryView = document.getElementById('characterInfoSummary');
+        const summaryGrid = summaryView.querySelector('.summary-grid');
+        
+        if (characters.length > 0) {
+            let summaryHTML = '';
+            characters.forEach(character => {
+                summaryHTML += `
+                    <div class="summary-item">
+                        <span class="summary-label">Detail:</span>
+                        <span class="summary-value">${character.detail || 'Not set'}</span>
+                    </div>
+                `;
+            });
+            summaryGrid.innerHTML = summaryHTML;
+        } else {
+            summaryView.innerHTML = '<div class="empty-state"><p>No character information added yet.</p></div>';
+        }
+        
+        // Return to summary view
+        cancelEdit('characterInfo');
+    });
 };
 
 /**
@@ -2256,6 +2313,7 @@ window.savePartnerInfo = function() {
     const partners = [];
     
     sections.forEach(section => {
+        const partnerId = section.querySelector('input[name*="partner_id"]')?.value;
         const details = section.querySelector('.partner-details').value;
         const relationshipType = section.querySelector('select[name*="partner_relationship_type"]').value;
         const gender = section.querySelector('select[name*="partner_gender"]').value;
@@ -2263,50 +2321,53 @@ window.savePartnerInfo = function() {
         
         if (details || relationshipType || gender || companyType) {
             partners.push({
+                partner_id: partnerId || '',
                 details: details,
-                relationshipType: relationshipType,
+                relationship_type: relationshipType,
                 gender: gender,
-                companyType: companyType
+                company_type: companyType
             });
         }
     });
     
-    // Update summary view
-    const summaryView = document.getElementById('partnerInfoSummary');
-    const summaryGrid = summaryView.querySelector('.summary-grid');
+    const formData = new FormData();
+    formData.append('partners', JSON.stringify(partners));
     
-    if (partners.length > 0) {
-        let summaryHTML = '';
-        partners.forEach(partner => {
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">Details:</span>
-                    <span class="summary-value">${partner.details || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Relationship:</span>
-                    <span class="summary-value">${partner.relationshipType || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Gender:</span>
-                    <span class="summary-value">${partner.gender || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Company Type:</span>
-                    <span class="summary-value">${partner.companyType || 'Not set'}</span>
-                </div>
-            `;
-        });
-        summaryGrid.innerHTML = summaryHTML;
-    } else {
-        summaryView.innerHTML = '<div class="empty-state"><p>No partner information added yet.</p></div>';
-    }
-    
-    // Return to summary view
-    cancelEdit('partnerInfo');
-    
-    // Show success message
-    showNotification('Partner information updated successfully!', 'success');
+    saveSectionData('partnerInfo', formData, function() {
+        // Update summary view on success
+        const summaryView = document.getElementById('partnerInfoSummary');
+        const summaryGrid = summaryView.querySelector('.summary-grid');
+        
+        if (partners.length > 0) {
+            let summaryHTML = '';
+            partners.forEach(partner => {
+                summaryHTML += `
+                    <div class="summary-item">
+                        <span class="summary-label">Details:</span>
+                        <span class="summary-value">${partner.details || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Relationship:</span>
+                        <span class="summary-value">${partner.relationship_type || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Gender:</span>
+                        <span class="summary-value">${partner.gender || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Company Type:</span>
+                        <span class="summary-value">${partner.company_type || 'Not set'}</span>
+                    </div>
+                `;
+            });
+            summaryGrid.innerHTML = summaryHTML;
+        } else {
+            summaryView.innerHTML = '<div class="empty-state"><p>No partner information added yet.</p></div>';
+        }
+        
+        // Return to summary view
+        cancelEdit('partnerInfo');
+    });
 };
 
 /**
@@ -2319,6 +2380,7 @@ window.saveChildrenInfo = function() {
     const children = [];
     
     sections.forEach(section => {
+        const childId = section.querySelector('input[name*="children_id"]')?.value;
         const details = section.querySelector('.partner-details').value;
         const relationshipType = section.querySelector('select[name*="children_relationship_type"]').value;
         const gender = section.querySelector('select[name*="children_gender"]').value;
@@ -2326,50 +2388,53 @@ window.saveChildrenInfo = function() {
         
         if (details || relationshipType || gender || companyType) {
             children.push({
+                child_id: childId || '',
                 details: details,
-                relationshipType: relationshipType,
+                relationship_type: relationshipType,
                 gender: gender,
-                companyType: companyType
+                company_type: companyType
             });
         }
     });
     
-    // Update summary view
-    const summaryView = document.getElementById('childrenInfoSummary');
-    const summaryGrid = summaryView.querySelector('.summary-grid');
+    const formData = new FormData();
+    formData.append('children', JSON.stringify(children));
     
-    if (children.length > 0) {
-        let summaryHTML = '';
-        children.forEach(child => {
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">Details:</span>
-                    <span class="summary-value">${child.details || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Relationship:</span>
-                    <span class="summary-value">${child.relationshipType || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Gender:</span>
-                    <span class="summary-value">${child.gender || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Company Type:</span>
-                    <span class="summary-value">${child.companyType || 'Not set'}</span>
-                </div>
-            `;
-        });
-        summaryGrid.innerHTML = summaryHTML;
-    } else {
-        summaryView.innerHTML = '<div class="empty-state"><p>No children information added yet.</p></div>';
-    }
-    
-    // Return to summary view
-    cancelEdit('childrenInfo');
-    
-    // Show success message
-    showNotification('Children information updated successfully!', 'success');
+    saveSectionData('childrenInfo', formData, function() {
+        // Update summary view on success
+        const summaryView = document.getElementById('childrenInfoSummary');
+        const summaryGrid = summaryView.querySelector('.summary-grid');
+        
+        if (children.length > 0) {
+            let summaryHTML = '';
+            children.forEach(child => {
+                summaryHTML += `
+                    <div class="summary-item">
+                        <span class="summary-label">Details:</span>
+                        <span class="summary-value">${child.details || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Relationship:</span>
+                        <span class="summary-value">${child.relationship_type || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Gender:</span>
+                        <span class="summary-value">${child.gender || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Company Type:</span>
+                        <span class="summary-value">${child.company_type || 'Not set'}</span>
+                    </div>
+                `;
+            });
+            summaryGrid.innerHTML = summaryHTML;
+        } else {
+            summaryView.innerHTML = '<div class="empty-state"><p>No children information added yet.</p></div>';
+        }
+        
+        // Return to summary view
+        cancelEdit('childrenInfo');
+    });
 };
 
 /**
@@ -2382,6 +2447,7 @@ window.saveEoiInfo = function() {
     const eois = [];
     
     sections.forEach(section => {
+        const eoiId = section.querySelector('input[name*="eoi_id"]')?.value;
         const eoiNumber = section.querySelector('input[name*="EOI_number"]').value;
         const subclass = section.querySelector('input[name*="EOI_subclass"]').value;
         const occupation = section.querySelector('input[name*="EOI_occupation"]').value;
@@ -2393,70 +2459,73 @@ window.saveEoiInfo = function() {
         
         if (eoiNumber || subclass || occupation || point || state || submissionDate || roi || password) {
             eois.push({
-                eoiNumber: eoiNumber,
+                eoi_id: eoiId || '',
+                eoi_number: eoiNumber,
                 subclass: subclass,
                 occupation: occupation,
                 point: point,
                 state: state,
-                submissionDate: submissionDate,
+                submission_date: submissionDate,
                 roi: roi,
                 password: password
             });
         }
     });
     
-    // Update summary view
-    const summaryView = document.getElementById('eoiInfoSummary');
-    const summaryGrid = summaryView.querySelector('.summary-grid');
+    const formData = new FormData();
+    formData.append('eois', JSON.stringify(eois));
     
-    if (eois.length > 0) {
-        let summaryHTML = '';
-        eois.forEach(eoi => {
-            summaryHTML += `
-                <div class="summary-item">
-                    <span class="summary-label">EOI Number:</span>
-                    <span class="summary-value">${eoi.eoiNumber || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Subclass:</span>
-                    <span class="summary-value">${eoi.subclass || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Occupation:</span>
-                    <span class="summary-value">${eoi.occupation || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Point:</span>
-                    <span class="summary-value">${eoi.point || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">State:</span>
-                    <span class="summary-value">${eoi.state || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Submission Date:</span>
-                    <span class="summary-value">${eoi.submissionDate || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">ROI:</span>
-                    <span class="summary-value">${eoi.roi || 'Not set'}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Password:</span>
-                    <span class="summary-value">${eoi.password ? '••••••••' : 'Not set'}</span>
-                </div>
-            `;
-        });
-        summaryGrid.innerHTML = summaryHTML;
-    } else {
-        summaryView.innerHTML = '<div class="empty-state"><p>No EOI references added yet.</p></div>';
-    }
-    
-    // Return to summary view
-    cancelEdit('eoiInfo');
-    
-    // Show success message
-    showNotification('EOI references updated successfully!', 'success');
+    saveSectionData('eoiInfo', formData, function() {
+        // Update summary view on success
+        const summaryView = document.getElementById('eoiInfoSummary');
+        const summaryGrid = summaryView.querySelector('.summary-grid');
+        
+        if (eois.length > 0) {
+            let summaryHTML = '';
+            eois.forEach(eoi => {
+                summaryHTML += `
+                    <div class="summary-item">
+                        <span class="summary-label">EOI Number:</span>
+                        <span class="summary-value">${eoi.eoi_number || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Subclass:</span>
+                        <span class="summary-value">${eoi.subclass || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Occupation:</span>
+                        <span class="summary-value">${eoi.occupation || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Point:</span>
+                        <span class="summary-value">${eoi.point || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">State:</span>
+                        <span class="summary-value">${eoi.state || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Submission Date:</span>
+                        <span class="summary-value">${eoi.submission_date || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">ROI:</span>
+                        <span class="summary-value">${eoi.roi || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Password:</span>
+                        <span class="summary-value">${eoi.password ? '••••••••' : 'Not set'}</span>
+                    </div>
+                `;
+            });
+            summaryGrid.innerHTML = summaryHTML;
+        } else {
+            summaryView.innerHTML = '<div class="empty-state"><p>No EOI references added yet.</p></div>';
+        }
+        
+        // Return to summary view
+        cancelEdit('eoiInfo');
+    });
 };
 
 /**
@@ -2484,7 +2553,29 @@ window.removeEmailField = function(button) {
  */
 window.removePassportField = function(button) {
     if (confirm('Are you sure you want to remove this passport detail?')) {
-        button.closest('.repeatable-section').remove();
+        const section = button.closest('.repeatable-section');
+        
+        if (!section) {
+            return;
+        }
+        
+        // Get the passport ID if it exists (for existing records)
+        const passportIdInput = section.querySelector('input[name*="passport_id"]');
+        if (passportIdInput && passportIdInput.value) {
+            // Create hidden input to track deletion
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'delete_passport_ids[]';
+            hiddenInput.value = passportIdInput.value;
+            
+            const form = document.getElementById('editClientForm');
+            if (form) {
+                form.appendChild(hiddenInput);
+            }
+        }
+        
+        // Remove the section from DOM
+        section.remove();
     }
 };
 
@@ -3011,4 +3102,22 @@ $(document).ready(function() {
         });
     }
 });
+
+/**
+ * Go back with refresh to ensure consistent information
+ */
+window.goBackWithRefresh = function() {
+    // Check if we came from a client detail page
+    const referrer = document.referrer;
+    const currentUrl = window.location.href;
+    
+    // If we're on an edit page and came from a detail page, refresh the detail page
+    if (referrer && referrer.includes('/admin/clients/detail/') && currentUrl.includes('/admin/clients/edit/')) {
+        // Navigate back and force refresh
+        window.location.href = referrer + (referrer.includes('?') ? '&' : '?') + '_t=' + Date.now();
+    } else {
+        // Fallback to normal back navigation
+        window.history.back();
+    }
+};
 

@@ -1,5 +1,23 @@
 /* Client Forms CSS - Shared styles for client create and edit pages */
 
+/* Country Code Dropdown Styling */
+.country-code-input {
+    width: 80px !important;
+    height: 42px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px 0 0 4px;
+    font-size: 14px;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.country-code-input:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
 :root {
     --primary-color: #005792;
     --secondary-color: #00BBF0;
@@ -270,11 +288,21 @@
     color: var(--danger-color);
     font-size: 1.2em;
     cursor: pointer;
-    transition: color 0.3s ease;
+    transition: all 0.3s ease;
+    /* Increase clickable area */
+    padding: 8px 12px;
+    min-width: 36px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
 }
 
 .remove-item-btn:hover {
     color: #a71d2a;
+    background: rgba(220, 53, 69, 0.1);
+    border-radius: 4px;
 }
 
 .add-item-btn {
@@ -927,16 +955,16 @@ input:checked + .slider:before {
 .remove-item-btn {
     background: none;
     border: none;
-    padding: 4px 6px;
+    padding: 6px 8px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.8em;
+    font-size: 0.9em;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    min-width: 32px;
+    min-height: 32px;
 }
 
 .edit-item-btn {
@@ -963,6 +991,21 @@ input:checked + .slider:before {
     padding: 20px;
     color: var(--text-muted-color);
     font-style: italic;
+}
+
+/* Compact Passport Entry */
+.summary-item-inline {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.summary-item-inline .summary-label {
+    display: block;
+}
+
+.summary-item-inline .summary-value {
+    display: block;
 }
 
 /* Edit View Styles */

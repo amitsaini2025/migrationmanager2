@@ -4950,17 +4950,60 @@ class ClientsController extends Controller
         $squery = $request->q;
         if ($squery != '') {
             $results = [];
+            
+            // Log the search query for debugging
+            \Log::info('Header search query: ' . $squery);
 
             /**
-             * 1. Search in client_matters by department_reference / other_reference
+             * 1. Search for composite references (client_id + matter_no format like "SHAL2500295-JRP_1")
+             */
+            if (strpos($squery, '-') !== false) {
+                $parts = explode('-', $squery, 2);
+                if (count($parts) == 2) {
+                    $clientIdPart = $parts[0];
+                    $matterNoPart = $parts[1];
+                    
+                    // Search for clients with matching client_id
+                    $matchingClients = \App\Models\Admin::where('role', 7)
+                        ->where('client_id', 'LIKE', "%{$clientIdPart}%")
+                        ->get();
+                    
+                    foreach ($matchingClients as $client) {
+                        // Find matters for this client with matching matter number
+                        $matters = DB::table('client_matters')
+                            ->where('client_id', $client->id)
+                            ->where('client_unique_matter_no', 'LIKE', "%{$matterNoPart}%")
+                            ->get();
+                        
+                        foreach ($matters as $matter) {
+                            $results[] = [
+                                'id' => base64_encode(convert_uuencode($matter->client_id)) . '/Matter/' . $matter->client_unique_matter_no,
+                                'name' => $client->first_name . ' ' . $client->last_name,
+                                'email' => $client->email,
+                                'status' => $client->is_archived ? 'Archived' : $client->type,
+                                'cid' => $client->id,
+                            ];
+                        }
+                    }
+                }
+            }
+            
+            /**
+             * 2. Search in client_matters by department_reference / other_reference / client_unique_matter_no
              */
             $matterMatches = DB::table('client_matters')
-                ->where('department_reference', 'LIKE', "%{$squery}%")
-                ->orWhere('other_reference', 'LIKE', "%{$squery}%")
+                ->where(function($query) use ($squery) {
+                    $query->where('department_reference', 'LIKE', "%{$squery}%")
+                          ->orWhere('other_reference', 'LIKE', "%{$squery}%")
+                          ->orWhere('client_unique_matter_no', 'LIKE', "%{$squery}%");
+                })
                 ->get();
 
             // Get all matching client IDs in one go
             $matterClientIds = $matterMatches->pluck('client_id')->unique()->toArray();
+            
+            // Log matter matches for debugging
+            \Log::info('Matter matches found: ' . count($matterMatches) . ' for query: ' . $squery);
 
             if (!empty($matterClientIds)) {
                 $matterClients = \App\Models\Admin::whereIn('id', $matterClientIds)->get();
@@ -4981,7 +5024,7 @@ class ClientsController extends Controller
             }
 
             /**
-             * 2. Search in admins (clients) with subqueries for phones/emails
+             * 3. Search in admins (clients) with subqueries for phones/emails
              */
             $d = '';
             if (strstr($squery, '/')) {

@@ -1,7 +1,9 @@
-﻿    $(document).ready(function() {
+﻿    // Global flag to prevent redirects during page initialization
+    var isInitializing = true;
+
+    $(document).ready(function() {
         
-        // Flag to prevent redirects during page initialization
-        var isInitializing = true;
+        // Flag to prevent redirects during page initialization (now global)
 
         function adjustActivityFeedHeight() {
             let mainContentHeight = $('.main-content').outerHeight();
@@ -1525,6 +1527,9 @@ $(document).ready(function() {
 
     jQuery(document).ready(function($){
 
+        // Initialize Select2 for the matter dropdown
+        $('#sel_matter_id_client_detail').select2();
+
         $('.selecttemplate').select2({dropdownParent: $('#emailmodal')});
 
         //mail preview click update mail_is_read bit
@@ -1652,42 +1657,6 @@ $(document).ready(function() {
 
 
 
-        $(document).on('click', '#mark-star-client-modal', function () {
-            var adminId = $(this).data('admin-id');
-            $.ajax({
-                url: window.ClientDetailConfig.urls.checkStarClient,
-                type: 'POST',
-                data: {
-                    admin_id: adminId,
-                    _token: window.ClientDetailConfig.csrfToken
-                },
-                success: function (response) {
-                    if (response.status === 'exists') {
-                        alert('Client is already a star employee.');
-                    } else if (response.status === 'not_star') {
-                        if (confirm('Do you want to make this client a star client?')) {
-                            // Send update request
-                            $.ajax({
-                                url: window.ClientDetailConfig.urls.checkStarClient,
-                                type: 'POST',
-                                data: {
-                                    admin_id: adminId,
-                                    update: true,
-                                    _token: window.ClientDetailConfig.csrfToken
-                                },
-                                success: function (res) {
-                                    if (res.status === 'updated') {
-                                        alert('Client marked as star successfully.');
-                                    }
-                                }
-                            });
-                        }
-                    } else {
-                        alert(response.message || 'Something went wrong.');
-                    }
-                }
-            });
-        });
 
 
         // Handle click event on the action button

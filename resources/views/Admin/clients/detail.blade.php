@@ -36,19 +36,131 @@ use App\Http\Controllers\Controller;
                         }
                     } ?>
                 </h3>
-                <p class="client-matter">Australia_1</p>
-                <p class="client-name">{{$fetchedData->first_name}} {{$fetchedData->last_name}}</p>
+                <p class="client-name">{{$fetchedData->first_name}} {{$fetchedData->last_name}} <a style="color: #0d6efd !important;" href="{{URL::to('/admin/clients/edit/'.base64_encode(convert_uuencode(@$fetchedData->id)))}}" title="Edit"><i class="fa fa-edit"></i></a></p>
+                
+                <!-- Client Portal Toggle in Sidebar -->
+                <?php
+                // Check if client has any records in client_matters table
+                $client_matters_exist = DB::table('client_matters')
+                    ->where('client_id', $fetchedData->id)
+                    ->exists();
+                ?>
+                @if($client_matters_exist)
+                <div class="client-portal-section" style="margin-top: 10px; padding: 8px; background-color: #f8f9fa; border-radius: 4px;">
+                    <span class="portal-label" style="font-size: 12px; color: #666;">Client Portal:</span>
+                    <label class="toggle-switch" style="float: right;">
+                        <input type="checkbox" id="client-portal-toggle" 
+                               data-client-id="{{ $fetchedData->id}}" 
+                               {{ isset($fetchedData->cp_status) && $fetchedData->cp_status == 1 ? 'checked' : '' }}>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                @endif
+                
+                <!-- Client/Lead Toggle in Sidebar -->
+                <div class="sidebar-client-lead-toggle" style="margin-top: 10px; padding: 8px; background-color: #f8f9fa; border-radius: 4px;">
+                    <div class="client-lead-toggle" style="display: flex; gap: 5px; justify-content: center;">
+                        <a class="badge-outline col-greenf convertLeadToClient <?php if($fetchedData->type == 'client'){ echo 'active'; }?>" href="javascript:;" role="button" style="padding: 4px 8px; font-size: 11px;">Client</a>
+                        <a href="javascript:;" class="badge-outline col-greenf <?php if($fetchedData->type == 'lead'){ echo 'active'; } ?>" style="padding: 4px 8px; font-size: 11px;">Lead</a>
+                    </div>
+                </div>
             </div>
             <div class="client-actions">
-                <a style="color: #0d6efd !important;" href="javascript:;" data-id="{{@$fetchedData->id}}" data-email="{{@$fetchedData->email}}" data-name="{{@$fetchedData->first_name}} {{@$fetchedData->last_name}}" class="sendmsg" title="Send Message"><i class="fas fa-comment-alt"></i></a>
+                <a style="color: #0d6efd !important;" href="javascript:;" class="create_note_d" datatype="note" title="Add Notes"><i class="fas fa-plus"></i></a>
                 <a style="color: #0d6efd !important;" href="javascript:;" data-id="{{@$fetchedData->id}}" data-email="{{@$fetchedData->email}}" data-name="{{@$fetchedData->first_name}} {{@$fetchedData->last_name}}" class="clientemail" title="Compose Mail"><i class="fa fa-envelope"></i></a>
-                <a style="color: #0d6efd !important;" href="{{URL::to('/admin/clients/edit/'.base64_encode(convert_uuencode(@$fetchedData->id)))}}" title="Edit"><i class="fa fa-edit"></i></a>
+                <a style="color: #0d6efd !important;" href="javascript:;" datatype="not_picked_call" class="not_picked_call" title="Not Picked Call"><i class="fas fa-mobile-alt"></i></a>
                 @if($fetchedData->is_archived == 0)
                     <a style="color: #0d6efd !important;"  class="arcivedval" href="javascript:;" onclick="arcivedAction({{$fetchedData->id}}, 'admins')" title="Archive"><i class="fas fa-archive"></i></a>
                 @else
                     <a style="color: #0d6efd !important;"  class="arcivedval" style="background-color:#007bff;" href="javascript:;" onclick="arcivedAction({{$fetchedData->id}}, 'admins')" title="UnArchive"><i style="color: #fff;" class="fas fa-archive"></i></a>
                 @endif
             </div>
+            
+            <!-- Matter Selection Dropdown in Sidebar -->
+            <div class="sidebar-matter-selection" style="margin-top: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 4px;">
+                <?php
+                $assign_info_arr = \App\Models\Admin::select('type')->where('id',@$fetchedData->id)->first();
+                ?>
+                @if($assign_info_arr->type == 'client')
+                    <?php
+                    if($id1)
+                    {
+                        //if client_unique_matter_no is present in url
+                        $matter_cnt = DB::table('client_matters')
+                        ->select('client_matters.id')
+                        ->where('client_matters.client_id',@$fetchedData->id)
+                        ->where('client_matters.client_unique_matter_no',$id1)
+                        ->where('client_matters.matter_status',1)
+                        ->whereNotNull('client_matters.sel_matter_id')
+                        ->count();
+                        if( $matter_cnt >0 )
+                        {
+                            // Fetch all matters, but we'll sort them in Blade to prioritize the URL matter
+                            $matter_list_arr = DB::table('client_matters')
+                            ->leftJoin('matters', 'client_matters.sel_matter_id', '=', 'matters.id')
+                            ->select('client_matters.id','client_matters.client_unique_matter_no','matters.title')
+                            ->where('client_matters.client_id',@$fetchedData->id)
+                            ->where('client_matters.matter_status',1)
+                            ->where('client_matters.sel_matter_id','!=',1)
+                            ->get();
+                            $clientmatter_info_arr = \App\Models\ClientMatter::select('id')->where('client_id',$fetchedData->id)->where('client_unique_matter_no',$id1)->first();
+                            $latestClientMatterId = $clientmatter_info_arr ? $clientmatter_info_arr->id : null;
+
+                            // Convert matter_list_arr to an array for sorting
+                            $matter_list_arr = $matter_list_arr->toArray();
+                            // Sort matters: URL matter ($id1) comes first, others follow
+                            usort($matter_list_arr, function($a, $b) use ($id1) {
+                                if ($a->client_unique_matter_no == $id1 && $b->client_unique_matter_no != $id1) {
+                                    return -1; // $a (URL matter) comes first
+                                } elseif ($a->client_unique_matter_no != $id1 && $b->client_unique_matter_no == $id1) {
+                                    return 1; // $b (URL matter) comes first
+                                }
+                                return 0; // Maintain original order for other matters
+                            });
+                            ?>
+                        <select name="matter_id" id="sel_matter_id_client_detail" class="form-control select2 compact-select" data-valid="required" style="font-size: 12px;">
+                            <option value="">Select Matters</option>
+                            @foreach($matter_list_arr as $matterlist)
+                                <option value="{{$matterlist->id}}" {{ $matterlist->id == $latestClientMatterId ? 'selected' : '' }} data-clientuniquematterno="{{@$matterlist->client_unique_matter_no}}">{{@$matterlist->title}}({{@$matterlist->client_unique_matter_no}})</option>
+                            @endforeach
+                        </select>
+                    <?php
+                        }
+                    }
+                    else
+                    {
+                        $matter_cnt = DB::table('client_matters')
+                        ->select('client_matters.id')
+                        ->where('client_matters.client_id',@$fetchedData->id)
+                        ->where('client_matters.matter_status',1)
+                        ->whereNotNull('client_matters.sel_matter_id')
+                        ->count();
+                        if( $matter_cnt >0 )
+                        {
+                            $matter_list_arr = DB::table('client_matters')
+                            ->leftJoin('matters', 'client_matters.sel_matter_id', '=', 'matters.id')
+                            ->select('client_matters.id','client_matters.client_unique_matter_no','matters.title')
+                            ->where('client_matters.client_id',@$fetchedData->id)
+                            ->where('client_matters.matter_status',1)
+                            ->where('client_matters.sel_matter_id','!=',1)
+                            ->orderBy('client_matters.created_at', 'desc')
+                            ->get();
+                            $latestClientMatter = \App\Models\ClientMatter::where('client_id',$fetchedData->id)->where('matter_status',1)->latest()->first();
+                            $latestClientMatterId = $latestClientMatter ? $latestClientMatter->id : null;
+                            ?>
+                        <select name="matter_id" id="sel_matter_id_client_detail" class="form-control select2 compact-select" data-valid="required" style="font-size: 12px;">
+                            <option value="">Select Matters</option>
+                            @foreach($matter_list_arr as $matterlist)
+                                <option value="{{$matterlist->id}}" {{ $matterlist->id == $latestClientMatterId ? 'selected' : '' }} data-clientuniquematterno="{{@$matterlist->client_unique_matter_no}}">{{@$matterlist->title}}({{@$matterlist->client_unique_matter_no}})</option>
+                            @endforeach
+                        </select>
+                    <?php
+                        }
+                    }
+                    ?>
+                @endif
+            </div>
+            
             <h3 class="initial-consultation-heading">
                 <?php
                 // Get the current workflow stage for this client matter
@@ -169,155 +281,6 @@ use App\Http\Controllers\Controller;
         </div>
         <div class="custom-error-msg">
         </div>
-                 <!-- Compact Client Header -->
-            <div class="compact-client-header">
-                <!-- Client/Lead Toggle -->
-                <div class="client-lead-toggle">
-                    <a class="badge-outline col-greenf convertLeadToClient <?php if($fetchedData->type == 'client'){ echo 'active'; }?>" href="javascript:;" role="button">Client</a>
-                    <a href="javascript:;" class="badge-outline col-greenf <?php if($fetchedData->type == 'lead'){ echo 'active'; } ?>">Lead</a>
-                </div>
-
-                <!-- Star Button -->
-                <a href="javascript:;" data-admin-id="{{ $fetchedData->id }}" title="Mark Star Client" id="mark-star-client-modal" class="btn btn-primary btn-sm star-btn"><i class="fas fa-star"></i></a>
-
-                <!-- Custom Switch -->
-                <div class="custom-switches">
-                    <label class="custom-switch">
-                        <input type="checkbox" name="custom-switch-checkbox" class="custom-switch-input" checked>
-                        <span class="custom-switch-indicator"></span>
-                    </label>
-                </div>
-
-                <!-- Matter Selection -->
-                <div class="matter-selection">
-                    <span class="status-badge" style="background-color:#FFF !important;"><?php
-                    $assign_info_arr = \App\Models\Admin::select('type')->where('id',@$fetchedData->id)->first();
-                    ?>
-                    @if($assign_info_arr->type == 'client')
-                        <?php
-                        $general_matter_list_arr = DB::table('client_matters')
-                        ->select('client_matters.id','client_matters.client_unique_matter_no')
-                        ->where('client_matters.client_id',@$fetchedData->id)
-                        ->where('client_matters.sel_matter_id',1)
-                        ->get();
-                        if( !empty($general_matter_list_arr) && count($general_matter_list_arr)>0 ){ ?>
-                            @foreach($general_matter_list_arr as $generallist)
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input general_matter_checkbox_client_detail" type="checkbox" id="general_matter_checkbox_client_detail_{{$generallist->id}}" value="{{$generallist->id}}" data-clientuniquematterno="{{@$generallist->client_unique_matter_no}}">
-                                    <label class="form-check-label" for="general_matter_checkbox_client_detail_{{$generallist->id}}">General Matter ({{@$generallist->client_unique_matter_no}})</label>
-                                </div>
-                            @endforeach
-                        <?php
-                        }?>
-
-                        <?php
-                        if($id1)
-                        {
-                            //if client_unique_matter_no is present in url
-                            $matter_cnt = DB::table('client_matters')
-                            ->select('client_matters.id')
-                            ->where('client_matters.client_id',@$fetchedData->id)
-                            ->where('client_matters.client_unique_matter_no',$id1)
-                            ->where('client_matters.matter_status',1)
-                            ->whereNotNull('client_matters.sel_matter_id')
-                            ->count(); //dd($matter_cnt);
-                            if( $matter_cnt >0 )
-                            {
-                                // Fetch all matters, but we'll sort them in Blade to prioritize the URL matter
-                                $matter_list_arr = DB::table('client_matters')
-                                ->leftJoin('matters', 'client_matters.sel_matter_id', '=', 'matters.id')
-                                ->select('client_matters.id','client_matters.client_unique_matter_no','matters.title')
-                                ->where('client_matters.client_id',@$fetchedData->id)
-                                //->where('client_matters.client_unique_matter_no',$id1)
-                                ->where('client_matters.matter_status',1)
-                                ->where('client_matters.sel_matter_id','!=',1)
-                                ->get(); //dd($matter_list_arr);
-                                $clientmatter_info_arr = \App\Models\ClientMatter::select('id')->where('client_id',$fetchedData->id)->where('client_unique_matter_no',$id1)->first();
-                                $latestClientMatterId = $clientmatter_info_arr ? $clientmatter_info_arr->id : null;
-
-                                // Convert matter_list_arr to an array for sorting
-                                $matter_list_arr = $matter_list_arr->toArray();
-                                // Sort matters: URL matter ($id1) comes first, others follow
-                                usort($matter_list_arr, function($a, $b) use ($id1) {
-                                    if ($a->client_unique_matter_no == $id1 && $b->client_unique_matter_no != $id1) {
-                                        return -1; // $a (URL matter) comes first
-                                    } elseif ($a->client_unique_matter_no != $id1 && $b->client_unique_matter_no == $id1) {
-                                        return 1; // $b (URL matter) comes first
-                                    }
-                                    return 0; // Maintain original order for other matters
-                                });
-                                ?>
-                            <select name="matter_id" id="sel_matter_id_client_detail" class="form-control select2 compact-select" data-valid="required">
-                                <option value="">Select Matters</option>
-                                @foreach($matter_list_arr as $matterlist)
-                                    <option value="{{$matterlist->id}}" {{ $matterlist->id == $latestClientMatterId ? 'selected' : '' }} data-clientuniquematterno="{{@$matterlist->client_unique_matter_no}}">{{@$matterlist->title}}({{@$matterlist->client_unique_matter_no}})</option>
-                                @endforeach
-                            </select>
-                        <?php
-                            }
-                        }
-                        else
-                        {
-                            $matter_cnt = DB::table('client_matters')
-                            ->select('client_matters.id')
-                            ->where('client_matters.client_id',@$fetchedData->id)
-                            ->where('client_matters.matter_status',1)
-                            ->whereNotNull('client_matters.sel_matter_id')
-                            ->count(); //dd($matter_cnt);
-                            if( $matter_cnt >0 )
-                            {
-                                $matter_list_arr = DB::table('client_matters')
-                                ->leftJoin('matters', 'client_matters.sel_matter_id', '=', 'matters.id')
-                                ->select('client_matters.id','client_matters.client_unique_matter_no','matters.title')
-                                ->where('client_matters.client_id',@$fetchedData->id)
-                                ->where('client_matters.matter_status',1)
-                                ->where('client_matters.sel_matter_id','!=',1)
-                                ->orderBy('client_matters.created_at', 'desc')
-                                ->get();
-                                $latestClientMatter = \App\Models\ClientMatter::where('client_id',$fetchedData->id)->where('matter_status',1)->latest()->first();
-                                $latestClientMatterId = $latestClientMatter ? $latestClientMatter->id : null;
-                                ?>
-                            <select name="matter_id" id="sel_matter_id_client_detail" class="form-control select2 compact-select" data-valid="required">
-                                <option value="">Select Matters</option>
-                                @foreach($matter_list_arr as $matterlist)
-                                    <option value="{{$matterlist->id}}" {{ $matterlist->id == $latestClientMatterId ? 'selected' : '' }} data-clientuniquematterno="{{@$matterlist->client_unique_matter_no}}">{{@$matterlist->title}}({{@$matterlist->client_unique_matter_no}})</option>
-                                @endforeach
-                            </select>
-                        <?php
-                            }
-                        }
-                        ?>
-                    @endif
-                </span>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="action-buttons">
-                    <a href="javascript:;" datatype="not_picked_call" class="not_picked_call btn btn-primary btn-sm">NP</a>
-                    <button class="btn btn-primary btn-sm create_note_d" datatype="note"><i class="fas fa-plus"></i> Add Notes</button>
-                </div>
-                
-                <!-- Client Portal Toggle -->
-                <?php
-                // Check if client has any records in client_matters table
-                $client_matters_exist = DB::table('client_matters')
-                    ->where('client_id', $fetchedData->id)
-                    ->exists();
-                ?>
-                @if($client_matters_exist)
-                <div class="client-portal-section">
-                    <span class="portal-label">Client Portal:</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="client-portal-toggle" 
-                               data-client-id="{{ $fetchedData->id}}" 
-                               {{ isset($fetchedData->cp_status) && $fetchedData->cp_status == 1 ? 'checked' : '' }}>
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                @endif
-             </div>
-        </header>
-
         <!-- Main Content Container with Vertical Tabs -->
         <div class="main-content-with-tabs">
             <!-- Tab Contents -->

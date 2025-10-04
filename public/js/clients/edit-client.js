@@ -3,9 +3,263 @@
  * Contains all functionality for the client edit form
  */
 
-// ===== ULTRA-ROBUST TAB FUNCTIONALITY - IMMEDIATE DEFINITION =====
+// ===== SCROLL-TO-SECTION FUNCTIONALITY =====
 
-// Define openTab function IMMEDIATELY in global scope
+// Define scrollToSection function IMMEDIATELY in global scope
+window.scrollToSection = function(sectionId) {
+    try {
+        const section = document.getElementById(sectionId);
+        if (section) {
+            // Smooth scroll to section
+            section.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+            
+            // Update active tab button
+            updateActiveTabButton(sectionId);
+        } else {
+            console.error('Section not found:', sectionId);
+        }
+    } catch (error) {
+        console.error('Error in scrollToSection function:', error);
+    }
+};
+
+// Update active nav item based on section
+function updateActiveTabButton(sectionId) {
+    // Remove active class from all nav items
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Add active class to the corresponding nav item
+    const items = document.querySelectorAll('.nav-item');
+    items.forEach(item => {
+        const onclick = item.getAttribute('onclick');
+        if (onclick && onclick.includes(sectionId)) {
+            item.classList.add('active');
+        }
+    });
+}
+
+// Toggle sidebar for mobile
+window.toggleSidebar = function() {
+    const sidebar = document.getElementById('sidebarNav');
+    if (sidebar) {
+        sidebar.classList.toggle('open');
+    }
+};
+
+// Close sidebar when clicking outside on mobile
+document.addEventListener('click', function(event) {
+    const sidebar = document.getElementById('sidebarNav');
+    const toggle = document.querySelector('.sidebar-toggle');
+    
+    if (sidebar && toggle && window.innerWidth <= 1024) {
+        if (!sidebar.contains(event.target) && !toggle.contains(event.target)) {
+            sidebar.classList.remove('open');
+        }
+    }
+});
+
+// Close sidebar when clicking on nav item on mobile
+document.addEventListener('click', function(event) {
+    if (event.target.closest('.nav-item') && window.innerWidth <= 1024) {
+        const sidebar = document.getElementById('sidebarNav');
+        if (sidebar) {
+            sidebar.classList.remove('open');
+        }
+    }
+});
+
+// Scroll spy functionality - update active nav item based on scroll position
+function initScrollSpy() {
+    const sections = document.querySelectorAll('.content-section');
+    const navItems = document.querySelectorAll('.nav-item:not(.summary-nav)');
+    
+    if (sections.length === 0 || navItems.length === 0) return;
+    
+    function updateActiveNav() {
+        let current = '';
+        const scrollPosition = window.scrollY + 100; // Offset for better detection
+        
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            const sectionHeight = section.offsetHeight;
+            
+            if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
+                current = section.getAttribute('id');
+            }
+        });
+        
+        if (current) {
+            // Remove active class from all nav items
+            navItems.forEach(item => item.classList.remove('active'));
+            
+            // Add active class to current nav item
+            navItems.forEach(item => {
+                const onclick = item.getAttribute('onclick');
+                if (onclick && onclick.includes(current)) {
+                    item.classList.add('active');
+                }
+            });
+        }
+    }
+    
+    // Throttle scroll events for better performance
+    let ticking = false;
+    window.addEventListener('scroll', function() {
+        if (!ticking) {
+            requestAnimationFrame(function() {
+                updateActiveNav();
+                ticking = false;
+            });
+            ticking = true;
+        }
+    });
+    
+    // Initial call
+    updateActiveNav();
+}
+
+// ===== GO TO TOP BUTTON FUNCTIONALITY =====
+
+// Scroll to top function
+window.scrollToTop = function() {
+    try {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    } catch (error) {
+        console.error('Error scrolling to top:', error);
+        // Fallback for older browsers
+        document.documentElement.scrollTop = 0;
+    }
+};
+
+// Show/hide Go to Top button based on scroll position
+function initGoToTopButton() {
+    const goToTopBtn = document.getElementById('goToTopBtn');
+    if (!goToTopBtn) return;
+    
+    function toggleGoToTopButton() {
+        const scrollPosition = window.scrollY;
+        const showThreshold = 300; // Show button after scrolling 300px
+        
+        if (scrollPosition > showThreshold) {
+            if (!goToTopBtn.classList.contains('show')) {
+                goToTopBtn.classList.remove('hide');
+                goToTopBtn.classList.add('show');
+            }
+        } else {
+            if (goToTopBtn.classList.contains('show')) {
+                goToTopBtn.classList.remove('show');
+                goToTopBtn.classList.add('hide');
+                
+                // Remove hide class after animation completes
+                setTimeout(() => {
+                    goToTopBtn.classList.remove('hide');
+                }, 300);
+            }
+        }
+    }
+    
+    // Throttle scroll events for better performance
+    let ticking = false;
+    window.addEventListener('scroll', function() {
+        if (!ticking) {
+            requestAnimationFrame(function() {
+                toggleGoToTopButton();
+                ticking = false;
+            });
+            ticking = true;
+        }
+    });
+    
+    // Initial call
+    toggleGoToTopButton();
+}
+
+// ===== SUMMARY MODAL FUNCTIONALITY =====
+
+// Open summary modal
+window.openSummaryModal = function() {
+    try {
+        const modal = document.getElementById('summaryModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            generateSummaryContent();
+        } else {
+            console.error('Summary modal not found');
+        }
+    } catch (error) {
+        console.error('Error opening summary modal:', error);
+    }
+};
+
+// Close summary modal
+window.closeSummaryModal = function() {
+    try {
+        const modal = document.getElementById('summaryModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error closing summary modal:', error);
+    }
+};
+
+// Close modal when clicking outside of it
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('summaryModal');
+    if (modal && event.target === modal) {
+        closeSummaryModal();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const modal = document.getElementById('summaryModal');
+        if (modal && modal.style.display === 'flex') {
+            closeSummaryModal();
+        }
+    }
+});
+
+// Generate summary content
+function generateSummaryContent() {
+    const summaryContent = document.getElementById('summaryContent');
+    if (!summaryContent) return;
+    
+    let summaryHTML = '<div class="summary-sections">';
+    
+    // Personal Information
+    summaryHTML += '<div class="summary-section">';
+    summaryHTML += '<h4><i class="fas fa-user"></i> Personal Information</h4>';
+    summaryHTML += '<p><strong>Name:</strong> ' + (document.getElementById('firstName')?.value || '') + ' ' + (document.getElementById('lastName')?.value || '') + '</p>';
+    summaryHTML += '<p><strong>Client ID:</strong> ' + (document.getElementById('clientId')?.value || '') + '</p>';
+    summaryHTML += '<p><strong>Date of Birth:</strong> ' + (document.getElementById('dob')?.value || '') + '</p>';
+    summaryHTML += '<p><strong>Gender:</strong> ' + (document.getElementById('gender')?.value || '') + '</p>';
+    summaryHTML += '<p><strong>Marital Status:</strong> ' + (document.getElementById('martialStatus')?.value || '') + '</p>';
+    summaryHTML += '</div>';
+    
+    // Add more sections as needed...
+    summaryHTML += '<div class="summary-section">';
+    summaryHTML += '<h4><i class="fas fa-info-circle"></i> Additional Information</h4>';
+    summaryHTML += '<p>Review all sections above to ensure all information is correct before submitting.</p>';
+    summaryHTML += '</div>';
+    
+    summaryHTML += '</div>';
+    summaryContent.innerHTML = summaryHTML;
+}
+
+// ===== LEGACY TAB FUNCTIONALITY (KEPT FOR COMPATIBILITY) =====
+
+// Define openTab function IMMEDIATELY in global scope (legacy support)
 window.openTab = function(evt, tabName) {
     try {
         // Prevent default behavior
@@ -1061,6 +1315,7 @@ function initGoogleMaps() {
 }
 
 // Make functions globally available
+// Global function assignments
 window.initGoogleMaps = initGoogleMaps;
 window.addPartnerRow = addPartnerRow;
 window.removePartnerRow = removePartnerRow;
@@ -1081,6 +1336,13 @@ window.initializeDatepickers = initializeDatepickers;
 window.toggleSpouseDetailsSection = toggleSpouseDetailsSection;
 window.addCharacterRow = addCharacterRow;
 
+// New scroll and modal functions
+window.scrollToSection = scrollToSection;
+window.openSummaryModal = openSummaryModal;
+window.closeSummaryModal = closeSummaryModal;
+window.toggleSidebar = toggleSidebar;
+window.scrollToTop = scrollToTop;
+
 // ===== DOCUMENT READY =====
 $(document).ready(function() {
     // Call initialization when DOM is ready
@@ -1092,6 +1354,12 @@ $(document).ready(function() {
     
     // Initialize datepickers on page load
     initializeDatepickers();
+    
+    // Initialize scroll spy for sidebar navigation
+    initScrollSpy();
+    
+    // Initialize Go to Top button
+    initGoToTopButton();
 
     // Initialize age on page load and set up datepicker for DOB
     const dobInput = document.getElementById('dob');

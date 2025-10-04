@@ -32,15 +32,50 @@
                 </div>
             @endif
 
-            <div class="content-tabs">
-                <button class="tab-button active" onclick="openTab(event, 'personalTab')"><i class="fas fa-user"></i> Personal</button>
-                <button class="tab-button" onclick="openTab(event, 'visaPassportCitizenshipTab')"><i class="fas fa-passport"></i> Visa, Passport & Citizenship</button>
-                <button class="tab-button" onclick="openTab(event, 'addressTravelTab')"><i class="fas fa-map-marker-alt"></i> Address & Travel</button>
-                <button class="tab-button" onclick="openTab(event, 'skillsEducationTab')"><i class="fas fa-briefcase"></i> Skills & Education</button>
-                <button class="tab-button" onclick="openTab(event, 'otherInformationTab')"><i class="fas fa-info-circle"></i> Other Information</button>
-                <button class="tab-button" onclick="openTab(event, 'familyTab')"><i class="fas fa-info-circle"></i> Family Information</button>
-                <button class="tab-button" onclick="openTab(event, 'eoiReferenceTab')"><i class="fas fa-file-alt"></i> EOI Reference</button>
-                <button class="tab-button" onclick="openTab(event, 'summaryTab')"><i class="fas fa-list"></i> Summary</button>
+            <!-- Mobile Sidebar Toggle -->
+            <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <!-- Sidebar Navigation -->
+            <div class="sidebar-navigation" id="sidebarNav">
+                <div class="nav-header">
+                    <h3><i class="fas fa-edit"></i> Edit Client</h3>
+                </div>
+                <nav class="nav-menu">
+                    <button class="nav-item active" onclick="scrollToSection('personalSection')">
+                        <i class="fas fa-user"></i>
+                        <span>Personal</span>
+                    </button>
+                    <button class="nav-item" onclick="scrollToSection('visaPassportSection')">
+                        <i class="fas fa-passport"></i>
+                        <span>Visa, Passport & Citizenship</span>
+                    </button>
+                    <button class="nav-item" onclick="scrollToSection('addressTravelSection')">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>Address & Travel</span>
+                    </button>
+                    <button class="nav-item" onclick="scrollToSection('skillsEducationSection')">
+                        <i class="fas fa-briefcase"></i>
+                        <span>Skills & Education</span>
+                    </button>
+                    <button class="nav-item" onclick="scrollToSection('otherInformationSection')">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Other Information</span>
+                    </button>
+                    <button class="nav-item" onclick="scrollToSection('familySection')">
+                        <i class="fas fa-users"></i>
+                        <span>Family Information</span>
+                    </button>
+                    <button class="nav-item" onclick="scrollToSection('eoiReferenceSection')">
+                        <i class="fas fa-file-alt"></i>
+                        <span>EOI Reference</span>
+                    </button>
+                    <button class="nav-item summary-nav" onclick="openSummaryModal()">
+                        <i class="fas fa-list"></i>
+                        <span>Summary</span>
+                    </button>
+                </nav>
             </div>
             
             <!-- Configuration for external JavaScript -->
@@ -54,13 +89,15 @@
                 };
             </script>
 
-            <form id="editClientForm" action="{{ route('admin.clients.edit') }}" method="POST">
-                @csrf
-                <input type="hidden" name="id" value="{{ $fetchedData->id }}">
-                <input type="hidden" name="type" value="{{ $fetchedData->type }}">
+            <!-- Main Content Area -->
+            <div class="main-content-area">
+                <form id="editClientForm" action="{{ route('admin.clients.edit') }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="id" value="{{ $fetchedData->id }}">
+                    <input type="hidden" name="type" value="{{ $fetchedData->type }}">
 
-                <!-- Personal Tab -->
-                <div id="personalTab" class="tab-content active">
+                <!-- Personal Section -->
+                <section id="personalSection" class="content-section">
                     <section class="form-section">
                         <h3><i class="fas fa-id-card"></i> Basic Information</h3>
                         <div class="content-grid">
@@ -221,10 +258,10 @@
 
         <button type="button" class="add-item-btn" onclick="addEmailAddress()"><i class="fas fa-plus-circle"></i> Add Email Address</button>
     </section>
-                </div>
+                </section>
 
-                <!-- Visa, Passport & Citizenship Tab -->
-                <div id="visaPassportCitizenshipTab" class="tab-content">
+                <!-- Visa, Passport & Citizenship Section -->
+                <section id="visaPassportSection" class="content-section">
                     <section class="form-section">
                         <h3><i class="fas fa-passport"></i> Passport Information</h3>
                         <div class="content-grid">
@@ -314,10 +351,10 @@
                             </label>
                         </div>
                     </section>
-                </div>
+                </section>
 
-                <!-- Address & Travel Tab -->
-                <div id="addressTravelTab" class="tab-content">
+                <!-- Address & Travel Section -->
+                <section id="addressTravelSection" class="content-section">
                     <!-- Address Information Section -->
                     <section class="form-section">
                         <h3><i class="fas fa-home"></i> Address Information</h3>
@@ -385,10 +422,10 @@
 
                         <button type="button" class="add-item-btn" onclick="addTravelDetail()"><i class="fas fa-plus-circle"></i> Add Travel Detail</button>
                     </section>
-                </div>
+                </section>
 
-                <!-- Skills & Education Tab -->
-                <div id="skillsEducationTab" class="tab-content">
+                <!-- Skills & Education Section -->
+                <section id="skillsEducationSection" class="content-section">
                     <section class="form-section">
                         <h3><i class="fas fa-graduation-cap"></i> Educational Qualifications</h3>
                         
@@ -455,10 +492,10 @@
 
                         <button type="button" class="add-item-btn" onclick="addExperience()"><i class="fas fa-plus-circle"></i> Add Experience</button>
                     </section>
-                </div>
+                </section>
 
-                <!-- Other Information Tab -->
-                <div id="otherInformationTab" class="tab-content">
+                <!-- Other Information Section -->
+                <section id="otherInformationSection" class="content-section">
                     <section class="form-section">
                         <h3><i class="fas fa-info-circle"></i> Additional Information</h3>
                         
@@ -509,10 +546,10 @@
                             <button type="button" class="add-item-btn" onclick="addCharacterRow('characterContainer', 'character_detail')"><i class="fas fa-plus-circle"></i> Add Character</button>
                         </div>
                     </section>
-                </div>
+                </section>
 
-                <!-- Family Information Tab -->
-                <div id="familyTab" class="tab-content">
+                <!-- Family Information Section -->
+                <section id="familySection" class="content-section">
                     <!-- Partner Section -->
                     <section class="form-section">
                         <h3><i class="fas fa-heart"></i> Partner</h3>
@@ -662,10 +699,10 @@
 
                         <button type="button" class="add-item-btn" onclick="addPartnerRow('children')"><i class="fas fa-plus-circle"></i> Add Child</button>
                     </section>
-                </div>
+                </section>
 
-                <!-- EOI Reference Tab -->
-                <div id="eoiReferenceTab" class="tab-content">
+                <!-- EOI Reference Section -->
+                <section id="eoiReferenceSection" class="content-section">
                     <section class="form-section">
                         <h3><i class="fas fa-file-alt"></i> EOI References</h3>
                         
@@ -719,17 +756,35 @@
 
                         <button type="button" class="add-item-btn" onclick="addEoiReference()"><i class="fas fa-plus-circle"></i> Add EOI Reference</button>
                     </section>
-                </div>
+                </section>
+                </form>
+            </div>
+        </div>
+    </div>
 
-                <!-- Summary Tab -->
-                <div id="summaryTab" class="tab-content">
-                    <section class="form-section">
-                        <h3><i class="fas fa-list"></i> Summary</h3>
-                        <p>Review all entered information before submitting.</p>
-                        <!-- Summary content will be populated here -->
-                    </section>
+    <!-- Go to Top Button -->
+    <button id="goToTopBtn" class="go-to-top-btn" onclick="scrollToTop()" title="Go to Top">
+        <i class="fas fa-chevron-up"></i>
+    </button>
+
+    <!-- Summary Modal -->
+    <div id="summaryModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-list"></i> Summary</h2>
+                <span class="close" onclick="closeSummaryModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Review all entered information before submitting.</p>
+                <!-- Summary content will be populated here -->
+                <div id="summaryContent">
+                    <!-- Summary will be generated dynamically -->
                 </div>
-            </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeSummaryModal()">Close</button>
+                <button type="submit" form="editClientForm" class="btn btn-primary" onclick="return validateForm()">Save Changes</button>
+            </div>
         </div>
     </div>
 

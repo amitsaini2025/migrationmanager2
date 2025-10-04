@@ -4,8 +4,6 @@ ActivitiesLog.php
 Admin.php
 AdminMeta.php
 AgentDetails.php
-AiChat.php
-AiChatMessage.php
 Application.php
 ApplicationActivitiesLog.php
 ApplicationDocument.php

@@ -238,29 +238,6 @@ $converter = new ImprovedPdfConverterService();
 $result = $converter->convertToHighQualityPdf($file);
 ```
 
-### 5. AI Integration Module
-
-#### Key Models
-- `App\AiChat` - AI chat sessions
-- `App\AiChatMessage` - Chat messages
-
-#### Key Features
-- **OpenAI Integration**: GPT-powered assistance
-- **Context-Aware Responses**: Client-specific information
-- **Chat History**: Persistent conversation tracking
-- **Multi-Language Support**: Multiple language assistance
-
-#### AI Service Integration
-```php
-// OpenAI client configuration
-$openAiClient = new Client([
-    'base_uri' => 'https://api.openai.com/v1/',
-    'headers' => [
-        'Authorization' => 'Bearer ' . config('services.openai.api_key'),
-        'Content-Type' => 'application/json',
-    ],
-]);
-```
 
 ### 6. Email Management Module
 

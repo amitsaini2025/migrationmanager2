@@ -60,8 +60,6 @@ use App\Models\ClientTravelInformation;
 use App\Models\ClientCharacter;
 use App\Models\ClientRelationship;
 
-use App\Models\AiChat;
-use App\Models\AiChatMessage;
 use Illuminate\Support\Facades\Http;
 
 use App\Models\Form956;
@@ -4952,17 +4950,60 @@ class ClientsController extends Controller
         $squery = $request->q;
         if ($squery != '') {
             $results = [];
+            
+            // Log the search query for debugging
+            \Log::info('Header search query: ' . $squery);
 
             /**
-             * 1. Search in client_matters by department_reference / other_reference
+             * 1. Search for composite references (client_id + matter_no format like "SHAL2500295-JRP_1")
+             */
+            if (strpos($squery, '-') !== false) {
+                $parts = explode('-', $squery, 2);
+                if (count($parts) == 2) {
+                    $clientIdPart = $parts[0];
+                    $matterNoPart = $parts[1];
+                    
+                    // Search for clients with matching client_id
+                    $matchingClients = \App\Models\Admin::where('role', 7)
+                        ->where('client_id', 'LIKE', "%{$clientIdPart}%")
+                        ->get();
+                    
+                    foreach ($matchingClients as $client) {
+                        // Find matters for this client with matching matter number
+                        $matters = DB::table('client_matters')
+                            ->where('client_id', $client->id)
+                            ->where('client_unique_matter_no', 'LIKE', "%{$matterNoPart}%")
+                            ->get();
+                        
+                        foreach ($matters as $matter) {
+                            $results[] = [
+                                'id' => base64_encode(convert_uuencode($matter->client_id)) . '/Matter/' . $matter->client_unique_matter_no,
+                                'name' => $client->first_name . ' ' . $client->last_name,
+                                'email' => $client->email,
+                                'status' => $client->is_archived ? 'Archived' : $client->type,
+                                'cid' => $client->id,
+                            ];
+                        }
+                    }
+                }
+            }
+            
+            /**
+             * 2. Search in client_matters by department_reference / other_reference / client_unique_matter_no
              */
             $matterMatches = DB::table('client_matters')
-                ->where('department_reference', 'LIKE', "%{$squery}%")
-                ->orWhere('other_reference', 'LIKE', "%{$squery}%")
+                ->where(function($query) use ($squery) {
+                    $query->where('department_reference', 'LIKE', "%{$squery}%")
+                          ->orWhere('other_reference', 'LIKE', "%{$squery}%")
+                          ->orWhere('client_unique_matter_no', 'LIKE', "%{$squery}%");
+                })
                 ->get();
 
             // Get all matching client IDs in one go
             $matterClientIds = $matterMatches->pluck('client_id')->unique()->toArray();
+            
+            // Log matter matches for debugging
+            \Log::info('Matter matches found: ' . count($matterMatches) . ' for query: ' . $squery);
 
             if (!empty($matterClientIds)) {
                 $matterClients = \App\Models\Admin::whereIn('id', $matterClientIds)->get();
@@ -4983,7 +5024,7 @@ class ClientsController extends Controller
             }
 
             /**
-             * 2. Search in admins (clients) with subqueries for phones/emails
+             * 3. Search in admins (clients) with subqueries for phones/emails
              */
             $d = '';
             if (strstr($squery, '/')) {
@@ -11838,82 +11879,6 @@ private function getUserName($userId) {
         return response()->json($data);
     }
 
-    public function showRatings()
-    {
-        // Get the authenticated user's ID
-        $clientId = auth()->user()->id;
-
-        // Fetch the latest rating for the user
-        $latestRating = DB::table('client_ratings')
-            ->where('client_id', $clientId)
-            ->orderBy('created_at', 'desc')
-            ->first(['education_rating', 'migration_rating']);
-
-        // Calculate average ratings
-        $averageEducationRating = DB::table('client_ratings')->avg('education_rating');
-        $averageMigrationRating = DB::table('client_ratings')->avg('migration_rating');
-
-        // Return the data to the view
-        return view('Admin.clients.detail', [
-            'latest_rating' => $latestRating,
-            'average_education_rating' => $averageEducationRating,
-            'average_migration_rating' => $averageMigrationRating,
-        ]);
-    }
-
-    public function saveRating(Request $request)
-	{
-		// Validate the incoming request
-		$validated = $request->validate([
-		'education_rating' => 'required|integer|min:1|max:5',
-		'migration_rating' => 'required|integer|min:1|max:5',
-		]);
-
-		// Get the authenticated user's ID
-		$clientId = auth()->user()->id;
-
-		// Check if the record exists
-		$existingRating = DB::table('client_ratings')->where('client_id', $clientId)->first();
-
-		if ($existingRating) {
-		// If record exists, update it
-		DB::table('client_ratings')
-		->where('client_id', $clientId)
-		->update([
-		'education_rating' => $request->input('education_rating'),
-		'migration_rating' => $request->input('migration_rating'),
-		'updated_at' => now(), // Update the timestamp
-		]);
-		} else {
-		// If no record exists, insert a new one
-		DB::table('client_ratings')->insert([
-		'client_id' => $clientId,
-		'education_rating' => $request->input('education_rating'),
-		'migration_rating' => $request->input('migration_rating'),
-		'created_at' => now(), // Set the creation timestamp
-		'updated_at' => now(), // Set the updated timestamp
-		]);
-		}
-
-		// Calculate the sum of all ratings and the count of ratings
-		$totalEducationRating = DB::table('client_ratings')->sum('education_rating');
-		$totalMigrationRating = DB::table('client_ratings')->sum('migration_rating');
-
-		$countEducationRating = DB::table('client_ratings')->count('education_rating');
-		$countMigrationRating = DB::table('client_ratings')->count('migration_rating');
-
-		// Calculate the average by dividing the total sum by the count
-		$averageEducationRating = $countEducationRating > 0 ? $totalEducationRating / $countEducationRating : 0;
-		$averageMigrationRating = $countMigrationRating > 0 ? $totalMigrationRating / $countMigrationRating : 0;
-
-		// Return a JSON response
-		return response()->json([
-		'status' => true,
-		'message' => 'Ratings saved or updated successfully.',
-		'average_education_rating' => $averageEducationRating,
-		'average_migration_rating' => $averageMigrationRating
-		]);
-	}
 
     //Re-assign inbox email
     public function reassiginboxemail(Request $request) {
@@ -13302,157 +13267,10 @@ private function getUserName($userId) {
         ], 200);
     }
 
-    public function loadMatterAiData(Request $request)
-    {
-        $clientId = $request->client_id;
-        $clientUniqueMatterNo = $request->client_unique_matter_no;
 
-        // Fetch client details
-        $client = Admin::find($clientId);
-        if (!$client) {
-            return response()->json(['status' => false, 'message' => 'Client not found']);
-        }
 
-        // Fetch personal details
-        $personalDetails = [
-            'dob' => $client->dob,
-            'age' => $client->age,
-            'gender' => $client->gender,
-            'marital_status' => $client->martial_status,
-            'email' => ClientEmail::where('client_id', $clientId)->get(),
-            'phone' => ClientContact::where('client_id', $clientId)->get(),
-            'address' => ClientAddress::where('client_id', $clientId)->latest()->first(),
-            'visa' => ClientVisaCountry::where('client_id', $clientId)->latest()->first(),
-            'qualification' => ClientQualification::where('client_id', $clientId)->latest()->first(),
-            'experience' => ClientExperience::where('client_id', $clientId)->latest()->first(),
-            'test_score' => ClientTestScore::where('client_id', $clientId)->latest()->first(),
-        ];
 
-        // Fetch notes
-        $notes = ClientNote::where('client_id', $clientId)->get();
 
-        // Fetch edit page details (similar to personal details but including all tabs)
-        $editDetails = [
-            'personal' => $personalDetails,
-            'notes' => $notes,
-            // Add other tabs' data as needed
-        ];
-
-        // Store data in session or temporary storage for AI processing
-        session(['matter_ai_data_' . $clientId => [
-            'personal_details' => $personalDetails,
-            'notes' => $notes,
-            'edit_details' => $editDetails,
-        ]]);
-
-        return response()->json(['status' => true, 'message' => 'Data loaded successfully']);
-    }
-
-    public function getChatHistory(Request $request)
-    {
-        $clientId = $request->client_id;
-        $chats = AiChat::where('client_id', $clientId)
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($chat) {
-                return [
-                    'id' => $chat->id,
-                    'title' => $chat->title ?? 'Chat on ' . Carbon::parse($chat->created_at)->format('d/m/Y'),
-                    'created_at' => Carbon::parse($chat->created_at)->format('d/m/Y H:i'),
-                ];
-            });
-
-        return response()->json(['status' => true, 'chats' => $chats]);
-    }
-
-    public function getChatMessages(Request $request)
-    {
-        $chatId = $request->chat_id;
-        $messages = AiChatMessage::where('chat_id', $chatId)
-            ->orderBy('created_at', 'asc')
-            ->get()
-            ->map(function ($message) {
-                return [
-                    'sender' => $message->sender,
-                    'message' => $message->message,
-                    'created_at' => Carbon::parse($message->created_at)->format('d/m/Y H:i'),
-                ];
-            });
-
-        return response()->json(['status' => true, 'messages' => $messages]);
-    }
-
-    public function sendAiMessage(Request $request)
-    {
-        $clientId = $request->client_id;
-        $message = $request->message;
-
-        // Fetch stored data
-        $aiData = session('matter_ai_data_' . $clientId);
-        if (!$aiData) {
-            return response()->json(['status' => false, 'message' => 'No data available for AI processing']);
-        }
-
-        // Create or find a chat session
-        $chat = AiChat::where('client_id', $clientId)
-            ->whereDate('created_at', Carbon::today())
-            ->first();
-
-        if (!$chat) {
-            $chat = AiChat::create([
-                'client_id' => $clientId,
-                'title' => 'Chat on ' . Carbon::today()->format('d/m/Y'),
-            ]);
-        }
-
-        // Save user message
-        AiChatMessage::create([
-            'chat_id' => $chat->id,
-            'sender' => 'user',
-            'message' => $message,
-        ]);
-
-        // Process the message with AI (mock implementation)
-        $response = $this->processAiQuery($message, $aiData);
-
-        // Save AI response
-        AiChatMessage::create([
-            'chat_id' => $chat->id,
-            'sender' => 'ai',
-            'message' => $response,
-        ]);
-
-        return response()->json(['status' => true, 'response' => $response]);
-    }
-
-    private function processAiQuery($message, $aiData)
-    {
-        // This is a mock implementation. In a real scenario, you'd integrate with an AI service like OpenAI, Grok, etc.
-        // For now, we'll return a simple response based on the query.
-
-        $message = strtolower($message);
-
-        // Example: Check for keywords and respond accordingly
-        if (str_contains($message, 'age')) {
-            $age = $aiData['personal_details']['age'] ?? 'N/A';
-            return "The client's age is $age.";
-        } elseif (str_contains($message, 'visa')) {
-            $visa = $aiData['personal_details']['visa'];
-            if ($visa) {
-                return "The client's visa type is {$visa->visa_type}, expiring on " . Carbon::parse($visa->visa_expiry_date)->format('d/m/Y') . ".";
-            }
-            return "No visa information available.";
-        } elseif (str_contains($message, 'notes')) {
-            $notes = $aiData['notes'];
-            if ($notes->isNotEmpty()) {
-                $latestNote = $notes->first();
-                return "The latest note for the client: {$latestNote->note} (Added on " . Carbon::parse($latestNote->created_at)->format('d/m/Y') . ")";
-            }
-            return "No notes available for this client.";
-        } else {
-            return "I'm sorry, I couldn't understand your query. Please ask something related to the client's personal details, notes, or edit page data.";
-        }
-    }
 
     // OLD HTTP DOWNLOAD METHOD - COMMENTED OUT
     // public function download_document(Request $request)

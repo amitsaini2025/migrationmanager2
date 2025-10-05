@@ -290,15 +290,14 @@
                                 @if(!empty($clientEmails) && count($clientEmails) > 0)
                                     @foreach($clientEmails as $emailVal)
                                         @php
-                                            $verifiedEmail = \App\Models\Admin::where('id',$fetchedData->id)->whereNotNull('email_verified_date')->first();
                                         @endphp
                                         <div style="margin-bottom: 5px;">
                                             {{ $emailVal->email }}
                                             @if(isset($emailVal->email_type) && $emailVal->email_type == "Personal")
-                                                @if($verifiedEmail)
-                                                    <i class="fas fa-check-circle"></i>
+                                                @if($emailVal->is_verified)
+                                                    <i class="fas fa-check-circle" style="color: #28a745;" title="Verified on {{ $emailVal->verified_at ? $emailVal->verified_at->format('M j, Y g:i A') : 'Unknown' }}"></i>
                                                 @else
-                                                    <i class="far fa-circle unverified"></i>
+                                                    <i class="far fa-circle unverified" style="color: #6c757d;" title="Not verified"></i>
                                                 @endif
                                             @endif
                                             @if(isset($emailVal->email_type) && $emailVal->email_type != "")

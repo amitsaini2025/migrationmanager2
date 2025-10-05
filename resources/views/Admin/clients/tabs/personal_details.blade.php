@@ -54,7 +54,7 @@
                             <span class="field-value">
                                 <?php
                                 if( \App\Models\ClientEmail::where('client_id', $fetchedData->id)->exists()) {
-                                    $clientEmails = \App\Models\ClientEmail::select('email','email_type')->where('client_id', $fetchedData->id)->get();
+                                    $clientEmails = \App\Models\ClientEmail::select('email','email_type','is_verified','verified_at')->where('client_id', $fetchedData->id)->get();
                                 } else {
                                     if( \App\Models\Admin::where('id', $fetchedData->id)->exists()){
                                         $clientEmails = \App\Models\Admin::select('email','email_type')->where('id', $fetchedData->id)->get();
@@ -65,25 +65,23 @@
                                 if( !empty($clientEmails) && count($clientEmails)>0 ){
                                     $emailStr = "";
                                     foreach($clientEmails as $emailKey=>$emailVal){
-                                        $verifiedEmail = \App\Models\Admin::where('id',$fetchedData->id)->whereNotNull('email_verified_date')->first();
 
                                         //Check email is verified or not
                                         $check_verified_email = $emailVal->email_type."".$emailVal->email;
                                         if( isset($emailVal->email_type) && $emailVal->email_type != "" ){
-                                            if( $emailVal->email_type == "Personal" ){
-                                                if ( $verifiedEmail) {
-                                                    //$emailStr .= $emailVal->email.'('.$emailVal->email_type .') <i class="fas fa-check-circle verified-icon fa-lg"></i> <br/>';
-                                                    $emailStr .= $emailVal->email.' <i class="fas fa-check-circle verified-icon fa-lg"></i> <br/>';
-                                                } else {
-                                                    //$emailStr .= $emailVal->email.'('.$emailVal->email_type .') <i class="far fa-circle unverified-icon fa-lg"></i> <br/>';
-                                                    $emailStr .= $emailVal->email.' <i class="far fa-circle unverified-icon fa-lg"></i> <br/>';
-                                                }
+                                            // Show verification status for ALL email types
+                                            if ( $emailVal->is_verified ) {
+                                                $emailStr .= $emailVal->email.' <i class="fas fa-check-circle verified-icon fa-lg" style="color: #28a745;" title="Verified on ' . ($emailVal->verified_at ? $emailVal->verified_at->format('M j, Y g:i A') : 'Unknown') . '"></i> <br/>';
                                             } else {
-                                                //$emailStr .= $emailVal->email.'('.$emailVal->email_type .') <br/>';
-                                                $emailStr .= $emailVal->email.' <br/>';
+                                                $emailStr .= $emailVal->email.' <i class="far fa-circle unverified-icon fa-lg" style="color: #6c757d;" title="Not verified"></i> <br/>';
                                             }
                                         } else {
-                                            $emailStr .= $emailVal->email.' <br/>';
+                                            // For emails without type, still show verification status if available
+                                            if ( isset($emailVal->is_verified) && $emailVal->is_verified ) {
+                                                $emailStr .= $emailVal->email.' <i class="fas fa-check-circle verified-icon fa-lg" style="color: #28a745;" title="Verified on ' . ($emailVal->verified_at ? $emailVal->verified_at->format('M j, Y g:i A') : 'Unknown') . '"></i> <br/>';
+                                            } else {
+                                                $emailStr .= $emailVal->email.' <i class="far fa-circle unverified-icon fa-lg" style="color: #6c757d;" title="Not verified"></i> <br/>';
+                                            }
                                         }
                                     }
                                     echo $emailStr;
@@ -98,7 +96,7 @@
                             <span class="field-value">
                                 <?php
                                 if( \App\Models\ClientContact::where('client_id', $fetchedData->id)->exists()) {
-                                    $clientContacts = \App\Models\ClientContact::select('phone','country_code','contact_type')->where('client_id', $fetchedData->id)->where('contact_type', '!=', 'Not In Use')->get();
+                                    $clientContacts = \App\Models\ClientContact::select('phone','country_code','contact_type','is_verified','verified_at')->where('client_id', $fetchedData->id)->where('contact_type', '!=', 'Not In Use')->get();
                                 } else {
                                     if( \App\Models\Admin::where('id', $fetchedData->id)->exists()){
                                         $clientContacts = \App\Models\Admin::select('phone','country_code','contact_type')->where('id', $fetchedData->id)->get();
@@ -111,7 +109,6 @@
                                     foreach($clientContacts as $conKey=>$conVal){
                                         //Check phone is verified or not
                                         $check_verified_phoneno = $conVal->country_code."".$conVal->phone;
-                                        $verifiedNumber = \App\Models\Admin::where('id',$fetchedData->id)->whereNotNull('phone_verified_date')->first();
                                         if( isset($conVal->country_code) && $conVal->country_code != "" ){
                                             $country_code = $conVal->country_code;
                                         } else {
@@ -119,20 +116,19 @@
                                         }
 
                                         if( isset($conVal->contact_type) && $conVal->contact_type != "" ){
-                                            if( $conVal->contact_type == "Personal" ){
-                                                if ( $verifiedNumber) {
-                                                    //$phonenoStr .= $country_code."".$conVal->phone.'('.$conVal->contact_type .') <i class="fas fa-check-circle verified-icon fa-lg"></i> <br/>';
-                                                    $phonenoStr .= $country_code."".$conVal->phone.' <i class="fas fa-check-circle verified-icon fa-lg"></i> <br/>';
-                                                } else {
-                                                    //$phonenoStr .= $country_code."".$conVal->phone.'('.$conVal->contact_type .') <i class="far fa-circle unverified-icon fa-lg"></i> <br/>';
-                                                    $phonenoStr .= $country_code."".$conVal->phone.' <i class="far fa-circle unverified-icon fa-lg"></i> <br/>';
-                                                }
+                                            // Show verification status for ALL contact types
+                                            if ( $conVal->is_verified ) {
+                                                $phonenoStr .= $country_code."".$conVal->phone.' <i class="fas fa-check-circle verified-icon fa-lg" style="color: #28a745;" title="Verified on ' . ($conVal->verified_at ? $conVal->verified_at->format('M j, Y g:i A') : 'Unknown') . '"></i> <br/>';
                                             } else {
-                                                //$phonenoStr .= $country_code."".$conVal->phone.'('.$conVal->contact_type .') <br/>';
-                                                $phonenoStr .= $country_code."".$conVal->phone.' <br/>';
+                                                $phonenoStr .= $country_code."".$conVal->phone.' <i class="far fa-circle unverified-icon fa-lg" style="color: #6c757d;" title="Not verified"></i> <br/>';
                                             }
                                         } else {
-                                            $phonenoStr .= $country_code."".$conVal->phone.' <br/>';
+                                            // For phones without type, still show verification status if available
+                                            if ( isset($conVal->is_verified) && $conVal->is_verified ) {
+                                                $phonenoStr .= $country_code."".$conVal->phone.' <i class="fas fa-check-circle verified-icon fa-lg" style="color: #28a745;" title="Verified on ' . ($conVal->verified_at ? $conVal->verified_at->format('M j, Y g:i A') : 'Unknown') . '"></i> <br/>';
+                                            } else {
+                                                $phonenoStr .= $country_code."".$conVal->phone.' <i class="far fa-circle unverified-icon fa-lg" style="color: #6c757d;" title="Not verified"></i> <br/>';
+                                            }
                                         }
                                     }
                                     echo $phonenoStr;

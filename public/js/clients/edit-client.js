@@ -1057,7 +1057,10 @@ function validatePersonalPhoneNumbers() {
                 const errorMessage = `<span class="text-danger">Personal phone number ${fullPhone} is already used in another entry.</span>`;
                 section.querySelector('.content-grid').insertAdjacentHTML('afterend', errorMessage);
                 // Disable the submit button
-                document.querySelector('button[type="submit"]').disabled = true;
+                const submitButton = document.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = true;
+                }
             } else {
                 personalPhones[fullPhone] = true;
             }
@@ -1066,7 +1069,10 @@ function validatePersonalPhoneNumbers() {
 
     // Re-enable the submit button if no duplicates are found
     if (!Object.keys(personalPhones).some(phone => personalPhones[phone] === true && Object.keys(personalPhones).filter(p => p === phone).length > 1)) {
-        document.querySelector('button[type="submit"]').disabled = false;
+        const submitButton = document.querySelector('button[type="submit"]');
+        if (submitButton) {
+            submitButton.disabled = false;
+        }
     }
 }
 
@@ -1147,10 +1153,12 @@ function validatePersonalEmailTypes() {
 
     // Enable or disable the submit button based on validation
     const submitButton = document.querySelector('button[type="submit"]');
-    if (personalCount > 1) {
-        submitButton.disabled = true;
-    } else {
-        submitButton.disabled = false;
+    if (submitButton) {
+        if (personalCount > 1) {
+            submitButton.disabled = true;
+        } else {
+            submitButton.disabled = false;
+        }
     }
 
     return personalCount <= 1;
@@ -1678,7 +1686,7 @@ window.saveEmailAddresses = function() {
     
     sections.forEach(section => {
         const type = section.querySelector('.email-type-selector').value;
-        const email = section.querySelector('input[name*="email"]').value;
+        const email = section.querySelector('input[type="email"]').value;
         const emailId = section.querySelector('input[name*="email_id"]')?.value;
         
         if (type && email) {
@@ -1699,18 +1707,41 @@ window.saveEmailAddresses = function() {
         const summaryGrid = summaryView.querySelector('.summary-grid');
         
         if (emails.length > 0) {
-            summaryGrid.innerHTML = emails.map((email, index) => `
-                <div class="summary-item">
-                    <span class="summary-label">${email.email_type}:</span>
-                    <span class="summary-value">${email.email}</span>
-                </div>
-            `).join('');
+            summaryGrid.innerHTML = emails.map((email, index) => {
+                // For newly saved emails, show verify button
+                const verificationButton = !email.is_verified ? 
+                    `<button type="button" class="btn-verify-email" onclick="sendEmailVerification('${email.email_id || 'pending'}', '${email.email}')" data-email-id="${email.email_id || 'pending'}">
+                        <i class="fas fa-lock"></i> Verify
+                     </button>` : 
+                    `<span class="verified-badge">
+                        <i class="fas fa-check-circle"></i> Verified
+                     </span>`;
+                
+                return `
+                    <div class="summary-item">
+                        <span class="summary-label">${email.email_type}:</span>
+                        <span class="summary-value">${email.email}</span>
+                        ${verificationButton}
+                    </div>
+                `;
+            }).join('');
         } else {
             summaryView.innerHTML = '<div class="empty-state"><p>No email addresses added yet.</p></div>';
         }
         
         // Return to summary view
         cancelEdit('emailAddresses');
+        
+        // Start polling for newly saved unverified emails
+        setTimeout(() => {
+            const newEmailVerifyButtons = document.querySelectorAll('.btn-verify-email');
+            newEmailVerifyButtons.forEach(button => {
+                const emailId = button.getAttribute('data-email-id');
+                if (emailId && emailId !== 'pending') {
+                    startEmailVerificationPolling(emailId);
+                }
+            });
+        }, 1000);
     });
 };
 
@@ -1743,7 +1774,7 @@ window.editEmailAddress = function(index) {
     const container = document.getElementById('emailAddressesContainer');
     const sections = container.querySelectorAll('.repeatable-section');
     if (sections[index]) {
-        const emailInput = sections[index].querySelector('input[name*="email"]');
+        const emailInput = sections[index].querySelector('input[type="email"]');
         if (emailInput) {
             emailInput.focus();
         }
@@ -3457,6 +3488,16 @@ $(document).ready(function() {
             }
         });
     }
+
+    // Initialize email verification polling for existing unverified emails
+    const emailVerifyButtons = document.querySelectorAll('.btn-verify-email');
+    emailVerifyButtons.forEach(button => {
+        const emailId = button.getAttribute('data-email-id');
+        if (emailId && emailId !== 'pending') {
+            // Start polling for this email
+            startEmailVerificationPolling(emailId);
+        }
+    });
 });
 
 /**
@@ -3476,4 +3517,219 @@ window.goBackWithRefresh = function() {
         window.history.back();
     }
 };
+
+/**
+ * Email Verification Functions
+ */
+
+// Send email verification
+window.sendEmailVerification = function(emailId, emailAddress) {
+    if (!emailId || !emailAddress) {
+        alert('Invalid email information');
+        return;
+    }
+
+    if (!confirm(`Send verification email to ${emailAddress}?`)) {
+        return;
+    }
+
+    // Show loading state
+    const button = document.querySelector(`button[data-email-id="${emailId}"]`);
+    const originalContent = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    button.disabled = true;
+
+    fetch('/admin/clients/email/send-verification', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({
+            email_id: emailId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Verification email sent successfully! Please ask the client to check their email and click the verification link.');
+            
+            // Update button to show resend option with polling indicator
+            button.innerHTML = '<i class="fas fa-redo"></i> Resend <i class="fas fa-spinner fa-spin" style="margin-left: 5px; font-size: 10px;"></i>';
+            button.onclick = function() { resendEmailVerification(emailId, emailAddress); };
+            
+            // Start polling for verification status
+            startEmailVerificationPolling(emailId);
+        } else {
+            alert('Error: ' + (data.message || 'Failed to send verification email'));
+            button.innerHTML = originalContent;
+        }
+        button.disabled = false;
+    })
+    .catch(error => {
+        console.error('Error sending verification email:', error);
+        alert('Network error. Please try again.');
+        button.innerHTML = originalContent;
+        button.disabled = false;
+    });
+};
+
+// Resend email verification
+function resendEmailVerification(emailId, emailAddress) {
+    if (!confirm(`Resend verification email to ${emailAddress}?`)) {
+        return;
+    }
+
+    const button = document.querySelector(`button[data-email-id="${emailId}"]`);
+    const originalContent = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    button.disabled = true;
+
+    fetch('/admin/clients/email/resend-verification', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({
+            email_id: emailId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Verification email resent successfully!');
+            
+            // Start polling for verification status
+            startEmailVerificationPolling(emailId);
+        } else {
+            alert('Error: ' + (data.message || 'Failed to resend verification email'));
+        }
+        button.innerHTML = originalContent;
+        button.disabled = false;
+    })
+    .catch(error => {
+        console.error('Error resending verification email:', error);
+        alert('Network error. Please try again.');
+        button.innerHTML = originalContent;
+        button.disabled = false;
+    });
+}
+
+// Update verification status in UI
+function updateEmailVerificationStatus(emailId, isVerified) {
+    const verifyBtn = document.querySelector(`button[data-email-id="${emailId}"]`);
+    if (verifyBtn) {
+        if (isVerified) {
+            const summaryItem = verifyBtn.closest('.summary-item');
+            if (summaryItem) {
+                const verifiedBadge = document.createElement('span');
+                verifiedBadge.className = 'verified-badge';
+                verifiedBadge.innerHTML = '<i class="fas fa-check-circle"></i> Verified';
+                verifiedBadge.title = 'Verified on ' + new Date().toLocaleString();
+                
+                // Replace the verify button with verified badge
+                verifyBtn.parentNode.replaceChild(verifiedBadge, verifyBtn);
+            }
+        }
+    }
+    
+    // Also update any detail view icons
+    updateDetailViewEmailIcons(emailId, isVerified);
+}
+
+// Update email verification icons in detail views
+function updateDetailViewEmailIcons(emailId, isVerified) {
+    // Find the email address in detail views and update its icon
+    const emailElements = document.querySelectorAll('span, div');
+    emailElements.forEach(element => {
+        if (element.textContent && element.textContent.includes('@')) {
+            // Check if this element contains an email address
+            const emailMatch = element.textContent.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+            if (emailMatch) {
+                const emailAddress = emailMatch[1];
+                
+                // Find the corresponding ClientEmail record (this would need to be passed from the backend)
+                // For now, we'll update based on the email address pattern
+                const iconElement = element.querySelector('i');
+                if (iconElement) {
+                    if (isVerified) {
+                        iconElement.className = 'fas fa-check-circle verified-icon fa-lg';
+                        iconElement.style.color = '#28a745';
+                        iconElement.title = 'Verified on ' + new Date().toLocaleString();
+                    } else {
+                        iconElement.className = 'far fa-circle unverified-icon fa-lg';
+                        iconElement.style.color = '#6c757d';
+                        iconElement.title = 'Not verified';
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Check email verification status
+function checkEmailVerificationStatus(emailId) {
+    if (!emailId || emailId === 'pending') return;
+    
+    fetch(`/admin/clients/email/status/${emailId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.is_verified) {
+            updateEmailVerificationStatus(emailId, true);
+            
+            // Show success notification
+            showNotification('Email verified successfully!', 'success');
+            
+            // Refresh the page after a short delay to update all views
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        }
+    })
+    .catch(error => {
+        console.error('Error checking email verification status:', error);
+    });
+}
+
+// Start polling for email verification status
+function startEmailVerificationPolling(emailId) {
+    if (!emailId || emailId === 'pending') return;
+    
+    // Check immediately
+    checkEmailVerificationStatus(emailId);
+    
+    // Then check every 5 seconds for 2 minutes
+    let pollCount = 0;
+    const maxPolls = 24; // 2 minutes (24 * 5 seconds)
+    
+    const pollInterval = setInterval(() => {
+        pollCount++;
+        
+        // Check if button still exists (not verified yet)
+        const verifyBtn = document.querySelector(`button[data-email-id="${emailId}"]`);
+        if (!verifyBtn) {
+            // Button was replaced with verified badge, stop polling
+            clearInterval(pollInterval);
+            return;
+        }
+        
+        checkEmailVerificationStatus(emailId);
+        
+        // Stop polling after max attempts
+        if (pollCount >= maxPolls) {
+            clearInterval(pollInterval);
+            // Remove spinner from button
+            if (verifyBtn && verifyBtn.innerHTML.includes('fa-spinner')) {
+                verifyBtn.innerHTML = verifyBtn.innerHTML.replace('<i class="fas fa-spinner fa-spin" style="margin-left: 5px; font-size: 10px;"></i>', '');
+            }
+        }
+    }, 5000); // Check every 5 seconds
+}
 

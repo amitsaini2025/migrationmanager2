@@ -346,6 +346,16 @@
                                         <div class="summary-item">
                                             <span class="summary-label">{{ $email->email_type }}:</span>
                                             <span class="summary-value">{{ $email->email }}</span>
+                                            <!-- Verification Button/Badge -->
+                                            @if($email->is_verified)
+                                                <span class="verified-badge" title="Verified on {{ $email->verified_at ? $email->verified_at->format('M j, Y g:i A') : 'Unknown' }}">
+                                                    <i class="fas fa-check-circle"></i> Verified
+                                                </span>
+                                            @else
+                                                <button type="button" class="btn-verify-email" onclick="sendEmailVerification({{ $email->id }}, '{{ $email->email }}')" data-email-id="{{ $email->id }}">
+                                                    <i class="fas fa-lock"></i> Verify
+                                                </button>
+                                            @endif
                                         </div>
                                     @endforeach
                                 </div>

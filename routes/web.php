@@ -207,6 +207,13 @@ Route::prefix('admin')->group(function() {
             Route::get('/status/{contactId}', 'Admin\PhoneVerificationController@getStatus')->name('status');
         });
 
+        // Email Verification Routes
+        Route::prefix('clients/email')->name('clients.email.')->group(function () {
+            Route::post('/send-verification', 'Admin\EmailVerificationController@sendVerificationEmail')->name('sendVerification');
+            Route::post('/resend-verification', 'Admin\EmailVerificationController@resendVerificationEmail')->name('resendVerification');
+            Route::get('/status/{emailId}', 'Admin\EmailVerificationController@getStatus')->name('status');
+        });
+
         Route::post('/clients/followup/store', 'Admin\ClientsController@followupstore');
 
 
@@ -518,8 +525,6 @@ Route::prefix('admin')->group(function() {
         //merge records
         Route::post('/merge_records','Admin\ClientsController@merge_records')->name('client.merge_records');
 
-        //update email verified at client detail page
-        Route::post('/clients/update-email-verified', 'Admin\ClientsController@updateemailverified');
 
 
         //Appointment Dates Not Available
@@ -1063,3 +1068,7 @@ Route::get('/documents/{id}/download-signed', [App\Http\Controllers\DocumentCont
 Route::get('/documents/{id}/download-signed-and-thankyou', [App\Http\Controllers\DocumentController::class, 'downloadSignedAndThankyou'])->name('documents.signed.download_and_thankyou');
 Route::get('/documents/thankyou/{id?}', [App\Http\Controllers\DocumentController::class, 'thankyou'])->name('documents.thankyou');
 Route::get('/documents/{id?}', [App\Http\Controllers\DocumentController::class, 'index'])->name('documents.index');
+
+// Public email verification route (no auth required)
+Route::get('/verify-email/{token}', 'Admin\EmailVerificationController@verifyEmail')->name('admin.clients.email.verify');
+

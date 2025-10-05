@@ -291,7 +291,6 @@ class ClientsController extends Controller
                 'martial_status' => 'nullable|in:Single,Married,De Facto,Divorced,Widowed,Separated',
 
                 'phone_verified' => 'nullable|in:1',
-                'email_verified' => 'nullable|in:1',
                 'contact_type_hidden.*' => 'nullable|in:Personal,Work,Mobile,Business,Secondary,Father,Mother,Brother,Sister,Uncle,Aunt,Cousin,Others,Partner,Not In Use',
                 'country_code.*' => 'nullable|string|max:10',
                 'phone.*' => 'nullable|string|max:20',
@@ -602,13 +601,6 @@ class ClientsController extends Controller
             $client->email = $modifiedEmail;
             $client->email_type = $lastEmailType ?? null;
 
-            if (isset($validated['email_verified']) && $validated['email_verified'] === '1') {
-                $client->email_verified_date = $currentDateTime;
-                $client->email_verified_by = $currentUserId;
-            } else {
-                $client->email_verified_date = null;
-                $client->email_verified_by = null;
-            }
 
             $client->country_code = $lastCountryCode ?? null;
             $client->contact_type = $lastContactType ?? null;
@@ -1332,7 +1324,6 @@ class ClientsController extends Controller
                 //'country' => 'nullable|string|max:255',
                 'dob_verified' => 'nullable|in:1',
                 'dob_verify_document' => 'nullable|string|max:255',
-                'email_verified' => 'nullable|in:1',
                 'phone_verified' => 'nullable|in:1',
 
                 'test_type_hidden.*' => 'nullable|in:IELTS,IELTS_A,PTE,TOEFL,CAE,OET',
@@ -2090,13 +2081,6 @@ class ClientsController extends Controller
             }
 
             // Email verification
-            if (isset($requestData['email_verified']) && $requestData['email_verified'] === '1') {
-                $obj->email_verified_date = $currentDateTime;
-                $obj->email_verified_by = $currentUserId;
-            } else {
-                $obj->email_verified_date = null;
-                $obj->email_verified_by = null;
-            }
 
             // Phone verification
             if (isset($requestData['phone_verified']) && $requestData['phone_verified'] === '1') {
@@ -8392,31 +8376,6 @@ private function getUserName($userId) {
         $response['status'] 	= 	true;
         $response['message']	=	'You have successfully merged records.';
         echo json_encode($response);
-    }
-
-    //Update email to be verified wrt client id
-    public function updateemailverified(Request $request)
-    {
-        $data = $request->all(); //dd($data);
-        $recExist = Admin::where('id', $data['client_id'])
-        ->update(['manual_email_phone_verified' => $data['manual_email_phone_verified']]);
-         if($recExist){
-
-            // Log the activity
-            $activity = new \App\Models\ActivitiesLog();
-            $activity->client_id = $data['client_id'];
-            $activity->created_by = auth()->user()->id; // Current admin's ID
-            $activity->subject = 'Email verification status updated';
-            $activity->description = auth()->user()->first_name . ' updated the email verification status to ' . ($data['manual_email_phone_verified'] == 1 ? 'verified' : 'unverified');
-            $activity->save();
-
-             $response['status'] 	= 	true;
-             $response['message']	=	'Record updated successfully';
-         } else {
-             $response['status'] 	= 	false;
-             $response['message']	=	'Please try again';
-         }
-         echo json_encode($response);
     }
 
     //address_auto_populate

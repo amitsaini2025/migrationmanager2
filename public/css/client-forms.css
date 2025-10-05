@@ -43,6 +43,31 @@
     cursor: not-allowed;
 }
 
+/* Email Verification Styles */
+.btn-verify-email {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: background-color 0.2s;
+}
+
+.btn-verify-email:hover {
+    background: #0056b3;
+}
+
+.btn-verify-email:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
 .verified-badge {
     background: #28a745;
     color: white;
@@ -88,6 +113,36 @@
 #phoneNumbersSummary .summary-item .verified-badge {
     margin-left: auto;
     margin-right: 0;
+}
+
+#emailAddressesSummary .summary-item .btn-verify-email {
+    margin-left: auto;
+    margin-right: 0;
+}
+
+#emailAddressesSummary .summary-item .verified-badge {
+    margin-left: auto;
+    margin-right: 0;
+}
+
+/* Email verification icons in detail views */
+.verified-icon {
+    color: #28a745 !important;
+    margin-left: 8px;
+}
+
+.unverified-icon {
+    color: #6c757d !important;
+    margin-left: 8px;
+}
+
+/* Personal details email verification styling */
+.fa-check-circle.verified-icon {
+    color: #28a745 !important;
+}
+
+.fa-circle.unverified-icon {
+    color: #6c757d !important;
 }
 
 /* OTP Modal Styles */

@@ -173,7 +173,7 @@
                     <div class="card">
                         <h3><i class="fas fa-passport"></i>Visa</h3>
                         <?php
-                        $visa_Info = App\Models\ClientVisaCountry::select('visa_country','visa_type','visa_expiry_date','visa_grant_date','visa_description')->where('client_id', $fetchedData->id)->latest('id')->first();
+                        $visa_Info = App\Models\ClientVisaCountry::select('visa_country','visa_type','visa_expiry_date','visa_grant_date','visa_description')->where('client_id', $fetchedData->id)->orderBy('visa_expiry_date', 'desc')->first();
                         ?>
                         <div class="field-group">
                             <span class="field-label">Visa Type</span>

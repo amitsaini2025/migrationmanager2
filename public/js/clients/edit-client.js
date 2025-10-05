@@ -3761,3 +3761,433 @@ function startEmailVerificationPolling(emailId) {
     }, 5000); // Check every 5 seconds
 }
 
+// ===== OCCUPATION & SKILLS FUNCTIONS =====
+
+function addOccupation() {
+    // Check if we're in summary mode, if so switch to edit mode first
+    const summaryView = document.getElementById('occupationInfoSummary');
+    const editView = document.getElementById('occupationInfoEdit');
+    
+    if (summaryView && editView && summaryView.style.display !== 'none') {
+        toggleEditMode('occupationInfo');
+        // Wait a bit for the edit view to be displayed, then add the occupation
+        setTimeout(() => {
+            addOccupationRow();
+        }, 100);
+        return;
+    }
+    
+    addOccupationRow();
+}
+
+function addOccupationRow() {
+    const container = document.getElementById('occupationContainer');
+    if (!container) {
+        console.error('Occupation container not found');
+        return;
+    }
+    
+    const index = container.children.length;
+    
+    const newOccupationHTML = `
+        <div class="repeatable-section">
+            <button type="button" class="remove-item-btn" title="Remove Occupation" onclick="removeOccupationField(this)"><i class="fas fa-trash"></i></button>
+            <div class="content-grid">
+                <div class="form-group">
+                    <label>Nominated Occupation</label>
+                    <input type="text" name="nomi_occupation[${index}]" class="nomi_occupation" placeholder="Enter Occupation">
+                    <div class="autocomplete-items"></div>
+                </div>
+                <div class="form-group">
+                    <label>Occupation Code (ANZSCO)</label>
+                    <input type="text" name="occupation_code[${index}]" class="occupation_code" placeholder="Enter Code">
+                </div>
+                <div class="form-group">
+                    <label>Assessing Authority</label>
+                    <input type="text" name="list[${index}]" class="list" placeholder="e.g., ACS, VETASSESS">
+                </div>
+                <div class="form-group">
+                    <label>Target Visa Subclass</label>
+                    <input type="text" name="visa_subclass[${index}]" class="visa_subclass" placeholder="e.g., 189, 190">
+                </div>
+                <div class="form-group">
+                    <label>Assessment Date</label>
+                    <input type="text" name="dates[${index}]" class="dates date-picker" placeholder="dd/mm/yyyy">
+                </div>
+                <div class="form-group">
+                    <label>Expiry Date</label>
+                    <input type="text" name="expiry_dates[${index}]" class="expiry_dates date-picker" placeholder="dd/mm/yyyy">
+                </div>
+                <div class="form-group">
+                    <label>Reference No</label>
+                    <input type="text" name="occ_reference_no[${index}]" placeholder="Enter Reference No.">
+                </div>
+                <div class="form-group" style="align-items: center;">
+                    <label style="margin-bottom: 0;">Relevant Occupation</label>
+                    <input type="checkbox" name="relevant_occupation_hidden[${index}]" value="1" style="margin-left: 10px;">
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', newOccupationHTML);
+    
+    // Initialize date pickers for the new row
+    initializeDatepickers();
+    
+    // Initialize autocomplete for nominated occupation
+    initializeOccupationAutocomplete();
+}
+
+function removeOccupationField(button) {
+    const section = button.closest('.repeatable-section');
+    const confirmDelete = confirm('Are you sure you want to delete this occupation record?');
+    
+    if (confirmDelete) {
+        section.remove();
+    }
+}
+
+async function saveOccupationInfo() {
+    const form = document.getElementById('editClientForm');
+    if (!form) {
+        showNotification('Form not found', 'error');
+        return;
+    }
+    
+    const formData = new FormData(form);
+    formData.append('section', 'occupation');
+    
+    try {
+        const response = await fetch('/admin/clients/save-section', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Occupation information saved successfully!', 'success');
+            toggleEditMode('occupationInfo');
+            // Refresh the page to show updated data
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            showNotification(data.message || 'Error saving occupation information', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving occupation info:', error);
+        showNotification('Error saving occupation information', 'error');
+    }
+}
+
+// ===== ENGLISH TEST SCORES FUNCTIONS =====
+
+function addTestScore() {
+    // Check if we're in summary mode, if so switch to edit mode first
+    const summaryView = document.getElementById('testScoreInfoSummary');
+    const editView = document.getElementById('testScoreInfoEdit');
+    
+    if (summaryView && editView && summaryView.style.display !== 'none') {
+        toggleEditMode('testScoreInfo');
+        // Wait a bit for the edit view to be displayed, then add the test score
+        setTimeout(() => {
+            addTestScoreRow();
+        }, 100);
+        return;
+    }
+    
+    addTestScoreRow();
+}
+
+function addTestScoreRow() {
+    const container = document.getElementById('testScoresContainer');
+    if (!container) {
+        console.error('Test scores container not found');
+        return;
+    }
+    
+    const index = container.children.length;
+    
+    const newTestScoreHTML = `
+        <div class="repeatable-section">
+            <button type="button" class="remove-item-btn" title="Remove Test" onclick="removeTestScoreField(this)"><i class="fas fa-trash"></i></button>
+            <div class="content-grid" style="grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px;">
+                <div class="form-group">
+                    <label>Test Type</label>
+                    <select name="test_type_hidden[${index}]" class="test-type-selector" onchange="updateTestScoreValidation(this, ${index})">
+                        <option value="">Select Test Type</option>
+                        <option value="IELTS">IELTS</option>
+                        <option value="IELTS_A">IELTS Academic</option>
+                        <option value="PTE">PTE</option>
+                        <option value="TOEFL">TOEFL</option>
+                        <option value="CAE">CAE</option>
+                        <option value="OET">OET</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Listening</label>
+                    <input type="text" name="listening[${index}]" class="listening" placeholder="Score" maxlength="5">
+                </div>
+                <div class="form-group">
+                    <label>Reading</label>
+                    <input type="text" name="reading[${index}]" class="reading" placeholder="Score" maxlength="5">
+                </div>
+                <div class="form-group">
+                    <label>Writing</label>
+                    <input type="text" name="writing[${index}]" class="writing" placeholder="Score" maxlength="5">
+                </div>
+                <div class="form-group">
+                    <label>Speaking</label>
+                    <input type="text" name="speaking[${index}]" class="speaking" placeholder="Score" maxlength="5">
+                </div>
+                <div class="form-group">
+                    <label>Overall Score</label>
+                    <input type="text" name="overall_score[${index}]" class="overall_score" placeholder="Overall" maxlength="5">
+                </div>
+                <div class="form-group">
+                    <label>Test Date</label>
+                    <input type="text" name="test_date[${index}]" class="test_date date-picker" placeholder="dd/mm/yyyy">
+                </div>
+                <div class="form-group">
+                    <label>Reference No</label>
+                    <input type="text" name="test_reference_no[${index}]" placeholder="Reference No.">
+                </div>
+                <div class="form-group" style="align-items: center;">
+                    <label style="margin-bottom: 0;">Relevant Test</label>
+                    <input type="checkbox" name="relevant_test_hidden[${index}]" value="1" style="margin-left: 10px;">
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', newTestScoreHTML);
+    
+    // Initialize date pickers for the new row
+    initializeDatepickers();
+}
+
+function removeTestScoreField(button) {
+    const section = button.closest('.repeatable-section');
+    const confirmDelete = confirm('Are you sure you want to delete this test score record?');
+    
+    if (confirmDelete) {
+        section.remove();
+    }
+}
+
+async function saveTestScoreInfo() {
+    const form = document.getElementById('editClientForm');
+    if (!form) {
+        showNotification('Form not found', 'error');
+        return;
+    }
+    
+    const formData = new FormData(form);
+    formData.append('section', 'test_scores');
+    
+    try {
+        const response = await fetch('/admin/clients/save-section', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Test score information saved successfully!', 'success');
+            toggleEditMode('testScoreInfo');
+            // Refresh the page to show updated data
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            showNotification(data.message || 'Error saving test score information', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving test score info:', error);
+        showNotification('Error saving test score information', 'error');
+    }
+}
+
+// ===== TEST SCORE VALIDATION FUNCTIONS =====
+
+function updateTestScoreValidation(selectElement, index) {
+    const testType = selectElement.value;
+    const container = selectElement.closest('.repeatable-section');
+    
+    if (!container) return;
+    
+    const listeningInput = container.querySelector('.listening');
+    const readingInput = container.querySelector('.reading');
+    const writingInput = container.querySelector('.writing');
+    const speakingInput = container.querySelector('.speaking');
+    const overallInput = container.querySelector('.overall_score');
+    
+    // Clear existing validation messages
+    [listeningInput, readingInput, writingInput, speakingInput, overallInput].forEach(input => {
+        if (input) {
+            input.style.borderColor = '';
+            const existingError = input.parentNode.querySelector('.validation-error');
+            if (existingError) {
+                existingError.remove();
+            }
+        }
+    });
+    
+    if (!testType) return;
+    
+    // Set validation based on test type
+    switch (testType) {
+        case 'IELTS':
+        case 'IELTS_A':
+            // IELTS: 0-9 for each component, overall 0-9
+            setValidationMessages(container, 'IELTS scores range from 0-9', '0-9');
+            break;
+        case 'PTE':
+            // PTE: 10-90 for each component, overall 10-90
+            setValidationMessages(container, 'PTE scores range from 10-90', '10-90');
+            break;
+        case 'TOEFL':
+            // TOEFL: 0-30 for each component, overall 0-120
+            setValidationMessages(container, 'TOEFL scores: components 0-30, overall 0-120', '0-30');
+            break;
+        case 'CAE':
+            // CAE: A, B, C, D, E, F for each component, overall A-F
+            setValidationMessages(container, 'CAE grades: A, B, C, D, E, F', 'A-F');
+            break;
+        case 'OET':
+            // OET: A, B, C, D, E for each component, overall A-E
+            setValidationMessages(container, 'OET grades: A, B, C, D, E', 'A-E');
+            break;
+    }
+}
+
+function setValidationMessages(container, message, range) {
+    const inputs = container.querySelectorAll('.listening, .reading, .writing, .speaking, .overall_score');
+    
+    inputs.forEach(input => {
+        // Add validation message
+        const existingMsg = input.parentNode.querySelector('.validation-error');
+        if (existingMsg) {
+            existingMsg.remove();
+        }
+        
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'validation-error';
+        msgDiv.style.fontSize = '11px';
+        msgDiv.style.color = '#6c757d';
+        msgDiv.style.marginTop = '2px';
+        msgDiv.textContent = `${message}`;
+        input.parentNode.appendChild(msgDiv);
+        
+        // Add input event listener for real-time validation
+        input.addEventListener('input', function() {
+            validateTestScoreInput(this, range);
+        });
+    });
+}
+
+function validateTestScoreInput(input, range) {
+    const value = input.value.trim();
+    
+    if (!value) {
+        input.style.borderColor = '';
+        return true;
+    }
+    
+    let isValid = false;
+    
+    switch (range) {
+        case '0-9':
+            isValid = /^[0-9](\.\d)?$/.test(value) && parseFloat(value) >= 0 && parseFloat(value) <= 9;
+            break;
+        case '10-90':
+            isValid = /^\d{1,2}$/.test(value) && parseInt(value) >= 10 && parseInt(value) <= 90;
+            break;
+        case '0-30':
+            isValid = /^\d{1,2}$/.test(value) && parseInt(value) >= 0 && parseInt(value) <= 30;
+            break;
+        case 'A-F':
+        case 'A-E':
+            isValid = /^[A-F]$/.test(value);
+            break;
+    }
+    
+    if (isValid) {
+        input.style.borderColor = '#28a745';
+    } else {
+        input.style.borderColor = '#dc3545';
+    }
+    
+    return isValid;
+}
+
+// ===== OCCUPATION AUTOCOMPLETE FUNCTIONS =====
+
+function initializeOccupationAutocomplete() {
+    const occupationInputs = document.querySelectorAll('.nomi_occupation');
+    
+    occupationInputs.forEach(input => {
+        if (input.dataset.autocompleteInitialized) return;
+        
+        input.addEventListener('input', function() {
+            const query = this.value;
+            const autocompleteContainer = this.nextElementSibling;
+            
+            if (query.length < 2) {
+                autocompleteContainer.innerHTML = '';
+                return;
+            }
+            
+            // Simple autocomplete - you can enhance this with actual API calls
+            const occupations = [
+                'Software Engineer', 'Data Analyst', 'Business Analyst', 'Project Manager',
+                'Accountant', 'Marketing Manager', 'Sales Representative', 'Teacher',
+                'Nurse', 'Doctor', 'Engineer', 'Architect', 'Lawyer', 'Consultant'
+            ];
+            
+            const matches = occupations.filter(occ => 
+                occ.toLowerCase().includes(query.toLowerCase())
+            );
+            
+            autocompleteContainer.innerHTML = '';
+            matches.forEach(match => {
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.textContent = match;
+                item.addEventListener('click', function() {
+                    input.value = match;
+                    autocompleteContainer.innerHTML = '';
+                });
+                autocompleteContainer.appendChild(item);
+            });
+        });
+        
+        input.dataset.autocompleteInitialized = 'true';
+    });
+}
+
+// ===== INITIALIZATION FUNCTIONS =====
+
+// Initialize occupation autocomplete and test score validation on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize occupation autocomplete for existing fields
+    initializeOccupationAutocomplete();
+    
+    // Initialize test score validation for existing fields
+    const existingTestSelectors = document.querySelectorAll('.test-type-selector');
+    existingTestSelectors.forEach((selector, index) => {
+        if (selector.value) {
+            updateTestScoreValidation(selector, index);
+        }
+    });
+});
+

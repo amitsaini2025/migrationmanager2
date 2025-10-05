@@ -954,6 +954,247 @@
                             </div>
                         </div>
                     </section>
+
+                    <!-- Occupation & Skills Section -->
+                    <section class="form-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-cogs"></i> Occupation & Skills</h3>
+                            <div class="section-actions">
+                                <button type="button" class="edit-section-btn" onclick="toggleEditMode('occupationInfo')">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                                <button type="button" class="add-section-btn" onclick="addOccupation()" title="Add Occupation">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Summary View -->
+                        <div id="occupationInfoSummary" class="summary-view">
+                            @if($clientOccupations->count() > 0)
+                                <div class="summary-grid">
+                                    @foreach($clientOccupations as $index => $occupation)
+                                        <div class="summary-item">
+                                            <span class="summary-label">Nominated Occupation:</span>
+                                            <span class="summary-value">{{ $occupation->nomi_occupation ?: 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Occupation Code:</span>
+                                            <span class="summary-value">{{ $occupation->occupation_code ?: 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Assessing Authority:</span>
+                                            <span class="summary-value">{{ $occupation->list ?: 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Visa Subclass:</span>
+                                            <span class="summary-value">{{ $occupation->visa_subclass ?: 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Assessment Date:</span>
+                                            <span class="summary-value">{{ $occupation->dates ? date('d/m/Y', strtotime($occupation->dates)) : 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Expiry Date:</span>
+                                            <span class="summary-value">{{ $occupation->expiry_dates ? date('d/m/Y', strtotime($occupation->expiry_dates)) : 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Reference No:</span>
+                                            <span class="summary-value">{{ $occupation->occ_reference_no ?: 'Not set' }}</span>
+                                        </div>
+                                        @if(!$loop->last)
+                                            <div class="summary-divider"></div>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="no-data-message">
+                                    <p>No occupation information available.</p>
+                                </div>
+                            @endif
+                        </div>
+
+                        <!-- Edit View -->
+                        <div id="occupationInfoEdit" class="edit-view" style="display: none;">
+                            <div id="occupationContainer">
+                                @foreach($clientOccupations as $index => $occupation)
+                                    <div class="repeatable-section">
+                                        <button type="button" class="remove-item-btn" title="Remove Occupation" onclick="removeOccupationField(this)"><i class="fas fa-trash"></i></button>
+                                        <input type="hidden" name="occupation_id[{{ $index }}]" value="{{ $occupation->id }}">
+                                        <div class="content-grid">
+                                            <div class="form-group">
+                                                <label>Nominated Occupation</label>
+                                                <input type="text" name="nomi_occupation[{{ $index }}]" class="nomi_occupation" value="{{ $occupation->nomi_occupation }}" placeholder="Enter Occupation">
+                                                <div class="autocomplete-items"></div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Occupation Code (ANZSCO)</label>
+                                                <input type="text" name="occupation_code[{{ $index }}]" class="occupation_code" value="{{ $occupation->occupation_code }}" placeholder="Enter Code">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Assessing Authority</label>
+                                                <input type="text" name="list[{{ $index }}]" class="list" value="{{ $occupation->list }}" placeholder="e.g., ACS, VETASSESS">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Target Visa Subclass</label>
+                                                <input type="text" name="visa_subclass[{{ $index }}]" class="visa_subclass" value="{{ $occupation->visa_subclass }}" placeholder="e.g., 189, 190">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Assessment Date</label>
+                                                <input type="text" name="dates[{{ $index }}]" class="dates date-picker" value="{{ $occupation->dates ? date('d/m/Y', strtotime($occupation->dates)) : '' }}" placeholder="dd/mm/yyyy">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Expiry Date</label>
+                                                <input type="text" name="expiry_dates[{{ $index }}]" class="expiry_dates date-picker" value="{{ $occupation->expiry_dates ? date('d/m/Y', strtotime($occupation->expiry_dates)) : '' }}" placeholder="dd/mm/yyyy">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Reference No</label>
+                                                <input type="text" name="occ_reference_no[{{ $index }}]" value="{{ $occupation->occ_reference_no }}" placeholder="Enter Reference No.">
+                                            </div>
+                                            <div class="form-group" style="align-items: center;">
+                                                <label style="margin-bottom: 0;">Relevant Occupation</label>
+                                                <input type="checkbox" name="relevant_occupation_hidden[{{ $index }}]" value="1" {{ $occupation->relevant_occupation ? 'checked' : '' }} style="margin-left: 10px;">
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <button type="button" class="add-item-btn" onclick="addOccupation()"><i class="fas fa-plus-circle"></i> Add Occupation</button>
+                            <div class="edit-actions">
+                                <button type="button" class="btn btn-primary" onclick="saveOccupationInfo()">Save</button>
+                                <button type="button" class="btn btn-secondary" onclick="cancelEdit('occupationInfo')">Cancel</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- English Test Scores Section -->
+                    <section class="form-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-language"></i> English Test Scores</h3>
+                            <div class="section-actions">
+                                <button type="button" class="edit-section-btn" onclick="toggleEditMode('testScoreInfo')">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                                <button type="button" class="add-section-btn" onclick="addTestScore()" title="Add Test Score">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Summary View -->
+                        <div id="testScoreInfoSummary" class="summary-view">
+                            @if($testScores->count() > 0)
+                                <div class="summary-grid">
+                                    @foreach($testScores as $index => $testScore)
+                                        <div class="summary-item">
+                                            <span class="summary-label">Test Type:</span>
+                                            <span class="summary-value">{{ $testScore->test_type ?: 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Listening:</span>
+                                            <span class="summary-value">{{ $testScore->listening ?: 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Reading:</span>
+                                            <span class="summary-value">{{ $testScore->reading ?: 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Writing:</span>
+                                            <span class="summary-value">{{ $testScore->writing ?: 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Speaking:</span>
+                                            <span class="summary-value">{{ $testScore->speaking ?: 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Overall Score:</span>
+                                            <span class="summary-value">{{ $testScore->overall_score ?: 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Test Date:</span>
+                                            <span class="summary-value">{{ $testScore->test_date ? date('d/m/Y', strtotime($testScore->test_date)) : 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Reference No:</span>
+                                            <span class="summary-value">{{ $testScore->test_reference_no ?: 'Not set' }}</span>
+                                        </div>
+                                        @if(!$loop->last)
+                                            <div class="summary-divider"></div>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="no-data-message">
+                                    <p>No test score information available.</p>
+                                </div>
+                            @endif
+                        </div>
+
+                        <!-- Edit View -->
+                        <div id="testScoreInfoEdit" class="edit-view" style="display: none;">
+                            <div id="testScoresContainer">
+                                @foreach($testScores as $index => $testScore)
+                                    <div class="repeatable-section">
+                                        <button type="button" class="remove-item-btn" title="Remove Test" onclick="removeTestScoreField(this)"><i class="fas fa-trash"></i></button>
+                                        <input type="hidden" name="test_score_id[{{ $index }}]" value="{{ $testScore->id }}">
+                                        <div class="content-grid" style="grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px;">
+                                            <div class="form-group">
+                                                <label>Test Type</label>
+                                                <select name="test_type_hidden[{{ $index }}]" class="test-type-selector" onchange="updateTestScoreValidation(this, {{ $index }})">
+                                                    <option value="">Select Test Type</option>
+                                                    <option value="IELTS" {{ $testScore->test_type == 'IELTS' ? 'selected' : '' }}>IELTS</option>
+                                                    <option value="IELTS_A" {{ $testScore->test_type == 'IELTS_A' ? 'selected' : '' }}>IELTS Academic</option>
+                                                    <option value="PTE" {{ $testScore->test_type == 'PTE' ? 'selected' : '' }}>PTE</option>
+                                                    <option value="TOEFL" {{ $testScore->test_type == 'TOEFL' ? 'selected' : '' }}>TOEFL</option>
+                                                    <option value="CAE" {{ $testScore->test_type == 'CAE' ? 'selected' : '' }}>CAE</option>
+                                                    <option value="OET" {{ $testScore->test_type == 'OET' ? 'selected' : '' }}>OET</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Listening</label>
+                                                <input type="text" name="listening[{{ $index }}]" class="listening" value="{{ $testScore->listening }}" placeholder="Score" maxlength="5">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Reading</label>
+                                                <input type="text" name="reading[{{ $index }}]" class="reading" value="{{ $testScore->reading }}" placeholder="Score" maxlength="5">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Writing</label>
+                                                <input type="text" name="writing[{{ $index }}]" class="writing" value="{{ $testScore->writing }}" placeholder="Score" maxlength="5">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Speaking</label>
+                                                <input type="text" name="speaking[{{ $index }}]" class="speaking" value="{{ $testScore->speaking }}" placeholder="Score" maxlength="5">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Overall Score</label>
+                                                <input type="text" name="overall_score[{{ $index }}]" class="overall_score" value="{{ $testScore->overall_score }}" placeholder="Overall" maxlength="5">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Test Date</label>
+                                                <input type="text" name="test_date[{{ $index }}]" class="test_date date-picker" value="{{ $testScore->test_date ? date('d/m/Y', strtotime($testScore->test_date)) : '' }}" placeholder="dd/mm/yyyy">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Reference No</label>
+                                                <input type="text" name="test_reference_no[{{ $index }}]" value="{{ $testScore->test_reference_no }}" placeholder="Reference No.">
+                                            </div>
+                                            <div class="form-group" style="align-items: center;">
+                                                <label style="margin-bottom: 0;">Relevant Test</label>
+                                                <input type="checkbox" name="relevant_test_hidden[{{ $index }}]" value="1" {{ $testScore->relevant_test ? 'checked' : '' }} style="margin-left: 10px;">
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <button type="button" class="add-item-btn" onclick="addTestScore()"><i class="fas fa-plus-circle"></i> Add Test Score</button>
+                            <div class="edit-actions">
+                                <button type="button" class="btn btn-primary" onclick="saveTestScoreInfo()">Save</button>
+                                <button type="button" class="btn btn-secondary" onclick="cancelEdit('testScoreInfo')">Cancel</button>
+                            </div>
+                        </div>
+                    </section>
                 </section>
 
                 <!-- Other Information Section -->

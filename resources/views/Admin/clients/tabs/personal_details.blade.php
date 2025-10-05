@@ -172,29 +172,17 @@
 
                     <div class="card">
                         <h3><i class="fas fa-passport"></i>Visa</h3>
+                        <?php
+                        $visa_Info = App\Models\ClientVisaCountry::select('visa_country','visa_type','visa_expiry_date','visa_grant_date','visa_description')->where('client_id', $fetchedData->id)->latest('id')->first();
+                        ?>
                         <div class="field-group">
-                            <span class="field-label">Country Of Passport</span>
-                            <span class="field-value">
-                                <?php
-                                $visa_Info = App\Models\ClientVisaCountry::select('visa_country','visa_type','visa_expiry_date','visa_grant_date','visa_description')->where('client_id', $fetchedData->id)->latest('id')->first();
-                                if( $visa_Info && $visa_Info->visa_country != "" ){ echo $visa_Info->visa_country; } else { echo 'N/A'; }
-                                ?>
-                            </span>
-                        </div>
-                        <div class="field-group">
-                            <span class="field-label">Visa Type / Stream</span>
+                            <span class="field-label">Visa Type</span>
                             <span class="field-value">
                                 <?php
                                 if( $visa_Info && $visa_Info->visa_type != "" ){
                                     $Matter_get = App\Models\Matter::select('id','title','nick_name')->where('id',$visa_Info->visa_type)->first();
                                     if(!empty($Matter_get)){
-                                        $verifiedVisa = \App\Models\Admin::where('id',$fetchedData->id)->whereNotNull('visa_expiry_verified_at')->first();
-                                        if ( $verifiedVisa) {
-                                            $verifiedVisaTick = '<i class="fas fa-check-circle verified-icon fa-lg"></i>';
-                                        } else {
-                                            $verifiedVisaTick = '<i class="far fa-circle unverified-icon fa-lg"></i>';
-                                        }
-                                        echo $Matter_get->title.'('.$Matter_get->nick_name.') '.$verifiedVisaTick;
+                                        echo $Matter_get->title.'('.$Matter_get->nick_name.')';
                                     } else {
                                         echo 'N/A';
                                     }
@@ -210,35 +198,31 @@
                                     if( $visa_Info->visa_expiry_date == '0000-00-00'){
                                         echo 'N/A';
                                     } else {
-                                        echo \Carbon\Carbon::parse($visa_Info->visa_expiry_date)->format('d/m/Y');
+                                        $verifiedVisa = \App\Models\Admin::where('id',$fetchedData->id)->whereNotNull('visa_expiry_verified_at')->first();
+                                        if ( $verifiedVisa) {
+                                            $verifiedVisaTick = '<i class="fas fa-check-circle verified-icon fa-lg"></i>';
+                                        } else {
+                                            $verifiedVisaTick = '<i class="far fa-circle unverified-icon fa-lg"></i>';
+                                        }
+                                        echo \Carbon\Carbon::parse($visa_Info->visa_expiry_date)->format('d/m/Y').' '.$verifiedVisaTick;
                                     }
                                 } else { echo 'N/A'; }
                                 ?>
                             </span>
                         </div>
-
-                        <div class="field-group">
-                            <span class="field-label">Visa Grant Date</span>
-                            <span class="field-value">
-                                <?php
-                                if( $visa_Info && $visa_Info->visa_grant_date != "" ){
-                                    if( $visa_Info->visa_grant_date == '0000-00-00'){
-                                        echo 'N/A';
-                                    } else {
-                                        echo \Carbon\Carbon::parse($visa_Info->visa_grant_date)->format('d/m/Y');
-                                    }
-                                } else { echo 'N/A'; }
-                                ?>
-                            </span>
-                        </div>
-
+                        @if($visa_Info && $visa_Info->visa_description != "")
                         <div class="field-group">
                             <span class="field-label">Visa Description</span>
                             <span class="field-value">
+                                <?php echo $visa_Info->visa_description; ?>
+                            </span>
+                        </div>
+                        @endif
+                        <div class="field-group">
+                            <span class="field-label">Country Of Passport</span>
+                            <span class="field-value">
                                 <?php
-                                if( $visa_Info && $visa_Info->visa_description != "" ){
-                                    echo $visa_Info->visa_description;
-                                } else { echo 'N/A'; }
+                                if( $visa_Info && $visa_Info->visa_country != "" ){ echo $visa_Info->visa_country; } else { echo 'N/A'; }
                                 ?>
                             </span>
                         </div>

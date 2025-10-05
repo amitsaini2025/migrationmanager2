@@ -8,7 +8,7 @@
                             </a>
                         </div>
                         <div class="field-group">
-                            <span class="field-label">Age</span>
+                            <span class="field-label">Age / Date of Birth</span>
                             <span class="field-value">
                                 <?php
                                 if ( isset($fetchedData->age) && $fetchedData->age != '') {
@@ -18,7 +18,26 @@
                                     } else {
                                         $verifiedDobTick = '<i class="far fa-circle unverified-icon fa-lg"></i>';
                                     }
-                                    echo $fetchedData->age.' '.$verifiedDobTick;
+                                    
+                                    // Format DOB for display
+                                    $formattedDob = 'N/A';
+                                    if (isset($fetchedData->dob) && $fetchedData->dob != '') {
+                                        try {
+                                            $dobDate = \Carbon\Carbon::parse($fetchedData->dob);
+                                            $formattedDob = $dobDate->format('d M Y'); // e.g., "15 Jan 2001"
+                                        } catch (\Exception $e) {
+                                            $formattedDob = 'N/A';
+                                        }
+                                    }
+                                    ?>
+                                    <span id="ageDobToggle" style="cursor: pointer;" 
+                                          data-age="<?php echo htmlspecialchars($fetchedData->age); ?>" 
+                                          data-dob="<?php echo htmlspecialchars($formattedDob); ?>">
+                                        <span class="display-age"><?php echo $fetchedData->age; ?></span>
+                                        <span class="display-dob" style="display: none;"><?php echo $formattedDob; ?></span>
+                                        <?php echo $verifiedDobTick; ?>
+                                    </span>
+                                <?php
                                 } else {
                                     echo 'N/A';
                                 } ?>
@@ -747,3 +766,28 @@
 
                 </div>
             </div>
+
+            <!-- Age/DOB Toggle JavaScript -->
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const ageDobToggle = document.getElementById('ageDobToggle');
+                if (ageDobToggle) {
+                    ageDobToggle.addEventListener('click', function() {
+                        const ageSpan = this.querySelector('.display-age');
+                        const dobSpan = this.querySelector('.display-dob');
+                        
+                        if (ageSpan && dobSpan) {
+                            if (ageSpan.style.display === 'none') {
+                                // Currently showing DOB, switch to Age
+                                ageSpan.style.display = 'inline';
+                                dobSpan.style.display = 'none';
+                            } else {
+                                // Currently showing Age, switch to DOB
+                                ageSpan.style.display = 'none';
+                                dobSpan.style.display = 'inline';
+                            }
+                        }
+                    });
+                }
+            });
+            </script>

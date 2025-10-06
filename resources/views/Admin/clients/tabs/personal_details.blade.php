@@ -158,15 +158,43 @@
                             <span class="field-label">Residential Address</span>
                             <span class="field-value">
                                 <?php
-                                $postcode_Info = App\Models\ClientAddress::select('zip','address')->where('client_id', $fetchedData->id)->latest('id')->first();
-                                if( $postcode_Info && $postcode_Info->zip != "" ){ echo $postcode_Info->zip; } else { echo 'N/A'; }
-                                ?>
-
-                                <?php
-                                if( $postcode_Info && $postcode_Info->address != "" ){ echo ' / '.$postcode_Info->address; } else { echo ' / '.'N/A'; }
+                                $address_Info = App\Models\ClientAddress::select('address_line_1','address_line_2','suburb','state','zip','regional_code')->where('client_id', $fetchedData->id)->latest('id')->first();
+                                if( $address_Info && $address_Info->address_line_1 != "" ){ 
+                                    echo $address_Info->address_line_1; 
+                                } else { 
+                                    echo 'N/A'; 
+                                }
                                 ?>
                             </span>
                         </div>
+
+                        <div class="field-group">
+                            <span class="field-label">Address</span>
+                            <span class="field-value">
+                                <?php
+                                $addressParts = array_filter([
+                                    $address_Info->suburb ?? '',
+                                    $address_Info->state ?? '',
+                                    $address_Info->zip ?? ''
+                                ]);
+                                
+                                if (!empty($addressParts)) {
+                                    echo implode(', ', $addressParts);
+                                } else {
+                                    echo 'N/A';
+                                }
+                                ?>
+                            </span>
+                        </div>
+
+                        <?php if($address_Info && $address_Info->regional_code): ?>
+                        <div class="field-group">
+                            <span class="field-label">Regional Area</span>
+                            <span class="field-value">
+                                <?php echo $address_Info->regional_code; ?>
+                            </span>
+                        </div>
+                        <?php endif; ?>
                     </div>
 
 

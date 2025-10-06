@@ -3576,7 +3576,7 @@ class ClientsController extends Controller
                     $clientContacts = ClientContact::where('client_id', $id)->get() ?? [];
                     $emails = ClientEmail::where('client_id', $id)->get() ?? [];
                     $visaCountries = ClientVisaCountry::where('client_id', $id)->orderBy('visa_expiry_date', 'desc')->get() ?? [];
-                    $clientAddresses = ClientAddress::where('client_id', $id)->get() ?? [];
+                    $clientAddresses = ClientAddress::where('client_id', $id)->orderBy('created_at', 'desc')->get() ?? [];
                     $qualifications = ClientQualification::where('client_id', $id)->get() ?? [];
                     $experiences = ClientExperience::where('client_id', $id)->get() ?? [];
                     $clientOccupations = ClientOccupation::where('client_id', $id)->get() ?? [];
@@ -4237,7 +4237,7 @@ class ClientsController extends Controller
 
 
                 //Fetch other client-related data
-                $clientAddresses = ClientAddress::where('client_id', $id)->get();
+                $clientAddresses = ClientAddress::where('client_id', $id)->orderBy('created_at', 'desc')->get();
                 $clientContacts = ClientContact::where('client_id', $id)->get();
                 $emails = ClientEmail::where('client_id', $id)->get() ?? [];
                 $qualifications = ClientQualification::where('client_id', $id)->get() ?? [];

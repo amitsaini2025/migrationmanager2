@@ -614,6 +614,8 @@ Route::prefix('admin')->group(function() {
         //Route::get('/clients/detail/{client_id}/{client_unique_matter_ref_no?}', 'Admin\ClientsController@detail')->name('admin.clients.detail');
 
         Route::post('/clients/update-address', 'Admin\ClientPersonalDetailsController@updateAddress')->name('admin.clients.updateAddress');
+        Route::post('/clients/search-address-full', 'Admin\ClientPersonalDetailsController@searchAddressFull')->name('admin.clients.searchAddressFull');
+        Route::post('/clients/get-place-details', 'Admin\ClientPersonalDetailsController@getPlaceDetails')->name('admin.clients.getPlaceDetails');
 
         //Fetch all contact list of any client at create note popup
         Route::post('/clients/fetchClientContactNo', 'Admin\ClientPersonalDetailsController@fetchClientContactNo');

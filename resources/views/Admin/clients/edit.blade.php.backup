@@ -1,7 +1,6 @@
 @extends('layouts.admin_client_detail_dashboard')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('css/address-autocomplete.css') }}">
 <link rel="stylesheet" href="{{asset('css/client-forms.css')}}">
 @endpush
 
@@ -628,8 +627,598 @@
 
                 <!-- Address & Travel Section -->
                 <section id="addressTravelSection" class="content-section">
-                    @include('Admin.clients.partials._address_information')
-                    
+                    <!-- Address Information Section -->
+                    <section class="form-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-home"></i> Address Information</h3>
+                            <div class="section-actions">
+                                <button type="button" class="edit-section-btn" onclick="toggleEditMode('addressInfo')">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                                <button type="button" class="add-section-btn" onclick="addAddress()" title="Add Address">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Summary View -->
+                        <div id="addressInfoSummary" class="summary-view">
+                            @if($clientAddresses->count() > 0)
+                                <div>
+                                    @foreach($clientAddresses as $index => $address)
+                                        <div class="address-entry">
+                                            <div class="summary-item">
+                                                <span class="summary-label">Address:</span>
+                                                <span class="summary-value">{{ $address->address ?: 'Not set' }}</span>
+                                            </div>
+                                            <div class="summary-item">
+                                                <span class="summary-label">Postal Code:</span>
+                                                <span class="summary-value">{{ $address->zip ?: 'Not set' }}</span>
+                                            </div>
+                                            <div class="summary-item">
+                                                <span class="summary-label">Start Date:</span>
+                                                <span class="summary-value">{{ $address->start_date ? date('d/m/Y', strtotime($address->start_date)) : 'Not set' }}</span>
+                                            </div>
+                                            <div class="summary-item">
+                                                <span class="summary-label">End Date:</span>
+                                                <span class="summary-value">{{ $address->end_date ? date('d/m/Y', strtotime($address->end_date)) : 'Not set' }}</span>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="empty-state">
+                                    <p>No addresses added yet.</p>
+                                </div>
+                            @endif
+                        </div>
+
+                        <!-- Edit View -->
+                        <div id="addressInfoEdit" class="edit-view" style="display: none;">
+                            <style>
+                                .error-message {
+                                    color: red;
+                                    margin-top: 10px;
+                                }
+                                .error-row {
+                                    border: 2px solid red;
+                                }
+                                .error-border {
+                                    border: 1px solid red;
+                                }
+                                .form-control {
+                                    border-radius: 0.25rem;
+                                }
+                                .autocomplete-items {
+                                    position: absolute;
+                                    border: 1px solid #d4d4d4;
+                                    border-bottom: none;
+                                    border-top: none;
+                                    z-index: 99;
+                                    top: 100%;
+                                    left: 0;
+                                    right: 0;
+                                    background-color: white;
+                                }
+                                .autocomplete-item {
+                                    padding: 10px;
+                                    cursor: pointer;
+                                    background-color: #fff;
+                                    border-bottom: 1px solid #d4d4d4;
+                                }
+                                .autocomplete-item:hover {
+                                    background-color: #e9e9e9;
+                                }
+                            </style>
+                            <div id="address-fields-wrapper">
+                                @if(count($clientAddresses) > 0)
+                                    @foreach($clientAddresses as $index => $address)
+                                    <div class="address-fields row mb-3" id="row-{{ $index }}">
+                                        <input type="hidden" name="address_id[]" value="{{ $address->id }}" class="address-id">
+                                        <div class="col-sm-3">
+                                            <div class="form-group">
+                                                <label for="zip">Post Code</label>
+                                                <input type="text" name="zip[]" value="{{ $address->zip }}" class="form-control postal_code" autocomplete="off" placeholder="Enter Post Code" readonly>
+                                                <div class="autocomplete-items"></div>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-3">
+                                            <div class="form-group">
+                                                <label for="address">Address</label>
+                                                <input type="text" name="address[]" value="{{ $address->address }}" class="form-control address-input" autocomplete="off" placeholder="Search Box" readonly>
+                                            </div>
+                                        </div>
+                                    <div class="col-sm-2">
+                                        <div class="form-group">
+                                            <label for="regional_code">Regional Code Info</label>
+                                            <input type="text" name="regional_code[]" value="{{ $address->regional_code }}" class="form-control regional_code_info" placeholder="Regional Code info" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-2">
+                                        <div class="form-group">
+                                            <label for="address_start_date">Start Date</label>
+                                            <input type="text" name="address_start_date[]" value="{{ $address->start_date ? date('d/m/Y', strtotime($address->start_date)) : '' }}" class="form-control date-picker" placeholder="dd/mm/yyyy" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-2">
+                                        <div class="form-group">
+                                            <label for="address_end_date">End Date</label>
+                                            <input type="text" name="address_end_date[]" value="{{ $address->end_date ? date('d/m/Y', strtotime($address->end_date)) : '' }}" class="form-control date-picker" placeholder="dd/mm/yyyy" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-1 d-flex align-items-center">
+                                        <button type="button" class="btn btn-primary add-row-btn" disabled>+</button>
+                                    </div>
+                                    </div>
+                                    @endforeach
+                                @endif
+
+                                <!-- Blank row for adding new addresses -->
+                                <div class="address-fields row mb-3">
+                                    <div class="col-sm-3">
+                                        <div class="form-group">
+                                            <label for="zip">Post Code</label>
+                                            <input type="text" name="zip[]" class="form-control postal_code" autocomplete="off" placeholder="Enter Post Code">
+                                            <div class="autocomplete-items"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-3">
+                                        <div class="form-group">
+                                            <label for="address">Address</label>
+                                            <input type="text" name="address[]" class="form-control address-input" autocomplete="off" placeholder="Search Box">
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-2">
+                                        <div class="form-group">
+                                            <label for="regional_code">Regional Code Info</label>
+                                            <input type="text" name="regional_code[]"  class="form-control regional_code_info" placeholder="Regional Code info" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-2">
+                                        <div class="form-group">
+                                            <label for="address_start_date">Start Date</label>
+                                            <input type="text" name="address_start_date[]" class="form-control date-picker" placeholder="dd/mm/yyyy">
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-2">
+                                        <div class="form-group">
+                                            <label for="address_end_date">End Date</label>
+                                            <input type="text" name="address_end_date[]" class="form-control date-picker" placeholder="dd/mm/yyyy">
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-1 d-flex align-items-center">
+                                        <button type="button" class="btn btn-primary add-row-btn">+</button>
+                                    </div>
+                                </div>
+
+                                <div id="error-message" class="error-message" style="display: none;"></div>
+                            </div>
+
+                            <div class="edit-actions">
+                                <button type="button" class="btn btn-primary" onclick="saveAddressInfo()">Save</button>
+                                <button type="button" class="btn btn-secondary" onclick="cancelEdit('addressInfo')">Cancel</button>
+                            </div>
+
+                            <script>
+                            $(document).ready(function() {
+                                $.ajaxSetup({
+                                    headers: {
+                                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                                    }
+                                });
+
+                                function addNewAddressRow() {
+                                    $('.address-fields:last').removeClass('error-row');
+
+                                    // Make all previous rows readonly
+                                    $('.address-fields input').prop('readonly', true);
+
+                                    var newAddressRow = `<div class="address-fields row mb-3">
+                                        <div class="col-sm-3">
+                                            <div class="form-group">
+                                                <label for="zip">Post Code</label>
+                                                <input type="text" name="zip[]" class="form-control postal_code" autocomplete="off" placeholder="Enter Post Code">
+                                                <div class="autocomplete-items"></div>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-3">
+                                            <div class="form-group">
+                                                <label for="address">Address</label>
+                                                <input type="text" name="address[]" class="form-control address-input" autocomplete="off" placeholder="Search Box">
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-2">
+                                            <div class="form-group">
+                                                <label for="regional_code">Regional Code Info</label>
+                                                <input type="text" name="regional_code[]"  class="form-control regional_code_info" placeholder="Regional Code info" readonly>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-2">
+                                            <div class="form-group">
+                                                <label for="address_start_date">Start Date</label>
+                                                <input type="text" name="address_start_date[]" class="form-control date-picker" placeholder="dd/mm/yyyy">
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-2">
+                                            <div class="form-group">
+                                                <label for="address_end_date">End Date</label>
+                                                <input type="text" name="address_end_date[]" class="form-control date-picker" placeholder="dd/mm/yyyy">
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-1 d-flex align-items-center">
+                                            <button type="button" class="btn btn-primary add-row-btn">+</button>
+                                        </div>
+                                    </div>`;
+                                    $('#address-fields-wrapper').append(newAddressRow);
+                                    $('#error-message').hide();
+                                    
+                                    // Reinitialize datepickers for the newly added fields
+                                    initializeDatepickers();
+                                }
+
+                                function validateCurrentRow() {
+                                    var $currentRow = $('.address-fields:last');
+                                    var zip = $currentRow.find('input[name="zip[]"]').val().trim();
+                                    var address = $currentRow.find('input[name="address[]"]').val().trim();
+                                    var startDate = $currentRow.find('input[name="address_start_date[]"]').val().trim();
+                                    var endDate = $currentRow.find('input[name="address_end_date[]"]').val().trim();
+
+                                    // Remove error class initially
+                                    $currentRow.find('input').removeClass('error-border');
+
+                                    // Validate required fields
+                                    if (zip === '' || address === '') {
+                                        if (zip === '') {
+                                            $currentRow.find('input[name="zip[]"]').addClass('error-border');
+                                        }
+                                        if (address === '') {
+                                            $currentRow.find('input[name="address[]"]').addClass('error-border');
+                                        }
+                                        return false;
+                                    }
+
+                                    // Validate date formats if provided
+                                    if (startDate !== '' && !/^\d{2}\/\d{2}\/\d{4}$/.test(startDate)) {
+                                        $currentRow.find('input[name="address_start_date[]"]').addClass('error-border');
+                                        alert('Start Date must be in dd/mm/yyyy format');
+                                        return false;
+                                    }
+
+                                    if (endDate !== '' && !/^\d{2}\/\d{2}\/\d{4}$/.test(endDate)) {
+                                        $currentRow.find('input[name="address_end_date[]"]').addClass('error-border');
+                                        alert('End Date must be in dd/mm/yyyy format');
+                                        return false;
+                                    }
+
+                                    return true;
+                                }
+
+                                function freezeCurrentAddressRow() {
+                                    var $currentRow = $('.address-fields:last');
+                                    // Set the current row's fields to readonly
+                                    $currentRow.find('input').attr('readonly', true);
+                                    $currentRow.find('button').prop('disabled', true);
+                                    $currentRow.addClass('frozen'); // Optionally, add a class to indicate the row is frozen
+                                }
+
+                                $(document).on('click', '.add-row-btn', function() {
+                                    if (validateCurrentRow()) {
+                                        var isConfirmed = confirm("Are you sure you want to freeze the current row?");
+                                        if (isConfirmed) {
+                                            freezeCurrentAddressRow(); // Freeze the current row
+                                            addNewAddressRow();
+                                        }
+                                    }
+                                });
+
+                                function getRegionalCodeInfo(postCode)
+                                {
+                                    //2259, 2264 to 2308, 2500 to 2526, 2528 to 2535 and 2574
+                                    if(
+                                        ( postCode ==2259)
+                                        ||
+                                        ( postCode >=2264 && postCode <= 2308 )
+                                        ||
+                                        ( postCode >=2500 && postCode <= 2526 )
+                                        ||
+                                        ( postCode >=2528 && postCode <= 2535 )
+                                        ||
+                                        ( postCode == 2574)
+                                    ){
+                                        var postCodeInfo = "Cities and major regional centres of New South Wales";
+                                    }
+
+                                    //2250 to 2258, 2260 to 2263, 2311 to 2490, 2527, 2536 to 2551, 2575 to 2739, 2753 to 2754, 2756 to 2758 and 2773 to 2898
+                                    else if(
+                                        ( postCode >=2250 && postCode <= 2258 )
+                                        ||
+                                        ( postCode >=2260 && postCode <= 2263 )
+                                        ||
+                                        ( postCode >=2311 && postCode <= 2490 )
+                                        ||
+                                        ( postCode == 2527)
+                                        ||
+                                        ( postCode >=2536 && postCode <= 2551 )
+                                        ||
+                                        ( postCode >=2575 && postCode <= 2739 )
+                                        ||
+                                        ( postCode >=2753 && postCode <= 2754 )
+                                        ||
+                                        ( postCode >=2756 && postCode <= 2758 )
+                                        ||
+                                        ( postCode >=2773 && postCode <= 2898 )
+                                    ){
+                                        var postCodeInfo = "Regional Centre New South Wales";
+                                    }
+
+                                    //3211 to 3232, 3235, 3240, 3328, 3330 to 3333, 3340 and 3342
+                                    else if(
+                                        ( postCode >=3211 && postCode <= 3232 )
+                                        ||
+                                        ( postCode == 3235)
+                                        ||
+                                        ( postCode == 3240 )
+                                        ||
+                                        ( postCode == 3328)
+                                        ||
+                                        ( postCode >=3330 && postCode <= 3333 )
+                                        ||
+                                        ( postCode == 3340)
+                                        ||
+                                        ( postCode == 3342)
+                                    ){
+                                        var postCodeInfo = "Cities and major regional centres of Victoria";
+                                    }
+
+                                    //3097 to 3099, 3139, 3233 to 3234, 3236 to 3239, 3241 to 3325, 3329, 3334, 3341,
+                                    //3345 to 3424, 3430 to 3799, 3809 to 3909, 3912 to 3971 and 3978 to 3996
+                                    else if(
+                                        ( postCode >=3097 && postCode <= 3099 )
+                                        ||
+                                        ( postCode == 3139)
+                                        ||
+                                        ( postCode >= 3233 && postCode <= 3234 )
+                                        ||
+                                        ( postCode >= 3236 && postCode <= 3239 )
+                                        ||
+                                        ( postCode >= 3241 && postCode <= 3325 )
+                                        ||
+                                        ( postCode == 3329 )
+                                        ||
+                                        ( postCode == 3334 )
+                                        ||
+                                        ( postCode == 3341 )
+                                        ||
+                                        ( postCode >= 3345 && postCode <= 3424 )
+                                        ||
+                                        ( postCode >= 3430 && postCode <= 3799 )
+                                        ||
+                                        ( postCode >= 3809 && postCode <= 3909 )
+                                        ||
+                                        ( postCode >= 3912 && postCode <= 3971 )
+                                        ||
+                                        ( postCode >= 3978 && postCode <= 3996 )
+                                    ){
+                                        var postCodeInfo = "Regional Centre Victoria";
+                                    }
+
+                                    //4019 to 4022*, 4025*, 4037*, 4074*, 4076 to 4078*, 4207 to 4275, 4300 to 4301*,
+                                    //4303 to 4305*, 4500 to 4506*, 4508 to 4512*, 4514 to 4516*, 4517 to 4519, 4521*,
+                                    //4550 to 4551, 4553 to 4562, 4564 to 4569 and 4571 to 4575
+                                    else if(
+                                        ( postCode >=4019 && postCode <= 4022 )
+                                        ||
+                                        ( postCode == 4025)
+                                        ||
+                                        ( postCode == 4037)
+                                        ||
+                                        ( postCode == 4074 )
+                                        ||
+                                        ( postCode >= 4076 && postCode <= 4078 )
+                                        ||
+                                        ( postCode >= 4207 && postCode <= 4275 )
+                                        ||
+                                        ( postCode >= 4300 && postCode <= 4301 )
+                                        ||
+                                        ( postCode >= 4303 && postCode <= 4305 )
+                                        ||
+                                        ( postCode >= 4500 && postCode <= 4506 )
+                                        ||
+                                        ( postCode >= 4508 && postCode <= 4512 )
+                                        ||
+                                        ( postCode >= 4514 && postCode <= 4516 )
+                                        ||
+                                        ( postCode >= 4517 && postCode <= 4519 )
+                                        ||
+                                        ( postCode == 4521)
+                                        ||
+                                        ( postCode >= 4550 && postCode <= 4551 )
+                                        ||
+                                        ( postCode >= 4553 && postCode <= 4562 )
+                                        ||
+                                        ( postCode >= 4564 && postCode <= 4569 )
+                                        ||
+                                        ( postCode >= 4571 && postCode <= 4575 )
+                                    ){
+                                        var postCodeInfo = "Cities and major regional centres of Queensland";
+                                    }
+
+                                    //4000 to 4018, 4023 to 4024, 4026 to 4036, 4038 to 4073, 4075, 4079 to 4206,
+                                    //4276 to 4299, 4302, 4306 to 4499, 4507, 4513, 4520, 4522 to 4549, 4552,
+                                    //4563, 4570, 4576 to 4999, 9000 to 9999
+                                    else if(
+                                        ( postCode >=4000 && postCode <= 4018 )
+                                        ||
+                                        ( postCode >= 4023 && postCode <= 4024 )
+                                        ||
+                                        ( postCode >= 4026 && postCode <= 4036 )
+                                        ||
+                                        ( postCode >= 4038 && postCode <= 4073 )
+                                        ||
+                                        ( postCode == 4075 )
+                                        ||
+                                        ( postCode >= 4079 && postCode <= 4206 )
+                                        ||
+                                        ( postCode >= 4276 && postCode <= 4299 )
+                                        ||
+                                        ( postCode == 4302 )
+                                        ||
+                                        ( postCode >= 4306 && postCode <= 4499 )
+                                        ||
+                                        ( postCode == 4507 )
+                                        ||
+                                        ( postCode == 4513 )
+                                        ||
+                                        ( postCode == 4520 )
+                                        ||
+                                        ( postCode >= 4522 && postCode <= 4549 )
+                                        ||
+                                        ( postCode == 4552 )
+                                        ||
+                                        ( postCode == 4563 )
+                                        ||
+                                        ( postCode == 4570 )
+                                        ||
+                                        ( postCode >= 4576 && postCode <= 4999 )
+                                        ||
+                                        ( postCode >= 9000 && postCode <= 9999 )
+                                    ){
+                                        var postCodeInfo = "Regional Centre Queensland";
+                                    }
+
+                                    //5000 to 5999
+                                    else if(
+                                        ( postCode >= 5000 && postCode <= 5999 )
+                                    ){
+                                        var postCodeInfo = "Cities and major regional centres of South Australia";
+                                    }
+
+                                    //6000 to 6797 and 6800 to 6999
+                                    else if(
+                                        ( postCode >= 6000 && postCode <= 6797 )
+                                        ||
+                                        ( postCode >= 6800 && postCode <= 6999 )
+                                    ){
+                                        var postCodeInfo = "Cities and major regional centres of Western Australia";
+                                    }
+
+                                    //7000 to 7029, 7110 to 7139, 7152 to 7169 and 7178 to 7999
+                                    else if(
+                                        ( postCode >= 7000 && postCode <= 7029 )
+                                        ||
+                                        ( postCode >= 7110 && postCode <= 7139 )
+                                        ||
+                                        ( postCode >= 7152 && postCode <= 7169 )
+                                        ||
+                                        ( postCode >= 7178 && postCode <= 7999 )
+                                    ){
+                                        var postCodeInfo = "Regional Centre Western Australia";
+                                    }
+
+                                    //7000 to 7029, 7110 to 7139, 7152 to 7169 and 7178 to 7999
+                                    else if(
+                                        ( postCode >= 7000 && postCode <= 7029 )
+                                        ||
+                                        ( postCode >= 7110 && postCode <= 7139 )
+                                        ||
+                                        ( postCode >= 7152 && postCode <= 7169 )
+                                        ||
+                                        ( postCode >= 7178 && postCode <= 7999 )
+                                    ){
+                                        var postCodeInfo = "Regional Centre Western Australia";
+                                    }
+
+                                    //7030 to 7109, 7140 to 7151 and 7170 to 7177
+                                    else if(
+                                        ( postCode >= 7030 && postCode <= 7109 )
+                                        ||
+                                        ( postCode >= 7140 && postCode <= 7151 )
+                                        ||
+                                        ( postCode >= 7170 && postCode <= 7177 )
+                                    ){
+                                        var postCodeInfo = "Cities and major regional centres of Tasmania";
+                                    }
+                                    else {
+                                        var postCodeInfo = '';
+                                    }
+                                    return postCodeInfo;
+                                }
+
+                                $(document).on('input', '.postal_code', function() {
+                                    var postcode = $(this).val();
+                                    var $row = $(this).closest('.address-fields');
+
+                                    if (postcode.length > 3) {
+                                        $.ajax({
+                                            url: '{{ route("admin.clients.updateAddress") }}',
+                                            method: 'POST',
+                                            data: { postcode: postcode },
+                                            success: function(response) {
+                                                var suggestions = response.localities.locality || [];
+                                                var $autocomplete = $row.find('.autocomplete-items').empty();
+
+                                                if (Array.isArray(suggestions)) {
+                                                    suggestions.forEach(function(suggestion) {
+                                                        var fullAddress = (suggestion.location || '') + (suggestion.state ? ', ' + suggestion.state : '');
+
+                                                        var $item = $('<div class="autocomplete-item"></div>')
+                                                            .text(fullAddress)
+                                                            .data('address', {
+                                                                fullAddress: fullAddress,
+                                                                postcode: suggestion.postcode || ''
+                                                            })
+                                                            .appendTo($autocomplete);
+
+                                                        $item.on('click', function() {
+                                                        var addressData = $(this).data('address');
+
+                                                        // Remove any trailing comma from the full address
+                                                        var fullAddress = addressData.fullAddress.trim().replace(/,\s*$/, '');
+
+                                                        $row.find('.address-input').val(fullAddress);
+                                                        $row.find('.postal_code').val(addressData.postcode);
+
+                                                        var regional_code_info = getRegionalCodeInfo(addressData.postcode);
+                                                        $row.find('.regional_code_info').val(regional_code_info);
+
+                                                        $autocomplete.empty();
+                                                    });
+
+                                                    });
+                                                } else {
+                                                    var fullAddress = (suggestions.location || '') + (suggestions.state ? ', ' + suggestions.state : '');
+                                                    var $item = $('<div class="autocomplete-item"></div>')
+                                                        .text(fullAddress)
+                                                        .data('address', {
+                                                            fullAddress: fullAddress,
+                                                            postcode: suggestions.postcode || ''
+                                                        })
+                                                        .appendTo($autocomplete);
+
+                                                    $item.on('click', function() {
+                                                        var addressData = $(this).data('address');
+                                                        $row.find('.address-input').val(addressData.fullAddress);
+                                                        $row.find('.postal_code').val(addressData.postcode);
+
+                                                        var regional_code_info = getRegionalCodeInfo(addressData.postcode);
+                                                        $row.find('.regional_code_info').val(regional_code_info);
+                                                        $autocomplete.empty();
+                                                    });
+                                                }
+                                            },
+                                            error: function() {
+                                                alert('Error fetching address details.');
+                                            }
+                                        });
+                                    } else {
+                                        $row.find('.autocomplete-items').empty();
+                                    }
+                                });
+                            });
+                            </script>
+                        </div>
+                    </section>
+
                     <!-- Travel Information Section -->
                     <section class="form-section">
                         <div class="section-header">
@@ -1704,7 +2293,6 @@
 
     @push('scripts')
     <script src="{{asset('js/clients/edit-client.js')}}"></script>
-    <script src="{{asset('js/address-autocomplete.js')}}"></script>
-    {{-- Google Maps library removed - using backend proxy for address autocomplete --}}
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyATpl3gyx8FSoykbCx3otznCIWP_-8hk7c&libraries=places&callback=initGoogleMaps" async defer></script>
     @endpush
 @endsection

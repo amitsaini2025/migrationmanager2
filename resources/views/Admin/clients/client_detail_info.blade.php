@@ -1336,7 +1336,7 @@
                                     ||
                                     ( postCode >=2773 && postCode <= 2898 )
                                 ){
-                                    var postCodeInfo = "Regional centres and other regional areas of New South Wales";
+                                    var postCodeInfo = "Regional Centre New South Wales";
                                 }
 
                                 //3211 to 3232, 3235, 3240, 3328, 3330 to 3333, 3340 and 3342
@@ -1387,7 +1387,7 @@
                                     ||
                                     ( postCode >= 3978 && postCode <= 3996 )
                                 ){
-                                    var postCodeInfo = "Regional centres and other regional areas of Victoria";
+                                    var postCodeInfo = "Regional Centre Victoria";
                                 }
 
                                 //4019 to 4022*, 4025*, 4037*, 4074*, 4076 to 4078*, 4207 to 4275, 4300 to 4301*,
@@ -1456,7 +1456,7 @@
                                     ||
                                     ( postCode >= 4580 && postCode <= 4895 )
                                 ){
-                                    var postCodeInfo = "Regional centres and other regional areas of Queensland";
+                                    var postCodeInfo = "Regional Centre Queensland";
                                 }
 
                                 //6000 to 6038, 6050 to 6083, 6090 to 6182, 6208 to 6211, 6214 and 6556 to 6558

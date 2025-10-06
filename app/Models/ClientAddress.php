@@ -10,14 +10,18 @@ class ClientAddress extends Model
     protected $fillable = [
         'admin_id',
 		'client_id', // New field added
-        'address',
-        'city',
-        'state',
-        'zip',
-		'regional_code',
-        'start_date',
-        'end_date',
-        'is_current'
+        'address',           // Keep for backward compatibility
+        'address_line_1',    // NEW
+        'address_line_2',    // NEW
+        'suburb',            // NEW
+        'city',              // Existing (alias for suburb)
+        'state',             // Existing
+        'country',           // NEW
+        'zip',               // Existing
+        'regional_code',     // Existing
+        'start_date',        // Existing
+        'end_date',          // Existing
+        'is_current'         // Existing
     ];
 }
 

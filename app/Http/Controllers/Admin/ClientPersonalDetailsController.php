@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 use App\Models\Admin;
 use App\Models\ClientAddress;
 use App\Models\ClientContact;
@@ -116,6 +117,66 @@ class ClientPersonalDetailsController extends Controller
         }
         $data = json_decode($response, true); //dd($data);
         return response()->json($data);
+    }
+
+    // Method 1: Search address using Google Places
+    public function searchAddressFull(Request $request)
+    {
+        $query = $request->input('query');
+        $apiKey = env('GOOGLE_MAPS_API_KEY');
+        $url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json';
+        
+        $params = http_build_query([
+            'input' => $query,
+            'components' => 'country:au',
+            'key' => $apiKey
+        ]);
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url . '?' . $params);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        $response = curl_exec($ch);
+        curl_close($ch);
+        
+        $data = json_decode($response, true);
+        return response()->json($data);
+    }
+
+    // Method 2: Get place details
+    public function getPlaceDetails(Request $request)
+    {
+        $placeId = $request->input('place_id');
+        $apiKey = env('GOOGLE_MAPS_API_KEY');
+        $url = 'https://maps.googleapis.com/maps/api/place/details/json';
+        
+        $params = http_build_query([
+            'place_id' => $placeId,
+            'key' => $apiKey
+        ]);
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url . '?' . $params);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        $response = curl_exec($ch);
+        curl_close($ch);
+        
+        $data = json_decode($response, true);
+        return response()->json($data);
+    }
+
+    // Method 3: Helper to combine address
+    private function combineAddress($parts)
+    {
+        $addressParts = array_filter([
+            $parts['line1'] ?? null,
+            $parts['line2'] ?? null,
+            $parts['suburb'] ?? null,
+            $parts['state'] ?? null,
+            $parts['postcode'] ?? null,
+            (($parts['country'] ?? 'Australia') !== 'Australia' ? $parts['country'] : null)
+        ]);
+        
+        return implode(', ', $addressParts);
     }
 
     public function updateOccupation(Request $request)
@@ -1083,7 +1144,7 @@ class ClientPersonalDetailsController extends Controller
                 $clientContacts = ClientContact::where('client_id', $id)->get() ?? [];
                 $emails = ClientEmail::where('client_id', $id)->get() ?? [];
                 $visaCountries = ClientVisaCountry::where('client_id', $id)->get() ?? [];
-                $clientAddresses = ClientAddress::where('client_id', $id)->get() ?? [];
+                $clientAddresses = ClientAddress::where('client_id', $id)->orderBy('created_at', 'desc')->get() ?? [];
                 $qualifications = ClientQualification::where('client_id', $id)->get() ?? [];
                 $experiences = ClientExperience::where('client_id', $id)->get() ?? [];
                 $clientOccupations = ClientOccupation::where('client_id', $id)->get();
@@ -1527,45 +1588,91 @@ class ClientPersonalDetailsController extends Controller
     private function saveAddressInfoSection($request, $client)
     {
         try {
-            $addresses = json_decode($request->input('addresses'), true);
+            $requestData = $request->all();
             
-            if (!is_array($addresses)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid address data'
-                ], 400);
-            }
-
-            // Delete existing addresses for this client
-            ClientAddress::where('client_id', $client->id)->delete();
-
-            // Insert new addresses
-            foreach ($addresses as $addressData) {
-                if (!empty($addressData['address'])) {
-                    // Convert date format from d/m/Y to Y-m-d if needed
-                    $startDate = null;
-                    $endDate = null;
+            \Log::info('Address save request data:', $requestData);
+            
+            if (isset($requestData['zip']) && is_array($requestData['zip'])) {
+                ClientAddress::where('client_id', $client->id)->delete();
+                
+                foreach ($requestData['zip'] as $key => $zip) {
+                    $address_line_1 = $requestData['address_line_1'][$key] ?? null;
+                    $address_line_2 = $requestData['address_line_2'][$key] ?? null;
+                    $suburb = $requestData['suburb'][$key] ?? null;
+                    $state = $requestData['state'][$key] ?? null;
+                    $country = $requestData['country'][$key] ?? 'Australia';
+                    $regional_code = $requestData['regional_code'][$key] ?? null;
+                    $start_date = $requestData['address_start_date'][$key] ?? null;
+                    $end_date = $requestData['address_end_date'][$key] ?? null;
                     
-                    if (!empty($addressData['start_date'])) {
-                        $startDate = \DateTime::createFromFormat('d/m/Y', $addressData['start_date']);
-                        $startDate = $startDate ? $startDate->format('Y-m-d') : null;
-                    }
-                    
-                    if (!empty($addressData['end_date'])) {
-                        $endDate = \DateTime::createFromFormat('d/m/Y', $addressData['end_date']);
-                        $endDate = $endDate ? $endDate->format('Y-m-d') : null;
-                    }
-                    
-                    ClientAddress::create([
-                        'client_id' => $client->id,
-                        'address' => $addressData['address'],
-                        'zip' => $addressData['zip'] ?? null,
-                        'address_start_date' => $startDate,
-                        'address_end_date' => $endDate
+                    \Log::info("Processing address entry $key:", [
+                        'zip' => $zip,
+                        'address_line_1' => $address_line_1,
+                        'suburb' => $suburb,
+                        'state' => $state,
+                        'country' => $country,
+                        'regional_code' => $regional_code,
+                        'start_date' => $start_date,
+                        'end_date' => $end_date
                     ]);
+                    
+                    // Date conversion
+                    $formatted_start_date = null;
+                    if (!empty($start_date)) {
+                        try {
+                            $date = Carbon::createFromFormat('d/m/Y', $start_date);
+                            $formatted_start_date = $date->format('Y-m-d');
+                        } catch (\Exception $e) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Invalid Start Date format: ' . $start_date
+                            ], 422);
+                        }
+                    }
+                    
+                    $formatted_end_date = null;
+                    if (!empty($end_date)) {
+                        try {
+                            $date = Carbon::createFromFormat('d/m/Y', $end_date);
+                            $formatted_end_date = $date->format('Y-m-d');
+                        } catch (\Exception $e) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Invalid End Date format: ' . $end_date
+                            ], 422);
+                        }
+                    }
+                    
+                    // Create combined address for backward compatibility
+                    $combined_address = $this->combineAddress([
+                        'line1' => $address_line_1,
+                        'line2' => $address_line_2,
+                        'suburb' => $suburb,
+                        'state' => $state,
+                        'postcode' => $zip,
+                        'country' => $country
+                    ]);
+                    
+                    if (!empty($address_line_1) || !empty($zip)) {
+                        ClientAddress::create([
+                            'admin_id' => Auth::user()->id,
+                            'client_id' => $client->id,
+                            'address' => $combined_address,
+                            'city' => $suburb,
+                            'address_line_1' => $address_line_1,
+                            'address_line_2' => $address_line_2,
+                            'suburb' => $suburb,
+                            'state' => $state,
+                            'country' => $country,
+                            'zip' => $zip,
+                            'regional_code' => $regional_code,
+                            'start_date' => $formatted_start_date,
+                            'end_date' => $formatted_end_date
+                        ]);
+                    }
                 }
             }
-
+            
             return response()->json([
                 'success' => true,
                 'message' => 'Address information updated successfully'

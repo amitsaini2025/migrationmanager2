@@ -847,35 +847,53 @@ function addAddress() {
         toggleEditMode('addressInfo');
     }
     
-    const container = document.getElementById('addressContainer');
-    const index = container.children.length;
+    // Use the old system's addNewAddressRow function if available
+    if (typeof addNewAddressRow === 'function') {
+        addNewAddressRow();
+    } else {
+        // Fallback to manual row addition
+        const container = document.getElementById('address-fields-wrapper');
+        const index = container.querySelectorAll('.address-fields').length;
 
-    container.insertAdjacentHTML('beforeend', `
-        <div class="repeatable-section">
-            <button type="button" class="remove-item-btn" title="Remove Address" onclick="removeAddressField(this)"><i class="fas fa-trash"></i></button>
-            <div class="content-grid">
-                <div class="form-group">
-                    <label>Address</label>
-                    <textarea name="address[${index}]" rows="2" placeholder="Address"></textarea>
+        container.insertAdjacentHTML('beforeend', `
+            <div class="address-fields row mb-3">
+                <div class="col-sm-3">
+                    <div class="form-group">
+                        <label for="zip">Post Code</label>
+                        <input type="text" name="zip[]" class="form-control postal_code" autocomplete="off" placeholder="Enter Post Code">
+                        <div class="autocomplete-items"></div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Postal Code</label>
-                    <input type="text" name="zip[${index}]" placeholder="Postal Code">
+                <div class="col-sm-3">
+                    <div class="form-group">
+                        <label for="address">Address</label>
+                        <input type="text" name="address[]" class="form-control address-input" autocomplete="off" placeholder="Search Box">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Start Date</label>
-                    <input type="text" name="address_start_date[${index}]" placeholder="dd/mm/yyyy" class="date-picker">
+                <div class="col-sm-2">
+                    <div class="form-group">
+                        <label for="regional_code">Regional Code Info</label>
+                        <input type="text" name="regional_code[]"  class="form-control regional_code_info" placeholder="Regional Code info" readonly>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>End Date</label>
-                    <input type="text" name="address_end_date[${index}]" placeholder="dd/mm/yyyy" class="date-picker">
+                <div class="col-sm-2">
+                    <div class="form-group">
+                        <label for="address_start_date">Start Date</label>
+                        <input type="text" name="address_start_date[]" class="form-control date-picker" placeholder="dd/mm/yyyy">
+                    </div>
+                </div>
+                <div class="col-sm-2">
+                    <div class="form-group">
+                        <label for="address_end_date">End Date</label>
+                        <input type="text" name="address_end_date[]" class="form-control date-picker" placeholder="dd/mm/yyyy">
+                    </div>
+                </div>
+                <div class="col-sm-1 d-flex align-items-center">
+                    <button type="button" class="btn btn-primary add-row-btn">+</button>
                 </div>
             </div>
-        </div>
-    `);
-
-    // Reinitialize datepickers for the newly added fields
-    initializeDatepickers();
+        `);
+    }
 }
 
 /**
@@ -2019,68 +2037,98 @@ window.saveVisaInfo = function() {
  * Save address information and update summary
  */
 window.saveAddressInfo = function() {
-    // Get all address entries
-    const container = document.getElementById('addressContainer');
-    const sections = container.querySelectorAll('.repeatable-section');
-    const addresses = [];
+    const $addressesContainer = $('#addresses-container');
+    // Get all address entries, but exclude only the template ones
+    // Note: We need to include the default empty entry (index 0) even if it has address-template class
+    const $addressEntries = $addressesContainer.find('.address-entry-wrapper').filter(function() {
+        const $entry = $(this);
+        const index = $entry.data('address-index');
+        // Include the first entry (index 0) even if it has address-template class
+        // Only exclude entries that are actual templates (not the default empty entry)
+        return index === 0 || !$entry.hasClass('address-template');
+    });
+    const formData = new FormData();
     
-    sections.forEach(section => {
-        const addressId = section.querySelector('input[name*="address_id"]')?.value;
-        const address = section.querySelector('textarea[name*="address"]').value;
-        const zip = section.querySelector('input[name*="zip"]').value;
-        const startDate = section.querySelector('input[name*="address_start_date"]').value;
-        const endDate = section.querySelector('input[name*="address_end_date"]').value;
+    console.log('💾 Saving address info...', $addressEntries.length, 'entries');
+    
+    $addressEntries.each(function(index) {
+        const $entry = $(this);
         
-        if (address || zip || startDate || endDate) {
-            addresses.push({
-                address_id: addressId || '',
-                address: address,
-                zip: zip,
-                start_date: startDate,
-                end_date: endDate
-            });
-        }
+        const addressId = $entry.find('input[name="address_id[]"]').val();
+        const addressLine1 = $entry.find('input[name="address_line_1[]"]').val();
+        const addressLine2 = $entry.find('input[name="address_line_2[]"]').val();
+        const suburb = $entry.find('input[name="suburb[]"]').val();
+        const state = $entry.find('input[name="state[]"]').val();
+        const country = $entry.find('input[name="country[]"]').val();
+        const zip = $entry.find('input[name="zip[]"]').val();
+        const regionalCode = $entry.find('input[name="regional_code[]"]').val();
+        const startDate = $entry.find('input[name="address_start_date[]"]').val();
+        const endDate = $entry.find('input[name="address_end_date[]"]').val();
+        
+        // Debug logging removed for cleaner console output
+        
+        // Always append all fields, even if empty (except for addressId which can be empty for new entries)
+        if (addressId) formData.append('address_id[]', addressId);
+        else formData.append('address_id[]', ''); // Empty string for new entries
+        
+        formData.append('address_line_1[]', addressLine1 || '');
+        formData.append('address_line_2[]', addressLine2 || '');
+        formData.append('suburb[]', suburb || '');
+        formData.append('state[]', state || '');
+        formData.append('country[]', country || 'Australia');
+        formData.append('zip[]', zip || '');
+        formData.append('regional_code[]', regionalCode || '');
+        formData.append('address_start_date[]', startDate || '');
+        formData.append('address_end_date[]', endDate || '');
     });
     
-    const formData = new FormData();
-    formData.append('addresses', JSON.stringify(addresses));
+    // Form data ready for submission
     
     saveSectionData('addressInfo', formData, function() {
-        // Update summary view on success
-        const summaryView = document.getElementById('addressInfoSummary');
-        const summaryGrid = summaryView.querySelector('.summary-grid');
-        
-        if (addresses.length > 0) {
-            let summaryHTML = '';
-            addresses.forEach(address => {
-                summaryHTML += `
-                    <div class="summary-item">
-                        <span class="summary-label">Address:</span>
-                        <span class="summary-value">${address.address || 'Not set'}</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Postal Code:</span>
-                        <span class="summary-value">${address.zip || 'Not set'}</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Start Date:</span>
-                        <span class="summary-value">${address.start_date || 'Not set'}</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">End Date:</span>
-                        <span class="summary-value">${address.end_date || 'Not set'}</span>
-                    </div>
-                `;
-            });
-            summaryGrid.innerHTML = summaryHTML;
-        } else {
-            summaryView.innerHTML = '<div class="empty-state"><p>No addresses added yet.</p></div>';
-        }
-        
-        // Return to summary view
-        cancelEdit('addressInfo');
+        console.log('✅ Address saved successfully, refreshing page...');
+        // Reload page to show fresh data from database
+        window.location.reload();
     });
 };
+
+function updateAddressSummary($entries) {
+    const summaryView = document.getElementById('addressInfoSummary');
+    let summaryHTML = '<div>';
+    
+    $entries.each(function() {
+        const addressLine1 = $(this).find('input[name="address_line_1[]"]').val();
+        const addressLine2 = $(this).find('input[name="address_line_2[]"]').val();
+        const suburb = $(this).find('input[name="suburb[]"]').val();
+        const state = $(this).find('input[name="state[]"]').val();
+        const zip = $(this).find('input[name="zip[]"]').val();
+        const country = $(this).find('input[name="country[]"]').val();
+        const startDate = $(this).find('input[name="address_start_date[]"]').val();
+        const endDate = $(this).find('input[name="address_end_date[]"]').val();
+        
+        const fullAddress = [addressLine1, addressLine2, suburb, state, zip, country]
+            .filter(Boolean).join(', ');
+        
+        summaryHTML += `
+            <div class="address-entry">
+                <div class="summary-item">
+                    <span class="summary-label">Full Address:</span>
+                    <span class="summary-value">${fullAddress || 'Not set'}</span>
+                </div>
+                ${startDate ? `<div class="summary-item">
+                    <span class="summary-label">Start Date:</span>
+                    <span class="summary-value">${startDate}</span>
+                </div>` : ''}
+                ${endDate ? `<div class="summary-item">
+                    <span class="summary-label">End Date:</span>
+                    <span class="summary-value">${endDate}</span>
+                </div>` : ''}
+            </div>
+        `;
+    });
+    
+    summaryHTML += '</div>';
+    summaryView.innerHTML = summaryHTML;
+}
 
 /**
  * Save travel information and update summary

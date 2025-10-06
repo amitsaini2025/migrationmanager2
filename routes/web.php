@@ -199,7 +199,7 @@ Route::prefix('admin')->group(function() {
 		//Route::get('/clients/create', 'Admin\ClientsController@create')->name('admin.clients.create');
 		Route::post('/clients/store', 'Admin\ClientsController@store')->name('admin.clients.store');
 		Route::get('/clients/edit/{id}', 'Admin\ClientsController@edit')->name('admin.clients.edit');
-		Route::post('/clients/edit', 'Admin\ClientsController@edit')->name('admin.clients.edit');
+		Route::post('/clients/edit', 'Admin\ClientsController@update')->name('admin.clients.update');
 
         Route::post('/clients/followup/store', 'Admin\ClientsController@followupstore');
 

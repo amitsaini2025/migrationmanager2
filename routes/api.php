@@ -62,10 +62,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/messages/send', [ClientPortalMessageController::class, 'sendMessage']);
     Route::get('/messages', [ClientPortalMessageController::class, 'getMessages']);
     Route::get('/messages/unread-count', [ClientPortalMessageController::class, 'getUnreadCount']);
-    Route::get('/messages/recipients', [ClientPortalMessageController::class, 'getRecipients']);
+    Route::post('/messages/{id}/read', [ClientPortalMessageController::class, 'markAsRead']);
     Route::get('/messages/{id}', [ClientPortalMessageController::class, 'getMessageDetails']);
-    Route::put('/messages/{id}/read', [ClientPortalMessageController::class, 'markAsRead']);
-    Route::delete('/messages/{id}', [ClientPortalMessageController::class, 'deleteMessage']);
     
 });
 

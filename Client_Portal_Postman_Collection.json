@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "client-portal-api-collection",
+		"_postman_id": "12345678-1234-1234-1234-123456789012",
 		"name": "Client Portal Mobile App API",
 		"description": "Complete API collection for Client Portal Mobile App authentication and profile management",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -987,9 +987,9 @@
 									"key": "per_page",
 									"value": "10"
 								},
-						{
-							"key": "search",
-							"value": ""
+								{
+									"key": "search",
+									"value": ""
 								},
 								{
 									"key": "status",
@@ -998,7 +998,7 @@
 								{
 									"key": "priority",
 									"value": "all"
-						}
+								}
 							]
 						}
 					},
@@ -1817,7 +1817,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"recipient_id\": 2,\n    \"subject\": \"Test Message from Mobile App\",\n    \"message\": \"This is a test message sent via mobile app API at {{$timestamp}}\",\n    \"message_type\": \"normal\",\n    \"client_matter_id\": 9,\n    \"client_matter_stage_id\": 1\n}"
+					"raw": "{\n    \"message\": \"This is a test message sent via mobile app API at {{$timestamp}}\",\n    \"client_matter_id\": 9\n}"
 				},
 				"url": {
 					"raw": "{{base_url}}/messages/send",
@@ -1829,7 +1829,7 @@
 						"send"
 					]
 				},
-				"description": "Send a new message to a recipient. client_matter_id and client_matter_stage_id are required. Use message_type to set priority: urgent, important, normal, low_priority. This will trigger real-time broadcasting to the website."
+				"description": "Send a new text message for a specific client matter. client_matter_id is required. Message will be broadcasted in real-time. Notifications will be sent to migration agent, person responsible, person assisting for the matter, and all superadmin users (role=1). Notification message will include 'Client Portal Mobile App' identifier. No attachments or recipients - message is associated with the matter only."
 			},
 			"event": [
 				{
@@ -1866,7 +1866,7 @@
 					}
 				],
 				"url": {
-					"raw": "{{base_url}}/messages?client_matter_id=9&page=1&limit=20&type=all&message_type=all&client_matter_stage_id=1",
+					"raw": "{{base_url}}/messages?client_matter_id=9&page=1&limit=20",
 					"host": [
 						"{{base_url}}"
 					],
@@ -1888,25 +1888,10 @@
 							"key": "limit",
 							"value": "20",
 							"description": "Number of messages per page"
-						},
-						{
-							"key": "type",
-							"value": "all",
-							"description": "Filter by message type: all, sent, received"
-						},
-						{
-							"key": "message_type",
-							"value": "all",
-							"description": "Filter by priority: all, urgent, important, normal, low_priority"
-						},
-						{
-							"key": "client_matter_stage_id",
-							"value": "1",
-							"description": "Filter by workflow stage ID (optional)"
 						}
 					]
 				},
-				"description": "Get all messages for a specific client matter with optional workflow stage filtering. client_matter_id is required."
+				"description": "Get all messages for a specific client matter. Returns both sent and received messages sorted by creation date (oldest first, newest at bottom). client_matter_id is required. Optional pagination with page and limit parameters."
 			}
 		},
 		{
@@ -1940,7 +1925,7 @@
 		{
 			"name": "28. Messaging - Mark Message as Read",
 			"request": {
-				"method": "PUT",
+				"method": "POST",
 				"header": [
 					{
 						"key": "Authorization",
@@ -1963,39 +1948,11 @@
 						"read"
 					]
 				},
-				"description": "Mark a message as read. This will broadcast read status to the sender."
+				"description": "Mark a message as read. Only the recipient of the message can mark it as read. This will broadcast read status to the sender. Returns 403 if user is not authorized."
 			}
 		},
 		{
-			"name": "29. Messaging - Delete Message",
-			"request": {
-				"method": "DELETE",
-				"header": [
-					{
-						"key": "Authorization",
-						"value": "Bearer {{auth_token}}",
-						"description": "Use token from login response"
-					},
-					{
-						"key": "Accept",
-						"value": "application/json"
-					}
-				],
-				"url": {
-					"raw": "{{base_url}}/messages/{{message_id}}",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"messages",
-						"{{message_id}}"
-					]
-				},
-				"description": "Delete a message. Users can only delete messages sent by themselves."
-			}
-		},
-		{
-			"name": "30. Messaging - Get Unread Count",
+			"name": "29. Messaging - Get Unread Count",
 			"request": {
 				"method": "GET",
 				"header": [
@@ -2020,34 +1977,6 @@
 					]
 				},
 				"description": "Get the count of unread messages for the authenticated user"
-			}
-		},
-		{
-			"name": "31. Messaging - Get Recipients",
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Authorization",
-						"value": "Bearer {{auth_token}}",
-						"description": "Use token from login response"
-					},
-					{
-						"key": "Accept",
-						"value": "application/json"
-					}
-				],
-				"url": {
-					"raw": "{{base_url}}/messages/recipients",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"messages",
-						"recipients"
-					]
-				},
-				"description": "Get list of users that can receive messages"
 			}
 		}
 	],

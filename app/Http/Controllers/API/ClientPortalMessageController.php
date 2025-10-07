@@ -30,14 +30,8 @@ class ClientPortalMessageController extends Controller
 
             // Validate request
             $validator = Validator::make($request->all(), [
-                'recipient_id' => 'nullable|integer|min:1',
                 'message' => 'nullable|string|max:5000',
-                'subject' => 'nullable|string|max:255',
-                'message_type' => 'nullable|in:urgent,important,normal,low_priority',
-                'client_matter_id' => 'required|integer|min:1',
-                'client_matter_stage_id' => 'required|integer|min:1',
-                'attachments' => 'nullable|array',
-                'attachments.*' => 'file|max:10240' // 10MB max per file
+                'client_matter_id' => 'required|integer|min:1'
             ]);
 
             if ($validator->fails()) {
@@ -48,12 +42,8 @@ class ClientPortalMessageController extends Controller
                 ], 422);
             }
 
-            $recipientId = $request->input('recipient_id');
             $message = $request->input('message');
-            $subject = $request->input('subject');
-            $messageType = $request->input('message_type', 'normal');
             $clientMatterId = $request->input('client_matter_id');
-            $clientMatterStageId = $request->input('client_matter_stage_id');
 
             // Get sender information (optional)
             $sender = null;
@@ -64,53 +54,17 @@ class ClientPortalMessageController extends Controller
                     ->first();
             }
 
-            // Get recipient information (optional)
-            $recipient = null;
-            if ($recipientId) {
-                $recipient = DB::table('admins')
-                    ->select('id', 'first_name', 'last_name', 'email')
-                    ->where('id', $recipientId)
-                    ->first();
-            }
 
-            // Handle file attachments
-            $attachments = [];
-            if ($request->hasFile('attachments')) {
-                foreach ($request->file('attachments') as $file) {
-                    $fileName = time() . '_' . $file->getClientOriginalName();
-                    $filePath = 'message_attachments/' . $clientId . '/' . $fileName;
-                    
-                    // Store file (you can use S3 or local storage)
-                    $file->storeAs('message_attachments/' . $clientId, $fileName);
-                    
-                    $attachments[] = [
-                        'name' => $file->getClientOriginalName(),
-                        'path' => $filePath,
-                        'size' => $file->getSize(),
-                        'type' => $file->getMimeType()
-                    ];
-                }
-            }
 
             // Create message record
             $messageData = [
-                'subject' => $subject,
                 'message' => $message,
                 'sender' => $sender ? $sender->first_name . ' ' . $sender->last_name : null,
-                'recipient' => $recipient ? $recipient->first_name . ' ' . $recipient->last_name : null,
                 'sender_id' => $clientId,
-                'recipient_id' => $recipientId,
+                'recipient_id' => null,
                 'sent_at' => now(),
                 'is_read' => false,
-                'message_type' => $messageType,
                 'client_matter_id' => $clientMatterId,
-                'client_matter_stage_id' => $clientMatterStageId,
-                'attachments' => !empty($attachments) ? json_encode($attachments) : null,
-                'metadata' => json_encode([
-                    'sender_email' => $sender ? $sender->email : null,
-                    'recipient_email' => $recipient ? $recipient->email : null,
-                    'sent_from' => 'mobile_app'
-                ]),
                 'created_at' => now(),
                 'updated_at' => now()
             ];
@@ -121,28 +75,70 @@ class ClientPortalMessageController extends Controller
                 // Prepare message for broadcasting
                 $messageForBroadcast = [
                     'id' => $messageId,
-                    'subject' => $subject,
                     'message' => $message,
                     'sender' => $sender ? $sender->first_name . ' ' . $sender->last_name : null,
-                    'recipient' => $recipient ? $recipient->first_name . ' ' . $recipient->last_name : null,
                     'sender_id' => $clientId,
-                    'recipient_id' => $recipientId,
-                    'message_type' => $messageType,
-                    'attachments' => $attachments,
+                    'recipient_id' => null,
                     'sent_at' => now()->toISOString(),
                     'is_read' => false
                 ];
 
-                // Broadcast message to recipient (website) if recipient exists
-                if ($recipientId) {
-                    broadcast(new MessageSent($messageForBroadcast, $recipientId));
-                    
-                    // Broadcast unread count update for recipient
-                    $unreadCount = DB::table('messages')
-                        ->where('recipient_id', $recipientId)
-                        ->where('is_read', false)
-                        ->count();
-                    broadcast(new UnreadCountUpdated($recipientId, $unreadCount));
+                // Broadcast message (no specific recipient)
+                broadcast(new MessageSent($messageForBroadcast, null));
+
+                // Send notifications to migration agent, person responsible, person assisting, and superadmins
+                $clientMatter = DB::table('client_matters')
+                    ->where('id', $clientMatterId)
+                    ->first();
+
+                $notificationUsers = [];
+
+                // Get users from client matter (migration agent, person responsible, person assisting)
+                if ($clientMatter) {
+                    $matterUsers = [
+                        $clientMatter->sel_migration_agent,
+                        $clientMatter->sel_person_responsible,
+                        $clientMatter->sel_person_assisting
+                    ];
+
+                    // Remove null values and add to notification list
+                    $matterUsers = array_filter($matterUsers, function($userId) {
+                        return $userId !== null;
+                    });
+
+                    $notificationUsers = array_merge($notificationUsers, $matterUsers);
+                }
+
+                // Get superadmin users (role=1)
+                $superadmins = DB::table('admins')
+                    ->where('role', 1)
+                    ->where('status', 1) // Active superadmins only
+                    ->pluck('id')
+                    ->toArray();
+
+                $notificationUsers = array_merge($notificationUsers, $superadmins);
+
+                // Remove duplicates and current user from notification list
+                $notificationUsers = array_unique($notificationUsers);
+                $notificationUsers = array_filter($notificationUsers, function($userId) use ($clientId) {
+                    return $userId != $clientId;
+                });
+
+                // Send notifications to each user
+                foreach ($notificationUsers as $userId) {
+                    DB::table('notifications')->insert([
+                        'sender_id' => $clientId,
+                        'receiver_id' => $userId,
+                        'module_id' => $clientMatterId,
+                        'url' => '/admin/messages',
+                        'notification_type' => 'message',
+                        'message' => 'New message received by Client Portal Mobile App from ' . ($sender ? $sender->first_name . ' ' . $sender->last_name : 'Client') . ' for matter ' . ($clientMatter ? $clientMatter->client_unique_matter_no : 'ID: ' . $clientMatterId),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                        'sender_status' => 1,
+                        'receiver_status' => 0,
+                        'seen' => 0
+                    ]);
                 }
 
                 // Create activity log
@@ -150,7 +146,7 @@ class ClientPortalMessageController extends Controller
                     'client_id' => $clientId,
                     'created_by' => $clientId,
                     'subject' => 'Message sent',
-                    'description' => 'Message sent' . ($recipient ? ' to ' . $recipient->first_name . ' ' . $recipient->last_name : ''),
+                    'description' => 'Message sent by Client Portal Mobile App for matter ID: ' . $clientMatterId,
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);
@@ -174,7 +170,7 @@ class ClientPortalMessageController extends Controller
         } catch (\Exception $e) {
             Log::error('Send Message API Error: ' . $e->getMessage(), [
                 'user_id' => $admin->id ?? null,
-                'recipient_id' => $request->input('recipient_id'),
+                'client_matter_id' => $request->input('client_matter_id'),
                 'trace' => $e->getTraceAsString()
             ]);
 
@@ -202,10 +198,7 @@ class ClientPortalMessageController extends Controller
             $validator = Validator::make($request->all(), [
                 'client_matter_id' => 'required|integer|min:1',
                 'page' => 'nullable|integer|min:1',
-                'limit' => 'nullable|integer|min:1|max:100',
-                'type' => 'nullable|in:all,sent,received',
-                'message_type' => 'nullable|in:all,urgent,important,normal,low_priority',
-                'client_matter_stage_id' => 'nullable|integer|min:1'
+                'limit' => 'nullable|integer|min:1|max:100'
             ]);
 
             if ($validator->fails()) {
@@ -219,10 +212,7 @@ class ClientPortalMessageController extends Controller
             // Get query parameters
             $page = $request->get('page', 1);
             $limit = $request->get('limit', 20);
-            $type = $request->get('type', 'all'); // all, sent, received
-            $messageType = $request->get('message_type', 'all');
             $clientMatterId = $request->get('client_matter_id');
-            $clientMatterStageId = $request->get('client_matter_stage_id');
 
             // Build query
             $query = DB::table('messages')
@@ -232,38 +222,17 @@ class ClientPortalMessageController extends Controller
                 })
                 ->where('client_matter_id', $clientMatterId); // Required filter
 
-            // Filter by type
-            if ($type === 'sent') {
-                $query->where('sender_id', $clientId);
-            } elseif ($type === 'received') {
-                $query->where('recipient_id', $clientId);
-            }
-
-            // Filter by message type
-            if ($messageType !== 'all') {
-                $query->where('message_type', $messageType);
-            }
-
-            // Filter by client matter stage
-            if ($clientMatterStageId) {
-                $query->where('client_matter_stage_id', $clientMatterStageId);
-            }
-
             // Get total count
             $totalMessages = $query->count();
 
             // Get messages with pagination
-            $messages = $query->orderBy('created_at', 'desc')
+            $messages = $query->orderBy('created_at', 'asc')
                 ->offset(($page - 1) * $limit)
                 ->limit($limit)
                 ->get()
                 ->map(function ($msg) use ($clientId) {
-                    $attachments = json_decode($msg->attachments, true) ?? [];
-                    $metadata = json_decode($msg->metadata, true) ?? [];
-                    
                     return [
                         'id' => $msg->id,
-                        'subject' => $msg->subject,
                         'message' => $msg->message,
                         'sender' => $msg->sender,
                         'recipient' => $msg->recipient,
@@ -274,11 +243,7 @@ class ClientPortalMessageController extends Controller
                         'sent_at' => $msg->sent_at,
                         'read_at' => $msg->read_at,
                         'is_read' => $msg->is_read,
-                        'message_type' => $msg->message_type,
                         'client_matter_id' => $msg->client_matter_id,
-                        'client_matter_stage_id' => $msg->client_matter_stage_id,
-                        'attachments' => $attachments,
-                        'metadata' => $metadata,
                         'created_at' => $msg->created_at,
                         'updated_at' => $msg->updated_at
                     ];
@@ -295,10 +260,7 @@ class ClientPortalMessageController extends Controller
                         'last_page' => ceil($totalMessages / $limit)
                     ],
                     'filters' => [
-                        'type' => $type,
-                        'message_type' => $messageType,
-                        'client_matter_id' => $clientMatterId,
-                        'client_matter_stage_id' => $clientMatterStageId
+                        'client_matter_id' => $clientMatterId
                     ]
                 ]
             ], 200);
@@ -344,14 +306,10 @@ class ClientPortalMessageController extends Controller
                 ], 404);
             }
 
-            $attachments = json_decode($message->attachments, true) ?? [];
-            $metadata = json_decode($message->metadata, true) ?? [];
-
             return response()->json([
                 'success' => true,
                 'data' => [
                     'id' => $message->id,
-                    'subject' => $message->subject,
                     'message' => $message->message,
                     'sender' => $message->sender,
                     'recipient' => $message->recipient,
@@ -362,11 +320,7 @@ class ClientPortalMessageController extends Controller
                     'sent_at' => $message->sent_at,
                     'read_at' => $message->read_at,
                     'is_read' => $message->is_read,
-                    'message_type' => $message->message_type,
                     'client_matter_id' => $message->client_matter_id,
-                    'client_matter_stage_id' => $message->client_matter_stage_id,
-                    'attachments' => $attachments,
-                    'metadata' => $metadata,
                     'created_at' => $message->created_at,
                     'updated_at' => $message->updated_at
                 ]
@@ -399,16 +353,24 @@ class ClientPortalMessageController extends Controller
             $admin = $request->user();
             $clientId = $admin->id;
 
+            // First check if message exists
             $message = DB::table('messages')
                 ->where('id', $id)
-                ->where('recipient_id', $clientId)
                 ->first();
 
             if (!$message) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Message not found or not authorized'
+                    'message' => 'Message not found'
                 ], 404);
+            }
+
+            // Check if user is authorized to mark this message as read (must be the recipient)
+            if ($message->recipient_id != $clientId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are not authorized for mark as read'
+                ], 403);
             }
 
             if (!$message->is_read) {
@@ -428,13 +390,11 @@ class ClientPortalMessageController extends Controller
                 // Broadcast message update
                 broadcast(new MessageUpdated([
                     'id' => $updatedMessage->id,
-                    'subject' => $updatedMessage->subject,
                     'message' => $updatedMessage->message,
                     'sender' => $updatedMessage->sender,
                     'recipient' => $updatedMessage->recipient,
                     'is_read' => true,
                     'read_at' => $updatedMessage->read_at,
-                    'message_type' => $updatedMessage->message_type,
                     'sent_at' => $updatedMessage->sent_at
                 ], $clientId));
 
@@ -507,125 +467,5 @@ class ClientPortalMessageController extends Controller
         }
     }
 
-    /**
-     * Delete Message
-     * DELETE /api/messages/{id}
-     * 
-     * Deletes a message (soft delete by marking as deleted)
-     */
-    public function deleteMessage(Request $request, $id)
-    {
-        try {
-            $admin = $request->user();
-            $clientId = $admin->id;
 
-            $message = DB::table('messages')
-                ->where('id', $id)
-                ->where('sender_id', $clientId) // Only allow deleting messages sent by the user
-                ->first();
-
-            if (!$message) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Message not found or you can only delete messages sent by yourself'
-                ], 404);
-            }
-
-            // Hard delete the message (since only sender can delete)
-            $deleted = DB::table('messages')
-                ->where('id', $id)
-                ->where('sender_id', $clientId)
-                ->delete();
-
-            if ($deleted) {
-                // Broadcast message deletion to update real-time count
-                broadcast(new MessageDeleted($id, $message->recipient_id));
-                
-                // Broadcast unread count update for both sender and recipient
-                $senderUnreadCount = DB::table('messages')
-                    ->where('recipient_id', $message->sender_id)
-                    ->where('is_read', false)
-                    ->count();
-                broadcast(new UnreadCountUpdated($message->sender_id, $senderUnreadCount));
-                
-                $recipientUnreadCount = DB::table('messages')
-                    ->where('recipient_id', $message->recipient_id)
-                    ->where('is_read', false)
-                    ->count();
-                broadcast(new UnreadCountUpdated($message->recipient_id, $recipientUnreadCount));
-                
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Message deleted successfully'
-                ], 200);
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to delete message'
-                ], 500);
-            }
-
-        } catch (\Exception $e) {
-            Log::error('Delete Message API Error: ' . $e->getMessage(), [
-                'user_id' => $admin->id ?? null,
-                'message_id' => $id,
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to delete message',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Get Available Recipients
-     * GET /api/messages/recipients
-     * 
-     * Gets list of users that can receive messages
-     */
-    public function getRecipients(Request $request)
-    {
-        try {
-            $admin = $request->user();
-            $clientId = $admin->id;
-
-            $recipients = DB::table('admins')
-                ->select('id', 'first_name', 'last_name', 'email', 'client_id')
-                ->where('id', '!=', $clientId)
-                ->where('status', 1) // Active users only
-                ->orderBy('first_name', 'asc')
-                ->get()
-                ->map(function ($user) {
-                    return [
-                        'id' => $user->id,
-                        'name' => $user->first_name . ' ' . $user->last_name,
-                        'email' => $user->email,
-                        'client_id' => $user->client_id
-                    ];
-                });
-
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'recipients' => $recipients,
-                    'total' => $recipients->count()
-                ]
-            ], 200);
-
-        } catch (\Exception $e) {
-            Log::error('Get Recipients API Error: ' . $e->getMessage(), [
-                'user_id' => $admin->id ?? null,
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch recipients',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
 }

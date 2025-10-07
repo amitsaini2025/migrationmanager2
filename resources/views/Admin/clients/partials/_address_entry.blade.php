@@ -28,7 +28,7 @@
                    name="address_line_1[]" 
                    value="{{ $address->address_line_1 ?? '' }}"
                    placeholder="Street number and name"
-                   required>
+                   class="address-required">
         </div>
         
         <div class="form-group">
@@ -49,7 +49,7 @@
                    name="suburb[]" 
                    value="{{ $address ? ($address->suburb ?? $address->city ?? '') : '' }}"
                    placeholder="Suburb"
-                   required>
+                   class="address-required">
         </div>
         
         <div class="form-group">
@@ -59,7 +59,7 @@
                    name="state[]" 
                    value="{{ $address->state ?? '' }}"
                    placeholder="State"
-                   required>
+                   class="address-required">
         </div>
     </div>
     
@@ -71,17 +71,17 @@
                    name="zip[]" 
                    value="{{ $address->zip ?? '' }}"
                    placeholder="Postcode"
-                   required>
+                   class="address-required">
         </div>
         
         <div class="form-group">
-            <label for="country_{{ $index }}">Country</label>
+            <label for="country_{{ $index }}">Country *</label>
             <input type="text" 
                    id="country_{{ $index }}" 
                    name="country[]" 
                    value="{{ $address ? ($address->country ?? 'Australia') : 'Australia' }}"
                    placeholder="Country"
-                   required>
+                   class="address-required">
         </div>
     </div>
     

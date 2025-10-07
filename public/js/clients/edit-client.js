@@ -1975,9 +1975,24 @@ window.saveVisaInfo = function() {
  * Save address information and update summary
  */
 window.saveAddressInfo = function() {
+    console.log('🚀 ====== saveAddressInfo START ======');
+    console.log('🚀 Function called at:', new Date().toISOString());
+    
     const $addressesContainer = $('#addresses-container');
+    if (!$addressesContainer.length) {
+        console.error('❌ #addresses-container not found!');
+        alert('Error: Address container not found. Please refresh the page and try again.');
+        return;
+    }
+    
     const $allWrappers = $addressesContainer.find('.address-entry-wrapper');
     console.log('🔍 Total address wrappers found:', $allWrappers.length);
+    
+    if ($allWrappers.length === 0) {
+        console.error('❌ No address wrappers found!');
+        alert('Error: No address entries found. Please refresh the page and try again.');
+        return;
+    }
     
     // Log each wrapper's details
     $allWrappers.each(function(i) {
@@ -1985,7 +2000,8 @@ window.saveAddressInfo = function() {
         console.log(`  Wrapper ${i}:`, {
             index: $wrapper.data('address-index'),
             hasTemplateClass: $wrapper.hasClass('address-template'),
-            addressLine1: $wrapper.find('input[name="address_line_1[]"]').val()
+            addressLine1: $wrapper.find('input[name="address_line_1[]"]').val(),
+            isVisible: $wrapper.is(':visible')
         });
     });
     
@@ -1998,9 +2014,74 @@ window.saveAddressInfo = function() {
         // Only exclude entries that are actual templates (not the default empty entry)
         return index === 0 || !$entry.hasClass('address-template');
     });
-    const formData = new FormData();
     
-    console.log('💾 Saving address info...', $addressEntries.length, 'entries');
+    console.log('💾 Address entries to save:', $addressEntries.length);
+    
+    if ($addressEntries.length === 0) {
+        console.error('❌ No valid address entries to save!');
+        alert('Error: No valid address entries found. Please add at least one address.');
+        return;
+    }
+    
+    // Validation: Only require country and suburb
+    let validationErrors = [];
+    let hasAtLeastOneValidAddress = false;
+    
+    $addressEntries.each(function(idx) {
+        const $entry = $(this);
+        const addressLine1 = $.trim($entry.find('input[name="address_line_1[]"]').val() || '');
+        const suburb = $.trim($entry.find('input[name="suburb[]"]').val() || '');
+        const state = $.trim($entry.find('input[name="state[]"]').val() || '');
+        const zip = $.trim($entry.find('input[name="zip[]"]').val() || '');
+        const country = $.trim($entry.find('input[name="country[]"]').val() || '');
+        
+        console.log(`📝 Validating Address ${idx + 1}:`, {
+            addressLine1: addressLine1 || '(empty)',
+            suburb: suburb || '(empty)',
+            state: state || '(empty)',
+            zip: zip || '(empty)',
+            country: country || '(empty)'
+        });
+        
+        // Check if any field has data
+        const hasAnyData = addressLine1 || suburb || state || zip || country;
+        
+        if (hasAnyData) {
+            // Only require country and suburb - other fields are optional
+            const missingFields = [];
+            if (!suburb) missingFields.push('Suburb');
+            if (!country) missingFields.push('Country');
+            
+            if (missingFields.length > 0) {
+                validationErrors.push(`Address ${idx + 1} is incomplete. Missing: ${missingFields.join(', ')}`);
+                console.warn(`⚠️ Address ${idx + 1} incomplete:`, missingFields);
+            } else {
+                hasAtLeastOneValidAddress = true;
+                console.log(`✅ Address ${idx + 1} is valid (has suburb and country)`);
+            }
+        } else {
+            console.log(`ℹ️ Address ${idx + 1} is empty (will be skipped)`);
+        }
+    });
+    
+    // Show validation errors
+    if (validationErrors.length > 0) {
+        console.error('❌ Validation failed:', validationErrors);
+        alert('Please fix the following errors:\n\n' + validationErrors.join('\n'));
+        return;
+    }
+    
+    // Check if we have at least one valid address
+    if (!hasAtLeastOneValidAddress) {
+        console.error('❌ No valid addresses found');
+        alert('Please add at least one address with suburb and country before saving.');
+        return;
+    }
+    
+    console.log('✅ Validation passed - preparing data...');
+    
+    const formData = new FormData();
+    let addressCount = 0;
     
     $addressEntries.each(function(index) {
         const $entry = $(this);
@@ -2016,30 +2097,51 @@ window.saveAddressInfo = function() {
         const startDate = $entry.find('input[name="address_start_date[]"]').val();
         const endDate = $entry.find('input[name="address_end_date[]"]').val();
         
-        // Debug logging removed for cleaner console output
-        
-        // Always append all fields, even if empty (except for addressId which can be empty for new entries)
-        if (addressId) formData.append('address_id[]', addressId);
-        else formData.append('address_id[]', ''); // Empty string for new entries
-        
-        formData.append('address_line_1[]', addressLine1 || '');
-        formData.append('address_line_2[]', addressLine2 || '');
-        formData.append('suburb[]', suburb || '');
-        formData.append('state[]', state || '');
-        formData.append('country[]', country || 'Australia');
-        formData.append('zip[]', zip || '');
-        formData.append('regional_code[]', regionalCode || '');
-        formData.append('address_start_date[]', startDate || '');
-        formData.append('address_end_date[]', endDate || '');
+        // Only include addresses that have data
+        if (addressLine1 || suburb || state || zip) {
+            console.log(`📦 Packaging Address ${addressCount + 1}:`, {
+                addressId: addressId || '(new)',
+                addressLine1,
+                suburb,
+                state,
+                zip,
+                country
+            });
+            
+            // Always append all fields, even if empty (except for addressId which can be empty for new entries)
+            formData.append('address_id[]', addressId || '');
+            formData.append('address_line_1[]', addressLine1 || '');
+            formData.append('address_line_2[]', addressLine2 || '');
+            formData.append('suburb[]', suburb || '');
+            formData.append('state[]', state || '');
+            formData.append('country[]', country || 'Australia');
+            formData.append('zip[]', zip || '');
+            formData.append('regional_code[]', regionalCode || '');
+            formData.append('address_start_date[]', startDate || '');
+            formData.append('address_end_date[]', endDate || '');
+            
+            addressCount++;
+        }
     });
     
-    // Form data ready for submission
+    console.log(`📤 Sending ${addressCount} addresses to server...`);
+    
+    // Check if saveSectionData exists
+    if (typeof saveSectionData !== 'function') {
+        console.error('❌ saveSectionData function not found!');
+        alert('Error: Save function not available. Please refresh the page and try again.');
+        return;
+    }
+    
+    console.log('📡 Calling saveSectionData...');
     
     saveSectionData('addressInfo', formData, function() {
-        console.log('✅ Address saved successfully, refreshing page...');
-        // Reload page to show fresh data from database
+        console.log('✅ Server responded successfully');
+        console.log('🔄 Reloading page...');
         window.location.reload();
     });
+    
+    console.log('🚀 ====== saveAddressInfo END ======');
 };
 
 function updateAddressSummary($entries) {

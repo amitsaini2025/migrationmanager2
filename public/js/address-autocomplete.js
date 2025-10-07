@@ -567,8 +567,8 @@
         // Add remove button
         $template.prepend('<button type="button" class="remove-address-btn" onclick="removeAddressEntry(this)">&times;</button>');
         
-        // Insert before the add button
-        $template.insertBefore($('.add-another-address'));
+        // Insert inside the container (at the end)
+        $container.append($template);
         
         // Initialize date picker for new fields using daterangepicker
         try {

@@ -4514,6 +4514,9 @@ function addTestScoreRow() {
                         <option value="TOEFL">TOEFL</option>
                         <option value="CAE">CAE</option>
                         <option value="OET">OET</option>
+                        <option value="CELPIP">CELPIP General</option>
+                        <option value="MET">Michigan English Test (MET)</option>
+                        <option value="LANGUAGECERT">LANGUAGECERT Academic</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -4653,6 +4656,18 @@ function updateTestScoreValidation(selectElement, index) {
         case 'OET':
             // OET: A, B, C, D, E for each component, overall A-E
             setValidationMessages(container, 'OET grades: A, B, C, D, E', 'A-E');
+            break;
+        case 'CELPIP':
+            // CELPIP: 1-12 for each component, overall 1-12
+            setValidationMessages(container, 'CELPIP scores range from 1-12', '1-12');
+            break;
+        case 'MET':
+            // MET: 0-100 for each component, overall 0-100
+            setValidationMessages(container, 'MET scores range from 0-100', '0-100');
+            break;
+        case 'LANGUAGECERT':
+            // LANGUAGECERT: 0-100 for each component, overall 0-100
+            setValidationMessages(container, 'LANGUAGECERT scores range from 0-100', '0-100');
             break;
     }
 }
@@ -5162,4 +5177,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// English proficiency functions moved to separate file: english-proficiency.js
 

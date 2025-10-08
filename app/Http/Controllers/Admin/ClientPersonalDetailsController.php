@@ -1201,6 +1201,8 @@ class ClientPersonalDetailsController extends Controller
                     return $this->saveEoiInfoSection($request, $client);
                 case 'occupation':
                     return $this->saveOccupationInfoSection($request, $client);
+                case 'test_scores':
+                    return $this->saveTestScoreInfoSection($request, $client);
                 default:
                     return response()->json([
                         'success' => false,
@@ -2210,6 +2212,99 @@ class ClientPersonalDetailsController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error saving occupation information: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    private function saveTestScoreInfoSection($request, $client)
+    {
+        try {
+            $requestData = $request->all();
+            
+            // Handle test score deletion
+            if (isset($requestData['delete_test_score_ids']) && is_array($requestData['delete_test_score_ids'])) {
+                foreach ($requestData['delete_test_score_ids'] as $testScoreId) {
+                    $testScore = \App\Models\ClientTestScore::find($testScoreId);
+                    if ($testScore && $testScore->client_id == $client->id) {
+                        $testScore->delete();
+                    }
+                }
+            }
+
+            // Handle test score data
+            if (isset($requestData['test_type_hidden']) && is_array($requestData['test_type_hidden'])) {
+                foreach ($requestData['test_type_hidden'] as $key => $testType) {
+                    if (!empty($testType)) {
+                        $testScoreId = $requestData['test_score_id'][$key] ?? null;
+                        $listening = $requestData['listening'][$key] ?? null;
+                        $reading = $requestData['reading'][$key] ?? null;
+                        $writing = $requestData['writing'][$key] ?? null;
+                        $speaking = $requestData['speaking'][$key] ?? null;
+                        $overallScore = $requestData['overall_score'][$key] ?? null;
+                        $testDate = $requestData['test_date'][$key] ?? null;
+                        $testReferenceNo = $requestData['test_reference_no'][$key] ?? null;
+                        $relevantTest = isset($requestData['relevant_test_hidden'][$key]) && $requestData['relevant_test_hidden'][$key] === '1' ? 1 : 0;
+
+                        // Convert test_date from dd/mm/yyyy to Y-m-d for database storage
+                        $formattedTestDate = null;
+                        if (!empty($testDate)) {
+                            try {
+                                $dateObj = \Carbon\Carbon::createFromFormat('d/m/Y', $testDate);
+                                $formattedTestDate = $dateObj->format('Y-m-d');
+                            } catch (\Exception $e) {
+                                return response()->json([
+                                    'success' => false,
+                                    'message' => 'Invalid Test Date format: ' . $testDate
+                                ], 422);
+                            }
+                        }
+
+                        if ($testScoreId) {
+                            // Update existing record
+                            $existingTestScore = \App\Models\ClientTestScore::find($testScoreId);
+                            if ($existingTestScore && $existingTestScore->client_id == $client->id) {
+                                $existingTestScore->update([
+                                    'admin_id' => Auth::user()->id,
+                                    'test_type' => $testType,
+                                    'listening' => $listening,
+                                    'reading' => $reading,
+                                    'writing' => $writing,
+                                    'speaking' => $speaking,
+                                    'overall_score' => $overallScore,
+                                    'test_date' => $formattedTestDate,
+                                    'test_reference_no' => $testReferenceNo,
+                                    'relevant_test' => $relevantTest
+                                ]);
+                            }
+                        } else {
+                            // Create new record
+                            \App\Models\ClientTestScore::create([
+                                'admin_id' => Auth::user()->id,
+                                'client_id' => $client->id,
+                                'test_type' => $testType,
+                                'listening' => $listening,
+                                'reading' => $reading,
+                                'writing' => $writing,
+                                'speaking' => $speaking,
+                                'overall_score' => $overallScore,
+                                'test_date' => $formattedTestDate,
+                                'test_reference_no' => $testReferenceNo,
+                                'relevant_test' => $relevantTest
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Test score information saved successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error saving test score information: ' . $e->getMessage()
             ], 500);
         }
     }

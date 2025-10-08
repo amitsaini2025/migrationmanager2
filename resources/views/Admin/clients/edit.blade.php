@@ -709,43 +709,47 @@
                         <!-- Summary View -->
                         <div id="experienceInfoSummary" class="summary-view">
                             @if($experiences->count() > 0)
-                                <div class="summary-grid">
+                                <div style="margin-top: 15px;">
                                     @foreach($experiences as $index => $experience)
-                                        <div class="summary-item">
-                                            <span class="summary-label">Job Title:</span>
-                                            <span class="summary-value">{{ $experience->job_title ?: 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">ANZSCO Code:</span>
-                                            <span class="summary-value">{{ $experience->job_code ?: 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Employer Name:</span>
-                                            <span class="summary-value">{{ $experience->job_emp_name ?: 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Country:</span>
-                                            <span class="summary-value">{{ $experience->job_country ?: 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Address:</span>
-                                            <span class="summary-value">{{ $experience->job_state ?: 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Job Type:</span>
-                                            <span class="summary-value">{{ $experience->job_type ?: 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Start Date:</span>
-                                            <span class="summary-value">{{ $experience->job_start_date ? date('d/m/Y', strtotime($experience->job_start_date)) : 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Finish Date:</span>
-                                            <span class="summary-value">{{ $experience->job_finish_date ? date('d/m/Y', strtotime($experience->job_finish_date)) : 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Relevant:</span>
-                                            <span class="summary-value">{{ $experience->relevant_experience ? 'Yes' : 'No' }}</span>
+                                        <div class="experience-entry-compact" style="margin-bottom: 12px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #007bff;">
+                                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: center;">
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">JOB TITLE:</span>
+                                                    <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $experience->job_title ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">ANZSCO CODE:</span>
+                                                    <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $experience->job_code ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">EMPLOYER NAME:</span>
+                                                    <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $experience->job_emp_name ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">COUNTRY:</span>
+                                                    <span class="summary-value" style="color: #212529;">{{ $experience->job_country ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">ADDRESS:</span>
+                                                    <span class="summary-value" style="color: #212529;">{{ $experience->job_state ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">JOB TYPE:</span>
+                                                    <span class="summary-value" style="color: #212529;">{{ $experience->job_type ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">START DATE:</span>
+                                                    <span class="summary-value" style="color: #212529;">{{ $experience->job_start_date ? date('d/m/Y', strtotime($experience->job_start_date)) : 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">FINISH DATE:</span>
+                                                    <span class="summary-value" style="color: #212529;">{{ $experience->job_finish_date ? date('d/m/Y', strtotime($experience->job_finish_date)) : 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">RELEVANT:</span>
+                                                    <span class="summary-value" style="color: #212529;">{{ $experience->relevant_experience ? 'Yes' : 'No' }}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     @endforeach
                                 </div>
@@ -793,43 +797,44 @@
                         <!-- Summary View -->
                         <div id="occupationInfoSummary" class="summary-view">
                             @if($clientOccupations->count() > 0)
-                                <div class="summary-grid">
+                                <div style="margin-top: 15px;">
                                     @foreach($clientOccupations as $index => $occupation)
-                                        <div class="summary-item">
-                                            <span class="summary-label">Skill Assessment:</span>
-                                            <span class="summary-value">{{ $occupation->skill_assessment ?: 'Not set' }}</span>
+                                        <div class="occupation-entry-compact" style="margin-bottom: 12px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #28a745;">
+                                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: center;">
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">SKILL ASSESSMENT:</span>
+                                                    <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $occupation->skill_assessment ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">NOMINATED OCCUPATION:</span>
+                                                    <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $occupation->nomi_occupation ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">OCCUPATION CODE:</span>
+                                                    <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $occupation->occupation_code ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">ASSESSING AUTHORITY:</span>
+                                                    <span class="summary-value" style="color: #212529;">{{ $occupation->list ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">VISA SUBCLASS:</span>
+                                                    <span class="summary-value" style="color: #212529;">{{ $occupation->visa_subclass ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">ASSESSMENT DATE:</span>
+                                                    <span class="summary-value" style="color: #212529;">{{ $occupation->dates ? date('d/m/Y', strtotime($occupation->dates)) : 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">EXPIRY DATE:</span>
+                                                    <span class="summary-value" style="color: #212529;">{{ $occupation->expiry_dates ? date('d/m/Y', strtotime($occupation->expiry_dates)) : 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">REFERENCE NO:</span>
+                                                    <span class="summary-value" style="color: #212529;">{{ $occupation->occ_reference_no ?: 'Not set' }}</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Nominated Occupation:</span>
-                                            <span class="summary-value">{{ $occupation->nomi_occupation ?: 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Occupation Code:</span>
-                                            <span class="summary-value">{{ $occupation->occupation_code ?: 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Assessing Authority:</span>
-                                            <span class="summary-value">{{ $occupation->list ?: 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Visa Subclass:</span>
-                                            <span class="summary-value">{{ $occupation->visa_subclass ?: 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Assessment Date:</span>
-                                            <span class="summary-value">{{ $occupation->dates ? date('d/m/Y', strtotime($occupation->dates)) : 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Expiry Date:</span>
-                                            <span class="summary-value">{{ $occupation->expiry_dates ? date('d/m/Y', strtotime($occupation->expiry_dates)) : 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Reference No:</span>
-                                            <span class="summary-value">{{ $occupation->occ_reference_no ?: 'Not set' }}</span>
-                                        </div>
-                                        @if(!$loop->last)
-                                            <div class="summary-divider"></div>
-                                        @endif
                                     @endforeach
                                 </div>
                             @else
@@ -875,47 +880,66 @@
                         <!-- Summary View -->
                         <div id="testScoreInfoSummary" class="summary-view">
                             @if($testScores->count() > 0)
-                                <div class="summary-grid">
+                                <div style="margin-top: 15px;">
                                     @foreach($testScores as $index => $testScore)
-                                        <div class="summary-item">
-                                            <span class="summary-label">Test Type:</span>
-                                            <span class="summary-value">{{ $testScore->test_type ?: 'Not set' }}</span>
+                                        <div class="test-score-entry-compact" style="margin-bottom: 12px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #007bff;">
+                                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: center;">
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">TEST TYPE:</span>
+                                                    <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $testScore->test_type ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">LISTENING:</span>
+                                                    <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $testScore->listening ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">READING:</span>
+                                                    <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $testScore->reading ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">WRITING:</span>
+                                                    <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $testScore->writing ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">SPEAKING:</span>
+                                                    <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $testScore->speaking ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">OVERALL:</span>
+                                                    <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $testScore->overall_score ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">TEST DATE:</span>
+                                                    <span class="summary-value" style="color: #212529;">{{ $testScore->test_date ? date('d/m/Y', strtotime($testScore->test_date)) : 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">REFERENCE NO:</span>
+                                                    <span class="summary-value" style="color: #212529;">{{ $testScore->test_reference_no ?: 'Not set' }}</span>
+                                                </div>
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">PROFICIENCY LEVEL:</span>
+                                                    <span id="proficiency-level-{{ $index }}" class="proficiency-level-display" style="font-weight: 700; font-size: 0.9em; padding: 4px 8px; border-radius: 4px; display: inline-block;">
+                                                        <i class="fas fa-spinner fa-spin"></i> Calculating...
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Hidden data attributes for JavaScript calculation -->
+                                            <div class="english-level-calculation-box" 
+                                                 data-test-type="{{ $testScore->test_type }}" 
+                                                 data-listening="{{ $testScore->listening }}" 
+                                                 data-reading="{{ $testScore->reading }}" 
+                                                 data-writing="{{ $testScore->writing }}" 
+                                                 data-speaking="{{ $testScore->speaking }}" 
+                                                 data-overall="{{ $testScore->overall_score }}" 
+                                                 data-test-date="{{ $testScore->test_date ? date('d/m/Y', strtotime($testScore->test_date)) : '' }}"
+                                                 style="display: none;">
+                                            </div>
                                         </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Listening:</span>
-                                            <span class="summary-value">{{ $testScore->listening ?: 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Reading:</span>
-                                            <span class="summary-value">{{ $testScore->reading ?: 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Writing:</span>
-                                            <span class="summary-value">{{ $testScore->writing ?: 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Speaking:</span>
-                                            <span class="summary-value">{{ $testScore->speaking ?: 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Overall:</span>
-                                            <span class="summary-value">{{ $testScore->overall_score ?: 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Test Date:</span>
-                                            <span class="summary-value">{{ $testScore->test_date ? date('d/m/Y', strtotime($testScore->test_date)) : 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Reference No:</span>
-                                            <span class="summary-value">{{ $testScore->test_reference_no ?: 'Not set' }}</span>
-                                        </div>
-                                        @if(!$loop->last)
-                                            <div class="summary-divider"></div>
-                                        @endif
                                     @endforeach
                                 </div>
                             @else
-                                <div class="no-data-message">
+                                <div class="empty-state" style="margin-top: 15px;">
                                     <p>No test score information available.</p>
                                 </div>
                             @endif
@@ -1344,6 +1368,7 @@
 
     @push('scripts')
     <script src="{{asset('js/clients/edit-client.js')}}"></script>
+    <script src="{{asset('js/clients/english-proficiency.js')}}"></script>
     <script src="{{asset('js/address-autocomplete.js')}}"></script>
     <script src="{{asset('js/clients/address-regional-codes.js')}}"></script>
     {{-- Google Maps library removed - using backend proxy for address autocomplete --}}

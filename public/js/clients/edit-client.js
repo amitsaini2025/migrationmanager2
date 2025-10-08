@@ -996,14 +996,22 @@ async function addTravelDetail() {
     const container = document.getElementById('travelDetailsContainer');
     const index = container.children.length;
 
-    // Fetch countries
-    const countries = await fetchCountries();
-
-    // Build the options for the country dropdown
+    // Get country options from existing select if available, otherwise use default
     let countryOptionsHtml = '<option value="">Select Country</option>';
-    countries.forEach(country => {
-        countryOptionsHtml += `<option value="${country}">${country}</option>`;
-    });
+    const existingSelect = document.querySelector('.travel-country-field');
+    if (existingSelect) {
+        Array.from(existingSelect.options).forEach(option => {
+            if (option.value !== '') { // Skip the "Select Country" option
+                countryOptionsHtml += `<option value="${option.value}">${option.text}</option>`;
+            }
+        });
+    } else {
+        // Fallback if no existing select found - fetch countries
+        const countries = await fetchCountries();
+        countries.forEach(country => {
+            countryOptionsHtml += `<option value="${country}">${country}</option>`;
+        });
+    }
 
     container.insertAdjacentHTML('beforeend', `
         <div class="repeatable-section">
@@ -1011,7 +1019,7 @@ async function addTravelDetail() {
             <div class="content-grid">
                 <div class="form-group">
                     <label>Country Visited</label>
-                    <select name="travel_country_visited[${index}]">
+                    <select name="travel_country_visited[${index}]" class="travel-country-field">
                         ${countryOptionsHtml}
                     </select>
                 </div>
@@ -2388,7 +2396,12 @@ window.saveTravelInfo = function() {
     
     sections.forEach(section => {
         const travelId = section.querySelector('input[name*="travel_id"]')?.value;
-        const countryVisited = section.querySelector('input[name*="travel_country_visited"]').value;
+        
+        // Handle both input and select elements for country (existing vs new fields)
+        const countryInput = section.querySelector('input[name*="travel_country_visited"]');
+        const countrySelect = section.querySelector('select[name*="travel_country_visited"]');
+        const countryVisited = countryInput ? countryInput.value : (countrySelect ? countrySelect.value : '');
+        
         const arrivalDate = section.querySelector('input[name*="travel_arrival_date"]').value;
         const departureDate = section.querySelector('input[name*="travel_departure_date"]').value;
         const travelPurpose = section.querySelector('input[name*="travel_purpose"]').value;
@@ -2410,31 +2423,48 @@ window.saveTravelInfo = function() {
     saveSectionData('travelInfo', formData, function() {
         // Update summary view on success
         const summaryView = document.getElementById('travelInfoSummary');
-        const summaryGrid = summaryView.querySelector('.summary-grid');
         
         if (travels.length > 0) {
-            let summaryHTML = '';
+            let summaryHTML = '<div>';
             travels.forEach(travel => {
                 summaryHTML += `
-                    <div class="summary-item">
-                        <span class="summary-label">Country Visited:</span>
-                        <span class="summary-value">${travel.country_visited || 'Not set'}</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Arrival Date:</span>
-                        <span class="summary-value">${travel.arrival_date || 'Not set'}</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Departure Date:</span>
-                        <span class="summary-value">${travel.departure_date || 'Not set'}</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Travel Purpose:</span>
-                        <span class="summary-value">${travel.purpose || 'Not set'}</span>
-                    </div>
-                `;
+                    <div class="address-entry-compact">
+                        <div class="address-compact-grid">
+                            <div class="summary-item-inline">
+                                <span class="summary-label">COUNTRY VISITED:</span>
+                                <span class="summary-value">${travel.country_visited || 'Not set'}</span>
+                            </div>`;
+                
+                if (travel.arrival_date) {
+                    summaryHTML += `
+                            <div class="summary-item-inline">
+                                <span class="summary-label">ARRIVAL DATE:</span>
+                                <span class="summary-value">${travel.arrival_date}</span>
+                            </div>`;
+                }
+                
+                if (travel.departure_date) {
+                    summaryHTML += `
+                            <div class="summary-item-inline">
+                                <span class="summary-label">DEPARTURE DATE:</span>
+                                <span class="summary-value">${travel.departure_date}</span>
+                            </div>`;
+                }
+                
+                if (travel.purpose) {
+                    summaryHTML += `
+                            <div class="summary-item-inline">
+                                <span class="summary-label">TRAVEL PURPOSE:</span>
+                                <span class="summary-value">${travel.purpose}</span>
+                            </div>`;
+                }
+                
+                summaryHTML += `
+                        </div>
+                    </div>`;
             });
-            summaryGrid.innerHTML = summaryHTML;
+            summaryHTML += '</div>';
+            summaryView.innerHTML = summaryHTML;
         } else {
             summaryView.innerHTML = '<div class="empty-state"><p>No travel details added yet.</p></div>';
         }

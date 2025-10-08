@@ -525,23 +525,33 @@
                         <!-- Summary View -->
                         <div id="travelInfoSummary" class="summary-view">
                             @if($clientTravels->count() > 0)
-                                <div class="summary-grid">
+                                <div>
                                     @foreach($clientTravels as $index => $travel)
-                                        <div class="summary-item">
-                                            <span class="summary-label">Country Visited:</span>
-                                            <span class="summary-value">{{ $travel->country_visited ?: 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Arrival Date:</span>
-                                            <span class="summary-value">{{ $travel->arrival_date ? date('d/m/Y', strtotime($travel->arrival_date)) : 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Departure Date:</span>
-                                            <span class="summary-value">{{ $travel->departure_date ? date('d/m/Y', strtotime($travel->departure_date)) : 'Not set' }}</span>
-                                        </div>
-                                        <div class="summary-item">
-                                            <span class="summary-label">Travel Purpose:</span>
-                                            <span class="summary-value">{{ $travel->travel_purpose ?: 'Not set' }}</span>
+                                        <div class="address-entry-compact">
+                                            <div class="address-compact-grid">
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label">COUNTRY VISITED:</span>
+                                                    <span class="summary-value">{{ $travel->country_visited ?: 'Not set' }}</span>
+                                                </div>
+                                                @if($travel->arrival_date)
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label">ARRIVAL DATE:</span>
+                                                    <span class="summary-value">{{ date('d/m/Y', strtotime($travel->arrival_date)) }}</span>
+                                                </div>
+                                                @endif
+                                                @if($travel->departure_date)
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label">DEPARTURE DATE:</span>
+                                                    <span class="summary-value">{{ date('d/m/Y', strtotime($travel->departure_date)) }}</span>
+                                                </div>
+                                                @endif
+                                                @if($travel->travel_purpose)
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label">TRAVEL PURPOSE:</span>
+                                                    <span class="summary-value">{{ $travel->travel_purpose }}</span>
+                                                </div>
+                                                @endif
+                                            </div>
                                         </div>
                                     @endforeach
                                 </div>
@@ -559,6 +569,7 @@
                                     <x-client-edit.travel-field 
                                         :index="$index" 
                                         :travel="$travel" 
+                                        :countries="$countries->pluck('name')->toArray()"
                                     />
                                 @endforeach
                             </div>

@@ -13,6 +13,7 @@ class EmailVerificationController extends Controller
 
     public function __construct(EmailVerificationService $verificationService)
     {
+        $this->middleware('auth:admin');
         $this->verificationService = $verificationService;
     }
 
@@ -21,8 +22,6 @@ class EmailVerificationController extends Controller
      */
     public function sendVerificationEmail(Request $request)
     {
-        $this->middleware('auth:admin');
-        
         $validator = Validator::make($request->all(), [
             'email_id' => 'required|exists:client_emails,id'
         ]);
@@ -66,8 +65,6 @@ class EmailVerificationController extends Controller
      */
     public function resendVerificationEmail(Request $request)
     {
-        $this->middleware('auth:admin');
-        
         $validator = Validator::make($request->all(), [
             'email_id' => 'required|exists:client_emails,id'
         ]);
@@ -96,8 +93,6 @@ class EmailVerificationController extends Controller
      */
     public function getStatus($emailId)
     {
-        $this->middleware('auth:admin');
-        
         $clientEmail = \App\Models\ClientEmail::find($emailId);
 
         if (!$clientEmail) {

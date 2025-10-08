@@ -21,6 +21,7 @@ class ClientPortalMessageController extends Controller
      * POST /api/messages/send
      * 
      * Sends a message and broadcasts it in real-time
+     * Supports multiple recipients via recipient_ids array
      */
     public function sendMessage(Request $request)
     {
@@ -31,7 +32,7 @@ class ClientPortalMessageController extends Controller
             // Validate request
             $validator = Validator::make($request->all(), [
                 'message' => 'nullable|string|max:5000',
-                'client_matter_id' => 'required|integer|min:1'
+                'client_matter_id' => 'required|integer|min:1',
             ]);
 
             if ($validator->fails()) {
@@ -45,7 +46,7 @@ class ClientPortalMessageController extends Controller
             $message = $request->input('message');
             $clientMatterId = $request->input('client_matter_id');
 
-            // Get sender information (optional)
+            // Get sender information
             $sender = null;
             if ($clientId) {
                 $sender = DB::table('admins')
@@ -54,16 +55,55 @@ class ClientPortalMessageController extends Controller
                     ->first();
             }
 
+            // Get client matter info for notifications
+            $clientMatter = DB::table('client_matters')
+                ->where('id', $clientMatterId)
+                ->first();
 
+            // Determine target recipients - always broadcast to all matter users and superadmins
+            $targetRecipients = [];
+            
+            // Get users associated with this matter
+            $matterUsers = [];
+            if ($clientMatter) {
+                $matterUsers = [
+                    $clientMatter->sel_migration_agent,
+                    $clientMatter->sel_person_responsible,
+                    $clientMatter->sel_person_assisting
+                ];
+                $matterUsers = array_filter($matterUsers, function($userId) {
+                    return $userId !== null;
+                });
+            }
 
-            // Create message record
+            // Get superadmin users
+            $superadmins = DB::table('admins')
+                ->where('role', 1)
+                ->where('status', 1)
+                ->pluck('id')
+                ->toArray();
+
+            // Combine all target users (excluding sender)
+            $targetRecipients = array_unique(array_merge($matterUsers, $superadmins));
+            $targetRecipients = array_filter($targetRecipients, function($userId) use ($clientId) {
+                return $userId != $clientId;
+            });
+            $targetRecipients = array_values($targetRecipients); // Re-index array
+
+            // Validate we have recipients
+            if (empty($targetRecipients)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No valid recipients found for this message'
+                ], 422);
+            }
+
+            // Create message record (without recipient info)
             $messageData = [
                 'message' => $message,
                 'sender' => $sender ? $sender->first_name . ' ' . $sender->last_name : null,
                 'sender_id' => $clientId,
-                'recipient_id' => null,
                 'sent_at' => now(),
-                'is_read' => false,
                 'client_matter_id' => $clientMatterId,
                 'created_at' => now(),
                 'updated_at' => now()
@@ -72,73 +112,67 @@ class ClientPortalMessageController extends Controller
             $messageId = DB::table('messages')->insertGetId($messageData);
 
             if ($messageId) {
+                // Get recipient names for all target recipients
+                $recipientUsers = DB::table('admins')
+                    ->whereIn('id', $targetRecipients)
+                    ->select('id', DB::raw("CONCAT(first_name, ' ', last_name) as full_name"))
+                    ->pluck('full_name', 'id')
+                    ->toArray();
+
+                // Insert recipients into pivot table
+                $recipientRecords = [];
+                foreach ($targetRecipients as $recipientId) {
+                    $recipientRecords[] = [
+                        'message_id' => $messageId,
+                        'recipient_id' => $recipientId,
+                        'recipient' => $recipientUsers[$recipientId] ?? null, // Store recipient name
+                        'is_read' => false,
+                        'read_at' => null,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ];
+                }
+                DB::table('message_recipients')->insert($recipientRecords);
+
                 // Prepare message for broadcasting
                 $messageForBroadcast = [
                     'id' => $messageId,
                     'message' => $message,
                     'sender' => $sender ? $sender->first_name . ' ' . $sender->last_name : null,
                     'sender_id' => $clientId,
-                    'recipient_id' => null,
+                    'recipient_ids' => $targetRecipients, // Include all recipient IDs
                     'sent_at' => now()->toISOString(),
-                    'is_read' => false
+                    'client_matter_id' => $clientMatterId,
+                    'recipient_count' => count($targetRecipients)
                 ];
 
-                // Broadcast message (no specific recipient)
-                broadcast(new MessageSent($messageForBroadcast, null));
-
-                // Send notifications to migration agent, person responsible, person assisting, and superadmins
-                $clientMatter = DB::table('client_matters')
-                    ->where('id', $clientMatterId)
-                    ->first();
-
-                $notificationUsers = [];
-
-                // Get users from client matter (migration agent, person responsible, person assisting)
-                if ($clientMatter) {
-                    $matterUsers = [
-                        $clientMatter->sel_migration_agent,
-                        $clientMatter->sel_person_responsible,
-                        $clientMatter->sel_person_assisting
-                    ];
-
-                    // Remove null values and add to notification list
-                    $matterUsers = array_filter($matterUsers, function($userId) {
-                        return $userId !== null;
-                    });
-
-                    $notificationUsers = array_merge($notificationUsers, $matterUsers);
+                // Broadcast to each recipient
+                foreach ($targetRecipients as $recipientId) {
+                    broadcast(new MessageSent($messageForBroadcast, $recipientId));
                 }
 
-                // Get superadmin users (role=1)
-                $superadmins = DB::table('admins')
-                    ->where('role', 1)
-                    ->where('status', 1) // Active superadmins only
-                    ->pluck('id')
-                    ->toArray();
+                // Also broadcast to sender (so they see their own message)
+                broadcast(new MessageSent($messageForBroadcast, $clientId));
 
-                $notificationUsers = array_merge($notificationUsers, $superadmins);
+                // Send notifications to recipients (excluding sender)
+                foreach ($targetRecipients as $recipientId) {
+                    if ($recipientId != $clientId) {
+                        $notificationMessage = 'New message received by Client Portal Mobile App from ' . ($sender ? $sender->first_name . ' ' . $sender->last_name : 'Client') . ' for matter ' . ($clientMatter ? $clientMatter->client_unique_matter_no : 'ID: ' . $clientMatterId);
 
-                // Remove duplicates and current user from notification list
-                $notificationUsers = array_unique($notificationUsers);
-                $notificationUsers = array_filter($notificationUsers, function($userId) use ($clientId) {
-                    return $userId != $clientId;
-                });
-
-                // Send notifications to each user
-                foreach ($notificationUsers as $userId) {
-                    DB::table('notifications')->insert([
-                        'sender_id' => $clientId,
-                        'receiver_id' => $userId,
-                        'module_id' => $clientMatterId,
-                        'url' => '/admin/messages',
-                        'notification_type' => 'message',
-                        'message' => 'New message received by Client Portal Mobile App from ' . ($sender ? $sender->first_name . ' ' . $sender->last_name : 'Client') . ' for matter ' . ($clientMatter ? $clientMatter->client_unique_matter_no : 'ID: ' . $clientMatterId),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                        'sender_status' => 1,
-                        'receiver_status' => 0,
-                        'seen' => 0
-                    ]);
+                        DB::table('notifications')->insert([
+                            'sender_id' => $clientId,
+                            'receiver_id' => $recipientId,
+                            'module_id' => $clientMatterId,
+                            'url' => '/admin/messages',
+                            'notification_type' => 'message',
+                            'message' => $notificationMessage,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                            'sender_status' => 1,
+                            'receiver_status' => 0,
+                            'seen' => 0
+                        ]);
+                    }
                 }
 
                 // Create activity log
@@ -146,7 +180,7 @@ class ClientPortalMessageController extends Controller
                     'client_id' => $clientId,
                     'created_by' => $clientId,
                     'subject' => 'Message sent',
-                    'description' => 'Message sent by Client Portal Mobile App for matter ID: ' . $clientMatterId,
+                    'description' => 'Message sent by Client Portal Mobile App for matter ID: ' . $clientMatterId . ' to ' . count($targetRecipients) . ' recipient(s)',
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);
@@ -157,7 +191,8 @@ class ClientPortalMessageController extends Controller
                     'data' => [
                         'message_id' => $messageId,
                         'message' => $messageForBroadcast,
-                        'sent_at' => now()->toISOString()
+                        'sent_at' => now()->toISOString(),
+                        'recipient_count' => count($targetRecipients)
                     ]
                 ], 201);
             } else {
@@ -186,7 +221,7 @@ class ClientPortalMessageController extends Controller
      * Get Messages
      * GET /api/messages
      * 
-     * Retrieves messages for the authenticated user
+     * Retrieves messages for the authenticated user with recipients info
      */
     public function getMessages(Request $request)
     {
@@ -214,35 +249,64 @@ class ClientPortalMessageController extends Controller
             $limit = $request->get('limit', 20);
             $clientMatterId = $request->get('client_matter_id');
 
-            // Build query
+            // Build query to get messages where user is sender OR recipient
             $query = DB::table('messages')
+                ->leftJoin('message_recipients', 'messages.id', '=', 'message_recipients.message_id')
+                ->where('client_matter_id', $clientMatterId)
                 ->where(function ($q) use ($clientId) {
-                    $q->where('sender_id', $clientId)
-                      ->orWhere('recipient_id', $clientId);
+                    $q->where('messages.sender_id', $clientId)
+                      ->orWhere('message_recipients.recipient_id', $clientId);
                 })
-                ->where('client_matter_id', $clientMatterId); // Required filter
+                ->select('messages.*')
+                ->distinct();
 
             // Get total count
             $totalMessages = $query->count();
 
             // Get messages with pagination
-            $messages = $query->orderBy('created_at', 'asc')
+            $messageIds = $query->orderBy('messages.created_at', 'asc')
                 ->offset(($page - 1) * $limit)
                 ->limit($limit)
+                ->pluck('messages.id');
+
+            // Get full message details with recipients
+            $messages = DB::table('messages')
+                ->whereIn('messages.id', $messageIds)
+                ->orderBy('messages.created_at', 'asc')
                 ->get()
                 ->map(function ($msg) use ($clientId) {
+                    // Get all recipients for this message
+                    $recipients = DB::table('message_recipients')
+                        ->where('message_id', $msg->id)
+                        ->get();
+
+                    // Get current user's read status if they're a recipient
+                    $currentUserRecipient = $recipients->firstWhere('recipient_id', $clientId);
+                    
+                    // Get recipient details
+                    $recipientIds = $recipients->pluck('recipient_id')->toArray();
+                    $recipientNames = [];
+                    if (!empty($recipientIds)) {
+                        $recipientNames = DB::table('admins')
+                            ->whereIn('id', $recipientIds)
+                            ->select('id', DB::raw("CONCAT(first_name, ' ', last_name) as name"))
+                            ->pluck('name', 'id')
+                            ->toArray();
+                    }
+
                     return [
                         'id' => $msg->id,
                         'message' => $msg->message,
                         'sender' => $msg->sender,
-                        'recipient' => $msg->recipient,
                         'sender_id' => $msg->sender_id,
-                        'recipient_id' => $msg->recipient_id,
                         'is_sender' => $msg->sender_id == $clientId,
-                        'is_recipient' => $msg->recipient_id == $clientId,
+                        'is_recipient' => $currentUserRecipient !== null,
+                        'recipient_ids' => $recipientIds,
+                        'recipients' => $recipientNames,
+                        'recipient_count' => count($recipientIds),
                         'sent_at' => $msg->sent_at,
-                        'read_at' => $msg->read_at,
-                        'is_read' => $msg->is_read,
+                        'is_read' => $currentUserRecipient ? (bool)$currentUserRecipient->is_read : null,
+                        'read_at' => $currentUserRecipient ? $currentUserRecipient->read_at : null,
                         'client_matter_id' => $msg->client_matter_id,
                         'created_at' => $msg->created_at,
                         'updated_at' => $msg->updated_at
@@ -283,7 +347,7 @@ class ClientPortalMessageController extends Controller
      * Get Message Details
      * GET /api/messages/{id}
      * 
-     * Retrieves details of a specific message
+     * Retrieves details of a specific message with all recipients
      */
     public function getMessageDetails(Request $request, $id)
     {
@@ -291,12 +355,9 @@ class ClientPortalMessageController extends Controller
             $admin = $request->user();
             $clientId = $admin->id;
 
+            // Get message
             $message = DB::table('messages')
                 ->where('id', $id)
-                ->where(function ($q) use ($clientId) {
-                    $q->where('sender_id', $clientId)
-                      ->orWhere('recipient_id', $clientId);
-                })
                 ->first();
 
             if (!$message) {
@@ -306,20 +367,57 @@ class ClientPortalMessageController extends Controller
                 ], 404);
             }
 
+            // Check if user has access to this message (sender or recipient)
+            $isRecipient = DB::table('message_recipients')
+                ->where('message_id', $id)
+                ->where('recipient_id', $clientId)
+                ->exists();
+
+            $isSender = $message->sender_id == $clientId;
+
+            if (!$isSender && !$isRecipient) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have access to this message'
+                ], 403);
+            }
+
+            // Get all recipients with their read status
+            $recipients = DB::table('message_recipients')
+                ->join('admins', 'message_recipients.recipient_id', '=', 'admins.id')
+                ->where('message_id', $id)
+                ->select(
+                    'message_recipients.recipient_id',
+                    DB::raw("CONCAT(admins.first_name, ' ', admins.last_name) as recipient_name"),
+                    'message_recipients.is_read',
+                    'message_recipients.read_at'
+                )
+                ->get();
+
+            // Get current user's read status if they're a recipient
+            $currentUserRecipient = $recipients->firstWhere('recipient_id', $clientId);
+
             return response()->json([
                 'success' => true,
                 'data' => [
                     'id' => $message->id,
                     'message' => $message->message,
                     'sender' => $message->sender,
-                    'recipient' => $message->recipient,
                     'sender_id' => $message->sender_id,
-                    'recipient_id' => $message->recipient_id,
-                    'is_sender' => $message->sender_id == $clientId,
-                    'is_recipient' => $message->recipient_id == $clientId,
+                    'is_sender' => $isSender,
+                    'is_recipient' => $isRecipient,
+                    'recipients' => $recipients->map(function ($recipient) {
+                        return [
+                            'recipient_id' => $recipient->recipient_id,
+                            'recipient_name' => $recipient->recipient_name,
+                            'is_read' => (bool)$recipient->is_read,
+                            'read_at' => $recipient->read_at
+                        ];
+                    }),
+                    'recipient_count' => $recipients->count(),
                     'sent_at' => $message->sent_at,
-                    'read_at' => $message->read_at,
-                    'is_read' => $message->is_read,
+                    'is_read' => $currentUserRecipient ? (bool)$currentUserRecipient->is_read : null,
+                    'read_at' => $currentUserRecipient ? $currentUserRecipient->read_at : null,
                     'client_matter_id' => $message->client_matter_id,
                     'created_at' => $message->created_at,
                     'updated_at' => $message->updated_at
@@ -345,7 +443,7 @@ class ClientPortalMessageController extends Controller
      * Mark Message as Read
      * PUT /api/messages/{id}/read
      * 
-     * Marks a message as read
+     * Marks a message as read for the current user (in pivot table)
      */
     public function markAsRead(Request $request, $id)
     {
@@ -365,44 +463,57 @@ class ClientPortalMessageController extends Controller
                 ], 404);
             }
 
-            // Check if user is authorized to mark this message as read (must be the recipient)
-            if ($message->recipient_id != $clientId) {
+            // Check if user is a recipient of this message
+            $recipientRecord = DB::table('message_recipients')
+                ->where('message_id', $id)
+                ->where('recipient_id', $clientId)
+                ->first();
+
+            if (!$recipientRecord) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'You are not authorized for mark as read'
+                    'message' => 'You are not authorized to mark this message as read'
                 ], 403);
             }
 
-            if (!$message->is_read) {
-                DB::table('messages')
-                    ->where('id', $id)
+            // Mark as read if not already read
+            if (!$recipientRecord->is_read) {
+                DB::table('message_recipients')
+                    ->where('message_id', $id)
+                    ->where('recipient_id', $clientId)
                     ->update([
                         'is_read' => true,
                         'read_at' => now(),
                         'updated_at' => now()
                     ]);
 
-                // Get updated message for broadcast
-                $updatedMessage = DB::table('messages')
-                    ->where('id', $id)
+                // Get updated recipient record
+                $updatedRecipient = DB::table('message_recipients')
+                    ->where('message_id', $id)
+                    ->where('recipient_id', $clientId)
                     ->first();
 
-                // Broadcast message update
-                broadcast(new MessageUpdated([
-                    'id' => $updatedMessage->id,
-                    'message' => $updatedMessage->message,
-                    'sender' => $updatedMessage->sender,
-                    'recipient' => $updatedMessage->recipient,
+                // Prepare message for broadcast
+                $messageForBroadcast = [
+                    'id' => $message->id,
+                    'message' => $message->message,
+                    'sender' => $message->sender,
+                    'sender_id' => $message->sender_id,
+                    'recipient_id' => $clientId,
                     'is_read' => true,
-                    'read_at' => $updatedMessage->read_at,
-                    'sent_at' => $updatedMessage->sent_at
-                ], $clientId));
+                    'read_at' => $updatedRecipient->read_at,
+                    'sent_at' => $message->sent_at,
+                    'client_matter_id' => $message->client_matter_id
+                ];
+
+                // Broadcast message update to sender (so they know it was read)
+                broadcast(new MessageUpdated($messageForBroadcast, $message->sender_id));
 
                 // Broadcast read status to sender
                 broadcast(new MessageReceived($id, $message->sender_id));
                 
                 // Broadcast unread count update for current user
-                $unreadCount = DB::table('messages')
+                $unreadCount = DB::table('message_recipients')
                     ->where('recipient_id', $clientId)
                     ->where('is_read', false)
                     ->count();
@@ -433,7 +544,7 @@ class ClientPortalMessageController extends Controller
      * Get Unread Count
      * GET /api/messages/unread-count
      * 
-     * Gets the count of unread messages
+     * Gets the count of unread messages for current user from pivot table
      */
     public function getUnreadCount(Request $request)
     {
@@ -441,7 +552,8 @@ class ClientPortalMessageController extends Controller
             $admin = $request->user();
             $clientId = $admin->id;
 
-            $unreadCount = DB::table('messages')
+            // Count unread messages from pivot table
+            $unreadCount = DB::table('message_recipients')
                 ->where('recipient_id', $clientId)
                 ->where('is_read', false)
                 ->count();

@@ -128,7 +128,6 @@ class ClientPersonalDetailsController extends Controller
         
         $params = http_build_query([
             'input' => $query,
-            'components' => 'country:au',
             'key' => $apiKey
         ]);
         
@@ -1160,7 +1159,7 @@ class ClientPersonalDetailsController extends Controller
     {
         try {
             $section = $request->input('section');
-            $clientId = $request->input('client_id');
+            $clientId = $request->input('id'); // Use 'id' instead of 'client_id' - 'id' is the database ID
             
             // Validate client exists
             $client = Admin::where('id', $clientId)->where('role', '7')->first();
@@ -1200,6 +1199,8 @@ class ClientPersonalDetailsController extends Controller
                     return $this->saveChildrenInfoSection($request, $client);
                 case 'eoiInfo':
                     return $this->saveEoiInfoSection($request, $client);
+                case 'occupation':
+                    return $this->saveOccupationInfoSection($request, $client);
                 default:
                     return response()->json([
                         'success' => false,
@@ -1873,27 +1874,33 @@ class ClientPersonalDetailsController extends Controller
 
             // Insert new experiences
             foreach ($experiences as $expData) {
-                if (!empty($expData['company'])) {
+                if (!empty($expData['job_title']) || !empty($expData['job_code']) || !empty($expData['job_emp_name'])) {
                     // Convert date format from d/m/Y to Y-m-d if needed
                     $startDate = null;
                     $endDate = null;
                     
-                    if (!empty($expData['start_date'])) {
-                        $startDate = \DateTime::createFromFormat('d/m/Y', $expData['start_date']);
+                    if (!empty($expData['job_start_date'])) {
+                        $startDate = \DateTime::createFromFormat('d/m/Y', $expData['job_start_date']);
                         $startDate = $startDate ? $startDate->format('Y-m-d') : null;
                     }
                     
-                    if (!empty($expData['end_date'])) {
-                        $endDate = \DateTime::createFromFormat('d/m/Y', $expData['end_date']);
+                    if (!empty($expData['job_finish_date'])) {
+                        $endDate = \DateTime::createFromFormat('d/m/Y', $expData['job_finish_date']);
                         $endDate = $endDate ? $endDate->format('Y-m-d') : null;
                     }
                     
                     ClientExperience::create([
                         'client_id' => $client->id,
-                        'company' => $expData['company'],
-                        'position' => $expData['position'] ?? null,
-                        'exp_start_date' => $startDate,
-                        'exp_end_date' => $endDate
+                        'admin_id' => Auth::user()->id,
+                        'job_title' => $expData['job_title'] ?? null,
+                        'job_code' => $expData['job_code'] ?? null,
+                        'job_country' => $expData['job_country'] ?? null,
+                        'job_start_date' => $startDate,
+                        'job_finish_date' => $endDate,
+                        'relevant_experience' => $expData['relevant_experience'] ?? 0,
+                        'job_emp_name' => $expData['job_emp_name'] ?? null,
+                        'job_state' => $expData['job_state'] ?? null,
+                        'job_type' => $expData['job_type'] ?? null
                     ]);
                 }
             }
@@ -2091,6 +2098,118 @@ class ClientPersonalDetailsController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error saving EOI information: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Save occupation information section
+     */
+    private function saveOccupationInfoSection($request, $client)
+    {
+        try {
+            $requestData = $request->all();
+            
+            // Handle occupation deletion
+            if (isset($requestData['delete_occupation_ids']) && is_array($requestData['delete_occupation_ids'])) {
+                foreach ($requestData['delete_occupation_ids'] as $occupationId) {
+                    $occupation = \App\Models\ClientOccupation::find($occupationId);
+                    if ($occupation && $occupation->client_id == $client->id) {
+                        $occupation->delete();
+                    }
+                }
+            }
+
+            // Handle occupation data
+            if (isset($requestData['nomi_occupation']) && is_array($requestData['nomi_occupation'])) {
+                foreach ($requestData['nomi_occupation'] as $key => $nomiOccupation) {
+                    if (!empty($nomiOccupation) || isset($requestData['skill_assessment_hidden'][$key])) {
+                        $occupationId = $requestData['occupation_id'][$key] ?? null;
+                        $anzscoOccupationId = $requestData['anzsco_occupation_id'][$key] ?? null;
+                        $skillAssessment = $requestData['skill_assessment_hidden'][$key] ?? null;
+                        $occupationCode = $requestData['occupation_code'][$key] ?? null;
+                        $list = $requestData['list'][$key] ?? null;
+                        $visaSubclass = $requestData['visa_subclass'][$key] ?? null;
+                        $date = $requestData['dates'][$key] ?? null;
+                        $expiryDate = $requestData['expiry_dates'][$key] ?? null;
+                        $occReferenceNo = $requestData['occ_reference_no'][$key] ?? null;
+                        $relevantOccupation = isset($requestData['relevant_occupation_hidden'][$key]) && $requestData['relevant_occupation_hidden'][$key] === '1' ? 1 : 0;
+
+                        // Convert dates from dd/mm/yyyy to Y-m-d for database storage
+                        $formattedDate = null;
+                        if (!empty($date)) {
+                            try {
+                                $dateObj = \Carbon\Carbon::createFromFormat('d/m/Y', $date);
+                                $formattedDate = $dateObj->format('Y-m-d');
+                            } catch (\Exception $e) {
+                                return response()->json([
+                                    'success' => false,
+                                    'message' => 'Invalid Assessment Date format: ' . $date
+                                ], 422);
+                            }
+                        }
+
+                        $formattedExpiryDate = null;
+                        if (!empty($expiryDate)) {
+                            try {
+                                $dateObj = \Carbon\Carbon::createFromFormat('d/m/Y', $expiryDate);
+                                $formattedExpiryDate = $dateObj->format('Y-m-d');
+                            } catch (\Exception $e) {
+                                return response()->json([
+                                    'success' => false,
+                                    'message' => 'Invalid Expiry Date format: ' . $expiryDate
+                                ], 422);
+                            }
+                        }
+
+                        if ($occupationId) {
+                            // Update existing record
+                            $existingOccupation = \App\Models\ClientOccupation::find($occupationId);
+                            if ($existingOccupation && $existingOccupation->client_id == $client->id) {
+                                $existingOccupation->update([
+                                    'admin_id' => Auth::user()->id,
+                                    'skill_assessment' => $skillAssessment,
+                                    'nomi_occupation' => $nomiOccupation,
+                                    'occupation_code' => $occupationCode,
+                                    'list' => $list,
+                                    'visa_subclass' => $visaSubclass,
+                                    'dates' => $formattedDate,
+                                    'expiry_dates' => $formattedExpiryDate,
+                                    'occ_reference_no' => $occReferenceNo,
+                                    'relevant_occupation' => $relevantOccupation,
+                                    'anzsco_occupation_id' => $anzscoOccupationId
+                                ]);
+                            }
+                        } else {
+                            // Create new record
+                            \App\Models\ClientOccupation::create([
+                                'admin_id' => Auth::user()->id,
+                                'client_id' => $client->id,
+                                'skill_assessment' => $skillAssessment,
+                                'nomi_occupation' => $nomiOccupation,
+                                'occupation_code' => $occupationCode,
+                                'list' => $list,
+                                'visa_subclass' => $visaSubclass,
+                                'dates' => $formattedDate,
+                                'expiry_dates' => $formattedExpiryDate,
+                                'occ_reference_no' => $occReferenceNo,
+                                'relevant_occupation' => $relevantOccupation,
+                                'anzsco_occupation_id' => $anzscoOccupationId
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Occupation information saved successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error saving occupation information: ' . $e->getMessage()
             ], 500);
         }
     }

@@ -4,6 +4,7 @@
     <link rel="stylesheet" href="{{ asset('css/address-autocomplete.css') }}">
     <link rel="stylesheet" href="{{asset('css/client-forms.css')}}">
     <link rel="stylesheet" href="{{asset('css/clients/edit-client-components.css')}}">
+    <link rel="stylesheet" href="{{asset('css/anzsco-admin.css')}}">
 @endpush
 
 @section('content')
@@ -711,20 +712,40 @@
                                 <div class="summary-grid">
                                     @foreach($experiences as $index => $experience)
                                         <div class="summary-item">
-                                            <span class="summary-label">Company:</span>
-                                            <span class="summary-value">{{ $experience->company ?: 'Not set' }}</span>
+                                            <span class="summary-label">Job Title:</span>
+                                            <span class="summary-value">{{ $experience->job_title ?: 'Not set' }}</span>
                                         </div>
                                         <div class="summary-item">
-                                            <span class="summary-label">Position:</span>
-                                            <span class="summary-value">{{ $experience->position ?: 'Not set' }}</span>
+                                            <span class="summary-label">ANZSCO Code:</span>
+                                            <span class="summary-value">{{ $experience->job_code ?: 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Employer Name:</span>
+                                            <span class="summary-value">{{ $experience->job_emp_name ?: 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Country:</span>
+                                            <span class="summary-value">{{ $experience->job_country ?: 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Address:</span>
+                                            <span class="summary-value">{{ $experience->job_state ?: 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Job Type:</span>
+                                            <span class="summary-value">{{ $experience->job_type ?: 'Not set' }}</span>
                                         </div>
                                         <div class="summary-item">
                                             <span class="summary-label">Start Date:</span>
-                                            <span class="summary-value">{{ $experience->start_date ? date('d/m/Y', strtotime($experience->start_date)) : 'Not set' }}</span>
+                                            <span class="summary-value">{{ $experience->job_start_date ? date('d/m/Y', strtotime($experience->job_start_date)) : 'Not set' }}</span>
                                         </div>
                                         <div class="summary-item">
-                                            <span class="summary-label">End Date:</span>
-                                            <span class="summary-value">{{ $experience->end_date ? date('d/m/Y', strtotime($experience->end_date)) : 'Not set' }}</span>
+                                            <span class="summary-label">Finish Date:</span>
+                                            <span class="summary-value">{{ $experience->job_finish_date ? date('d/m/Y', strtotime($experience->job_finish_date)) : 'Not set' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Relevant:</span>
+                                            <span class="summary-value">{{ $experience->relevant_experience ? 'Yes' : 'No' }}</span>
                                         </div>
                                     @endforeach
                                 </div>
@@ -742,6 +763,7 @@
                                     <x-client-edit.work-experience-field 
                                         :index="$index" 
                                         :experience="$experience" 
+                                        :countries="$countries->pluck('name')->toArray()"
                                     />
                                 @endforeach
                             </div>

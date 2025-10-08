@@ -1485,7 +1485,7 @@ function addQualification() {
 /**
  * Add Experience
  */
-function addExperience() {
+async function addExperience() {
     // Check if we're in summary mode, if so switch to edit mode first
     const summaryView = document.getElementById('experienceInfoSummary');
     const editView = document.getElementById('experienceInfoEdit');
@@ -1497,25 +1497,67 @@ function addExperience() {
     const container = document.getElementById('experienceContainer');
     const index = container.children.length;
 
+    // Fetch countries for the dropdown
+    const countries = await fetchCountries();
+    let countryOptionsHtml = '';
+    countries.forEach(country => {
+        countryOptionsHtml += `<option value="${country}">${country}</option>`;
+    });
+
     container.insertAdjacentHTML('beforeend', `
         <div class="repeatable-section">
-            <button type="button" class="remove-item-btn" title="Remove Experience" onclick="removeExperienceField(this)"><i class="fas fa-trash"></i></button>
-            <div class="content-grid">
+            <button type="button" class="remove-item-btn" title="Remove Experience" onclick="removeExperienceField(this)"><i class="fas fa-times-circle"></i></button>
+            <div class="content-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
                 <div class="form-group">
-                    <label>Company</label>
-                    <input type="text" name="company[${index}]" placeholder="Company">
+                    <label>Job Title</label>
+                    <input type="text" name="job_title[${index}]" placeholder="e.g., Software Engineer">
                 </div>
                 <div class="form-group">
-                    <label>Position</label>
-                    <input type="text" name="position[${index}]" placeholder="Position">
+                    <label>ANZSCO Code</label>
+                    <input type="text" name="job_code[${index}]" placeholder="e.g., 261313">
+                </div>
+                <div class="form-group">
+                    <label>Employer Name</label>
+                    <input type="text" name="job_emp_name[${index}]" placeholder="Enter employer name">
+                </div>
+                <div class="form-group">
+                    <label>Country</label>
+                    <select name="job_country_hidden[${index}]">
+                        <option value="">Select Country</option>
+                        ${countryOptionsHtml}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Address</label>
+                    <textarea name="job_state[${index}]" 
+                              rows="2" 
+                              placeholder="Enter workplace address"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Job Type</label>
+                    <select name="job_type[${index}]">
+                        <option value="">Select job type</option>
+                        <option value="Full-time">Full-time</option>
+                        <option value="Part-time">Part-time</option>
+                        <option value="Contract">Contract</option>
+                        <option value="Casual">Casual</option>
+                        <option value="Internship">Internship</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>Start Date</label>
-                    <input type="text" name="exp_start_date[${index}]" placeholder="dd/mm/yyyy" class="date-picker">
+                    <input type="text" name="job_start_date[${index}]" placeholder="dd/mm/yyyy" class="date-picker">
                 </div>
                 <div class="form-group">
-                    <label>End Date</label>
-                    <input type="text" name="exp_end_date[${index}]" placeholder="dd/mm/yyyy" class="date-picker">
+                    <label>Finish Date</label>
+                    <input type="text" name="job_finish_date[${index}]" placeholder="dd/mm/yyyy" class="date-picker">
+                </div>
+                <div class="form-group" style="align-items: center;">
+                    <label>Relevant?</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" name="relevant_experience_hidden[${index}]" id="relevant_${index}" value="1">
+                        <label for="relevant_${index}" class="toggle-label"></label>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1592,6 +1634,7 @@ function initGoogleMaps() {
         });
     });
 }
+
 
 // ===== NEW SUMMARY/EDIT MODE FUNCTIONALITY =====
 
@@ -2573,18 +2616,28 @@ window.saveExperienceInfo = function() {
     
     sections.forEach(section => {
         const expId = section.querySelector('input[name*="experience_id"]')?.value;
-        const company = section.querySelector('input[name*="company"]').value;
-        const position = section.querySelector('input[name*="position"]').value;
-        const startDate = section.querySelector('input[name*="exp_start_date"]').value;
-        const endDate = section.querySelector('input[name*="exp_end_date"]').value;
+        const jobTitle = section.querySelector('input[name*="job_title"]')?.value || '';
+        const jobCode = section.querySelector('input[name*="job_code"]')?.value || '';
+        const employerName = section.querySelector('input[name*="job_emp_name"]')?.value || '';
+        const country = section.querySelector('select[name*="job_country_hidden"]')?.value || '';
+        const address = section.querySelector('textarea[name*="job_state"]')?.value || '';
+        const jobType = section.querySelector('select[name*="job_type"]')?.value || '';
+        const startDate = section.querySelector('input[name*="job_start_date"]')?.value || '';
+        const endDate = section.querySelector('input[name*="job_finish_date"]')?.value || '';
+        const relevant = section.querySelector('input[name*="relevant_experience_hidden"]')?.checked || false;
         
-        if (company || position || startDate || endDate) {
+        if (jobTitle || jobCode || employerName || country || address || jobType || startDate || endDate) {
             experiences.push({
                 experience_id: expId || '',
-                company: company,
-                position: position,
-                start_date: startDate,
-                end_date: endDate
+                job_title: jobTitle,
+                job_code: jobCode,
+                job_emp_name: employerName,
+                job_country: country,
+                job_state: address,
+                job_type: jobType,
+                job_start_date: startDate,
+                job_finish_date: endDate,
+                relevant_experience: relevant ? 1 : 0
             });
         }
     });
@@ -2602,20 +2655,40 @@ window.saveExperienceInfo = function() {
             experiences.forEach(exp => {
                 summaryHTML += `
                     <div class="summary-item">
-                        <span class="summary-label">Company:</span>
-                        <span class="summary-value">${exp.company || 'Not set'}</span>
+                        <span class="summary-label">Job Title:</span>
+                        <span class="summary-value">${exp.job_title || 'Not set'}</span>
                     </div>
                     <div class="summary-item">
-                        <span class="summary-label">Position:</span>
-                        <span class="summary-value">${exp.position || 'Not set'}</span>
+                        <span class="summary-label">ANZSCO Code:</span>
+                        <span class="summary-value">${exp.job_code || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Employer Name:</span>
+                        <span class="summary-value">${exp.job_emp_name || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Country:</span>
+                        <span class="summary-value">${exp.job_country || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Address:</span>
+                        <span class="summary-value">${exp.job_state || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Job Type:</span>
+                        <span class="summary-value">${exp.job_type || 'Not set'}</span>
                     </div>
                     <div class="summary-item">
                         <span class="summary-label">Start Date:</span>
-                        <span class="summary-value">${exp.start_date || 'Not set'}</span>
+                        <span class="summary-value">${exp.job_start_date || 'Not set'}</span>
                     </div>
                     <div class="summary-item">
-                        <span class="summary-label">End Date:</span>
-                        <span class="summary-value">${exp.end_date || 'Not set'}</span>
+                        <span class="summary-label">Finish Date:</span>
+                        <span class="summary-value">${exp.job_finish_date || 'Not set'}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Relevant:</span>
+                        <span class="summary-value">${exp.relevant_experience ? 'Yes' : 'No'}</span>
                     </div>
                 `;
             });
@@ -4250,6 +4323,7 @@ function addOccupationRow() {
     const newOccupationHTML = `
         <div class="repeatable-section">
             <button type="button" class="remove-item-btn" title="Remove Occupation" onclick="removeOccupationField(this)"><i class="fas fa-trash"></i></button>
+            <input type="hidden" name="anzsco_occupation_id[${index}]" class="anzsco_occupation_id" value="">
             <div class="content-grid">
                 <div class="form-group">
                     <label>Skill Assessment</label>
@@ -4273,16 +4347,18 @@ function addOccupationRow() {
                     <input type="text" name="list[${index}]" class="list" placeholder="e.g., ACS, VETASSESS">
                 </div>
                 <div class="form-group">
-                    <label>Target Visa Subclass</label>
-                    <input type="text" name="visa_subclass[${index}]" class="visa_subclass" placeholder="e.g., 189, 190">
+                    <label>Occupation Lists</label>
+                    <div class="occupation-lists-display" id="occupation-lists-${index}">
+                        <span class="text-muted">Select an occupation to see lists</span>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Assessment Date</label>
-                    <input type="text" name="dates[${index}]" class="dates date-picker" placeholder="dd/mm/yyyy">
+                    <input type="date" name="dates[${index}]" class="dates">
                 </div>
                 <div class="form-group">
                     <label>Expiry Date</label>
-                    <input type="text" name="expiry_dates[${index}]" class="expiry_dates date-picker" placeholder="dd/mm/yyyy">
+                    <input type="date" name="expiry_dates[${index}]" class="expiry_dates">
                 </div>
                 <div class="form-group">
                     <label>Reference No</label>
@@ -4298,11 +4374,19 @@ function addOccupationRow() {
     
     container.insertAdjacentHTML('beforeend', newOccupationHTML);
     
-    // Initialize date pickers for the new row
-    initializeDatepickers();
-    
     // Initialize autocomplete for nominated occupation
     initializeOccupationAutocomplete();
+    
+    // Initialize expiry date calculation for the new row (native date inputs)
+    const newRow = container.lastElementChild;
+    const assessmentDateInput = newRow.querySelector('.dates');
+    if (assessmentDateInput) {
+        // Add event listener for native date input
+        assessmentDateInput.addEventListener('change', function() {
+            console.log('New row date change event triggered:', this.value);
+            handleExpiryDateCalculation(this);
+        });
+    }
 }
 
 function removeOccupationField(button) {
@@ -4323,6 +4407,43 @@ async function saveOccupationInfo() {
     
     const formData = new FormData(form);
     formData.append('section', 'occupation');
+    
+    // Convert date formats from YYYY-MM-DD (native date input) to DD/MM/YYYY (backend format)
+    // Get all date input fields and convert them
+    const assessmentDateInputs = form.querySelectorAll('input[name^="dates["]');
+    const expiryDateInputs = form.querySelectorAll('input[name^="expiry_dates["]');
+    
+    console.log('Found assessment date inputs:', assessmentDateInputs.length);
+    console.log('Found expiry date inputs:', expiryDateInputs.length);
+    
+    // Clear existing date fields from FormData
+    for (let [key, value] of formData.entries()) {
+        if (key.startsWith('dates[') || key.startsWith('expiry_dates[')) {
+            formData.delete(key);
+        }
+    }
+    
+    // Add converted assessment dates
+    assessmentDateInputs.forEach((input, index) => {
+        const originalValue = input.value;
+        const convertedDate = convertDateForBackend(originalValue);
+        formData.append(`dates[${index}]`, convertedDate);
+        console.log(`Converted assessment date ${index}: ${originalValue} -> ${convertedDate}`);
+    });
+    
+    // Add converted expiry dates
+    expiryDateInputs.forEach((input, index) => {
+        const originalValue = input.value;
+        const convertedDate = convertDateForBackend(originalValue);
+        formData.append(`expiry_dates[${index}]`, convertedDate);
+        console.log(`Converted expiry date ${index}: ${originalValue} -> ${convertedDate}`);
+    });
+    
+    // Debug: Log all form data being sent
+    console.log('Form data being sent:');
+    for (let [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
+    }
     
     try {
         const response = await fetch('/admin/clients/save-section', {
@@ -4598,48 +4719,433 @@ function validateTestScoreInput(input, range) {
 
 // ===== OCCUPATION AUTOCOMPLETE FUNCTIONS =====
 
+// ANZSCO Occupation Autocomplete
+let occupationAutocompleteTimeout;
+
 function initializeOccupationAutocomplete() {
     const occupationInputs = document.querySelectorAll('.nomi_occupation');
+    const codeInputs = document.querySelectorAll('.occupation_code');
     
+    // Initialize autocomplete for occupation name fields
     occupationInputs.forEach(input => {
         if (input.dataset.autocompleteInitialized) return;
         
         input.addEventListener('input', function() {
             const query = this.value;
             const autocompleteContainer = this.nextElementSibling;
+            const row = this.closest('.repeatable-section') || this.closest('.content-grid');
             
             if (query.length < 2) {
                 autocompleteContainer.innerHTML = '';
+                autocompleteContainer.style.display = 'none';
                 return;
             }
             
-            // Simple autocomplete - you can enhance this with actual API calls
-            const occupations = [
-                'Software Engineer', 'Data Analyst', 'Business Analyst', 'Project Manager',
-                'Accountant', 'Marketing Manager', 'Sales Representative', 'Teacher',
-                'Nurse', 'Doctor', 'Engineer', 'Architect', 'Lawyer', 'Consultant'
-            ];
+            // Clear previous timeout
+            clearTimeout(occupationAutocompleteTimeout);
             
-            const matches = occupations.filter(occ => 
-                occ.toLowerCase().includes(query.toLowerCase())
-            );
+            // Debounce API call
+            occupationAutocompleteTimeout = setTimeout(() => {
+                searchOccupations(query, autocompleteContainer, row, 'name');
+            }, 300);
+        });
+        
+        // Close autocomplete on outside click
+        document.addEventListener('click', function(e) {
+            if (!input.contains(e.target)) {
+                const container = input.nextElementSibling;
+                if (container && container.classList.contains('autocomplete-items')) {
+                    container.innerHTML = '';
+                    container.style.display = 'none';
+                }
+            }
+        });
+        
+        input.dataset.autocompleteInitialized = 'true';
+    });
+    
+    // Initialize autocomplete for occupation code fields
+    codeInputs.forEach(input => {
+        if (input.dataset.autocompleteInitialized) return;
+        
+        input.addEventListener('input', function() {
+            const query = this.value;
+            const row = this.closest('.repeatable-section') || this.closest('.content-grid');
             
-            autocompleteContainer.innerHTML = '';
-            matches.forEach(match => {
-                const item = document.createElement('div');
-                item.className = 'autocomplete-item';
-                item.textContent = match;
-                item.addEventListener('click', function() {
-                    input.value = match;
-                    autocompleteContainer.innerHTML = '';
-                });
-                autocompleteContainer.appendChild(item);
-            });
+            // Search by code if it's numeric and at least 3 digits
+            if (query.length >= 3 && /^\d+$/.test(query)) {
+                clearTimeout(occupationAutocompleteTimeout);
+                occupationAutocompleteTimeout = setTimeout(() => {
+                    searchOccupationByCode(query, row);
+                }, 300);
+            }
         });
         
         input.dataset.autocompleteInitialized = 'true';
     });
 }
+
+// Search occupations via API
+async function searchOccupations(query, autocompleteContainer, row, searchType) {
+    try {
+        // Show loading indicator
+        autocompleteContainer.innerHTML = '<div class="autocomplete-item"><span class="anzsco-loading"></span> Searching...</div>';
+        autocompleteContainer.style.display = 'block';
+        
+        const response = await fetch(`/admin/anzsco/search?q=${encodeURIComponent(query)}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            credentials: 'same-origin'
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API response error:', {
+                status: response.status,
+                statusText: response.statusText,
+                body: errorText
+            });
+            throw new Error(`Search failed: ${response.status} ${response.statusText}`);
+        }
+        
+        const responseText = await response.text();
+        console.log('API response:', responseText); // Debug log
+        
+        let occupations;
+        try {
+            occupations = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            console.error('Response text:', responseText);
+            throw new Error('Invalid JSON response from server');
+        }
+        
+        if (occupations.length === 0) {
+            autocompleteContainer.innerHTML = '<div class="autocomplete-item text-muted">No occupations found</div>';
+            return;
+        }
+        
+        // Build autocomplete items
+        autocompleteContainer.innerHTML = '';
+        occupations.forEach(occ => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item anzsco-autocomplete-item';
+            
+            // Build lists badges
+            let listBadges = '';
+            if (occ.lists && occ.lists.length > 0) {
+                occ.lists.forEach(list => {
+                    const badgeClass = {
+                        'MLTSSL': 'success',
+                        'STSOL': 'info',
+                        'ROL': 'warning',
+                        'CSOL': 'secondary'
+                    }[list] || 'secondary';
+                    listBadges += `<span class="badge badge-${badgeClass} mr-1">${list}</span>`;
+                });
+            }
+            
+            item.innerHTML = `
+                <div>
+                    <span class="anzsco-code">${occ.anzsco_code}</span> - 
+                    <span class="anzsco-title">${occ.occupation_title}</span>
+                </div>
+                <div class="anzsco-lists">${listBadges}</div>
+                ${occ.assessing_authority ? `<div class="anzsco-authority"><small>Authority: ${occ.assessing_authority}</small></div>` : ''}
+            `;
+            
+            item.addEventListener('click', function() {
+                fillOccupationData(row, occ);
+                autocompleteContainer.innerHTML = '';
+                autocompleteContainer.style.display = 'none';
+            });
+            
+            autocompleteContainer.appendChild(item);
+        });
+        
+    } catch (error) {
+        console.error('Occupation search error:', error);
+        console.error('Error details:', {
+            message: error.message,
+            stack: error.stack,
+            query: query
+        });
+        autocompleteContainer.innerHTML = '<div class="autocomplete-item text-danger">Error searching occupations. Please try again.</div>';
+    }
+}
+
+// Search occupation by code
+async function searchOccupationByCode(code, row) {
+    try {
+        const response = await fetch(`/admin/anzsco/code/${code}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            credentials: 'same-origin'
+        });
+        
+        if (!response.ok) {
+            return; // Code not found, user can still enter manually
+        }
+        
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            // Ask user if they want to autofill
+            const shouldFill = confirm(`Found ANZSCO occupation: ${result.data.occupation_title}\n\nAutofill occupation details?`);
+            if (shouldFill) {
+                fillOccupationData(row, result.data);
+            }
+        }
+        
+    } catch (error) {
+        console.error('Occupation code search error:', error);
+    }
+}
+
+// Fill occupation data into form fields
+function fillOccupationData(row, occupationData) {
+    if (!row) return;
+    
+    // Fill occupation name
+    const nameInput = row.querySelector('.nomi_occupation');
+    if (nameInput) {
+        nameInput.value = occupationData.occupation_title;
+        nameInput.classList.add('from-database');
+        nameInput.dataset.anzscoId = occupationData.id;
+    }
+    
+    // Fill occupation code
+    const codeInput = row.querySelector('.occupation_code');
+    if (codeInput) {
+        codeInput.value = occupationData.anzsco_code;
+        codeInput.classList.add('from-database');
+    }
+    
+    // Fill assessing authority (into the "list" field)
+    const listInput = row.querySelector('.list');
+    if (listInput && occupationData.assessing_authority) {
+        listInput.value = occupationData.assessing_authority;
+        listInput.classList.add('from-database');
+        // Store validity years for expiry date calculation
+        listInput.dataset.validityYears = occupationData.assessment_validity_years || 3;
+    }
+    
+    // Store ANZSCO occupation ID
+    const anzscoIdInput = row.querySelector('.anzsco_occupation_id');
+    if (anzscoIdInput) {
+        anzscoIdInput.value = occupationData.id;
+    }
+    
+    // Display occupation lists
+    displayOccupationLists(occupationData, row);
+    
+    // Calculate and fill expiry date if assessment date exists
+    const assessmentDateInput = row.querySelector('.dates');
+    const expiryDateInput = row.querySelector('.expiry_dates');
+    
+    if (assessmentDateInput && expiryDateInput && assessmentDateInput.value) {
+        const validityYears = occupationData.assessment_validity_years || 3;
+        const expiryDate = calculateExpiryDate(assessmentDateInput.value, validityYears);
+        if (expiryDate) {
+            expiryDateInput.value = expiryDate;
+            expiryDateInput.classList.add('from-database');
+        }
+    }
+    
+    // Show notification
+    showNotification(`Occupation filled from ANZSCO database: ${occupationData.occupation_title}`, 'success');
+}
+
+// Display occupation lists as badges
+function displayOccupationLists(occupationData, row) {
+    const listsContainer = row.querySelector('.occupation-lists-display');
+    if (!listsContainer) return;
+    
+    const lists = occupationData.lists || [];
+    
+    if (lists.length === 0) {
+        listsContainer.innerHTML = '<span class="text-muted">No lists available</span>';
+        return;
+    }
+    
+    const badges = lists.map(list => {
+        const color = getListBadgeColor(list);
+        return `<span class="badge badge-${color} mr-1">${list}</span>`;
+    }).join('');
+    
+    listsContainer.innerHTML = badges;
+}
+
+// Get badge color for occupation list
+function getListBadgeColor(list) {
+    const colors = {
+        'MLTSSL': 'success',
+        'STSOL': 'info', 
+        'ROL': 'warning',
+        'CSOL': 'secondary'
+    };
+    return colors[list] || 'secondary';
+}
+
+// Calculate expiry date
+function calculateExpiryDate(assessmentDateValue, validityYears) {
+    try {
+        if (!assessmentDateValue) return null;
+        
+        // assessmentDateValue is in YYYY-MM-DD format from native date input
+        const assessmentDate = new Date(assessmentDateValue);
+        if (isNaN(assessmentDate.getTime())) return null;
+        
+        // Add validity years
+        const expiryDate = new Date(assessmentDate);
+        expiryDate.setFullYear(expiryDate.getFullYear() + validityYears);
+        
+        // Return in YYYY-MM-DD format for native date input
+        const year = expiryDate.getFullYear();
+        const month = String(expiryDate.getMonth() + 1).padStart(2, '0');
+        const day = String(expiryDate.getDate()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}`;
+    } catch (error) {
+        console.error('Error calculating expiry date:', error);
+        return null;
+    }
+}
+
+// Convert date from YYYY-MM-DD (native date input) to DD/MM/YYYY (backend format)
+function convertDateForBackend(dateValue) {
+    console.log('convertDateForBackend called with:', dateValue);
+    
+    if (!dateValue) {
+        console.log('No date value provided, returning empty string');
+        return '';
+    }
+    
+    try {
+        // Parse YYYY-MM-DD format
+        const date = new Date(dateValue);
+        if (isNaN(date.getTime())) {
+            console.log('Invalid date, returning original value:', dateValue);
+            return dateValue; // Return original if invalid
+        }
+        
+        // Format as DD/MM/YYYY
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        const converted = `${day}/${month}/${year}`;
+        
+        console.log('Date conversion successful:', dateValue, '->', converted);
+        return converted;
+    } catch (error) {
+        console.error('Error converting date for backend:', error);
+        return dateValue; // Return original if conversion fails
+    }
+}
+
+// Assessment authority validity periods (in years)
+const ASSESSMENT_AUTHORITY_VALIDITY = {
+    'ACS': 3,           // Australian Computer Society
+    'TRA': 3,           // Trades Recognition Australia
+    'VETASSESS': 3,     // Vocational Education and Training Assessment Services
+    'AITSL': 3,         // Australian Institute for Teaching and School Leadership
+    'AACA': 3,          // Architects Accreditation Council of Australia
+    'ANMAC': 3,         // Australian Nursing and Midwifery Accreditation Council
+    'APC': 3,           // Australian Pharmacy Council
+    'CCEA': 3,          // Council on Chiropractic Education Australasia
+    'CPAA': 3,          // CPA Australia
+    'IPA': 3,           // Institute of Public Accountants
+    'CAANZ': 3,         // Chartered Accountants Australia and New Zealand
+    'Engineers Australia': 3,
+    'IML': 3,           // Institute of Managers and Leaders
+    'AASW': 3,          // Australian Association of Social Workers
+    'ANZPAC': 3,        // Australian and New Zealand Podiatry Accreditation Council
+    'OCANZ': 3,         // Optometry Council of Australia and New Zealand
+    'ADC': 3,           // Australian Dental Council
+    'AMC': 3,           // Australian Medical Council
+    'APEC': 3,          // Australian Psychology Accreditation Council
+    'AVBC': 3,          // Australasian Veterinary Boards Council
+    'CPSA': 3,          // Council on Chiropractic Education Australasia
+    'DAA': 3,           // Dietitians Association of Australia
+    'MRCB': 3,          // Medical Radiation Practice Board of Australia
+    'NATSIHWA': 3,      // National Aboriginal and Torres Strait Islander Health Workers Association
+    'OTBA': 3,          // Occupational Therapy Board of Australia
+    'PBA': 3,           // Psychology Board of Australia
+    'PBA': 3,           // Physiotherapy Board of Australia
+    'PSBA': 3,          // Podiatry Board of Australia
+    'SBA': 3,           // Speech Pathology Australia
+    'Default': 3        // Default validity period
+};
+
+// Function to handle expiry date calculation
+function handleExpiryDateCalculation(assessmentDateInput) {
+    console.log('handleExpiryDateCalculation called', {
+        value: assessmentDateInput.value,
+        element: assessmentDateInput
+    });
+    
+    const row = assessmentDateInput.closest('.repeatable-section') || assessmentDateInput.closest('.content-grid');
+    if (!row) {
+        console.log('No row found for assessment date input');
+        return;
+    }
+    
+    const listInput = row.querySelector('.list');
+    const expiryDateInput = row.querySelector('.expiry_dates');
+    
+    console.log('Found elements:', {
+        listInput: listInput,
+        expiryDateInput: expiryDateInput,
+        listInputHasDatabaseClass: listInput ? listInput.classList.contains('from-database') : false,
+        listInputValue: listInput ? listInput.value : null
+    });
+    
+    // Always calculate expiry date when assessment date is entered
+    if (assessmentDateInput.value && expiryDateInput) {
+        let validityYears = 3; // Default validity period
+        
+        // If field was filled from database, use the specific validity period
+        if (listInput && listInput.classList.contains('from-database')) {
+            validityYears = parseInt(listInput.dataset.validityYears) || 3;
+            console.log('Using database validity years:', validityYears);
+        } else if (listInput && listInput.value) {
+            // Use validity period based on assessment authority
+            const authority = listInput.value.trim().toUpperCase();
+            validityYears = ASSESSMENT_AUTHORITY_VALIDITY[authority] || ASSESSMENT_AUTHORITY_VALIDITY['Default'];
+            console.log('Using assessment authority validity years:', validityYears, 'for authority:', authority);
+        } else {
+            console.log('Using default validity years:', validityYears);
+        }
+        
+        const expiryDate = calculateExpiryDate(assessmentDateInput.value, validityYears);
+        console.log('Calculated expiry date:', expiryDate);
+        
+        if (expiryDate) {
+            expiryDateInput.value = expiryDate;
+            expiryDateInput.classList.add('from-database');
+            console.log('Expiry date set successfully');
+        }
+    }
+}
+
+// Update expiry date when assessment date changes (native date inputs)
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle change events for native date inputs
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('dates')) {
+            console.log('Date change event triggered:', e.target.value);
+            handleExpiryDateCalculation(e.target);
+        }
+    });
+});
 
 // ===== INITIALIZATION FUNCTIONS =====
 

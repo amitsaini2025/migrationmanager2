@@ -3636,8 +3636,6 @@ class ClientsController extends Controller
                     return $this->saveChildrenInfoSection($request, $client);
                 case 'eoiInfo':
                     return $this->saveEoiInfoSection($request, $client);
-                case 'occupation':
-                    return $this->saveOccupationInfoSection($request, $client);
                 case 'test_scores':
                     return $this->saveTestScoreInfoSection($request, $client);
                 default:
@@ -4113,111 +4111,6 @@ class ClientsController extends Controller
         ]);
     }
 
-    private function saveOccupationInfoSection($request, $client)
-    {
-        try {
-            $requestData = $request->all();
-            
-            // Handle occupation deletion
-            if (isset($requestData['delete_occupation_ids']) && is_array($requestData['delete_occupation_ids'])) {
-                foreach ($requestData['delete_occupation_ids'] as $occupationId) {
-                    $occupation = \App\Models\ClientOccupation::find($occupationId);
-                    if ($occupation && $occupation->client_id == $client->id) {
-                        $occupation->delete();
-                    }
-                }
-            }
-
-            // Handle occupation data
-            if (isset($requestData['nomi_occupation']) && is_array($requestData['nomi_occupation'])) {
-                foreach ($requestData['nomi_occupation'] as $key => $nomiOccupation) {
-                    if (!empty($nomiOccupation) || isset($requestData['skill_assessment_hidden'][$key])) {
-                        $occupationId = $requestData['occupation_id'][$key] ?? null;
-                        $skillAssessment = $requestData['skill_assessment_hidden'][$key] ?? null;
-                        $occupationCode = $requestData['occupation_code'][$key] ?? null;
-                        $list = $requestData['list'][$key] ?? null;
-                        $visaSubclass = $requestData['visa_subclass'][$key] ?? null;
-                        $date = $requestData['dates'][$key] ?? null;
-                        $expiryDate = $requestData['expiry_dates'][$key] ?? null;
-                        $occReferenceNo = $requestData['occ_reference_no'][$key] ?? null;
-                        $relevantOccupation = isset($requestData['relevant_occupation_hidden'][$key]) && $requestData['relevant_occupation_hidden'][$key] === '1' ? 1 : 0;
-
-                        // Convert dates from dd/mm/yyyy to Y-m-d for database storage
-                        $formattedDate = null;
-                        if (!empty($date)) {
-                            try {
-                                $dateObj = \Carbon\Carbon::createFromFormat('d/m/Y', $date);
-                                $formattedDate = $dateObj->format('Y-m-d');
-                            } catch (\Exception $e) {
-                                return response()->json([
-                                    'success' => false,
-                                    'message' => 'Invalid Assessment Date format: ' . $date
-                                ], 422);
-                            }
-                        }
-
-                        $formattedExpiryDate = null;
-                        if (!empty($expiryDate)) {
-                            try {
-                                $dateObj = \Carbon\Carbon::createFromFormat('d/m/Y', $expiryDate);
-                                $formattedExpiryDate = $dateObj->format('Y-m-d');
-                            } catch (\Exception $e) {
-                                return response()->json([
-                                    'success' => false,
-                                    'message' => 'Invalid Expiry Date format: ' . $expiryDate
-                                ], 422);
-                            }
-                        }
-
-                        if ($occupationId) {
-                            // Update existing record
-                            $existingOccupation = \App\Models\ClientOccupation::find($occupationId);
-                            if ($existingOccupation && $existingOccupation->client_id == $client->id) {
-                                $existingOccupation->update([
-                                    'admin_id' => Auth::user()->id,
-                                    'skill_assessment' => $skillAssessment,
-                                    'nomi_occupation' => $nomiOccupation,
-                                    'occupation_code' => $occupationCode,
-                                    'list' => $list,
-                                    'visa_subclass' => $visaSubclass,
-                                    'dates' => $formattedDate,
-                                    'expiry_dates' => $formattedExpiryDate,
-                                    'occ_reference_no' => $occReferenceNo,
-                                    'relevant_occupation' => $relevantOccupation
-                                ]);
-                            }
-                        } else {
-                            // Create new record
-                            \App\Models\ClientOccupation::create([
-                                'admin_id' => Auth::user()->id,
-                                'client_id' => $client->id,
-                                'skill_assessment' => $skillAssessment,
-                                'nomi_occupation' => $nomiOccupation,
-                                'occupation_code' => $occupationCode,
-                                'list' => $list,
-                                'visa_subclass' => $visaSubclass,
-                                'dates' => $formattedDate,
-                                'expiry_dates' => $formattedExpiryDate,
-                                'occ_reference_no' => $occReferenceNo,
-                                'relevant_occupation' => $relevantOccupation
-                            ]);
-                        }
-                    }
-                }
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Occupation information saved successfully'
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error saving occupation information: ' . $e->getMessage()
-            ], 500);
-        }
-    }
 
     private function saveTestScoreInfoSection($request, $client)
     {

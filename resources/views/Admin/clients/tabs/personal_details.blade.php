@@ -321,7 +321,7 @@
                     <div class="card">
                         <div class="qualification-section">
                             <h3><i class="fas fa-info-circle"></i> Qualification</h3>
-                            <div class="qualification-list" style="overflow: hidden;">
+                            <div class="qualification-list" style="overflow-x: auto;">
                                 <table class="table eoi-table">
                                     <thead>
                                         <tr>
@@ -379,7 +379,7 @@
                     <div class="card">
                         <div class="experience-section">
                             <h3><i class="fas fa-info-circle"></i> Work Experience</h3>
-                            <div class="experience-list" style="overflow: hidden;">
+                            <div class="experience-list" style="overflow-x: auto;">
                                 <table class="table eoi-table">
                                     <thead>
                                         <tr>
@@ -671,7 +671,7 @@
                     <div class="card">
                         <div class="eoi-section">
                             <h3><i class="fas fa-file-alt"></i> EOI Reference Information</h3>
-                            <div class="eoi-list" style="overflow: hidden;/*max-height: 300px; overflow-y: auto;*/">
+                            <div class="eoi-list" style="overflow-x: auto;/*max-height: 300px; overflow-y: auto;*/">
                                 <table class="table eoi-table">
                                     <thead>
                                         <tr>
@@ -700,6 +700,7 @@
                     <style>
                         .eoi-table{
                             width: 100%;
+                            min-width: 600px;
                             border-collapse: collapse;
                             margin-top: 10px;
                             table-layout: fixed;
@@ -708,19 +709,116 @@
                             padding: 10px;
                             border-bottom: 1px solid #dee2e6;
                             text-align: left;
-                            word-wrap: break-word;
-                            overflow-wrap: break-word;
+                            word-break: normal;
+                            white-space: nowrap;
                         }
                         .eoi-table th {
                             background-color: #f8f9fa;
                             font-weight: 600;
                             color: #6c757d !important;
+                            white-space: normal;
+                            word-wrap: break-word;
+                            overflow-wrap: break-word;
+                            overflow: visible;
+                            text-overflow: clip;
                         }
+                        /* Qualification table column widths */
+                        .qualification-section .eoi-table th:nth-child(1),
+                        .qualification-section .eoi-table td:nth-child(1) { 
+                            width: 12%; 
+                        } /* Level */
+                        .qualification-section .eoi-table th:nth-child(2),
+                        .qualification-section .eoi-table td:nth-child(2) { 
+                            width: 43%; 
+                        } /* Name */
+                        .qualification-section .eoi-table th:nth-child(3),
+                        .qualification-section .eoi-table td:nth-child(3) { 
+                            width: 18%; 
+                        } /* Campus */
+                        .qualification-section .eoi-table th:nth-child(4),
+                        .qualification-section .eoi-table td:nth-child(4) { 
+                            width: 27%; 
+                        } /* End Date */
+                        
+                        /* Work Experience table column widths */
+                        .experience-section .eoi-table th:nth-child(1),
+                        .experience-section .eoi-table td:nth-child(1) { 
+                            width: 25%; 
+                        } /* Job Title */
+                        .experience-section .eoi-table th:nth-child(2),
+                        .experience-section .eoi-table td:nth-child(2) { 
+                            width: 18%; 
+                        } /* Country */
+                        .experience-section .eoi-table th:nth-child(3),
+                        .experience-section .eoi-table td:nth-child(3) { 
+                            width: 22%; 
+                        } /* Start Date */
+                        .experience-section .eoi-table th:nth-child(4),
+                        .experience-section .eoi-table td:nth-child(4) { 
+                            width: 35%; 
+                        } /* End Date */
+                        
+                        /* EOI table column widths */
+                        .eoi-section .eoi-table th:nth-child(1),
+                        .eoi-section .eoi-table td:nth-child(1) { 
+                            width: 20%; 
+                        } /* Subclass */
+                        .eoi-section .eoi-table th:nth-child(2),
+                        .eoi-section .eoi-table td:nth-child(2) { 
+                            width: 35%; 
+                        } /* Occupation */
+                        .eoi-section .eoi-table th:nth-child(3),
+                        .eoi-section .eoi-table td:nth-child(3) { 
+                            width: 20%; 
+                        } /* Point */
+                        .eoi-section .eoi-table th:nth-child(4),
+                        .eoi-section .eoi-table td:nth-child(4) { 
+                            width: 25%; 
+                        } /* State */
                         .eoi-table tbody tr:hover {
                             background-color: #f1f5f9;
                         }
                         .eoi-table td {
                             color: #212529;
+                        }
+                        /* Allow wrapping only for very long text in specific columns */
+                        .qualification-section .eoi-table td:nth-child(2) {
+                            white-space: normal;
+                            word-break: break-word;
+                            overflow-wrap: break-word;
+                        }
+                        .experience-section .eoi-table td:nth-child(1) {
+                            white-space: normal;
+                            word-break: break-word;
+                            overflow-wrap: break-word;
+                        }
+                        .eoi-section .eoi-table td:nth-child(2) {
+                            white-space: normal;
+                            word-break: break-word;
+                            overflow-wrap: break-word;
+                        }
+                        /* Allow State column to wrap properly */
+                        .eoi-section .eoi-table td:nth-child(4) {
+                            white-space: normal;
+                            word-break: normal;
+                            overflow-wrap: normal;
+                        }
+                        /* Allow End Date columns to wrap to 2 lines */
+                        .qualification-section .eoi-table td:nth-child(4) {
+                            white-space: normal;
+                            word-break: break-word;
+                            overflow-wrap: break-word;
+                        }
+                        .experience-section .eoi-table td:nth-child(4) {
+                            white-space: normal;
+                            word-break: break-word;
+                            overflow-wrap: break-word;
+                        }
+                        /* Allow Level column to wrap for long values */
+                        .qualification-section .eoi-table td:nth-child(1) {
+                            white-space: normal;
+                            word-break: normal;
+                            overflow-wrap: normal;
                         }
                     </style>
 

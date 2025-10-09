@@ -8,8 +8,22 @@
 
 /* Activity Feed Width Toggle Styles */
 .activity-feed.wide-mode { flex: 0 0 450px !important; width: 450px !important; min-width: 450px !important; }
-.main-content.compact-mode .content-grid { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)) !important; }
-.main-content.compact-mode .content-grid.single-row { grid-template-columns: 1fr !important; }
+
+/* Normal state - when compact-mode is NOT active */
+.main-content .content-grid { 
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important; 
+    gap: 20px !important;
+}
+
+/* Compact mode - when Activity Feed is expanded */
+.main-content.compact-mode .content-grid { 
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)) !important; 
+    gap: 20px !important;
+}
+
+.main-content.compact-mode .content-grid.single-row { 
+    grid-template-columns: 1fr !important; 
+}
 
 /* Activity Feed Header and Checkbox */
 .activity-feed-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef; }
@@ -108,8 +122,8 @@
 .subtab-header, .subtab2-header, .subtab6-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .subtab-header h3, .subtab2-header h3, .subtab6-header h3 { font-size: 1.5rem; color: #333; margin: 0; display: flex; align-items: center; }
 .subtab-header h3 i, .subtab2-header h3 i, .subtab6-header h3 i { margin-right: 8px; color: #4a90e2; }
-.subtab-header .add-checklist-btn, .subtab2-header .add-checklist-btn, .subtab6-header .add-checklist-btn, .add_personal_doc_cat-btn, .add-visa-doc-category-btn { background-color: #4a90e2 !important; color: white; border: none; padding: 8px 16px; font-weight: 500; border-radius: 5px; transition: background-color 0.3s ease; }
-.subtab-header .add-checklist-btn:hover, .subtab2-header .add-checklist-btn:hover, .subtab6-header .add-checklist-btn:hover, .add_personal_doc_cat-btn:hover, .add-visa-doc-category-btn:hover { background-color: #357ab8 !important; color: white; }
+.subtab-header .add-checklist-btn, .subtab2-header .add-checklist-btn, .subtab6-header .add-checklist-btn, .add_personal_doc_cat-btn, .add-visa-doc-category-btn { background-color: #28a745 !important; color: white; border: none; padding: 8px 16px; font-weight: 500; border-radius: 5px; transition: background-color 0.3s ease; }
+.subtab-header .add-checklist-btn:hover, .subtab2-header .add-checklist-btn:hover, .subtab6-header .add-checklist-btn:hover, .add_personal_doc_cat-btn:hover, .add-visa-doc-category-btn:hover { background-color: #218838 !important; color: white; }
 .checklist-table-container { flex: 1.5; overflow-x: auto; }
 .checklist-table { width: 100%; border-collapse: collapse; background: #ffffff; color: #333; }
 .checklist-table thead { background: #f8f9fa; }
@@ -253,15 +267,23 @@
     background: #0056b3;
 }
 
-/* Activity Feed Width Toggle Styles */
+/* Activity Feed Width Toggle Styles - Duplicate Section */
 .activity-feed.wide-mode {
     flex: 0 0 450px !important;
     width: 450px !important;
     min-width: 450px !important;
 }
 
+/* Normal state - when compact-mode is NOT active */
+.main-content .content-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+    gap: 20px !important;
+}
+
+/* Compact mode - when Activity Feed is expanded */
 .main-content.compact-mode .content-grid {
     grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)) !important;
+    gap: 20px !important;
 }
 
 .main-content.compact-mode .content-grid.single-row {
@@ -596,10 +618,10 @@
 .subtab-header-container { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; margin-bottom: 10px; }
 .subtabs2, .subtabs6 { display: flex; flex-wrap: wrap; gap: 5px; }
 .button-container:hover .action-buttons { display: inline-block !important; }
-.add_personal_doc_cat-btn { padding: 5px 10px; margin-top: 0; white-space: nowrap; }
+.add_personal_doc_cat-btn, .add-visa-doc-category-btn { padding: 5px 10px; margin-top: 0; white-space: nowrap; }
 @media (max-width: 768px) {
   .subtab-header-container { flex-direction: column; align-items: stretch; }
-  .add_personal_doc_cat-btn { margin-top: 10px; width: 100%; }
+  .add_personal_doc_cat-btn, .add-visa-doc-category-btn { margin-top: 10px; width: 100%; }
 }
 
 /* Client Portal Toggle Switch Styles */

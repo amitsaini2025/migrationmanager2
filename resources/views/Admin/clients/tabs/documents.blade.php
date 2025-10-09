@@ -54,7 +54,7 @@
                                     <?php endforeach; ?>
                                 </nav>
                                 <button style="margin-top: 10px;" class="btn add_personal_doc_cat-btn add_personal_doc_cat" data-type="personal" data-categoryid="">
-                                    <i class="fas fa-plus"></i> Add Personal Document Category
+                                    <i class="fas fa-plus"></i> Add Category
                                 </button>
                             </div>
 
@@ -72,7 +72,7 @@
                                             <div class="subtab2-header" style="margin-left: 10px;">
                                                 <h3><i class="fas fa-file-alt"></i> <?= htmlspecialchars($catVal->title) ?> Documents</h3>
                                                 <button class="btn add-checklist-btn add_education_doc" data-type="personal" data-categoryid="<?= $id ?>">
-                                                    <i class="fas fa-plus"></i> Add Personal Checklist
+                                                    <i class="fas fa-plus"></i> Add Checklist
                                                 </button>
                                             </div>
                                             <table class="checklist-table">
@@ -296,7 +296,7 @@
                                 </nav>
 
                                 <button style="margin-top: 10px;" class="btn add-visa-doc-category-btn add-visa-doc-category" data-type="visa" data-categoryid="">
-                                    <i class="fas fa-plus"></i> Add Visa Document Category
+                                    <i class="fas fa-plus"></i> Add Category
                                 </button>
                             </div>
 
@@ -312,7 +312,7 @@
                                             <div class="subtab6-header" style="margin-left: 10px;">
                                                 <h3><i class="fas fa-file-alt"></i> <?= htmlspecialchars($catVal->title) ?> Documents</h3>
                                                 <button class="btn add-checklist-btn add_migration_doc" data-type="visa" data-categoryid="<?= $id ?>">
-                                                    <i class="fas fa-plus"></i> Add Visa Checklist
+                                                    <i class="fas fa-plus"></i> Add Checklist
                                                 </button>
                                             </div>
                                             <table class="checklist-table">

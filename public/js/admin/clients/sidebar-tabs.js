@@ -95,6 +95,13 @@
         if (tabId === 'personaldetails') {
             $('#activity-feed').show();
             $('#main-content').css('flex', '1');
+            
+            // Adjust Activity Feed height when it becomes visible
+            setTimeout(function() {
+                if (typeof adjustActivityFeedHeight === 'function') {
+                    adjustActivityFeedHeight();
+                }
+            }, 100);
         } else {
             handleMatterSpecificTab(tabId);
             $('#activity-feed').hide();

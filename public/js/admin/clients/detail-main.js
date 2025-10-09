@@ -6,17 +6,30 @@
         // Flag to prevent redirects during page initialization (now global)
 
         function adjustActivityFeedHeight() {
-            let mainContentHeight = $('.main-content').outerHeight();
-            let activityFeedHeight = $('.activity-feed').outerHeight();
+            // Calculate maximum available height (viewport minus header/navigation)
             let windowHeight = $(window).height();
-
-            if (mainContentHeight <= activityFeedHeight) { 
-                // Case 1: main-content smaller â†’ activity-feed should use viewport height
-                $('.activity-feed').css('max-height', `calc(100vh - 120px)`);
-            } else { 
-                // Case 2: main-content bigger â†’ activity-feed should match main-content height
-                $('.activity-feed').css('max-height', mainContentHeight + 'px');
-            }
+            let maxAvailableHeight = windowHeight - 120; // Account for header and navigation
+            
+            // Force container to recalculate layout
+            $('.crm-container').css('align-items', 'flex-start');
+            
+            // Reset main-content to allow natural height
+            $('.main-content').css('max-height', 'none');
+            $('.main-content').css('overflow-y', 'visible');
+            $('.main-content').css('height', 'auto');
+            
+            // Get the actual main-content height after reset
+            let mainContentHeight = $('.main-content').outerHeight();
+            
+            // Set Activity Feed height to match main-content height, but not exceed viewport
+            let targetHeight = Math.min(mainContentHeight, maxAvailableHeight);
+            
+            // Set Activity Feed height dynamically
+            $('.activity-feed').css('max-height', targetHeight + 'px');
+            $('.activity-feed').css('height', targetHeight + 'px');
+            
+            // Ensure proper overflow handling
+            $('.activity-feed').css('overflow-y', 'auto');
         }
 
         // Run on load
@@ -277,7 +290,14 @@
                 $('.activity-feed').removeClass('wide-mode');
                 $('.main-content').removeClass('compact-mode');
             }
+            
+            // Adjust Activity Feed height after layout change
             adjustActivityFeedHeight();
+            
+            // Force a small delay to ensure CSS transitions complete
+            setTimeout(function() {
+                adjustActivityFeedHeight();
+            }, 150);
         });
 
     });
@@ -1342,6 +1362,11 @@ $(document).ready(function() {
     if ($('#personaldetails-tab').hasClass('active')) {
         $('#activity-feed').show();
         $('#main-content').css('flex', '1');
+        
+        // Adjust Activity Feed height on initial load
+        setTimeout(function() {
+            adjustActivityFeedHeight();
+        }, 150);
     } else {
         $('#activity-feed').hide();
         //$('#main-content').css('flex', '0 0 100%');
@@ -3817,7 +3842,7 @@ Bansal Immigration`;
                 var client_id = $('#client_id').val();
                 $('.popuploader').show();
                 $.ajax({
-                    url: "window.ClientDetailConfig.urls.fetchClientContactNo",
+                    url: window.ClientDetailConfig.urls.fetchClientContactNo,
                     method: "POST",
                     data: {client_id:client_id},
                     datatype: 'json',
@@ -3927,7 +3952,7 @@ Bansal Immigration`;
             if (flag) {
                 $.ajax({
                     type: 'POST',
-                    url: "window.ClientDetailConfig.urls.followupStore",
+                    url: window.ClientDetailConfig.urls.followupStore,
                     headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
                     data: {
                         note_type: 'follow_up',
@@ -4024,6 +4049,9 @@ Bansal Immigration`;
                             }
                         });
                     }
+                    
+                    // Adjust Activity Feed height after content update
+                    adjustActivityFeedHeight();
                 }
             });
         }
@@ -4071,6 +4099,9 @@ Bansal Immigration`;
                     $('.feed-list').html(html);
                     //$('.activities').html(html);
                     $('.popuploader').hide();
+                    
+                    // Adjust Activity Feed height after content update
+                    adjustActivityFeedHeight();
                 }
             });
         }
@@ -4674,7 +4705,7 @@ Bansal Immigration`;
             if(client_id !=""){
                 $.ajax({
                     type:'post',
-                    url:"window.ClientDetailConfig.urls.updateSessionCompleted",
+                    url: window.ClientDetailConfig.urls.updateSessionCompleted,
                     headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')},
                     data: {client_id:client_id },
                     success: function(response){
@@ -6564,7 +6595,7 @@ Bansal Immigration`;
                     }, function(start, end, label) {
                         $('#popuploader').show();
                         $.ajax({
-                            url:"window.ClientDetailConfig.urls.updateIntake",
+                            url: window.ClientDetailConfig.urls.updateIntake,
                             method: "GET", // or POST
                             dataType: "json",
                             data: {from: start.format('YYYY-MM-DD'), appid: appliid},
@@ -6583,7 +6614,7 @@ Bansal Immigration`;
                     }, function(start, end, label) {
                         $('#popuploader').show();
                         $.ajax({
-                            url:"window.ClientDetailConfig.urls.updateExpectWin",
+                            url: window.ClientDetailConfig.urls.updateExpectWin,
                             method: "GET", // or POST
                             dataType: "json",
                             data: {from: start.format('YYYY-MM-DD'), appid: appliid},
@@ -6601,7 +6632,7 @@ Bansal Immigration`;
                     }, function(start, end, label) {
                         $('#popuploader').show();
                         $.ajax({
-                            url:"window.ClientDetailConfig.urls.updateDates",
+                            url: window.ClientDetailConfig.urls.updateDates,
                             method: "GET", // or POST
                             dataType: "json",
                             data: {from: start.format('YYYY-MM-DD'), appid: appliid, datetype: 'start'},
@@ -6625,7 +6656,7 @@ Bansal Immigration`;
                     }, function(start, end, label) {
                         $('#popuploader').show();
                         $.ajax({
-                            url:"window.ClientDetailConfig.urls.updateDates",
+                            url: window.ClientDetailConfig.urls.updateDates,
                             method: "GET", // or POST
                             dataType: "json",
                             data: {from: start.format('YYYY-MM-DD'), appid: appliid, datetype: 'end'},
@@ -6682,7 +6713,7 @@ Bansal Immigration`;
                     }, function(start, end, label) {
                         $('#popuploader').show();
                         $.ajax({
-                            url:"window.ClientDetailConfig.urls.updateIntake",
+                            url: window.ClientDetailConfig.urls.updateIntake,
                             method: "GET", // or POST
                             dataType: "json",
                             data: {from: start.format('YYYY-MM-DD'), appid: clientMatterId},
@@ -6699,7 +6730,7 @@ Bansal Immigration`;
                     }, function(start, end, label) {
                         $('#popuploader').show();
                         $.ajax({
-                            url:"window.ClientDetailConfig.urls.updateExpectWin",
+                            url: window.ClientDetailConfig.urls.updateExpectWin,
                             method: "GET", // or POST
                             dataType: "json",
                             data: {from: start.format('YYYY-MM-DD'), appid: clientMatterId},
@@ -6716,7 +6747,7 @@ Bansal Immigration`;
                     }, function(start, end, label) {
                         $('#popuploader').show();
                         $.ajax({
-                            url:"window.ClientDetailConfig.urls.updateDates",
+                            url: window.ClientDetailConfig.urls.updateDates,
                             method: "GET", // or POST
                             dataType: "json",
                             data: {from: start.format('YYYY-MM-DD'), appid: clientMatterId, datetype: 'start'},
@@ -6739,7 +6770,7 @@ Bansal Immigration`;
                     }, function(start, end, label) {
                         $('#popuploader').show();
                         $.ajax({
-                            url:"window.ClientDetailConfig.urls.updateDates",
+                            url: window.ClientDetailConfig.urls.updateDates,
                             method: "GET", // or POST
                             dataType: "json",
                             data: {from: start.format('YYYY-MM-DD'), appid: clientMatterId, datetype: 'end'},
@@ -7365,7 +7396,7 @@ Bansal Immigration`;
         function uploadFormData(form_data) {
             $('.popuploader').show();
             $.ajax({
-                url: "window.ClientDetailConfig.urls.checklistUpload",
+                url: window.ClientDetailConfig.urls.checklistUpload,
                 method: "POST",
                 data: form_data,
                 datatype: 'json',

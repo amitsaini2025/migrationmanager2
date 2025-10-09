@@ -58,6 +58,7 @@
             min-height: calc(100vh - 70px);
             padding: 15px;
             gap: 20px;
+            align-items: flex-start;
         }
         /* Override existing main-sidebar styles for fixed positioning */
         .main-sidebar {
@@ -412,6 +413,8 @@
             transition: margin-left 0.3s ease;
             position: relative;
             z-index: 1;
+            height: auto;
+            max-height: none;
         }
         .activity-feed {
             flex: 0 0 300px;
@@ -419,8 +422,8 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            max-height: calc(100vh - 120px);
-            overflow: visible;
+            overflow-y: auto;
+            /* Height will be set dynamically via JavaScript to match main-content */
         }
         .client-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #dee2e6; }
         .client-header h1 { font-size: 1.8em; font-weight: 600; color: #212529; margin: 0; }

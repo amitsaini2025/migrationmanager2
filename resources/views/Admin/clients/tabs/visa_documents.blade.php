@@ -52,7 +52,7 @@
                             </nav>
                             <div style="display: flex; gap: 10px; align-items: center;">
                                 <button type="button" class="btn add-visa-doc-category-btn add-visa-doc-category" data-type="visa" data-categoryid="">
-                                    <i class="fas fa-plus"></i> Add Visa Document Category
+                                    <i class="fas fa-plus"></i> Add Category
                                 </button>
                                 <!-- Add link to Not Used Documents -->
                                 <button class="btn btn-secondary client-nav-button" data-tab="notuseddocuments">
@@ -73,7 +73,7 @@
                                         <div class="subtab6-header" style="margin-left: 10px;">
                                             <h3><i class="fas fa-file-alt"></i> <?= htmlspecialchars($catVal->title) ?> Documents</h3>
                                             <button type="button" class="btn add-checklist-btn add_migration_doc" data-type="visa" data-categoryid="<?= $id ?>">
-                                                <i class="fas fa-plus"></i> Add Visa Checklist
+                                                <i class="fas fa-plus"></i> Add Checklist
                                             </button>
                                         </div>
                                         <table class="checklist-table">

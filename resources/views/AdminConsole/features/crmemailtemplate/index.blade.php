@@ -21,7 +21,7 @@
 						<div class="card-header">
 							<h4>Crm Email Template</h4>
 							<div class="card-header-action">
-								<a href="{{route('admin.crmemailtemplate.create')}}" class="btn btn-primary">Create Email Template</a>
+								<a href="{{route('adminconsole.features.crmemailtemplate.create')}}" class="btn btn-primary">Create Email Template</a>
 							</div>
 						</div>
 						<div class="card-body">

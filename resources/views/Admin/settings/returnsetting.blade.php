@@ -59,7 +59,8 @@
 					  </div> 
 					  <!-- /.card-header -->
 					  <!-- form start -->
-					  {{ Form::open(array('url' => 'admin/settings/taxes/savereturnsetting', 'name'=>"add-city", 'autocomplete'=>'off', "enctype"=>"multipart/form-data")) }}
+						  <form action="{{ url('admin/settings/taxes/savereturnsetting') }}" method="POST" name="add-city" autocomplete="off" enctype="multipart/form-data">
+							@csrf
 						<div class="card-body">
 							<div class="row">
 								<div class="col-sm-12">
@@ -83,7 +84,7 @@
 								<div class="col-sm-12 is_gst_yes">
 									<div class="form-group"> 
 										<label for="gstin" class="col-form-label">GSTIN <span style="color:#ff0000;">*</span></label>
-										{{ Form::text('gstin', @Auth::user()->gstin, array('class' => 'form-control', 'data-valid'=>'', 'autocomplete'=>'off','placeholder'=>'' )) }}
+										<input type="text" name="gstin" value="{{ @Auth::user()->gstin }}" class="form-control" data-valid="" autocomplete="off" placeholder="">
 										<p>(Maximum 15 digits)</p>
 										@if ($errors->has('gstin'))
 											<span class="custom-error" role="alert">
@@ -95,7 +96,7 @@
 								<div class="col-sm-12 is_gst_yes ">
 									<div class="form-group"> 
 										<label for="gst_date" class="col-form-label">GST Registered On</label>
-										{{ Form::text('gst_date', @Auth::user()->gst_date, array('class' => 'form-control commodategst', 'data-valid'=>'', 'autocomplete'=>'off','placeholder'=>'' )) }}
+										<input type="text" name="gst_date" value="{{ @Auth::user()->gst_date }}" class="form-control commodategst" data-valid="" autocomplete="off" placeholder="">
 										
 										@if ($errors->has('gst_date'))
 											<span class="custom-error" role="alert">
@@ -106,12 +107,12 @@
 								</div>
 								<div class="col-sm-12 <?php if(@Auth::user()->is_business_gst != ''){ if(@Auth::user()->is_business_gst == 'yes'){ ?><?php }else{ ?><?php }}else{ ?>is_gst_yes<?php } ?>" >
 									<div class="form-group float-right">
-										{{ Form::button('<i class="fa fa-save"></i> Save', ['class'=>'btn btn-primary', 'onClick'=>'customValidate("add-city")' ]) }}
+										<button type="submit" class="btn btn-primary" onClick="customValidate('add-city')"><i class="fa fa-save"></i> Save</button>
 									</div> 
 								</div> 
 							</div> 
 						</div> 
-					  {{ Form::close() }}
+						  </form>
 					</div>	
 				</div>	
 			</div>

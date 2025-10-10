@@ -21,7 +21,7 @@
 						<div class="card-header">
 							<h4>Matter Email Templates - {{ @$matter->title ?? 'Unknown Matter' }}</h4>
 							<div class="card-header-action">
-								<a href="{{route('admin.matterotheremailtemplate.create', $matterId)}}" class="btn btn-primary">Create Email Template</a>
+								<a href="{{route('adminconsole.features.matterotheremailtemplate.create', $matterId)}}" class="btn btn-primary">Create Email Template</a>
 							</div>
 						</div>
 						<div class="card-body">
@@ -47,7 +47,7 @@
 											<div class="dropdown d-inline">
 												<button class="btn btn-primary dropdown-toggle" type="button" id="" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Action</button>
 												<div class="dropdown-menu">
-													<a class="dropdown-item has-icon" href="{{route('admin.matterotheremailtemplate.edit', [$list->id, $matterId])}}"><i class="far fa-edit"></i> Edit</a>
+													<a class="dropdown-item has-icon" href="{{route('adminconsole.features.matterotheremailtemplate.edit', [$list->id, $matterId])}}"><i class="far fa-edit"></i> Edit</a>
 													<a class="dropdown-item has-icon" href="javascript:;" onClick="deleteAction({{@$list->id}}, 'matter_other_email_templates')"><i class="fas fa-trash"></i> Delete</a>
 												</div>
 											</div>								  

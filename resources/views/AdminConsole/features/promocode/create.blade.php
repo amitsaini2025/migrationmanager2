@@ -67,7 +67,7 @@
 												<div class="col-12 col-md-4 col-lg-4">
 													<div class="form-group">
 														<label for="discount_percentage">Discount(In Percentage) <span class="span_req">*</span></label>
-														{{--Form::number('discount_percentage', '', array('class' => 'form-control', 'data-valid'=>'required', 'autocomplete'=>'off','placeholder'=>'Enter Discount Percentage' )) --}}
+														{{-- <input type="number" name="discount_percentage" value="" class="form-control" data-valid="required" autocomplete="off" placeholder="Enter Discount Percentage"> --}}
 														{{--@if ($errors->has('discount_percentage')) --}}
 															<span class="custom-error" role="alert">
 																<strong>{{-- @$errors->first('discount_percentage') --}}</strong>

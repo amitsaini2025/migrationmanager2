@@ -55,7 +55,7 @@
 										<!--<div class="col-12 col-md-6 col-lg-6">
 											<div class="form-group">
 												<label for="timezone">Timezone </label>
-												{{--Form::text('timezone', @$appointment->timezone, array('class' => 'form-control','readonly', 'data-valid'=>'required', 'autocomplete'=>'off','placeholder'=>'Select timezone' ))-- }}
+												{{-- <input type="text" name="timezone" value="{{ @$appointment->timezone }}" class="form-control" readonly data-valid="required" autocomplete="off" placeholder="Select timezone"> --}}
 												{{--@if ($errors->has('timezone'))--}}
 													<span class="custom-error" role="alert">
 														<strong>{{--@$errors->first('timezone')--}}</strong>
@@ -128,7 +128,7 @@
 												<label for="title">Title <span class="span_req">*</span></label>
 												<div class="cus_field_input">
 													<div class="title"></div>
-													{{--Form::text('title', @$appointment->title, array('class' => 'form-control', 'data-valid'=>'', 'autocomplete'=>'off','placeholder'=>'Enter title' ))--}}
+													{{-- <input type="text" name="title" value="{{ @$appointment->title }}" class="form-control" data-valid="" autocomplete="off" placeholder="Enter title"> --}}
 													{{--@if ($errors->has('title'))--}}
 														<span class="custom-error" role="alert">
 															<strong>{{--@$errors->first('title')--}}</strong>
@@ -143,7 +143,7 @@
 										<div class="col-12 col-md-6 col-lg-6">
 											<div class="form-group">
 												<label for="time">Full name <span class="span_req">*</span></label>
-												{{--Form::text('full_name', @$appointment->full_name, array('class' => 'form-control', 'data-valid'=>'required', 'autocomplete'=>'off','placeholder'=>'Enter full name' )) --}}
+												{{-- <input type="text" name="full_name" value="{{ @$appointment->full_name }}" class="form-control" data-valid="required" autocomplete="off" placeholder="Enter full name"> --}}
 												{{--@if ($errors->has('full_name'))--}}
 													<span class="custom-error" role="alert">
 														<strong>{{--@$errors->first('full_name')--}}</strong>
@@ -158,7 +158,7 @@
 													<div class="title">
 
 													</div>
-													{{-- Form::email('email', @$appointment->email, array('class' => 'form-control', 'data-valid'=>'', 'autocomplete'=>'off','placeholder'=>'Enter email' )) --}}
+													{{-- <input type="email" name="email" value="{{ @$appointment->email }}" class="form-control" data-valid="" autocomplete="off" placeholder="Enter email"> --}}
 													{{--@if ($errors->has('email'))--}}
 														<span class="custom-error" role="alert">
 															<strong>{{--@$errors->first('email')--}}</strong>
@@ -192,7 +192,7 @@
 													<div class="invites">
 														<input class="invites" id="invites" type="text" name="invites" readonly >
 													</div>
-													{{--Form::number('invites', @$appointment->invites, array('class' => 'form-control', 'data-valid'=>'', 'autocomplete'=>'off','placeholder'=>'Enter invites' ))--}}
+													{{-- <input type="number" name="invites" value="{{ @$appointment->invites }}" class="form-control" data-valid="" autocomplete="off" placeholder="Enter invites"> --}}
 													{{--@if ($errors->has('invites'))--}}
 														<span class="custom-error" role="alert">
 															<strong>{{--@$errors->first('invites')--}}</strong>

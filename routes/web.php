@@ -13,62 +13,60 @@ use App\Http\Controllers\Admin\ClientsController;
 |
 */
 
-/*********************General Function for Both (Front-end & Back-end) ***********************/
-/* Route::post('/get_states', 'HomeController@getStates');
-Route::post('/delete_action', 'HomeController@deleteAction')->middleware('auth');
- */
+/*--------------------------------------------------
+| SECTION: Root & General Routes
+|--------------------------------------------------*/
 
 // Root route - redirect to admin login
 Route::get('/', function() {
     return redirect()->route('admin.login');
 });
 
+// Cache clearing route - protected with authentication
 Route::get('/clear-cache', function() {
-
     Artisan::call('config:clear');
-	Artisan::call('view:clear');
-   $exitCode = Artisan::call('route:clear');
-   $exitCode = Artisan::call('route:cache');
-     /* $exitCode = \Artisan::call('BirthDate:birthdate');
-        $output = \Artisan::output();
-        return $output;  */
-    // return what you want
-});
+    Artisan::call('view:clear');
+    Artisan::call('route:clear');
+    Artisan::call('route:cache');
+    return response()->json([
+        'success' => true,
+        'message' => 'Cache cleared successfully'
+    ]);
+})->middleware('auth');
 
-/*********************Exception Handling ***********************/
+/*--------------------------------------------------
+| SECTION: Exception Handling
+|--------------------------------------------------*/
 Route::get('/exception', 'ExceptionController@index')->name('exception');
 Route::post('/exception', 'ExceptionController@index')->name('exception');
 
-/*********************Front Panel Start ***********************/
-
-
-//Login and Register
+/*--------------------------------------------------
+| SECTION: Authentication Routes
+|--------------------------------------------------*/
 Auth::routes();
 
-
-// Frontend routes removed - no frontend website
-
-/*---------------Email manager Route-------------------*/
+/*--------------------------------------------------
+| SECTION: Email Manager Routes
+|--------------------------------------------------*/
 include_once 'emailUser.php';
 
-/*---------------AdminConsole Routes-------------------*/
+/*--------------------------------------------------
+| SECTION: Admin Console Routes
+|--------------------------------------------------*/
 require __DIR__ . '/adminconsole.php';
 
-/*********************Admin Panel Start ***********************/
+/*--------------------------------------------------
+| SECTION: Admin Panel Routes
+|--------------------------------------------------*/
 Route::prefix('admin')->group(function() {
 
-    //Login and Logout
+    /*---------- Login and Logout ----------*/
     Route::get('/', 'Auth\AdminLoginController@showLoginForm')->name('admin.login');
     Route::get('/login', 'Auth\AdminLoginController@showLoginForm')->name('admin.login');
     Route::post('/login', 'Auth\AdminLoginController@login')->name('admin.login');
     Route::post('/logout', 'Auth\AdminLoginController@logout')->name('admin.logout');
 
-
-
-    //Route::post('/captcha-validation', [CaptchaServiceController::class, 'capthcaFormValidate']);
-    //Route::get('/reload-captcha', 'Auth\AdminLoginController@reloadCaptcha');
-
-	//Dashboard Routes
+	/*---------- Dashboard Routes ----------*/
     Route::get('/dashboard', 'Admin\DashboardController@index')->name('admin.dashboard');
     Route::post('/dashboard/column-preferences', 'Admin\DashboardController@saveColumnPreferences')->name('admin.dashboard.column-preferences');
     Route::post('/dashboard/update-stage', 'Admin\DashboardController@updateStage')->name('admin.dashboard.update-stage');
@@ -83,8 +81,7 @@ Route::prefix('admin')->group(function() {
     Route::post('/dashboard/check-checkin-status', 'Admin\DashboardController@checkCheckinStatus')->name('admin.dashboard.check-checkin-status');
     Route::post('/dashboard/update-checkin-status', 'Admin\DashboardController@updateCheckinStatus')->name('admin.dashboard.update-checkin-status');
 
-	//General Admin Routes
-
+	/*---------- General Admin Routes ----------*/
     Route::get('/my_profile', 'Admin\AdminController@myProfile')->name('admin.my_profile');
     Route::post('/my_profile', 'Admin\AdminController@myProfile')->name('admin.my_profile');
     Route::get('/change_password', 'Admin\AdminController@change_password')->name('admin.change_password');
@@ -106,7 +103,6 @@ Route::prefix('admin')->group(function() {
 
     Route::post('/add_ckeditior_image', 'Admin\AdminController@addCkeditiorImage')->name('add_ckeditior_image');
     Route::post('/get_chapters', 'Admin\AdminController@getChapters')->name('admin.get_chapters');
-    // Removed website settings routes
     Route::post('/get_states', 'Admin\AdminController@getStates');
     Route::get('/settings/taxes/returnsetting', 'Admin\AdminController@returnsetting')->name('admin.returnsetting');
     Route::post('/settings/taxes/savereturnsetting', 'Admin\AdminController@returnsetting')->name('admin.savereturnsetting');
@@ -114,8 +110,8 @@ Route::prefix('admin')->group(function() {
     Route::get('/getassigneeajax', 'Admin\AdminController@getassigneeajax');
     Route::get('/getpartnerajax', 'Admin\AdminController@getpartnerajax');
     Route::get('/checkclientexist', 'Admin\AdminController@checkclientexist');
-/*CRM route start*/
 
+	/*---------- CRM & User Management Routes ----------*/
     Route::get('/users', 'AdminConsole\UserController@index')->name('admin.users.index');
     Route::get('/users/create', 'AdminConsole\UserController@create')->name('admin.users.create');
     Route::post('/users/store', 'AdminConsole\UserController@store')->name('admin.users.store');
@@ -154,9 +150,7 @@ Route::prefix('admin')->group(function() {
     Route::get('/userrole/edit/{id}', 'AdminConsole\UserroleController@edit')->name('admin.userrole.edit');
     Route::post('/userrole/edit', 'AdminConsole\UserroleController@edit')->name('admin.userrole.edit');
 
-
-
-    //Leads Start
+    /*---------- Leads Management ----------*/
     Route::get('/leads', 'Admin\LeadController@index')->name('admin.leads.index');
     Route::get('/leads/history/{id}', 'Admin\LeadController@history')->name('admin.leads.history');
     Route::get('/leads/create', 'Admin\LeadController@create')->name('admin.leads.create');
@@ -169,34 +163,24 @@ Route::prefix('admin')->group(function() {
     Route::post('/leads/store', 'Admin\LeadController@store')->name('admin.leads.store');
     Route::get('/leads/convert', 'Admin\LeadController@convertoClient');
     Route::get('/leads/pin/{id}', 'Admin\LeadController@leadPin');
-    // Removed admin invoice routes
-    //Manage Api key
-    // Route::get('/api-key', 'Admin\ApiController@index')->name('admin.apikey.index');
-    //Manage Api key
 
-
-	//Email Templates Pages
+	/*---------- Email Templates ----------*/
     Route::get('/email_templates', 'Admin\EmailTemplateController@index')->name('admin.email.index');
     Route::get('/email_templates/create', 'Admin\EmailTemplateController@create')->name('admin.email.create');
     Route::post('/email_templates/store', 'Admin\EmailTemplateController@store')->name('admin.email.store');
     Route::get('/edit_email_template/{id}', 'Admin\EmailTemplateController@editEmailTemplate')->name('admin.edit_email_template');
     Route::post('/edit_email_template', 'Admin\EmailTemplateController@editEmailTemplate')->name('admin.edit_email_template');
 
-	//SEO Tool
+	/*---------- SEO & API Settings ----------*/
     Route::get('/edit_seo/{id}', 'Admin\AdminController@editSeo')->name('admin.edit_seo');
     Route::post('/edit_seo', 'Admin\AdminController@editSeo')->name('admin.edit_seo');
-
     Route::get('/api-key', 'Admin\AdminController@editapi')->name('admin.edit_api');
     Route::post('/api-key', 'Admin\AdminController@editapi')->name('admin.edit_api');
 
-
-
-		//clients Start
+		/*---------- Clients Management ----------*/
 		Route::get('/clients', 'Admin\ClientsController@index')->name('admin.clients.index');
         Route::get('/clientsmatterslist', 'Admin\ClientsController@clientsmatterslist')->name('admin.clients.clientsmatterslist');
         Route::get('/clientsemaillist', 'Admin\ClientsController@clientsemaillist')->name('admin.clients.clientsemaillist');
-
-		//Route::get('/clients/create', 'Admin\ClientsController@create')->name('admin.clients.create');
 		Route::post('/clients/store', 'Admin\ClientsController@store')->name('admin.clients.store');
 		Route::get('/clients/edit/{id}', 'Admin\ClientsController@edit')->name('admin.clients.edit');
 		Route::post('/clients/edit', 'Admin\ClientsController@edit')->name('admin.clients.edit');
@@ -224,8 +208,6 @@ Route::prefix('admin')->group(function() {
 		Route::get('/clients/changetype/{id}/{type}', 'Admin\ClientsController@changetype');
 		Route::get('/document/download/pdf/{id}', 'Admin\ClientsController@downloadpdf');
 		Route::get('/clients/removetag', 'Admin\ClientsController@removetag');
-
-        //Route::get('/clients/detail/{id}', 'Admin\ClientsController@detail')->name('admin.clients.detail');
 		Route::get('/clients/detail/{client_id}/{client_unique_matter_ref_no?}/{tab?}', 'Admin\ClientsController@detail')->name('admin.clients.detail');
 		
         Route::get('/clients/get-recipients', 'Admin\ClientsController@getrecipients')->name('admin.clients.getrecipients');
@@ -239,13 +221,8 @@ Route::prefix('admin')->group(function() {
 		Route::get('/getnotedetail', 'Admin\ClientsController@getnotedetail')->name('admin.clients.getnotedetail');
 		Route::get('/deletenote', 'Admin\ClientsController@deletenote')->name('admin.clients.deletenote');
 		Route::get('/deletecostagreement', 'Admin\ClientsController@deletecostagreement')->name('admin.clients.deletecostagreement');
-
         Route::get('/deleteactivitylog', 'Admin\ClientsController@deleteactivitylog')->name('admin.clients.deleteactivitylog');
-
         Route::post('/not-picked-call', 'Admin\ClientsController@notpickedcall')->name('admin.clients.notpickedcall');
-
-		//prospects Start - REMOVED
-		//Route::get('/prospects', 'Admin\ClientsController@prospects')->name('admin.clients.prospects');
 		Route::get('/viewnotedetail', 'Admin\ClientsController@viewnotedetail');
 		Route::get('/viewapplicationnote', 'Admin\ClientsController@viewapplicationnote');
 		Route::post('/saveprevvisa', 'Admin\ClientsController@saveprevvisa');
@@ -259,26 +236,13 @@ Route::prefix('admin')->group(function() {
 		Route::get('/get-application-lists', 'Admin\ClientsController@getapplicationlists')->name('admin.clients.getapplicationlists');
 		Route::post('/saveapplication', 'Admin\ClientsController@saveapplication')->name('admin.clients.saveapplication');
 		Route::get('/get-notes', 'Admin\ClientsController@getnotes')->name('admin.clients.getnotes');
-       // Route::get('/get-note-matters', 'Admin\ClientsController@getnotematters')->name('admin.clients.getnotematters');
-
 		Route::get('/convertapplication', 'Admin\ClientsController@convertapplication')->name('admin.clients.convertapplication');
 		Route::get('/deleteservices', 'Admin\ClientsController@deleteservices')->name('admin.clients.deleteservices');
-
-        //Route::post('/upload-document', 'Admin\ClientsController@uploaddocument')->name('admin.clients.uploaddocument');
-        //Route::post('/upload-migration-document', 'Admin\ClientsController@uploadmigrationdocument')->name('admin.clients.uploadmigrationdocument');
-
-
-
         Route::get('/deletedocs', 'Admin\ClientsController@deletedocs')->name('admin.clients.deletedocs');
 		Route::post('/renamedoc', 'Admin\ClientsController@renamedoc')->name('admin.clients.renamedoc');
-
-
 		Route::post('/savetoapplication', 'Admin\ClientsController@savetoapplication');
 
-
-
-
-		//Branch Start
+		/*---------- Branch Management ----------*/
 		Route::get('/branch', 'AdminConsole\BranchesController@index')->name('admin.branch.index');
 		Route::get('/branch/create', 'AdminConsole\BranchesController@create')->name('admin.branch.create');
 		Route::post('/branch/store', 'AdminConsole\BranchesController@store')->name('admin.branch.store');
@@ -287,12 +251,7 @@ Route::prefix('admin')->group(function() {
 		Route::get('/branch/view/client/{id}', 'AdminConsole\BranchesController@viewclient')->name('admin.branch.clientview');
 		Route::post('/branch/edit', 'AdminConsole\BranchesController@edit')->name('admin.branch.edit');
 
-
-
-
-
-        // Removed general invoice route
-
+		/*---------- Applications Management ----------*/
 		Route::get('/applications/detail/{id}', 'Admin\ApplicationsController@detail')->name('admin.applications.detail');
 		Route::post('/interested-service', 'Admin\ClientsController@interestedService');
 		Route::post('/edit-interested-service', 'Admin\ClientsController@editinterestedService');
@@ -315,12 +274,8 @@ Route::prefix('admin')->group(function() {
         Route::get('/pinactivitylog', 'Admin\ClientsController@pinactivitylog');
 
 		Route::get('/getintrestedservice', 'Admin\ClientsController@getintrestedservice');
-		// Removed legacy: saleforcastservice
 		Route::get('/getintrestedserviceedit', 'Admin\ClientsController@getintrestedserviceedit');
 		Route::get('/getAppointmentdetail', 'Admin\ClientsController@getAppointmentdetail');
-        // Removed admin invoice routes
-
-
 		Route::get('/getapplicationdetail', 'Admin\ApplicationsController@getapplicationdetail');
 		Route::post('/load-application-insert-update-data', 'Admin\ApplicationsController@loadApplicationInsertUpdateData');
 		Route::get('/updatestage', 'Admin\ApplicationsController@updatestage');
@@ -338,7 +293,6 @@ Route::prefix('admin')->group(function() {
 		Route::post('/application/spagent_application', 'Admin\ApplicationsController@spagent_application');
 		Route::post('/application/sbagent_application', 'Admin\ApplicationsController@sbagent_application');
 		Route::post('/application/application_ownership', 'Admin\ApplicationsController@application_ownership');
-		// Removed legacy: saleforcast
 		Route::get('/superagent', 'Admin\ApplicationsController@superagent');
 		Route::get('/subagent', 'Admin\ApplicationsController@subagent');
 		Route::post('/applicationsavefee', 'Admin\ApplicationsController@applicationsavefee');
@@ -348,32 +302,14 @@ Route::prefix('admin')->group(function() {
 		Route::get('/deleteapplicationdocs', 'Admin\ApplicationsController@deleteapplicationdocs');
 		Route::get('/application/publishdoc', 'Admin\ApplicationsController@publishdoc');
 
-
-        // Removed group invoice routes
-        //Route::post('/group-invoice/save', 'Admin\InvoiceController@savegroupinvoice')->name('admin.invoice.savegroupinvoice');
-
-        // Removed invoice schedule routes
-
-
-		//Product Type Start
-		// Profile and Tags routes moved to routes/adminconsole.php
-
-		//Checklist Start
+		/*---------- Checklist Management ----------*/
 		Route::get('/checklist', 'Admin\ChecklistController@index')->name('admin.checklist.index');
 		Route::get('/checklist/create', 'Admin\ChecklistController@create')->name('admin.checklist.create');
 		Route::post('checklist/store', 'Admin\ChecklistController@store')->name('admin.checklist.store');
 		Route::get('/checklist/edit/{id}', 'Admin\ChecklistController@edit')->name('admin.checklist.edit');
 		Route::post('/checklist/edit', 'Admin\ChecklistController@edit')->name('admin.checklist.edit');
 
-
-
-
-		// Workflow routes moved to routes/adminconsole.php
-
-
-
-
-		//Applications Start
+		/*---------- Applications & Office Visits ----------*/
 		Route::get('/applications', 'Admin\ApplicationsController@index')->name('admin.applications.index');
 		Route::get('/applications/create', 'Admin\ApplicationsController@create')->name('admin.applications.create');
 		Route::post('/discontinue_application', 'Admin\ApplicationsController@discontinue_application');
@@ -421,8 +357,6 @@ Route::prefix('admin')->group(function() {
 		Route::post('/update-checkin-status', 'Admin\AdminController@updateCheckinStatus');
 		//In-Person Notification related routes end
 
-	    //Route::get('/upload-checklists', 'Admin\UploadChecklistController@index')->name('admin.upload_checklists.index');
-		//Route::post('/upload-checklists/store', 'Admin\UploadChecklistController@store')->name('admin.upload_checklistsupload');
 		Route::get('/teams', 'AdminConsole\TeamController@index')->name('admin.teams.index');
 		Route::get('/teams/edit/{id}', 'AdminConsole\TeamController@edit')->name('admin.teams.edit');
 		Route::post('/teams/edit', 'AdminConsole\TeamController@edit');
@@ -438,13 +372,6 @@ Route::prefix('admin')->group(function() {
 		Route::post('/update_apppointment_comment', 'Admin\AppointmentsController@update_apppointment_comment');
 		Route::post('/update_apppointment_description', 'Admin\AppointmentsController@update_apppointment_description');
 
-
-
-
-
-
-
-
 		// Assignee modulle
 		Route::resource('/assignee', Admin\AssigneeController::class);
         Route::get('/assignee-completed', 'Admin\AssigneeController@completed'); //completed list only
@@ -457,8 +384,6 @@ Route::prefix('admin')->group(function() {
 
         Route::delete('/destroy_by_me/{note_id}', 'Admin\AssigneeController@destroy_by_me')->name('assignee.destroy_by_me'); //assigned by me
         Route::delete('/destroy_to_me/{note_id}', 'Admin\AssigneeController@destroy_to_me')->name('assignee.destroy_to_me'); //assigned to me
-
-        //Route::get('/activities', 'Admin\AssigneeController@activities')->name('assignee.activities'); //activities
         Route::get('/activities_completed', 'Admin\AssigneeController@activities_completed')->name('assignee.activities_completed'); //activities completed
 
 
@@ -552,10 +477,6 @@ Route::prefix('admin')->group(function() {
         Route::get('/clients/journalreceiptlist', 'Admin\ClientsController@journalreceiptlist')->name('admin.clients.journalreceiptlist');
         Route::post('/validate_receipt','Admin\ClientsController@validate_receipt')->name('client.validate_receipt');
 
-
-        //Route::get('/clients/preview-msg/{filename}', 'Admin\ClientsController@previewMsgFile');
-        //Route::get('/clients/detail/{client_id}/{client_unique_matter_ref_no?}', 'Admin\ClientsController@detail')->name('admin.clients.detail');
-
         Route::post('/clients/update-address', 'Admin\ClientPersonalDetailsController@updateAddress')->name('admin.clients.updateAddress');
         Route::post('/clients/search-address-full', 'Admin\ClientPersonalDetailsController@searchAddressFull')->name('admin.clients.searchAddressFull');
         Route::post('/clients/get-place-details', 'Admin\ClientPersonalDetailsController@getPlaceDetails')->name('admin.clients.getPlaceDetails');
@@ -583,7 +504,7 @@ Route::prefix('admin')->group(function() {
 
         Route::post('/leads/updateOccupation', 'Admin\ClientPersonalDetailsController@updateOccupation')->name('admin.leads.updateOccupation');
 
-        // ANZSCO Occupation Database Routes
+        /*---------- ANZSCO Occupation Database ----------*/
         Route::get('/anzsco', 'AdminConsole\AnzscoOccupationController@index')->name('admin.anzsco.index');
         Route::get('/anzsco/data', 'AdminConsole\AnzscoOccupationController@getData')->name('admin.anzsco.data');
         Route::get('/anzsco/create', 'AdminConsole\AnzscoOccupationController@create')->name('admin.anzsco.create');
@@ -660,7 +581,6 @@ Route::prefix('admin')->group(function() {
         Route::post('/delete_receipt','Admin\ClientsController@delete_receipt');
         //Download Document
         Route::post('/download-document', 'Admin\ClientsController@download_document');
-        //Route::get('/download-document', 'Admin\ClientsController@download_document');
 
         //Form 965
         Route::post('/admin/forms', 'Admin\Form956Controller@store')->name('forms.store');
@@ -672,8 +592,6 @@ Route::prefix('admin')->group(function() {
         Route::get('/fetch-visa_expiry_messages', 'Admin\AdminController@fetchvisaexpirymessages');
 		//Create agreement
 		Route::post('/clients/generateagreement', 'Admin\ClientsController@generateagreement')->name('clients.generateagreement');
-        //Route::get('/download-agreement/{client_id}', 'Admin\ClientsController@downloadAgreement')->name('agreement.download');
-
         Route::post('/clients/getMigrationAgentDetail', 'Admin\ClientsController@getMigrationAgentDetail')->name('admin.clients.getMigrationAgentDetail');
 		Route::post('/clients/getVisaAggreementMigrationAgentDetail', 'Admin\ClientsController@getVisaAggreementMigrationAgentDetail')->name('admin.clients.getVisaAggreementMigrationAgentDetail');
         Route::post('/clients/getCostAssignmentMigrationAgentDetail', 'Admin\ClientsController@getCostAssignmentMigrationAgentDetail')->name('admin.clients.getCostAssignmentMigrationAgentDetail');
@@ -694,7 +612,6 @@ Route::prefix('admin')->group(function() {
 
         //Update Personal Doucment Category
         Route::post('/update-personal-doc-category', 'Admin\ClientsController@updatePersonalDocCategory' )->name('update.personal.doc.category');
-        //Route::post('/delete-personal-doc-category', 'Admin\ClientsController@deletePersonalDocCategory')->name('delete.personal.doc.category');
 
          //Add Visa Doucment Category
         Route::post('/add-visadoccategory', 'Admin\ClientsController@addVisaDocCategory');
@@ -753,8 +670,7 @@ Route::prefix('admin')->group(function() {
 		//Appointment modules
         Route::resource('appointments', Admin\AppointmentsController::class);
 
-
-		//document signature
+		/*---------- Document Signature Management ----------*/
 		Route::get('/documents', 'Admin\DocumentController@index')->name('documents.index');
 		Route::get('/documents/create', 'Admin\DocumentController@create')->name('documents.create');
 		Route::post('/documents', 'Admin\DocumentController@store')->name('documents.store');
@@ -796,225 +712,8 @@ Route::prefix('admin')->group(function() {
 
 	});
 
-// Test route for messaging system (must be before catch-all route)
-Route::get('/test-messaging', function () {
-    // Create a test user session for development
-    if (!auth()->check()) {
-        // Use the Super1 Admin1 account for testing
-        $admin = App\Models\Admin::find(1); // Super1 Admin1
-        if ($admin) {
-            auth()->login($admin);
-        }
-    }
-    return view('messaging.integration');
-});
-
-// Test route for broadcasting
-Route::get('/test-broadcast', function () {
-    // Create a test user session for development
-    if (!auth()->check()) {
-        $admin = App\Models\Admin::find(1); // Super1 Admin1
-        if ($admin) {
-            auth()->login($admin);
-        }
-    }
-    
-    // Send a test broadcast
-    broadcast(new App\Events\MessageSent([
-        'id' => 999,
-        'subject' => 'Test Broadcast Message',
-        'message' => 'This is a test broadcast message to verify real-time functionality.',
-        'sender' => 'System',
-        'recipient' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
-        'message_type' => 'normal',
-        'sent_at' => now()->toISOString(),
-        'is_read' => false
-    ], auth()->id()));
-    
-    return response()->json([
-        'success' => true,
-        'message' => 'Test broadcast sent successfully',
-        'user_id' => auth()->id()
-    ]);
-});
-
-// Test route for deleting a message
-Route::get('/test-delete-message/{id}', function ($id) {
-    // Create a test user session for development
-    if (!auth()->check()) {
-        $admin = App\Models\Admin::find(1); // Super1 Admin1
-        if ($admin) {
-            auth()->login($admin);
-        }
-    }
-    
-    try {
-        // Delete the message
-        $deleted = DB::table('messages')
-            ->where('id', $id)
-            ->where('recipient_id', auth()->id()) // Only allow deleting messages received by the current user
-            ->delete();
-        
-        if ($deleted) {
-            // Broadcast the deletion
-            broadcast(new App\Events\MessageDeleted($id, auth()->id()));
-            
-            return response()->json([
-                'success' => true,
-                'message' => "Message {$id} deleted successfully"
-            ]);
-        } else {
-            return response()->json([
-                'success' => false,
-                'message' => 'Message not found or not authorized to delete'
-            ], 404);
-        }
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Error deleting message: ' . $e->getMessage()
-        ], 500);
-    }
-});
-
-// Test route for creating a new message
-Route::get('/test-create-message', function () {
-    // Create a test user session for development
-    if (!auth()->check()) {
-        $admin = App\Models\Admin::find(1); // Super1 Admin1
-        if ($admin) {
-            auth()->login($admin);
-        }
-    }
-    
-    try {
-        // Create a new test message
-        $messageId = DB::table('messages')->insertGetId([
-            'subject' => 'Test Message ' . time(),
-            'message' => 'This is a test message created at ' . now()->toDateTimeString(),
-            'sender' => 'System Test',
-            'recipient' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
-            'sender_id' => 36464, // Vipul Kumar
-            'recipient_id' => auth()->id(),
-            'sent_at' => now(),
-            'is_read' => false,
-            'message_type' => 'normal',
-            'client_matter_id' => 9,
-            'client_matter_stage_id' => 1,
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
-        
-        // Broadcast the new message
-        broadcast(new App\Events\MessageSent([
-            'id' => $messageId,
-            'subject' => 'Test Message ' . time(),
-            'message' => 'This is a test message created at ' . now()->toDateTimeString(),
-            'sender' => 'System Test',
-            'recipient' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
-            'message_type' => 'normal',
-            'sent_at' => now()->toISOString(),
-            'is_read' => false
-        ], auth()->id()));
-        
-        // Broadcast unread count update
-        $unreadCount = DB::table('messages')
-            ->where('recipient_id', auth()->id())
-            ->where('is_read', false)
-            ->count();
-        broadcast(new App\Events\UnreadCountUpdated(auth()->id(), $unreadCount));
-        
-        return response()->json([
-            'success' => true,
-            'message' => "Test message {$messageId} created successfully",
-            'unread_count' => $unreadCount
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Error creating message: ' . $e->getMessage()
-        ], 500);
-    }
-});
-
-// Test route for marking a message as read
-Route::get('/test-mark-read/{id}', function ($id) {
-    // Create a test user session for development
-    if (!auth()->check()) {
-        $admin = App\Models\Admin::find(1); // Super1 Admin1
-        if ($admin) {
-            auth()->login($admin);
-        }
-    }
-    
-    try {
-        // Get the message
-        $message = DB::table('messages')
-            ->where('id', $id)
-            ->where('recipient_id', auth()->id())
-            ->first();
-        
-        if (!$message) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Message not found'
-            ], 404);
-        }
-        
-        if (!$message->is_read) {
-            // Mark as read
-            DB::table('messages')
-                ->where('id', $id)
-                ->update([
-                    'is_read' => true,
-                    'read_at' => now(),
-                    'updated_at' => now()
-                ]);
-            
-            // Get updated message
-            $updatedMessage = DB::table('messages')->where('id', $id)->first();
-            
-            // Broadcast the update
-            broadcast(new App\Events\MessageUpdated([
-                'id' => $updatedMessage->id,
-                'subject' => $updatedMessage->subject,
-                'message' => $updatedMessage->message,
-                'sender' => $updatedMessage->sender,
-                'recipient' => $updatedMessage->recipient,
-                'is_read' => true,
-                'read_at' => $updatedMessage->read_at,
-                'message_type' => $updatedMessage->message_type,
-                'sent_at' => $updatedMessage->sent_at
-            ], auth()->id()));
-            
-            // Broadcast unread count update
-            $unreadCount = DB::table('messages')
-                ->where('recipient_id', auth()->id())
-                ->where('is_read', false)
-                ->count();
-            broadcast(new App\Events\UnreadCountUpdated(auth()->id(), $unreadCount));
-            
-            return response()->json([
-                'success' => true,
-                'message' => "Message {$id} marked as read",
-                'unread_count' => $unreadCount
-            ]);
-        } else {
-            return response()->json([
-                'success' => false,
-                'message' => 'Message is already read'
-            ]);
-        }
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Error updating message: ' . $e->getMessage()
-        ], 500);
-    }
-});
-
+// Test routes moved to routes/test.php (loaded only in debug mode)
 // Frontend dynamic routing removed - no frontend website
-Auth::routes();
 
 //Frontend Document Controller
 Route::get('/sign/{id}/{token}', [App\Http\Controllers\DocumentController::class, 'sign'])->name('documents.sign');

@@ -76,9 +76,9 @@ html, body {
 											<div class="form-group">
 												<label for="user" style="color: #000000; font-weight: bold; display: block; margin-bottom: 5px;">Added By</label>
 												{{--@if($appointment->user)--}}
-												{{--Form::text('user_id', @$appointment->user->first_name.' '.@$appointment->user->last_name, array('class' => 'form-control', 'autocomplete'=>'off','placeholder'=>'Enter User Name','readonly' ))--}}
+												{{-- <input type="text" name="user_id" value="{{ @$appointment->user->first_name.' '.@$appointment->user->last_name }}" class="form-control" autocomplete="off" placeholder="Enter User Name" readonly> --}}
 												{{--@else--}}
-												{{--Form::text('user_id', 'N/A', array('class' => 'form-control', 'autocomplete'=>'off','placeholder'=>'Enter User Name','readonly' ))--}}
+												{{-- <input type="text" name="user_id" value="N/A" class="form-control" autocomplete="off" placeholder="Enter User Name" readonly> --}}
 												{{--@endif--}}
 
                                                 @if($appointment->user)

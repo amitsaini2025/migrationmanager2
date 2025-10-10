@@ -16,7 +16,7 @@
 							<div class="card-header">
 								<h4>Edit Workflow Stage</h4>
 								<div class="card-header-action">
-									<a href="{{route('admin.workflow.index')}}" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Back</a>
+									<a href="{{route('adminconsole.features.workflow.index')}}" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Back</a>
 								</div>
 							</div>
 						</div>
@@ -37,7 +37,7 @@
 												<!--<div class="col-12 col-md-4 col-lg-4">
 													<div class="form-group">
 														<label for="name">Name <span class="span_req">*</span></label>
-														{{--Form::text('name', @$fetchedData->name, array('class' => 'form-control', 'data-valid'=>'required', 'autocomplete'=>'off','placeholder'=>'Enter Name' ))--}}
+														{{-- <input type="text" name="name" value="{{ @$fetchedData->name }}" class="form-control" data-valid="required" autocomplete="off" placeholder="Enter Name"> --}}
 														{{--@if ($errors->has('name'))--}}
 															<span class="custom-error" role="alert">
 																<strong>{{--@$errors->first('name')--}}</strong>

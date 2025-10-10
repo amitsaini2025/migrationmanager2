@@ -35,14 +35,15 @@
 						<h3 class="card-title">Api Key</h3>
 					  </div>
 					  @if(@Auth::user()->client_id == '')
-					  {{ Form::open(array('url' => 'admin/api-key', 'name'=>"add-key", 'autocomplete'=>'off', "enctype"=>"multipart/form-data")) }}
+						  <form action="{{ url('admin/api-key') }}" method="POST" name="add-key" autocomplete="off" enctype="multipart/form-data">
+							@csrf
 						<div class="card-body">	
 						  <div class="form-group">
-							{{ Form::submit('Genreate Key', ['class'=>'btn btn-primary', 'onClick'=>'customValidate("add-key")' ]) }}
+							<button type="submit" class="btn btn-primary" onClick="customValidate('add-key')">Genreate Key</button>
 						  </div>
 						   
 						</div>
-					  {{ Form::close() }}
+						  </form>
 					  @else
 						  <div class="card-body">	
 						 

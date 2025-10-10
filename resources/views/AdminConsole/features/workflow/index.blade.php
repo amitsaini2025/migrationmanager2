@@ -21,7 +21,7 @@
 						<div class="card-header">
 							<h4>Workflow Stages</h4>
 							<div class="card-header-action">
-								<a href="{{route('admin.workflow.create')}}" class="btn btn-primary">Add Workflow Stage</a>
+								<a href="{{route('adminconsole.features.workflow.create')}}" class="btn btn-primary">Add Workflow Stage</a>
 							</div>
 						</div>
 						<div class="card-body">

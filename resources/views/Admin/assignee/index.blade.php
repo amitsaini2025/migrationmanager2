@@ -50,11 +50,11 @@
                                         <div class="row">
                                             <div class="col-md-4">
                                                 <div class="form-group">
-                                                    {{-- Form::text('name',Request::get('name'),array('class'=>'form-controlagent_company_name','data-valid'=>'','autocomplete'=>'off','placeholder'=>'Assigneename','id'=>'name')) --}}
+												{{-- <input type="text" name="name" value="{{ Request::get('name') }}" class="form-control agent_company_name" data-valid="" autocomplete="off" placeholder="Assignee name" id="name"> --}}
                                                 </div>
                                             </div>
                                             <div class="col-md-3">
-                                                {{-- Form::submit('Search',['class'=>'btnbtn-primarybtn-theme-lg']) --}}
+												{{-- <button type="submit" class="btn btn-primary btn-theme-lg">Search</button> --}}
                                             </div>
                                         </div>
                                     </form>

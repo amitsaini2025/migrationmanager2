@@ -21,7 +21,7 @@
 						<div class="card-header">
 							<h4>All Emails</h4>
 							<div class="card-header-action">
-								<a href="{{route('admin.emails.create')}}" class="btn btn-primary">Create Emails</a>
+								<a href="{{route('adminconsole.features.emails.create')}}" class="btn btn-primary">Create Emails</a>
 							</div>
 						</div>
 						<div class="card-body">

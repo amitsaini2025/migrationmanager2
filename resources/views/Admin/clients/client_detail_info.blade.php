@@ -1,8 +1,9 @@
 
 <div class="section-body clientDetailCls">
-    {{ Form::open(array('url' => 'admin/clients/clientdetailsinfo', 'name'=>"edit-clients", 'autocomplete'=>'off', "enctype"=>"multipart/form-data")) }}
-    {{ Form::hidden('id', @$fetchedData->id) }}
-    {{ Form::hidden('type', @$fetchedData->type) }}
+    <form action="{{ url('admin/clients/clientdetailsinfo') }}" method="POST" name="edit-clients" autocomplete="off" enctype="multipart/form-data">
+        @csrf
+        <input type="hidden" name="id" value="{{ @$fetchedData->id }}">
+        <input type="hidden" name="type" value="{{ @$fetchedData->type }}">
         <div class="row">
             <div class="col-12 col-md-12 col-lg-12">
                 <div class="card">
@@ -21,7 +22,7 @@
                                     <div class="col-4 col-md-4 col-lg-4">
                                         <div class="form-group">
                                             <label for="first_name">First Name <span class="span_req">*</span></label>
-                                            {{ Form::text('first_name', @$fetchedData->first_name, array('class' => 'form-control', 'data-valid'=>'required', 'autocomplete'=>'off','placeholder'=>'' )) }}
+                                            <input type="text" name="first_name" value="{{ @$fetchedData->first_name }}" class="form-control" data-valid="required" autocomplete="off" placeholder="">
                                             @if ($errors->has('first_name'))
                                                 <span class="custom-error" role="alert">
                                                     <strong>{{ @$errors->first('first_name') }}</strong>
@@ -35,7 +36,7 @@
                                     <div class="col-4 col-md-4 col-lg-4">
                                         <div class="form-group">
                                             <label for="last_name">Last Name <span class="span_req"></span></label>
-                                            {{ Form::text('last_name', @$fetchedData->last_name, array('class' => 'form-control', 'autocomplete'=>'off','placeholder'=>'' )) }}
+                                            <input type="text" name="last_name" value="{{ @$fetchedData->last_name }}" class="form-control" autocomplete="off" placeholder="">
                                             @if ($errors->has('last_name'))
                                                 <span class="custom-error" role="alert">
                                                     <strong>{{ @$errors->first('last_name') }}</strong>
@@ -83,7 +84,7 @@
                                                         }
                                                     }
                                                 ?>
-                                                {{ Form::text('dob', @$dob, array('class' => 'form-control dobdatepickers', 'data-valid'=>'', 'autocomplete'=>'off','placeholder'=>'' )) }}
+                                                <input type="text" name="dob" value="{{ @$dob }}" class="form-control dobdatepickers" data-valid="" autocomplete="off" placeholder="">
                                                 @if ($errors->has('dob'))
                                                     <span class="custom-error" role="alert">
                                                         <strong>{{ @$errors->first('dob') }}</strong>
@@ -102,7 +103,7 @@
                                                         <i class="fas fa-calendar-alt"></i>
                                                     </div>
                                                 </div>
-                                                {{ Form::text('age', @$fetchedData->age, array('class' => 'form-control', 'data-valid'=>'', 'autocomplete'=>'off','placeholder'=>'' )) }}
+                                                <input type="text" name="age" value="{{ @$fetchedData->age }}" class="form-control" data-valid="" autocomplete="off" placeholder="">
                                                 @if ($errors->has('age'))
                                                     <span class="custom-error" role="alert">
                                                         <strong>{{ @$errors->first('age') }}</strong>
@@ -115,7 +116,7 @@
                                     <div class="col-3 col-md-3 col-lg-3">
                                         <div class="form-group">
                                             <label for="client_id">Client ID</label>
-                                            {{ Form::text('client_id', @$fetchedData->client_id, array('class' => 'form-control', 'data-valid'=>'', 'autocomplete'=>'off', 'id' => 'checkclientid', 'placeholder'=>'', 'readonly'=>'readonly' )) }}
+                                            <input type="text" name="client_id" value="{{ @$fetchedData->client_id }}" class="form-control" data-valid="" autocomplete="off" id="checkclientid" placeholder="" readonly>
                                             @if ($errors->has('client_id'))
                                                 <span class="custom-error" role="alert">
                                                     <strong>{{ @$errors->first('client_id') }}</strong>
@@ -3892,7 +3893,7 @@
                                 <div class="col-sm-3">
                                     <div class="form-group">
                                         <label for="total_points">Total Points</label>
-                                        {{ Form::text('total_points', @$fetchedData->total_points, array('class' => 'form-control', 'data-valid'=>'', 'autocomplete'=>'off','placeholder'=>'' )) }}
+                                        <input type="number" name="total_points" value="{{ @$fetchedData->total_points }}" class="form-control" data-valid="" autocomplete="off" placeholder="">
 
                                         @if ($errors->has('total_points'))
                                             <span class="custom-error" role="alert">
@@ -3967,7 +3968,7 @@
                             @endif
                             <div class="col-sm-12">
                                 <div class="form-group float-right">
-                                    {{ Form::button('Save', ['class'=>'btn btn-primary btn_submit', 'onClick'=>'customValidate("edit-clients")' ]) }}
+                                    <button type="submit" class="btn btn-primary btn_submit" onClick="customValidate('edit-clients')">Save</button>
                                 </div>
                             </div>
                         </div>
@@ -3976,5 +3977,5 @@
             </div>
 
         </div>
-    {{ Form::close() }}
+    </form>
 </div>

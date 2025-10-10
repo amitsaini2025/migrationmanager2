@@ -12,7 +12,7 @@
 			</div>
 			<div class="custom-error-msg">
 			</div>
-			<form action="{{route('admin.matterotheremailtemplate.update')}}" method="POST" name="edit-matteremailtemplate" autocomplete="off" enctype="multipart/form-data">
+			<form action="{{route('adminconsole.features.matterotheremailtemplate.update')}}" method="POST" name="edit-matteremailtemplate" autocomplete="off" enctype="multipart/form-data">
 				@csrf
 				<input type="hidden" name="id" value="{{ @$fetchedData->id }}">
 				<input type="hidden" name="matter_id" value="{{ $matterId }}">
@@ -22,7 +22,7 @@
 							<div class="card-header">
 								<h4>Edit Matter Email Template - {{ @$matter->title ?? 'Unknown Matter' }}</h4>
 								<div class="card-header-action">
-									<a href="{{route('admin.matterotheremailtemplate.index', $matterId)}}" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Back</a>
+									<a href="{{route('adminconsole.features.matterotheremailtemplate.index', $matterId)}}" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Back</a>
 								</div>
 							</div>
 						</div>

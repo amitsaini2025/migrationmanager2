@@ -7,8 +7,9 @@
 <div class="main-content">
 	<section class="section">
 		<div class="section-body"> 
-			{{ Form::open(array('url' => 'admin/usertype/edit', 'name'=>"edit-usertype", 'autocomplete'=>'off', "enctype"=>"multipart/form-data")) }}
-					  {{ Form::hidden('id', @$fetchedData->id) }}
+			<form action="{{ url('admin/usertype/edit') }}" method="POST" name="edit-usertype" autocomplete="off" enctype="multipart/form-data">
+				@csrf
+				<input type="hidden" name="id" value="{{ @$fetchedData->id }}">
 				<div class="row">
 					<div class="col-12 col-md-12 col-lg-12">
 						<div class="card">
@@ -25,7 +26,7 @@
 							<div class="card-body">
 								<div class="form-group"> 
 									<label for="name">User Type Name</label>
-									{{ Form::text('name', @$fetchedData->name, array('class' => 'form-control', 'data-valid'=>'required', 'autocomplete'=>'off','placeholder'=>'Enter User Type' )) }}
+									<input type="text" name="name" value="{{ @$fetchedData->name }}" class="form-control" data-valid="required" autocomplete="off" placeholder="Enter User Type">
 									@if ($errors->has('name'))
 										<span class="custom-error" role="alert">
 											<strong>{{ @$errors->first('name') }}</strong>
@@ -33,13 +34,13 @@
 									@endif
 								</div>	
 								<div class="form-group float-right">
-									{{ Form::submit('Update', ['class'=>'btn btn-primary' ]) }}
+									<button type="submit" class="btn btn-primary">Update</button>
 								</div>
 							</div>
 						</div>
 					</div>
 				</div>
-			{{ Form::close() }}
+			</form>
 		</div>
 	</section>
 </div>

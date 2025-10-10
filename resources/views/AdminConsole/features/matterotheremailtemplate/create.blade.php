@@ -12,7 +12,7 @@
 			</div>
 			<div class="custom-error-msg">
 			</div>
-			<form action="{{route('admin.matterotheremailtemplate.store')}}" name="add-matteremailtemplate" autocomplete="off" enctype="multipart/form-data" method="POST">
+			<form action="{{route('adminconsole.features.matterotheremailtemplate.store')}}" name="add-matteremailtemplate" autocomplete="off" enctype="multipart/form-data" method="POST">
 				<input type="hidden" name="_token" value="{{ csrf_token() }}">
 				<input type="hidden" name="matter_id" value="{{ $matterId }}">
 				<div class="row">
@@ -21,7 +21,7 @@
 							<div class="card-header">
 								<h4>Add Matter Email Template - {{ @$matter->title ?? 'Unknown Matter' }}</h4>
 								<div class="card-header-action">
-									<a href="{{route('admin.matterotheremailtemplate.index', $matterId)}}" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Back</a>
+									<a href="{{route('adminconsole.features.matterotheremailtemplate.index', $matterId)}}" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Back</a>
 								</div>
 							</div>
 						</div>

@@ -7,7 +7,8 @@
 <div class="main-content">
 	<section class="section">
 		<div class="section-body">
-			{{ Form::open(array('url' => 'admin/usertype/store', 'name'=>"add-usertype", 'autocomplete'=>'off', "enctype"=>"multipart/form-data")) }}
+			<form action="{{ url('admin/usertype/store') }}" method="POST" name="add-usertype" autocomplete="off" enctype="multipart/form-data">
+				@csrf
 				<div class="row">
 					<div class="col-12 col-md-12 col-lg-12">
 						<div class="card">
@@ -24,7 +25,7 @@
 							<div class="card-body">
 								<div class="form-group"> 
 									<label for="name">User Type Name</label>
-									{{ Form::text('name', '', array('class' => 'form-control', 'data-valid'=>'required', 'autocomplete'=>'off','placeholder'=>'Enter User Type' )) }}
+									<input type="text" name="name" value="" class="form-control" data-valid="required" autocomplete="off" placeholder="Enter User Type">
 									@if ($errors->has('name'))
 										<span class="custom-error" role="alert">
 											<strong>{{ @$errors->first('name') }}</strong>
@@ -32,13 +33,13 @@
 									@endif
 								</div>	
 								<div class="form-group float-right">
-									{{ Form::submit('Save', ['class'=>'btn btn-primary' ]) }}
+									<button type="submit" class="btn btn-primary">Save</button>
 								</div>
 							</div>
 						</div>
 					</div>
 				</div>
-			{{ Form::close() }}
+			</form>
 		</div>
 	</section>
 </div>

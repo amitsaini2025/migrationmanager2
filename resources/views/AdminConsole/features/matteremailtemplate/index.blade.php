@@ -21,7 +21,7 @@
 						<div class="card-header">
 							<h4>Matter Email Template</h4>
 							<div class="card-header-action">
-								<a href="{{route('admin.matteremailtemplate.create')}}" class="btn btn-primary">Create Matter Email Template</a>
+								<a href="{{route('adminconsole.features.matteremailtemplate.create')}}" class="btn btn-primary">Create Matter Email Template</a>
 							</div>
 						</div>
 						<div class="card-body">

@@ -30,7 +30,7 @@ use App\Http\Controllers\AdminConsole\AnzscoOccupationController;
 |
 */
 
-Route::prefix('adminconsole')->name('adminconsole.')->middleware(['auth'])->group(function() {
+Route::prefix('adminconsole')->name('adminconsole.')->middleware(['auth:admin'])->group(function() {
     
     // Features routes - Feature management
     Route::prefix('features')->name('features.')->group(function() {

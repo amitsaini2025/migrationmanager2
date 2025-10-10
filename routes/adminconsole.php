@@ -10,7 +10,6 @@ use App\Http\Controllers\AdminConsole\MatterOtherEmailTemplateController;
 use App\Http\Controllers\AdminConsole\PersonalDocumentTypeController;
 use App\Http\Controllers\AdminConsole\VisaDocumentTypeController;
 use App\Http\Controllers\AdminConsole\DocumentChecklistController;
-use App\Http\Controllers\AdminConsole\PromoCodeController;
 use App\Http\Controllers\AdminConsole\UserController;
 use App\Http\Controllers\AdminConsole\UserroleController;
 use App\Http\Controllers\AdminConsole\TeamController;
@@ -107,15 +106,6 @@ Route::prefix('adminconsole')->name('adminconsole.')->middleware(['auth:admin'])
         Route::get('/document-checklist/edit/{id}', [DocumentChecklistController::class, 'edit'])->name('documentchecklist.edit');
         Route::post('/document-checklist/update', [DocumentChecklistController::class, 'edit'])->name('documentchecklist.update');
         
-        
-        // Promo Code routes
-        Route::get('/promo-code', [PromoCodeController::class, 'index'])->name('promocode.index');
-        Route::get('/promo-code/create', [PromoCodeController::class, 'create'])->name('promocode.create');
-        Route::post('/promo-code/store', [PromoCodeController::class, 'store'])->name('promocode.store');
-        Route::get('/promo-code/edit/{id}', [PromoCodeController::class, 'edit'])->name('promocode.edit');
-        Route::post('/promo-code/update', [PromoCodeController::class, 'edit'])->name('promocode.update');
-        Route::post('/promo-code/checkpromocode', [PromoCodeController::class, 'checkpromocode']);
-        
     });
     
     // System routes - System management
@@ -158,6 +148,9 @@ Route::prefix('adminconsole')->name('adminconsole.')->middleware(['auth:admin'])
         Route::get('/offices/view/{id}', [BranchesController::class, 'view'])->name('offices.view');
         Route::get('/offices/view/client/{id}', [BranchesController::class, 'viewclient'])->name('offices.viewclient');
         Route::post('/offices/update', [BranchesController::class, 'edit'])->name('offices.update');
+        
+        // Client Email List route
+        Route::get('/clientsemaillist', [\App\Http\Controllers\Admin\ClientsController::class, 'clientsemaillist'])->name('clientsemaillist');
         
     });
     

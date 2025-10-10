@@ -53,9 +53,6 @@
 			<li class="{{(Route::currentRouteName() == 'adminconsole.system.roles.index' || Route::currentRouteName() == 'adminconsole.system.roles.create' || Route::currentRouteName() == 'adminconsole.system.roles.edit') ? 'active' : ''}}"><a class="nav-link" href="{{route('adminconsole.system.roles.index')}}">Roles</a></li>
 			<?php } ?>
 			
-
-            <li class="{{(Route::currentRouteName() == 'adminconsole.features.promocode.index' ) ? 'active' : ''}}"><a class="nav-link" href="{{route('adminconsole.features.promocode.index')}}">Promo Code</a></li>
-
 			<li class="{{(Route::currentRouteName() == 'adminconsole.features.personaldocumenttype.index' ) ? 'active' : ''}}"><a class="nav-link" href="{{route('adminconsole.features.personaldocumenttype.index')}}">Personal Document Category</a></li>
 
             <li class="{{(Route::currentRouteName() == 'adminconsole.features.visadocumenttype.index' ) ? 'active' : ''}}"><a class="nav-link" href="{{route('adminconsole.features.visadocumenttype.index')}}">Visa Document Category</a></li>

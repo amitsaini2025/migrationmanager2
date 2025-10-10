@@ -2718,11 +2718,6 @@ Bansal Immigration`;
                 $('#myTab a[href="#'+v+'"]').trigger('click');
             }
             //console.log($("input[name='radioGroup']:checked").val());
-            if( $("input[name='radioGroup']:checked").val() == 1  ){ //paid
-                $('#promo_code_used').css('display','inline-block');
-            } else { //free
-                $('#promo_code_used').css('display','none');
-            }
 
             $("input[name='inperson_address']:checked").val(id);
             $('.timeslots').html('');
@@ -2866,33 +2861,6 @@ Bansal Immigration`;
             }
         });
 
-        $(document).delegate('#promo_code', 'blur', function(){
-            var promo_code_val = $(this).val();
-            var client_id = window.ClientDetailConfig.clientId;
-            $.ajax({
-                url:window.ClientDetailConfig.urls.checkPromoCode,
-                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')},
-                type:'POST',
-                data:{promo_code_val:promo_code_val, client_id:client_id },
-                datatype:'json',
-                success:function(res){
-                    var obj = JSON.parse(res);
-                    if(obj.success == true){
-                        $('#promocode_id').val(obj.promocode_id);
-                        $('#promo_msg').css('display','block');
-                        $('#promo_msg').css('color','green');
-                        $('#promo_msg').text(obj.msg);
-                        $('#appointform_save').prop('disabled', false);
-                    } else {
-                        $('#promocode_id').val("");
-                        $('#promo_msg').css('display','block');
-                        $('#promo_msg').css('color','red');
-                        $('#promo_msg').text(obj.msg);
-                        $('#appointform_save').prop('disabled', true);
-                    }
-                }
-            });
-        });
 
         $(document).delegate('.services_item', 'change', function(){
             $('.info_row').hide();
@@ -2910,11 +2878,9 @@ Bansal Immigration`;
             }
             //console.log($('#service_id').val());
             if( $('#service_id').val() == 1 ){ //paid
-                //$('#promo_code_used').css('display','inline-block');
                 $('.submitappointment_paid').show();
                 $('.submitappointment').hide();
             } else { //free
-                $('#promo_code_used').css('display','none');
                 $('.submitappointment').show();
                 $('.submitappointment_paid').hide();
             }

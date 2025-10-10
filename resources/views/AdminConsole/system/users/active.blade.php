@@ -59,7 +59,13 @@
 												<tr id="id_{{@$list->id}}">
 													<td><a href="{{route('adminconsole.system.users.view', $list->id)}}">{{@$list->first_name.' '.@$list->last_name}}</a><br>{{@$list->email}}</td>
 													<td>{{@$list->position}}</td>
-													<td><a href="{{route('adminconsole.system.offices.view', @$b->id)}}">{{@$b->office_name}}</a></td>
+													<td>
+														@if(@$b && @$b->id)
+															<a href="{{route('adminconsole.system.offices.view', @$b->id)}}">{{@$b->office_name}}</a>
+														@else
+															<span class="text-muted">No Office Assigned</span>
+														@endif
+													</td>
 
 
 													<td>{{ @$list->usertype->name == "" ? config('constants.empty') : str_limit(@$list->usertype->name, '50', '...') }}</td>

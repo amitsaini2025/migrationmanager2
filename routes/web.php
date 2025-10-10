@@ -156,7 +156,6 @@ Route::prefix('admin')->group(function() {
 		/*---------- Clients Management ----------*/
 		Route::get('/clients', 'Admin\ClientsController@index')->name('admin.clients.index');
         Route::get('/clientsmatterslist', 'Admin\ClientsController@clientsmatterslist')->name('admin.clients.clientsmatterslist');
-        Route::get('/clientsemaillist', 'updated ')->name('admin.clients.clientsemaillist');
 		Route::post('/clients/store', 'Admin\ClientsController@store')->name('admin.clients.store');
 		Route::get('/clients/edit/{id}', 'Admin\ClientsController@edit')->name('admin.clients.edit');
 		Route::post('/clients/edit', 'Admin\ClientsController@edit')->name('admin.clients.edit');
@@ -391,7 +390,6 @@ Route::prefix('admin')->group(function() {
 
         // Appointment Dates Not Available routes moved to routes/adminconsole.php
 
-        // Promo code routes moved to routes/adminconsole.php
 
 
         // Personal Document Category routes moved to routes/adminconsole.php

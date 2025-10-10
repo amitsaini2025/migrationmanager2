@@ -83,7 +83,6 @@ PartnerType.php
 PasswordResetLink.php
 PersonalDocumentType.php
 Profile.php
-PromoCode.php
 RefreshToken.php
 Relationship.php
 Report.php

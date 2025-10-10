@@ -255,6 +255,60 @@ class ClientsController extends Controller
         return view('Admin.clients.clientsmatterslist', compact(['lists', 'totalData']));
     }
 
+    public function clientsemaillist(Request $request)
+    {
+        $roles = \App\Models\UserRole::find(Auth::user()->role);
+        $newarray = json_decode($roles->module_access);
+        $module_access = (array) $newarray;
+        if(array_key_exists('20',  $module_access)) {
+            $sortField = $request->get('sort', 'id');
+            $sortDirection = $request->get('direction', 'desc');
+
+            $query = Admin::where('is_archived', '=', '0')
+                ->where('role', '=', '7')
+                ->where('type', '=', 'client')
+                ->whereNotNull('email')
+                ->where('email', '!=', '')
+                ->whereNull('is_deleted')
+                ->orderBy($sortField, $sortDirection);
+
+            $totalData = $query->count();
+
+            if ($request->has('client_id')) {
+                $client_id = $request->input('client_id');
+                if(trim($client_id) != '') {
+                    $query->where('client_id', '=', $client_id);
+                }
+            }
+
+            if ($request->has('name')) {
+                $name = trim($request->input('name'));
+                if ($name != '') {
+                    $query->where(function ($q) use ($name) {
+                        $q->where('first_name', 'LIKE', '%' . $name . '%')
+                          ->orWhere('last_name', 'LIKE', '%' . $name . '%')
+                          ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$name}%"]);
+                    });
+                }
+            }
+
+            if ($request->has('email')) {
+                $email = $request->input('email');
+                if(trim($email) != '') {
+                    $query->where('email', 'LIKE', '%' . $email . '%');
+                }
+            }
+
+            $lists = $query->paginate(20);
+        } else {
+            $query = Admin::where('id', '=', '')->where('role', '=', '7')->whereNull('is_deleted');
+            $lists = $query->sortable(['id' => 'desc'])->paginate(20);
+            $totalData = 0;
+        }
+        
+        return view('Admin.clients.clientsemaillist', compact(['lists', 'totalData']));
+    }
+
     public function archived(Request $request)
 	{
 		$query 		= Admin::where('is_archived', '=', '1')->where('role', '=', '7');
@@ -6345,16 +6399,9 @@ class ClientsController extends Controller
         //$obj->title = @$request->title;
 		$obj->description = @$request->description;
         //$obj->invites = @$request->invites;
-        if( isset($request->promocode_used) && $request->promocode_used != "" ){
-			$obj->promocode_used = $request->promocode_used;
-        }
 
         if( isset($request->service_id) && $request->service_id == 1 ){ //1=>Paid,2=>Free
-            if( isset($request->promocode_used) && $request->promocode_used != "" ){
-                $obj->status = 0; //Due to promocode no payment is needed
-            } else {
-                $obj->status = 9; //9=>Pending Appointment With Payment Pending
-            }
+            $obj->status = 9; //9=>Pending Appointment With Payment Pending
         } else if( isset($request->service_id) && $request->service_id == 2 ){
             $obj->status = 0; //0=>Pending Appointment With Free Type
         }
@@ -6385,14 +6432,6 @@ class ClientsController extends Controller
         }
 
 		if($saved){
-            if( isset($request->promocode_used) && $request->promocode_used != "" ){
-                DB::table('promocode_uses')->insert([
-                    'client_id' => $request->client_id,
-                    'promocode_id' => $request->promocode_id,
-                    'promocode' => $request->promocode_used
-                ]);
-            }
-
 			if(isset($request->type) && $request->atype == 'application'){
 				$objs = new \App\Models\ApplicationActivitiesLog;
 				$objs->stage = $request->type;
@@ -6429,11 +6468,7 @@ class ClientsController extends Controller
 					<div style="display:inline-grid;"><span class="text-semi-bold">'.$nature_of_enquiry_title.'</span> <span class="text-semi-bold">'.$service_title_text.'</span>  <span class="text-semi-bold">'.$request->appointment_details.'</span> <span class="text-semi-bold">'.$request->description.'</span> <p class="text-semi-light-grey col-v-1">@ '.$request->appoint_time.'</p></div>';
 
                 if( isset($request->service_id) && $request->service_id == 1 ){ //1=>Paid
-                    if( isset($request->promocode_used) && $request->promocode_used != "" ){
-                        $subject = 'scheduled an appointment';
-                    } else {
-                        $subject = 'scheduled an paid appointment without payment';
-                    }
+                    $subject = 'scheduled an paid appointment without payment';
                 } else if( isset($request->service_id) && $request->service_id == 2 ){ //2=>Free
                     $subject = 'scheduled an appointment';
                 }
@@ -6492,8 +6527,7 @@ class ClientsController extends Controller
                     'inperson_address'=> $inperson_address,
                     'service_type'=> $request->service_id,
                     'client_id'=> $request->client_id,
-                    'preferred_language'=> $request->preferred_language,
-                    'promocode_used'=> $request->promocode_used
+                    'preferred_language'=> $request->preferred_language
                 ];
 
                 if( \Mail::to($adminInfo->email)->send(new \App\Mail\AppointmentStripeMail($details)) ) {

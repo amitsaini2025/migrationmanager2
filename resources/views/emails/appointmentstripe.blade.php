@@ -58,7 +58,7 @@
                                         <tr>
                                             <td style="width:260px;padding:0;vertical-align:top;color:#153643;">
 
-                                                <?php if( isset($details['service_type'])  && $details['service_type'] == 1 && isset($details['promocode_used']) && $details['promocode_used'] == "" ) { ?>
+                                                <?php if( isset($details['service_type'])  && $details['service_type'] == 1 ) { ?>
                                                     <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">Your Payment is pending. Please use below payment link - <a target="_blank" href="http://{{$details['host']}}/stripe/{{$details['appointment_id']}}" style="color:#ee4c50;text-decoration:underline;">Payment link</a></p>
                                                 <?php }?>
 

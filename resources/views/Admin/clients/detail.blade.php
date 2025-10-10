@@ -1177,7 +1177,6 @@ use App\Http\Controllers\Controller;
             notPickedCall: '{{ URL::to("/admin/not-picked-call") }}',
             getDateTimeBackend: '{{ URL::to("/getdatetimebackend") }}',
             getDisabledDateTime: '{{ URL::to("/getdisableddatetime") }}',
-            checkPromoCode: '{{ URL::to("/admin/promo-code/checkpromocode") }}',
             checkCostAssignment: '{{ URL::to("/admin/clients/check-cost-assignment") }}',
             getVisaAgreementAgent: '{{ URL::to("/admin/clients/getVisaAggreementMigrationAgentDetail") }}',
             generateAgreement: '{{ route("clients.generateagreement") }}',

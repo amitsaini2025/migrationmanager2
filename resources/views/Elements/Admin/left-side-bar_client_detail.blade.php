@@ -134,21 +134,21 @@
 
             <?php
             // ANZSCO Occupations menu - Available to all admin users
-            if(Route::currentRouteName() == 'admin.anzsco.index' || Route::currentRouteName() == 'admin.anzsco.create' || Route::currentRouteName() == 'admin.anzsco.edit' || Route::currentRouteName() == 'admin.anzsco.import'){
+            if(Route::currentRouteName() == 'adminconsole.database.anzsco.index' || Route::currentRouteName() == 'adminconsole.database.anzsco.create' || Route::currentRouteName() == 'adminconsole.database.anzsco.edit' || Route::currentRouteName() == 'adminconsole.database.anzsco.import'){
                 $anzscoclassstype = 'active';
             }
             ?>
             <li class="dropdown {{@$anzscoclassstype}}">
                 <a href="#" class="menu-toggle nav-link has-dropdown" title="ANZSCO Database"><i class="fas fa-briefcase"></i><span>ANZSCO Database</span></a>
                 <ul class="dropdown-menu">
-                    <li class="{{(Route::currentRouteName() == 'admin.anzsco.index') ? 'active' : ''}}">
-                        <a href="{{route('admin.anzsco.index')}}" class="nav-link"><i class="fas fa-list"></i><span>All Occupations</span></a>
+                    <li class="{{(Route::currentRouteName() == 'adminconsole.database.anzsco.index') ? 'active' : ''}}">
+                        <a href="{{route('adminconsole.database.anzsco.index')}}" class="nav-link"><i class="fas fa-list"></i><span>All Occupations</span></a>
                     </li>
-                    <li class="{{(Route::currentRouteName() == 'admin.anzsco.create') ? 'active' : ''}}">
-                        <a href="{{route('admin.anzsco.create')}}" class="nav-link"><i class="fas fa-plus"></i><span>Add Occupation</span></a>
+                    <li class="{{(Route::currentRouteName() == 'adminconsole.database.anzsco.create') ? 'active' : ''}}">
+                        <a href="{{route('adminconsole.database.anzsco.create')}}" class="nav-link"><i class="fas fa-plus"></i><span>Add Occupation</span></a>
                     </li>
-                    <li class="{{(Route::currentRouteName() == 'admin.anzsco.import') ? 'active' : ''}}">
-                        <a href="{{route('admin.anzsco.import')}}" class="nav-link"><i class="fas fa-file-import"></i><span>Import Data</span></a>
+                    <li class="{{(Route::currentRouteName() == 'adminconsole.database.anzsco.import') ? 'active' : ''}}">
+                        <a href="{{route('adminconsole.database.anzsco.import')}}" class="nav-link"><i class="fas fa-file-import"></i><span>Import Data</span></a>
                     </li>
                 </ul>
             </li>

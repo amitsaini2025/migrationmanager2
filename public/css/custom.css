@@ -49,6 +49,47 @@
 .card .card-body table.table tbody tr td.last_td{width:110px;text-align:center;}
 .card .card-body table.table tbody tr td.last_td input{width:auto;display:inline-block;}
 .card .card-body table.table tbody tr td.last_td a{font-size: 16px;line-height: 21px;margin-left: 10px;display:inline-block;}
+
+/* Fix ACTION column visibility - Add proper padding and dark blue button styling */
+.card .card-body table.table tbody tr td:last-child {
+    padding: 8px 10px !important;
+    vertical-align: middle;
+}
+
+/* Style buttons in ACTION column with dark blue */
+.card .card-body table.table tbody tr td:last-child a,
+.card .card-body table.table tbody tr td:last-child .btn,
+.card .card-body table.table tbody tr td.last_td a {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 16px !important;
+    background-color: #1e3a8a !important;  /* Dark blue */
+    color: #ffffff !important;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 14px;
+    line-height: 20px;
+    margin-left: 0px !important;
+}
+
+/* Hover state for ACTION column buttons */
+.card .card-body table.table tbody tr td:last-child a:hover,
+.card .card-body table.table tbody tr td:last-child .btn:hover,
+.card .card-body table.table tbody tr td.last_td a:hover {
+    background-color: #1e40af !important;  /* Slightly lighter dark blue on hover */
+    color: #ffffff !important;
+    text-decoration: none;
+}
+
+/* Ensure last_td class also gets proper padding */
+.card .card-body table.table tbody tr td.last_td {
+    width: 110px;
+    text-align: center;
+    padding: 8px 10px !important;
+}
+
 .card .card-body table.table tbody.productitem tr td .productinfo{position: relative;}
 .card .card-body table.table tbody.productitem tr td .productinfo a{position: absolute;top: 0px;right: 0px;font-size: 12px;}
 .card .card-body table.table tbody.productitem tr td .productinfo .productdet{padding-right:25px;}

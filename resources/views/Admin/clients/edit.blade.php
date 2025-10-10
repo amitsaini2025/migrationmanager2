@@ -88,7 +88,7 @@
 
             <!-- Main Content Area -->
             <div class="main-content-area">
-                <form id="editClientForm" action="{{ route('admin.clients.edit') }}" method="POST">
+                <form id="editClientForm" action="{{ route('admin.clients.update') }}" method="POST">
                     @csrf
                     <input type="hidden" name="id" value="{{ $fetchedData->id }}">
                     <input type="hidden" name="type" value="{{ $fetchedData->type }}">

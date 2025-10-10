@@ -158,7 +158,7 @@ Route::prefix('admin')->group(function() {
         Route::get('/clientsmatterslist', 'Admin\ClientsController@clientsmatterslist')->name('admin.clients.clientsmatterslist');
 		Route::post('/clients/store', 'Admin\ClientsController@store')->name('admin.clients.store');
 		Route::get('/clients/edit/{id}', 'Admin\ClientsController@edit')->name('admin.clients.edit');
-		Route::post('/clients/edit', 'Admin\ClientsController@edit')->name('admin.clients.edit');
+		Route::post('/clients/edit', 'Admin\ClientsController@edit')->name('admin.clients.update');
 		Route::post('/clients/save-section', 'Admin\ClientPersonalDetailsController@saveSection')->name('admin.clients.saveSection');
 
         // Phone Verification Routes

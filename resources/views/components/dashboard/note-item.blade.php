@@ -30,7 +30,7 @@
                 Action
             </button>
             <div class="dropdown-menu">
-                <a class="dropdown-item has-icon" href="javascript:;" onclick="closeNotesDeadlineAction({{ $note->id }}, {{ $note->unique_group_id }})">
+                <a class="dropdown-item has-icon" href="javascript:;" onclick="closeNotesDeadlineAction({{ $note->id }}, '{{ $note->unique_group_id }}')">
                     Close
                 </a>
                 <a class="dropdown-item has-icon btn-extend_note_deadline" 

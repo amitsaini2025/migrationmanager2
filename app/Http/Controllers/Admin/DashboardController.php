@@ -5,6 +5,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\DashboardRequest;
 use App\Services\DashboardService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
@@ -94,16 +96,36 @@ class DashboardController extends Controller
      */
     public function extendDeadlineDate(Request $request)
     {
-        $this->validate($request, [
-            'note_id' => 'required|integer',
-            'unique_group_id' => 'required|string',
-            'description' => 'required|string',
-            'note_deadline' => 'required|date'
-        ]);
+        try {
+            $this->validate($request, [
+                'note_id' => 'required|integer',
+                'unique_group_id' => 'required|string',
+                'description' => 'required|string',
+                'note_deadline' => 'required|date'
+            ]);
 
-        $result = $this->dashboardService->extendNoteDeadline($request->all());
-        
-        return response()->json($result);
+            Log::info('Extend deadline request data:', $request->all());
+
+            $result = $this->dashboardService->extendNoteDeadline($request->all());
+            
+            Log::info('Extend deadline result:', $result);
+            
+            return response()->json($result);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation error in extendDeadlineDate:', $e->errors());
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed: ' . implode(', ', array_flatten($e->errors()))
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error in extendDeadlineDate: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while extending the deadline'
+            ], 500);
+        }
     }
 
     /**
@@ -111,17 +133,37 @@ class DashboardController extends Controller
      */
     public function updateTaskCompleted(Request $request)
     {
-        $this->validate($request, [
-            'id' => 'required|integer',
-            'unique_group_id' => 'required|string'
-        ]);
+        try {
+            Log::info('Update task completed request data:', $request->all());
+            
+            $this->validate($request, [
+                'id' => 'required|integer',
+                'unique_group_id' => 'required|string'
+            ]);
 
-        $result = $this->dashboardService->updateTaskCompleted(
-            $request->id, 
-            $request->unique_group_id
-        );
-        
-        return response()->json($result);
+            $result = $this->dashboardService->updateTaskCompleted(
+                $request->id, 
+                $request->unique_group_id
+            );
+            
+            Log::info('Update task completed result:', $result);
+            
+            return response()->json($result);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation error in updateTaskCompleted:', $e->errors());
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed: ' . implode(', ', array_flatten($e->errors()))
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error in updateTaskCompleted: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while updating task completion'
+            ], 500);
+        }
     }
 
     /**
@@ -207,14 +249,14 @@ class DashboardController extends Controller
      */
     public function fetchTotalActivityCount(Request $request)
     {
-        if (\Auth::user()->role == 1) {
+        if (Auth::user()->role == 1) {
             $assigneesCount = \App\Models\Note::where('type', 'client')
                 ->whereNotNull('client_id')
                 ->where('folloup', 1)
                 ->where('status', 0)
                 ->count();
         } else {
-            $assigneesCount = \App\Models\Note::where('assigned_to', \Auth::user()->id)
+            $assigneesCount = \App\Models\Note::where('assigned_to', Auth::user()->id)
                 ->where('type', 'client')
                 ->where('folloup', 1)
                 ->where('status', 0)

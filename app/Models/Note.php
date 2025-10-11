@@ -10,7 +10,7 @@ class Note extends Model
     use Notifiable;
 
     protected $fillable = [
-        'id','user_id','client_id','title','mail_id','type','assigned_to','pin','followup_date','folloup','status','description','created_at', 'updated_at','task_group'
+        'id','user_id','client_id','lead_id','unique_group_id','title','description','note_deadline','mail_id','type','pin','followup_date','folloup','assigned_to','status','task_group','matter_id','mobile_number','created_at', 'updated_at'
     ];
 
 	public $sortable = ['id', 'created_at', 'updated_at','task_group','followup_date'];

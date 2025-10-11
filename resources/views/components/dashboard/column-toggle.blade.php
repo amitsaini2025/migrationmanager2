@@ -8,7 +8,7 @@
     <div class="column-dropdown" id="columnDropdown">
         <div class="column-dropdown-header">
             <label class="column-toggle-all">
-                <input type="checkbox" id="toggleAllColumns" {{ count($visibleColumns) == 9 ? 'checked' : '' }}>
+                <input type="checkbox" id="toggleAllColumns" {{ count($visibleColumns) == 8 ? 'checked' : '' }}>
                 <span>Display All</span>
             </label>
         </div>
@@ -22,8 +22,7 @@
                     'migration_agent' => 'Migration Agent',
                     'person_responsible' => 'Person Responsible',
                     'person_assisting' => 'Person Assisting',
-                    'stage' => 'Stage',
-                    'action' => 'Action'
+                    'stage' => 'Stage'
                 ];
             @endphp
             

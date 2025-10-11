@@ -1,5 +1,15 @@
 // Dashboard Optimized JavaScript
 $(document).ready(function() {
+    // Check if required objects are defined
+    if (typeof window.dashboardRoutes === 'undefined') {
+        console.error('Dashboard routes not defined. Please ensure routes are loaded before this script.');
+        return;
+    }
+    
+    if (typeof window.dashboardData === 'undefined') {
+        console.warn('Dashboard data not defined. Some features may not work correctly.');
+    }
+    
     initializeDashboard();
     applyInitialColumnVisibility();
     initializeEventHandlers();
@@ -31,8 +41,12 @@ function initializeEventHandlers() {
 
     // Column toggle
     $('#columnToggleBtn').on('click', toggleColumnDropdown);
-    $('input[name="column"]').on('change', toggleColumn);
-    $('#toggleAllColumns').on('change', toggleAllColumns);
+    $('input[name="column"]').on('change', function() {
+        toggleColumn($(this));
+    });
+    $('#toggleAllColumns').on('change', function() {
+        toggleAllColumns($(this));
+    });
 
     // Search and actions
     $('input[name="client_name"]').on('blur keypress', handleSearchInput);
@@ -40,6 +54,12 @@ function initializeEventHandlers() {
 }
 
 function updateStage(itemId, stageId) {
+    if (!window.dashboardRoutes || !window.dashboardRoutes.updateStage) {
+        console.error('Update stage route not defined');
+        showNotification('Configuration error: Update route not available.', 'error');
+        return;
+    }
+    
     $.ajax({
         url: window.dashboardRoutes.updateStage,
         headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
@@ -56,6 +76,12 @@ function updateStage(itemId, stageId) {
 }
 
 function extendDeadline() {
+    if (!window.dashboardRoutes || !window.dashboardRoutes.extendDeadline) {
+        console.error('Extend deadline route not defined');
+        showNotification('Configuration error: Extend deadline route not available.', 'error');
+        return;
+    }
+    
     $(".popuploader").show();
     let flag = true;
     $(".custom-error").remove();
@@ -97,7 +123,8 @@ function extendDeadline() {
     }
 }
 
-function openExtendDeadlineModal($button) {
+function openExtendDeadlineModal() {
+    var $button = $(this);
     $('#note_id').val($button.attr("data-noteid"));
     $('#unique_group_id').val($button.attr("data-uniquegroupid"));
     $('#assignnote').val($button.attr("data-assignnote"));
@@ -188,7 +215,7 @@ function saveColumnPreferences() {
 
 function applyInitialColumnVisibility() {
     const visibleColumns = window.dashboardData.visibleColumns || [];
-    const allColumns = ['matter', 'client_id', 'client_name', 'dob', 'migration_agent', 'person_responsible', 'person_assisting', 'stage', 'action'];
+    const allColumns = ['matter', 'client_id', 'client_name', 'dob', 'migration_agent', 'person_responsible', 'person_assisting', 'stage'];
     
     allColumns.forEach(function(column) {
         if (!visibleColumns.includes(column)) {
@@ -216,15 +243,31 @@ function handleActionClick() {
 }
 
 window.clearFiltersAndReset = function() {
+    if (!window.dashboardRoutes || !window.dashboardRoutes.dashboard) {
+        console.error('Dashboard route not defined');
+        showNotification('Configuration error: Dashboard route not available.', 'error');
+        return;
+    }
     window.location.href = window.dashboardRoutes.dashboard;
 }
 
 window.closeNotesDeadlineAction = function(noteid, noteuniqueid) {
+    console.log('closeNotesDeadlineAction called with:', { noteid, noteuniqueid });
+    
+    if (!window.dashboardRoutes || !window.dashboardRoutes.updateTaskCompleted) {
+        console.error('Update task completed route not defined');
+        showNotification('Configuration error: Update task route not available.', 'error');
+        return;
+    }
+    
     if (confirm('Are you sure, you want to close this note deadline?')) {
         if (noteid == '' && noteuniqueid == '') {
             showNotification('Please select note to close the deadline.', 'error');
             return false;
         }
+        
+        console.log('Sending AJAX request to:', window.dashboardRoutes.updateTaskCompleted);
+        console.log('Data:', { id: noteid, unique_group_id: noteuniqueid });
         
         $('.popuploader').show();
         $.ajax({
@@ -232,12 +275,15 @@ window.closeNotesDeadlineAction = function(noteid, noteuniqueid) {
             headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')},
             url: window.dashboardRoutes.updateTaskCompleted,
             data: {'id': noteid, 'unique_group_id': noteuniqueid},
-            success: function() {
+            success: function(response) {
+                console.log('Success response:', response);
                 $('.popuploader').hide();
                 showNotification('Task completed successfully!', 'success');
                 setTimeout(() => location.reload(), 1000);
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.error('Error response:', xhr.responseText);
+                console.error('Status:', status, 'Error:', error);
                 $('.popuploader').hide();
                 showNotification('Failed to complete task.', 'error');
             }

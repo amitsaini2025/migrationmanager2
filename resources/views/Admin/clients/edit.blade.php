@@ -84,6 +84,9 @@
                     searchPartnerRoute: '{{ route("admin.clients.searchPartner") }}',
                     csrfToken: '{{ csrf_token() }}'
                 };
+                
+                // Current client ID for excluding from search results
+                window.currentClientId = '{{ $fetchedData->id }}';
             </script>
 
             <!-- Main Content Area -->
@@ -1087,6 +1090,101 @@
                             <div class="edit-actions">
                                 <button type="button" class="btn btn-primary" onclick="saveCharacterInfo()">Save</button>
                                 <button type="button" class="btn btn-secondary" onclick="cancelEdit('characterInfo')">Cancel</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Related Files Section -->
+                    <section class="form-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-link"></i> Related Files</h3>
+                            <div class="section-actions">
+                                <button type="button" class="edit-section-btn" onclick="toggleEditMode('relatedFilesInfo')">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Summary View -->
+                        <div id="relatedFilesInfoSummary" class="summary-view">
+                            @if($fetchedData->related_files && $fetchedData->related_files != '')
+                                <div style="margin-top: 15px;">
+                                    @php
+                                        $relatedFileIds = explode(',', $fetchedData->related_files);
+                                    @endphp
+                                    @foreach($relatedFileIds as $relatedId)
+                                        @php
+                                            $relatedClient = \App\Models\Admin::find($relatedId);
+                                        @endphp
+                                        @if($relatedClient)
+                                            <div class="related-file-entry-compact" style="margin-bottom: 12px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #17a2b8;">
+                                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: center;">
+                                                    <div class="summary-item-inline">
+                                                        <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">CLIENT NAME:</span>
+                                                        <span class="summary-value" style="color: #212529; font-weight: 500;">
+                                                            <a href="{{ URL::to('/admin/clients/edit/'.base64_encode(convert_uuencode($relatedClient->id))) }}" target="_blank" style="color: #007bff; text-decoration: none;">
+                                                                {{ $relatedClient->first_name }} {{ $relatedClient->last_name }}
+                                                            </a>
+                                                        </span>
+                                                    </div>
+                                                    <div class="summary-item-inline">
+                                                        <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">CLIENT ID:</span>
+                                                        <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $relatedClient->client_id ?: 'N/A' }}</span>
+                                                    </div>
+                                                    <div class="summary-item-inline">
+                                                        <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">EMAIL:</span>
+                                                        <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $relatedClient->email ?: 'N/A' }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="empty-state" style="margin-top: 15px;">
+                                    <p>No related files added yet.</p>
+                                </div>
+                            @endif
+                        </div>
+
+                        <!-- Edit View -->
+                        <div id="relatedFilesInfoEdit" class="edit-view" style="display: none;">
+                            <div class="content-grid">
+                                @if($fetchedData->visa_type != "Citizen" && $fetchedData->visa_type != "PR")
+                                    <div class="form-group" style="grid-column: 1 / -1;">
+                                        <label for="relatedFiles">Similar Related Files</label>
+                                        <select multiple class="form-control" id="relatedFiles" name="related_files[]" style="width: 100%;">
+                                            @if($fetchedData->related_files && $fetchedData->related_files != '')
+                                                @php
+                                                    $relatedFileIds = explode(',', $fetchedData->related_files);
+                                                @endphp
+                                                @foreach($relatedFileIds as $relatedId)
+                                                    @php
+                                                        $relatedClient = \App\Models\Admin::find($relatedId);
+                                                    @endphp
+                                                    @if($relatedClient)
+                                                        <option value="{{ $relatedClient->id }}" selected>{{ $relatedClient->first_name }} {{ $relatedClient->last_name }} ({{ $relatedClient->client_id }})</option>
+                                                    @endif
+                                                @endforeach
+                                            @endif
+                                        </select>
+                                        <small class="form-text text-muted">Search and select clients by name or client ID. You can select multiple clients.</small>
+                                        @if ($errors->has('related_files'))
+                                            <span class="text-danger">
+                                                <strong>{{ $errors->first('related_files') }}</strong>
+                                            </span>
+                                        @endif
+                                    </div>
+                                @else
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle"></i> Related Files are only available for clients with visa types other than Citizen or PR.
+                                    </div>
+                                @endif
+                            </div>
+                            
+                            <div class="edit-actions">
+                                <button type="button" class="btn btn-primary" onclick="saveRelatedFilesInfo()">Save</button>
+                                <button type="button" class="btn btn-secondary" onclick="cancelEdit('relatedFilesInfo')">Cancel</button>
                             </div>
                         </div>
                     </section>

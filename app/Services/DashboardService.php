@@ -12,6 +12,7 @@ use App\Models\WorkflowStage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class DashboardService
@@ -178,7 +179,7 @@ class DashboardService
         $defaultColumns = [
             'matter', 'client_id', 'client_name', 'dob', 
             'migration_agent', 'person_responsible', 
-            'person_assisting', 'stage', 'action'
+            'person_assisting', 'stage'
         ];
 
         return session('dashboard_column_preferences', $defaultColumns);
@@ -216,7 +217,7 @@ class DashboardService
         $validColumns = [
             'matter', 'client_id', 'client_name', 'dob', 
             'migration_agent', 'person_responsible', 
-            'person_assisting', 'stage', 'action'
+            'person_assisting', 'stage'
         ];
         
         $filteredColumns = array_intersect($visibleColumns, $validColumns);
@@ -319,18 +320,16 @@ class DashboardService
      */
     public function extendNoteDeadline($data): array
     {
-        $notes = Note::where('unique_group_id', $data['unique_group_id'])
-            ->whereNotNull('assigned_to')
-            ->whereNotNull('unique_group_id')
-            ->get();
+        try {
+            $notes = Note::where('unique_group_id', $data['unique_group_id'])
+                ->whereNotNull('unique_group_id')
+                ->get();
 
-        if ($notes->isEmpty()) {
-            return ['success' => false, 'message' => 'No notes found'];
-        }
+            if ($notes->isEmpty()) {
+                return ['success' => false, 'message' => 'No notes found with the provided unique group ID'];
+            }
 
-        foreach ($notes as $note) {
-            Note::where('unique_group_id', $note->unique_group_id)
-                ->whereNotNull('assigned_to')
+            $updated = Note::where('unique_group_id', $data['unique_group_id'])
                 ->whereNotNull('unique_group_id')
                 ->update([
                     'description' => $data['description'],
@@ -338,15 +337,23 @@ class DashboardService
                     'user_id' => Auth::id()
                 ]);
 
-            // Create notification and activity log
-            $this->createNotificationAndActivityLog($note);
-        }
+            if ($updated > 0) {
+                // Create notification and activity log for the first note
+                $firstNote = $notes->first();
+                $this->createNotificationAndActivityLog($firstNote);
 
-        return [
-            'success' => true, 
-            'message' => 'Successfully updated', 
-            'clientID' => $notes->first()->client_id
-        ];
+                return [
+                    'success' => true, 
+                    'message' => 'Successfully updated', 
+                    'clientID' => $firstNote->client_id
+                ];
+            } else {
+                return ['success' => false, 'message' => 'Failed to update notes'];
+            }
+        } catch (\Exception $e) {
+            Log::error('Error extending note deadline: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'An error occurred while extending the deadline'];
+        }
     }
 
     /**
@@ -395,25 +402,32 @@ class DashboardService
      */
     private function createNotificationAndActivityLog($note): void
     {
-        // Create notification
-        Notification::create([
-            'sender_id' => Auth::id(),
-            'receiver_id' => $note->assigned_to,
-            'module_id' => $note->client_id,
-            'url' => url('/admin/clients/detail/' . $note->client_id),
-            'notification_type' => 'client',
-            'message' => 'Followup Assigned by ' . Auth::user()->first_name . ' ' . Auth::user()->last_name . ' on ' . date('d/M/Y h:i A', strtotime($note->followup_date))
-        ]);
+        try {
+            // Create notification only if assigned_to exists
+            if ($note->assigned_to) {
+                Notification::create([
+                    'sender_id' => Auth::id(),
+                    'receiver_id' => $note->assigned_to,
+                    'module_id' => $note->client_id,
+                    'url' => url('/admin/clients/detail/' . $note->client_id),
+                    'notification_type' => 'client',
+                    'message' => 'Followup Extended by ' . Auth::user()->first_name . ' ' . Auth::user()->last_name . ' on ' . date('d/M/Y h:i A')
+                ]);
+            }
 
-        // Create activity log
-        ActivitiesLog::create([
-            'client_id' => $note->client_id,
-            'created_by' => Auth::id(),
-            'subject' => 'Extended Note Deadline',
-            'description' => '<span class="text-semi-bold">' . $note->title . '</span><p>' . $note->description . '</p>',
-            'use_for' => Auth::id() != $note->user_id ? $note->user_id : '',
-            'followup_date' => $note->followup_date,
-            'task_group' => $note->task_group
-        ]);
+            // Create activity log
+            ActivitiesLog::create([
+                'client_id' => $note->client_id,
+                'created_by' => Auth::id(),
+                'subject' => 'Extended Note Deadline',
+                'description' => '<span class="text-semi-bold">' . ($note->title ?? 'Note') . '</span><p>' . ($note->description ?? '') . '</p>',
+                'use_for' => Auth::id() != $note->user_id ? $note->user_id : '',
+                'followup_date' => $note->followup_date ?? null,
+                'task_group' => $note->task_group ?? null
+            ]);
+        } catch (\Exception $e) {
+            // Log the error but don't break the main functionality
+            Log::error('Error creating notification/activity log: ' . $e->getMessage());
+        }
     }
 }

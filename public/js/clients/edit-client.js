@@ -774,6 +774,8 @@ function addPassportDetail() {
  * Add Another Address (for new component system)
  */
 function addAnotherAddress() {
+    console.log('🚀 addAnotherAddress called from edit-client.js');
+    
     // Check if we're in summary mode, if so switch to edit mode first
     const summaryView = document.getElementById('addressInfoSummary');
     const editView = document.getElementById('addressInfoEdit');
@@ -784,11 +786,16 @@ function addAnotherAddress() {
     
     const container = document.getElementById('addresses-container');
     if (!container) {
-        console.error('Address container not found');
+        console.error('❌ Address container not found');
         return;
     }
     
-    const index = container.querySelectorAll('.address-entry-wrapper').length;
+    // Get the current number of address entries
+    const existingEntries = container.querySelectorAll('.address-entry-wrapper');
+    const index = existingEntries.length;
+    
+    console.log(`📝 Adding address entry at index: ${index}`);
+    console.log(`📊 Current entries count: ${existingEntries.length}`);
     
     const addressHTML = `
         <div class="address-entry-wrapper" data-address-index="${index}">
@@ -904,7 +911,17 @@ function addAnotherAddress() {
     container.insertAdjacentHTML('beforeend', addressHTML);
     
     // Reinitialize date pickers
-    initializeDatepickers();
+    if (typeof initializeDatepickers === 'function') {
+        initializeDatepickers();
+    }
+    
+    // Trigger address autocomplete initialization for the new entry
+    if (typeof initAddressAutocomplete === 'function') {
+        initAddressAutocomplete();
+    }
+    
+    console.log(`✅ Added new address entry with index: ${index}`);
+    console.log(`📊 Total address entries now: ${container.querySelectorAll('.address-entry-wrapper').length}`);
 }
 
 /**
@@ -1691,6 +1708,12 @@ window.toggleEditMode = function(sectionType) {
             setTimeout(function() {
                 initializeEmailSectionPolling();
             }, 100);
+        } else if (sectionType === 'relatedFilesInfo') {
+            // Reinitialize Select2 when opening related files edit mode
+            console.log('🔗 Opening related files section - reinitializing Select2');
+            setTimeout(function() {
+                window.reinitializeRelatedFilesSelect2();
+            }, 100);
         }
     }
 };
@@ -2406,9 +2429,19 @@ window.saveAddressInfo = function() {
         const startDate = $entry.find('input[name="address_start_date[]"]').val();
         const endDate = $entry.find('input[name="address_end_date[]"]').val();
         
+        console.log(`🔍 Processing address entry ${index + 1}:`, {
+            addressId: addressId || '(new)',
+            addressLine1: addressLine1 || '(empty)',
+            suburb: suburb || '(empty)',
+            state: state || '(empty)',
+            zip: zip || '(empty)',
+            country: country || '(empty)',
+            hasData: !!(addressLine1 || suburb || state || zip)
+        });
+        
         // Only include addresses that have data
         if (addressLine1 || suburb || state || zip) {
-            console.log(`📦 Packaging Address ${addressCount + 1}:`, {
+            console.log(`📦 Packaging Address ${addressCount + 1} for server:`, {
                 addressId: addressId || '(new)',
                 addressLine1,
                 suburb,
@@ -2430,6 +2463,8 @@ window.saveAddressInfo = function() {
             formData.append('address_end_date[]', endDate || '');
             
             addressCount++;
+        } else {
+            console.log(`⏭️ Skipping address entry ${index + 1} - no data`);
         }
     });
     
@@ -2821,6 +2856,60 @@ window.saveCharacterInfo = function() {
         
         // Return to summary view
         cancelEdit('characterInfo');
+    });
+};
+
+/**
+ * Save related files information and update summary
+ */
+window.saveRelatedFilesInfo = function() {
+    const relatedFilesSelect = document.getElementById('relatedFiles');
+    const selectedOptions = Array.from(relatedFilesSelect.selectedOptions);
+    const relatedFileIds = selectedOptions.map(option => option.value).filter(id => id && id.trim() !== '');
+    
+    console.log('Saving related files:', relatedFileIds);
+    console.log('Selected options:', selectedOptions.map(option => ({ value: option.value, text: option.text })));
+    
+    const formData = new FormData();
+    relatedFileIds.forEach((id, index) => {
+        formData.append(`related_files[${index}]`, id);
+    });
+    
+    // Log what we're sending
+    console.log('Form data prepared for related files save');
+    for (let [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
+    }
+    
+    saveSectionData('relatedFilesInfo', formData, function() {
+        console.log('Related files saved successfully');
+        
+        // Update summary view on success
+        const summaryView = document.getElementById('relatedFilesInfoSummary');
+        
+        if (relatedFileIds.length > 0) {
+            let summaryHTML = '<div style="margin-top: 15px;">';
+            selectedOptions.forEach(option => {
+                const text = option.text;
+                summaryHTML += `
+                    <div class="related-file-entry-compact" style="margin-bottom: 12px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #17a2b8;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: center;">
+                            <div class="summary-item-inline">
+                                <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">CLIENT NAME:</span>
+                                <span class="summary-value" style="color: #212529; font-weight: 500;">${text}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            summaryHTML += '</div>';
+            summaryView.innerHTML = summaryHTML;
+        } else {
+            summaryView.innerHTML = '<div class="empty-state" style="margin-top: 15px;"><p>No related files added yet.</p></div>';
+        }
+        
+        // Return to summary view
+        cancelEdit('relatedFilesInfo');
     });
 };
 
@@ -5224,7 +5313,192 @@ document.addEventListener('DOMContentLoaded', function() {
             updateTestScoreValidation(selector, index);
         }
     });
+    
+    // Initialize Select2 for Related Files dropdown
+    initializeRelatedFilesSelect2();
+    
+    // Fallback: If Select2 fails to initialize, try again after a delay
+    setTimeout(function() {
+        const relatedFilesSelect = $('#relatedFiles');
+        if (relatedFilesSelect.length > 0 && !relatedFilesSelect.hasClass('select2-hidden-accessible')) {
+            console.log('Select2 not initialized, retrying...');
+            initializeRelatedFilesSelect2();
+        }
+    }, 1000);
+    
+    // Another fallback after longer delay
+    setTimeout(function() {
+        const relatedFilesSelect = $('#relatedFiles');
+        if (relatedFilesSelect.length > 0 && !relatedFilesSelect.hasClass('select2-hidden-accessible')) {
+            console.log('Select2 still not initialized, final retry...');
+            initializeRelatedFilesSelect2();
+        }
+    }, 3000);
 });
+
+/**
+ * Initialize Select2 for Related Files dropdown with AJAX search
+ */
+function initializeRelatedFilesSelect2() {
+    const relatedFilesSelect = $('#relatedFiles');
+    
+    console.log('initializeRelatedFilesSelect2 called');
+    console.log('Related Files Select element found:', relatedFilesSelect.length);
+    console.log('jQuery Select2 available:', typeof $.fn.select2 !== 'undefined');
+    console.log('Window config:', window.editClientConfig);
+    console.log('Current client ID:', window.currentClientId);
+    
+    if (relatedFilesSelect.length > 0 && typeof $.fn.select2 !== 'undefined') {
+        console.log('Initializing Related Files Select2...');
+        
+        relatedFilesSelect.select2({
+            multiple: true,
+            closeOnSelect: false,
+            placeholder: 'Search for clients by name or client ID',
+            allowClear: true,
+            minimumInputLength: 2,
+            ajax: {
+                url: window.editClientConfig?.searchPartnerRoute || '/admin/clients/search-partner',
+                type: 'POST',
+                dataType: 'json',
+                delay: 250,
+                headers: {
+                    'X-CSRF-TOKEN': window.editClientConfig?.csrfToken || $('meta[name="csrf-token"]').attr('content')
+                },
+                data: function (params) {
+                    console.log('Searching for:', params.term);
+                    return {
+                        query: params.term,
+                        exclude_client: window.currentClientId || null // Exclude current client
+                    };
+                },
+                processResults: function (data) {
+                    console.log('Search results received:', data);
+                    
+                    // Log debug information if available
+                    if (data.debug) {
+                        console.log('Debug info:', data.debug);
+                        console.log('Total clients in DB:', data.debug.total_clients);
+                        console.log('Filtered results:', data.debug.filtered_count);
+                    }
+                    
+                    // Log error if present
+                    if (data.error) {
+                        console.error('Search error from server:', data.error);
+                    }
+                    
+                    // Transform the response data to Select2 format
+                    if (data.partners && Array.isArray(data.partners)) {
+                        const results = data.partners.map(function(partner) {
+                            return {
+                                id: partner.id,
+                                text: partner.first_name + ' ' + partner.last_name + ' (' + (partner.client_id || 'No ID') + ')',
+                                email: partner.email,
+                                phone: partner.phone,
+                                client_id: partner.client_id
+                            };
+                        });
+                        
+                        console.log('Processed results:', results);
+                        return { results: results };
+                    }
+                    
+                    console.log('No results found');
+                    return { results: [] };
+                },
+                error: function(xhr, status, error) {
+                    console.error('Search error:', error, xhr.responseText);
+                    console.error('Status:', status);
+                    console.error('Response:', xhr.responseText);
+                    return { results: [] };
+                },
+                cache: true
+            },
+            templateResult: formatRelatedFileResult,
+            templateSelection: formatRelatedFileSelection
+        });
+        
+        // Debug: Log when Select2 is initialized
+        relatedFilesSelect.on('select2:open', function() {
+            console.log('Select2 dropdown opened');
+        });
+        
+        relatedFilesSelect.on('select2:select', function(e) {
+            console.log('Item selected:', e.params.data);
+        });
+        
+        // Add test function to window for debugging
+        window.testRelatedFilesSearch = function(query) {
+            console.log('Testing search with query:', query);
+            $.ajax({
+                url: window.editClientConfig?.searchPartnerRoute || '/admin/clients/search-partner',
+                type: 'POST',
+                dataType: 'json',
+                headers: {
+                    'X-CSRF-TOKEN': window.editClientConfig?.csrfToken || $('meta[name="csrf-token"]').attr('content')
+                },
+                data: {
+                    query: query || 'test',
+                    exclude_client: window.currentClientId || null
+                },
+                success: function(data) {
+                    console.log('Test search success:', data);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Test search error:', error, xhr.responseText);
+                }
+            });
+        };
+    } else {
+        console.error('Related Files Select2 initialization failed:', {
+            elementExists: relatedFilesSelect.length > 0,
+            select2Available: typeof $.fn.select2 !== 'undefined'
+        });
+    }
+}
+
+// Function to reinitialize Select2 when edit mode is toggled
+window.reinitializeRelatedFilesSelect2 = function() {
+    console.log('Reinitializing Related Files Select2...');
+    const relatedFilesSelect = $('#relatedFiles');
+    if (relatedFilesSelect.length > 0) {
+        // Destroy existing Select2 if it exists
+        if (relatedFilesSelect.hasClass('select2-hidden-accessible')) {
+            relatedFilesSelect.select2('destroy');
+        }
+        // Reinitialize
+        setTimeout(function() {
+            initializeRelatedFilesSelect2();
+        }, 100);
+    }
+};
+
+/**
+ * Format the display of search results in the dropdown
+ */
+function formatRelatedFileResult(partner) {
+    if (partner.loading) {
+        return partner.text;
+    }
+
+    var $container = $(
+        '<div class="select2-result-partner" style="padding: 8px;">' +
+        '<div class="select2-result-partner__title" style="font-weight: 600; color: #333; font-size: 14px;"></div>' +
+        '</div>'
+    );
+
+    // Show only name and client ID
+    $container.find('.select2-result-partner__title').text(partner.text);
+
+    return $container;
+}
+
+/**
+ * Format the display of selected items
+ */
+function formatRelatedFileSelection(partner) {
+    return partner.text || partner.id;
+}
 
 // English proficiency functions moved to separate file: english-proficiency.js
 

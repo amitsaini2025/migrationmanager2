@@ -451,11 +451,14 @@
      * Fetch place details from Google Places API
      */
     function fetchPlaceDetails(config, placeId, $wrapper) {
+        const description = $wrapper.find('.address-search-input').val();
+        
         $.ajax({
             url: config.detailsRoute,
             method: 'POST',
             data: { 
                 place_id: placeId,
+                description: description, // Include description for fallback
                 _token: config.csrfToken
             },
             success: function(response) {
@@ -463,48 +466,122 @@
                 if (response.result && response.result.address_components) {
                     populateAddressFields($wrapper, response.result);
                 } else {
-                    console.log('No address components in response');
+                    console.log('No address components in response - manual entry required');
+                    // Show a message that manual entry is needed
+                    showManualEntryMessage($wrapper);
                 }
             },
             error: function(xhr, status, error) {
                 console.error('Place details error:', error);
                 console.error('Response:', xhr.responseText);
+                showManualEntryMessage($wrapper);
             }
         });
+    }
+    
+    /**
+     * Show message that manual entry is needed
+     */
+    function showManualEntryMessage($wrapper) {
+        const message = $('<div class="autocomplete-message" style="color: #666; font-size: 12px; margin-top: 5px;">Please fill in address fields manually</div>');
+        $wrapper.find('.autocomplete-message').remove();
+        $wrapper.find('.address-search-container').append(message);
+        
+        // Remove message after 3 seconds
+        setTimeout(() => {
+            message.fadeOut(() => message.remove());
+        }, 3000);
     }
     
     /**
      * Populate address fields from Google Places response
      */
     function populateAddressFields($wrapper, result) {
+        console.log('🏠 Populating address fields with result:', result);
+        
         const components = result.address_components;
         
-        // Extract address components
+        // Extract address components with more comprehensive mapping
         let addressLine1 = '';
+        let addressLine2 = '';
         let suburb = '';
         let state = '';
         let postcode = '';
         let country = 'Australia';
         
+        // Log all components for debugging
+        console.log('📍 Address components:', components);
+        
         components.forEach(function(component) {
+            console.log('🔍 Processing component:', component.long_name, 'Types:', component.types);
+            
+            // Street number and route (traditional address)
             if (component.types.includes('street_number')) {
                 addressLine1 += component.long_name + ' ';
             }
             if (component.types.includes('route')) {
                 addressLine1 += component.long_name;
             }
-            if (component.types.includes('locality')) {
+            
+            // For airports and POIs, use the establishment name as address line 1
+            if (component.types.includes('establishment') || component.types.includes('point_of_interest')) {
+                addressLine1 = component.long_name;
+            }
+            
+            // Airport specific handling
+            if (component.types.includes('airport')) {
+                addressLine1 = component.long_name;
+            }
+            
+            // Suburb/Locality
+            if (component.types.includes('locality') || component.types.includes('sublocality')) {
                 suburb = component.long_name;
             }
+            
+            // State
             if (component.types.includes('administrative_area_level_1')) {
-                state = component.short_name;
+                state = component.short_name || component.long_name;
             }
+            
+            // Postcode
             if (component.types.includes('postal_code')) {
                 postcode = component.long_name;
             }
+            
+            // Country
             if (component.types.includes('country')) {
                 country = component.long_name;
             }
+        });
+        
+        // If we still don't have an address line 1, try to extract from formatted address
+        if (!addressLine1.trim() && result.formatted_address) {
+            const addressParts = result.formatted_address.split(',');
+            if (addressParts.length > 0) {
+                addressLine1 = addressParts[0].trim();
+            }
+        }
+        
+        // If suburb is still empty, try to get it from formatted address
+        if (!suburb && result.formatted_address) {
+            const addressParts = result.formatted_address.split(',');
+            // Usually suburb is the 2nd or 3rd part
+            for (let i = 1; i < addressParts.length && i < 4; i++) {
+                const part = addressParts[i].trim();
+                // Skip if it looks like a state or postcode
+                if (!part.match(/^\d{4}$/) && !part.includes('NSW') && !part.includes('VIC') && !part.includes('QLD') && !part.includes('SA') && !part.includes('WA') && !part.includes('TAS') && !part.includes('NT') && !part.includes('ACT')) {
+                    suburb = part;
+                    break;
+                }
+            }
+        }
+        
+        console.log('🏠 Final address mapping:', {
+            addressLine1: addressLine1.trim(),
+            suburb: suburb,
+            state: state,
+            postcode: postcode,
+            country: country
         });
         
         // Populate form fields
@@ -520,6 +597,16 @@
             $wrapper.find('input[name="regional_code[]"]').val(regionalInfo);
             console.log('🔢 Regional code auto-filled:', regionalInfo, 'from postcode:', postcode);
         }
+        
+        // Show success message
+        const successMessage = $('<div class="autocomplete-success" style="color: #28a745; font-size: 12px; margin-top: 5px;">✓ Address populated successfully</div>');
+        $wrapper.find('.autocomplete-success').remove();
+        $wrapper.find('.address-search-container').append(successMessage);
+        
+        // Remove message after 3 seconds
+        setTimeout(() => {
+            successMessage.fadeOut(() => successMessage.remove());
+        }, 3000);
     }
     
     /**
@@ -534,79 +621,9 @@
     }
     
     /**
-     * Add another address entry
+     * Note: addAnotherAddress function is now handled by edit-client.js
+     * This function has been removed to avoid conflicts
      */
-    window.addAnotherAddress = function() {
-        const $container = $('#addresses-container');
-        const $template = $('.address-entry-wrapper:last').clone();
-        
-        const config = getAutocompleteConfig();
-        window.addressIndex = (window.addressIndex || config.addressCount) + 1;
-        
-        // Update IDs and names
-        $template.removeClass('address-template');
-        $template.attr('data-address-index', window.addressIndex);
-        $template.find('input, label').each(function() {
-            const $this = $(this);
-            const id = $this.attr('id');
-            const name = $this.attr('name');
-            
-            if (id) {
-                $this.attr('id', id.replace(/\d+$/, window.addressIndex));
-            }
-            if (name) {
-                $this.attr('name', name);
-            }
-        });
-        
-        // Clear values
-        $template.find('input[type="text"]').val('');
-        $template.find('input[name="country[]"]').val('Australia');
-        $template.find('input[name="address_id[]"]').val('');
-        
-        // Add remove button
-        $template.prepend('<button type="button" class="remove-address-btn" onclick="removeAddressEntry(this)">&times;</button>');
-        
-        // Insert inside the container (at the end)
-        $container.append($template);
-        
-        // Initialize date picker for new fields using daterangepicker
-        try {
-            if (typeof $.fn.daterangepicker !== 'undefined') {
-                $template.find('.date-picker').each(function() {
-                    const $this = $(this);
-                    
-                    $this.daterangepicker({
-                        singleDatePicker: true,
-                        showDropdowns: true,
-                        autoUpdateInput: false,
-                        locale: {
-                            format: 'DD/MM/YYYY',
-                            applyLabel: 'Apply',
-                            cancelLabel: 'Cancel',
-                            daysOfWeek: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
-                            monthNames: [
-                                'January', 'February', 'March', 'April', 'May', 'June',
-                                'July', 'August', 'September', 'October', 'November', 'December'
-                            ],
-                            firstDay: 1
-                        },
-                        minDate: '01/01/1000',
-                        minYear: 1000,
-                        maxYear: parseInt(moment().format('YYYY')) + 50
-                    }).on('apply.daterangepicker', function(ev, picker) {
-                        $this.val(picker.startDate.format('DD/MM/YYYY'));
-                    }).on('cancel.daterangepicker', function(ev, picker) {
-                        $this.val('');
-                    });
-                });
-                
-                console.log('✅ Date pickers initialized for new address');
-            }
-        } catch(e) {
-            console.warn('⚠️ Datepicker failed for new address field:', e);
-        }
-    };
     
     /**
      * Remove address entry

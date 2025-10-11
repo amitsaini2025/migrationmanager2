@@ -140,6 +140,25 @@
 
 @push('scripts')
 @once
-<script src="{{ asset('js/dashboard.js') }}"></script>
+<script>
+    // Define dashboard routes and data before loading the main script
+    window.dashboardRoutes = {
+        dashboard: "{{ route('admin.dashboard') }}",
+        updateStage: "{{ route('admin.dashboard.update-stage') }}",
+        columnPreferences: "{{ route('admin.dashboard.column-preferences') }}",
+        extendDeadline: "{{ route('admin.dashboard.extend-deadline') }}",
+        updateTaskCompleted: "{{ route('admin.dashboard.update-task-completed') }}"
+    };
+    
+    window.dashboardData = {
+        visibleColumns: {!! json_encode($visibleColumns) !!}
+    };
+    
+    // Error handling for missing routes
+    if (typeof window.dashboardRoutes === 'undefined') {
+        console.error('Dashboard routes not defined');
+    }
+</script>
+<script src="{{ asset('js/dashboard-optimized.js') }}"></script>
 @endonce
 @endpush

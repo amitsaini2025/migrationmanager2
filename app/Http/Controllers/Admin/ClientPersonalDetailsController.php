@@ -120,48 +120,225 @@ class ClientPersonalDetailsController extends Controller
         return response()->json($data);
     }
 
-    // Method 1: Search address using Google Places
+    // Method 1: Search address using Google Places with fallback
     public function searchAddressFull(Request $request)
     {
         $query = $request->input('query');
         $apiKey = env('GOOGLE_MAPS_API_KEY');
-        $url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json';
         
-        $params = http_build_query([
-            'input' => $query,
-            'key' => $apiKey
-        ]);
+        // Try Google Places API first
+        if ($apiKey) {
+            $url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json';
+            
+            $params = http_build_query([
+                'input' => $query,
+                'key' => $apiKey,
+                'types' => 'address',
+                'components' => 'country:au' // Restrict to Australia
+            ]);
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url . '?' . $params);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            $data = json_decode($response, true);
+            
+            // Check if Google API is working
+            if ($httpCode === 200 && isset($data['status']) && $data['status'] !== 'REQUEST_DENIED') {
+                return response()->json($data);
+            }
+        }
         
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url . '?' . $params);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        $response = curl_exec($ch);
-        curl_close($ch);
-        
-        $data = json_decode($response, true);
-        return response()->json($data);
+        // Fallback: Use free geocoding service for basic suggestions
+        return $this->getFallbackAddressSuggestions($query);
+    }
+    
+    /**
+     * Fallback address suggestions using free service
+     */
+    private function getFallbackAddressSuggestions($query)
+    {
+        try {
+            // Use OpenStreetMap Nominatim API (free)
+            $url = 'https://nominatim.openstreetmap.org/search';
+            $params = http_build_query([
+                'q' => $query . ', Australia',
+                'format' => 'json',
+                'limit' => 5,
+                'addressdetails' => 1,
+                'countrycodes' => 'au'
+            ]);
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url . '?' . $params);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'Migration Manager CRM');
+            $response = curl_exec($ch);
+            curl_close($ch);
+            
+            $results = json_decode($response, true);
+            
+            // Convert to Google Places API format for compatibility
+            $predictions = [];
+            if (is_array($results)) {
+                foreach ($results as $result) {
+                    $predictions[] = [
+                        'place_id' => 'fallback_' . md5($result['display_name']),
+                        'description' => $result['display_name'],
+                        'formatted_address' => $result['display_name']
+                    ];
+                }
+            }
+            
+            return response()->json([
+                'status' => 'OK',
+                'predictions' => $predictions
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'ERROR',
+                'error_message' => 'Address service temporarily unavailable. Please enter address manually.',
+                'predictions' => []
+            ]);
+        }
     }
 
-    // Method 2: Get place details
+    // Method 2: Get place details with fallback
     public function getPlaceDetails(Request $request)
     {
         $placeId = $request->input('place_id');
         $apiKey = env('GOOGLE_MAPS_API_KEY');
-        $url = 'https://maps.googleapis.com/maps/api/place/details/json';
         
-        $params = http_build_query([
-            'place_id' => $placeId,
-            'key' => $apiKey
+        // Handle fallback place IDs
+        if (strpos($placeId, 'fallback_') === 0) {
+            return $this->getFallbackPlaceDetails($request);
+        }
+        
+        // Try Google Places API
+        if ($apiKey) {
+            $url = 'https://maps.googleapis.com/maps/api/place/details/json';
+            
+            $params = http_build_query([
+                'place_id' => $placeId,
+                'key' => $apiKey,
+                'fields' => 'address_components,formatted_address'
+            ]);
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url . '?' . $params);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            $data = json_decode($response, true);
+            
+            if ($httpCode === 200 && isset($data['status']) && $data['status'] !== 'REQUEST_DENIED') {
+                return response()->json($data);
+            }
+        }
+        
+        // Fallback: Return basic structure for manual entry
+        return response()->json([
+            'status' => 'OK',
+            'result' => [
+                'formatted_address' => $request->input('description', ''),
+                'address_components' => []
+            ]
         ]);
+    }
+    
+    /**
+     * Handle fallback place details
+     */
+    private function getFallbackPlaceDetails($request)
+    {
+        $description = $request->input('description', '');
         
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url . '?' . $params);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        $response = curl_exec($ch);
-        curl_close($ch);
+        // Try to extract basic address components from the description
+        $parts = explode(', ', $description);
+        $addressComponents = [];
         
-        $data = json_decode($response, true);
-        return response()->json($data);
+        if (count($parts) >= 3) {
+            // More intelligent parsing for Australian addresses
+            $addressComponents[] = [
+                'long_name' => $parts[0],
+                'short_name' => $parts[0],
+                'types' => ['establishment', 'point_of_interest'] // Mark as establishment for airports/POIs
+            ];
+            
+            // Find suburb (usually one of the middle parts that's not a number)
+            $suburb = '';
+            for ($i = 1; $i < count($parts) - 2; $i++) {
+                if (!is_numeric($parts[$i]) && !in_array($parts[$i], ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'])) {
+                    $suburb = $parts[$i];
+                    break;
+                }
+            }
+            
+            if ($suburb) {
+                $addressComponents[] = [
+                    'long_name' => $suburb,
+                    'short_name' => $suburb,
+                    'types' => ['locality']
+                ];
+            }
+            
+            // Find state
+            $state = '';
+            foreach ($parts as $part) {
+                if (in_array($part, ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'])) {
+                    $state = $part;
+                    break;
+                }
+            }
+            
+            if ($state) {
+                $addressComponents[] = [
+                    'long_name' => $state,
+                    'short_name' => $state,
+                    'types' => ['administrative_area_level_1']
+                ];
+            }
+            
+            // Find postcode (usually a 4-digit number)
+            $postcode = '';
+            foreach ($parts as $part) {
+                if (is_numeric($part) && strlen($part) == 4) {
+                    $postcode = $part;
+                    break;
+                }
+            }
+            
+            if ($postcode) {
+                $addressComponents[] = [
+                    'long_name' => $postcode,
+                    'short_name' => $postcode,
+                    'types' => ['postal_code']
+                ];
+            }
+            
+            $addressComponents[] = [
+                'long_name' => 'Australia',
+                'short_name' => 'AU',
+                'types' => ['country']
+            ];
+        }
+        
+        return response()->json([
+            'status' => 'OK',
+            'result' => [
+                'formatted_address' => $description,
+                'address_components' => $addressComponents
+            ]
+        ]);
     }
 
     // Method 3: Helper to combine address
@@ -213,31 +390,99 @@ class ClientPersonalDetailsController extends Controller
     //Seach Client Relationship
     public function searchPartner(Request $request)
     {
-        // Validate the incoming query
-        $request->validate([
-            'query' => 'required|string|min:3|max:255',
-        ]);
+        try {
+            // Validate the incoming query
+            $request->validate([
+                'query' => 'required|string|min:2|max:255',
+            ]);
 
-        $query = $request->input('query');
+            $query = $request->input('query');
+            $excludeClient = $request->input('exclude_client');
 
-        // Search the admins table for matching records
-        $partners = Admin::where('role', '=', '7') // Assuming role 7 is for clients
-            ->where(function ($q) use ($query) {
-                $q->where('email', 'like', '%' . $query . '%')
-                    ->orWhere('first_name', 'like', '%' . $query . '%')
-                    ->orWhere('last_name', 'like', '%' . $query . '%')
-                    ->orWhere('phone', 'like', '%' . $query . '%')
-                    ->orWhere('client_id', 'like', '%' . $query . '%');
-            })
-            ->where('id', '!=', Auth::user()->id) // Exclude the current user
-            ->select('id', 'email', 'first_name', 'last_name', 'phone', 'client_id')
-            ->limit(10) // Limit results to prevent overload
+            // Simplified search - just get all clients first, then filter
+            $allClients = Admin::where('role', '7')
+                ->select('id', 'email', 'first_name', 'last_name', 'phone', 'client_id')
+                ->get();
+
+            // Filter results in PHP for better debugging
+            $filteredClients = $allClients->filter(function($client) use ($query, $excludeClient) {
+                // Check if client matches search query
+                $matches = false;
+                $searchTerm = strtolower($query);
+                
+                if (strpos(strtolower($client->first_name), $searchTerm) !== false ||
+                    strpos(strtolower($client->last_name), $searchTerm) !== false ||
+                    strpos(strtolower($client->email), $searchTerm) !== false ||
+                    strpos(strtolower($client->phone), $searchTerm) !== false ||
+                    strpos(strtolower($client->client_id), $searchTerm) !== false) {
+                    $matches = true;
+                }
+                
+                // Exclude current client if provided
+                if ($excludeClient && $client->id == $excludeClient) {
+                    $matches = false;
+                }
+                
+                return $matches;
+            });
+
+            // Convert to array and limit results
+            $partners = $filteredClients->take(20)->values()->toArray();
+
+            // Return JSON response with consistent structure
+            return response()->json([
+                'partners' => $partners,
+                'debug' => [
+                    'query' => $query,
+                    'exclude_client' => $excludeClient,
+                    'total_clients' => $allClients->count(),
+                    'filtered_count' => count($partners)
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'partners' => [],
+                'error' => $e->getMessage(),
+                'debug' => [
+                    'query' => $request->input('query', ''),
+                    'exclude_client' => $request->input('exclude_client', '')
+                ]
+            ], 200);
+        }
+    }
+
+    // Test method to debug search functionality
+    public function searchPartnerTest(Request $request)
+    {
+        $query = $request->input('query', 'vip');
+        
+        // Get total clients count
+        $totalClients = Admin::where('role', '7')->count();
+        
+        // Get sample clients
+        $sampleClients = Admin::where('role', '7')
+            ->select('id', 'first_name', 'last_name', 'email', 'phone', 'client_id')
+            ->limit(5)
             ->get();
-
-        // Return JSON response with consistent structure
+        
+        // Test search
+        $searchResults = Admin::where('role', '7')
+            ->where(function ($q) use ($query) {
+                $q->where('first_name', 'like', '%' . $query . '%')
+                  ->orWhere('last_name', 'like', '%' . $query . '%')
+                  ->orWhere('email', 'like', '%' . $query . '%');
+            })
+            ->select('id', 'first_name', 'last_name', 'email', 'phone', 'client_id')
+            ->get();
+        
         return response()->json([
-            'partners' => $partners->toArray(),
-        ], 200);
+            'total_clients' => $totalClients,
+            'sample_clients' => $sampleClients->toArray(),
+            'search_query' => $query,
+            'search_results' => $searchResults->toArray(),
+            'search_count' => $searchResults->count()
+        ]);
     }
 
     public function fetchClientMatterAssignee(Request $request)
@@ -1204,6 +1449,8 @@ class ClientPersonalDetailsController extends Controller
                     return $this->saveOccupationInfoSection($request, $client);
                 case 'test_scores':
                     return $this->saveTestScoreInfoSection($request, $client);
+                case 'relatedFilesInfo':
+                    return $this->saveRelatedFilesInfoSection($request, $client);
                 default:
                     return response()->json([
                         'success' => false,
@@ -2344,6 +2591,201 @@ class ClientPersonalDetailsController extends Controller
                 'success' => false,
                 'message' => 'Error saving test score information: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    private function saveRelatedFilesInfoSection($request, $client)
+    {
+        try {
+            $relatedFiles = $request->input('related_files', []);
+            
+            // Log what we received
+            \Log::info('Save related files received data', [
+                'clientId' => $client->id,
+                'rawRelatedFiles' => $relatedFiles,
+                'allRequestData' => $request->all()
+            ]);
+            
+            // Convert array to comma-separated string
+            $relatedFilesString = '';
+            if (!empty($relatedFiles) && is_array($relatedFiles)) {
+                // Filter out empty values and trim
+                $relatedFiles = array_filter(
+                    array_map('trim', $relatedFiles),
+                    function($id) {
+                        return !empty($id);
+                    }
+                );
+                $relatedFilesString = implode(',', $relatedFiles);
+            }
+
+            // Log what we're saving
+            \Log::info('Saving related files', [
+                'clientId' => $client->id,
+                'relatedFilesArray' => $relatedFiles,
+                'relatedFilesString' => $relatedFilesString
+            ]);
+
+            // Handle bidirectional relationships BEFORE updating current client
+            $this->updateBidirectionalRelatedFiles($client->id, $relatedFiles);
+
+            // Update the client's related_files field AFTER handling bidirectional relationships
+            $client->related_files = $relatedFilesString;
+            $client->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Related files saved successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in saveRelatedFilesInfoSection: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error saving related files: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    private function updateBidirectionalRelatedFiles($currentClientId, $newRelatedFileIds)
+    {
+        try {
+            // Get current related files from database BEFORE any updates
+            $currentClient = Admin::find($currentClientId);
+            $currentRelatedFiles = [];
+            
+            if ($currentClient && !empty($currentClient->related_files)) {
+                // Split by comma and filter out empty values
+                $currentRelatedFiles = array_filter(
+                    array_map('trim', explode(',', $currentClient->related_files)),
+                    function($id) {
+                        return !empty($id);
+                    }
+                );
+            }
+
+            // Convert new related file IDs to strings and filter empty values
+            $newRelatedFileIds = array_filter(
+                array_map('strval', $newRelatedFileIds),
+                function($id) {
+                    return !empty($id);
+                }
+            );
+
+            // Convert current related files to strings for comparison
+            $currentRelatedFiles = array_map('strval', $currentRelatedFiles);
+
+            // Find files that were removed (exist in current but not in new)
+            $removedFiles = array_diff($currentRelatedFiles, $newRelatedFileIds);
+
+            // Log for debugging
+            \Log::info('Bidirectional update debug', [
+                'currentClientId' => $currentClientId,
+                'currentRelatedFiles' => $currentRelatedFiles,
+                'newRelatedFileIds' => $newRelatedFileIds,
+                'removedFiles' => $removedFiles,
+                'example_scenario' => 'If Client A (36464) removes Client B (36465), Client B should remove Client A'
+            ]);
+
+            // Remove current client from removed files' related_files
+            foreach ($removedFiles as $removedFileId) {
+                if (!empty($removedFileId)) {
+                    $relatedClient = Admin::find($removedFileId);
+                    if ($relatedClient) {
+                        $relatedFiles = [];
+                        if (!empty($relatedClient->related_files)) {
+                            // Split and filter existing related files
+                            $relatedFiles = array_filter(
+                                array_map('trim', explode(',', $relatedClient->related_files)),
+                                function($id) {
+                                    return !empty($id);
+                                }
+                            );
+                        }
+                        
+                        // Remove current client from the list
+                        $relatedFiles = array_filter($relatedFiles, function($id) use ($currentClientId) {
+                            return $id != $currentClientId;
+                        });
+                        
+                        // Update the related client's related_files
+                        $relatedClient->related_files = implode(',', $relatedFiles);
+                        $relatedClient->save();
+                        
+                        \Log::info('Removed client from related files', [
+                            'relatedClientId' => $removedFileId,
+                            'removedClientId' => $currentClientId,
+                            'newRelatedFiles' => $relatedClient->related_files
+                        ]);
+                    }
+                }
+            }
+
+            // Add current client to new related files
+            foreach ($newRelatedFileIds as $relatedFileId) {
+                if (!empty($relatedFileId)) {
+                    $relatedClient = Admin::find($relatedFileId);
+                    if ($relatedClient) {
+                        $existingRelatedFiles = [];
+                        if (!empty($relatedClient->related_files)) {
+                            // Split and filter existing related files
+                            $existingRelatedFiles = array_filter(
+                                array_map('trim', explode(',', $relatedClient->related_files)),
+                                function($id) {
+                                    return !empty($id);
+                                }
+                            );
+                        }
+                        
+                        // Add current client if not already present
+                        if (!in_array($currentClientId, $existingRelatedFiles)) {
+                            $existingRelatedFiles[] = $currentClientId;
+                            $relatedClient->related_files = implode(',', $existingRelatedFiles);
+                            $relatedClient->save();
+                            
+                            \Log::info('Added client to related files', [
+                                'relatedClientId' => $relatedFileId,
+                                'addedClientId' => $currentClientId,
+                                'newRelatedFiles' => $relatedClient->related_files
+                            ]);
+                        }
+                    }
+                }
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Error updating bidirectional related files: ' . $e->getMessage());
+        }
+    }
+
+    // Test method to debug specific scenario
+    public function testBidirectionalRemoval(Request $request)
+    {
+        try {
+            $clientAId = $request->input('client_a_id', '36464');
+            $clientBId = $request->input('client_b_id', '36465');
+            
+            // Get current state
+            $clientA = Admin::find($clientAId);
+            $clientB = Admin::find($clientBId);
+            
+            $result = [
+                'client_a' => [
+                    'id' => $clientAId,
+                    'name' => $clientA ? $clientA->first_name . ' ' . $clientA->last_name : 'Not found',
+                    'related_files' => $clientA ? $clientA->related_files : 'Not found'
+                ],
+                'client_b' => [
+                    'id' => $clientBId,
+                    'name' => $clientB ? $clientB->first_name . ' ' . $clientB->last_name : 'Not found',
+                    'related_files' => $clientB ? $clientB->related_files : 'Not found'
+                ]
+            ];
+            
+            return response()->json($result);
+            
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 }

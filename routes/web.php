@@ -525,6 +525,8 @@ Route::prefix('admin')->group(function() {
 
 
         Route::post('/admin/clients/search-partner', 'Admin\ClientPersonalDetailsController@searchPartner')->name('admin.clients.searchPartner');
+        Route::get('/admin/clients/search-partner-test', 'Admin\ClientPersonalDetailsController@searchPartnerTest')->name('admin.clients.searchPartnerTest');
+        Route::get('/admin/clients/test-bidirectional', 'Admin\ClientPersonalDetailsController@testBidirectionalRemoval')->name('admin.clients.testBidirectional');
         Route::post('/admin/clients/save-relationship', 'Admin\ClientPersonalDetailsController@saveRelationship')->name('admin.clients.saveRelationship');
 
 

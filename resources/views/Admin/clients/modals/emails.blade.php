@@ -155,59 +155,6 @@
 	</div>
 </div>
 
-<!-- Upload Mail Modal -->
-<div class="modal fade custom_modal" id="uploadmail" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
-	<div class="modal-dialog modal-lg">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h5 class="modal-title" id="paymentscheModalLabel">Upload Mail:</h5>
-				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-					<span aria-hidden="true">&times;</span>
-				</button>
-			</div>
-			<div class="modal-body">
-			<form method="post" action="{{URL::to('/admin/upload-mail')}}" name="uploadmail"  autocomplete="off" enctype="multipart/form-data">
-				@csrf
-				<input type="hidden" name="client_id" id="maclient_id">
-					<div class="row">
-						<div class="col-md-12">
-							<div class="form-group">
-								<label for="">From <span class="span_req">*</span></label>
-								<input type="text" data-valid="required" name="from" class="form-control">
-							</div>
-						</div>
-						<div class="col-md-12">
-							<div class="form-group">
-								<label for="">To <span class="span_req">*</span></label>
-								<input type="text" data-valid="required" name="to" class="form-control">
-							</div>
-						</div>
-						<div class="col-md-12">
-							<div class="form-group">
-								<label for="">Subject <span class="span_req">*</span></label>
-								<input type="text" data-valid="required" name="subject" class="form-control">
-							</div>
-						</div>
-						<div class="col-12 col-md-12 col-lg-12">
-							<div class="form-group">
-								<label for="message">Message <span class="span_req">*</span></label>
-								<textarea data-valid="required" class="summernote-simple selectedmessage" name="message"></textarea>
-
-							</div>
-						</div>
-
-                        <div class="col-4 col-md-4 col-lg-4">
-							<div class="form-group">
-								<button onclick="customValidate('uploadmail')" class="btn btn-info" type="button">Create</button>
-							</div>
-						</div>
-					</div>
-				</form>
-			</div>
-		</div>
-	</div>
-</div>
-
 <!-- Upload Inbox Mail And Fetch Content Modal -->
 <div class="modal fade custom_modal" id="uploadAndFetchMailModel" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
 	<div class="modal-dialog modal-lg">

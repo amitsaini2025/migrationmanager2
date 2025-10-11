@@ -31,7 +31,7 @@
 
 						<input type="file" class="d-none" id="selectfile" multiple />
 					</div>
-					</div class="col-md-4">
+					<div class="col-md-4">
 						<div id="showThumb">
 							<ul>
 							</ul>
@@ -121,29 +121,6 @@
 				</form>
 			</div>
 		</div>
-	</div>
-</div>
-
-<!-- Upload Agreement (PDF) Modal -->
-<div class="modal fade custom_modal" id="agreementModal" tabindex="-1" role="dialog" aria-labelledby="agreementModalLabel" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
-		<form id="agreementUploadForm" enctype="multipart/form-data">
-			<input type="hidden" name="clientmatterid" id="agreemnt_clientmatterid" value="">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h5 class="modal-title" id="agreementModalLabel">Upload Agreement (PDF)</h5>
-					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-						<span aria-hidden="true">&times;</span>
-					</button>
-				</div>
-				<div class="modal-body">
-					<input type="file" name="agreement_doc" class="form-control" accept=".pdf" required>
-				</div>
-				<div class="modal-footer">
-					<button type="submit" class="btn btn-primary">Upload</button>
-				</div>
-			</div>
-		</form>
 	</div>
 </div>
 

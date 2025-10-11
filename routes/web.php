@@ -156,6 +156,7 @@ Route::prefix('admin')->group(function() {
 		/*---------- Clients Management ----------*/
 		Route::get('/clients', 'Admin\ClientsController@index')->name('admin.clients.index');
         Route::get('/clientsmatterslist', 'Admin\ClientsController@clientsmatterslist')->name('admin.clients.clientsmatterslist');
+        Route::get('/clientsemaillist', 'Admin\ClientsController@clientsemaillist')->name('admin.clients.clientsemaillist');
 		Route::post('/clients/store', 'Admin\ClientsController@store')->name('admin.clients.store');
 		Route::get('/clients/edit/{id}', 'Admin\ClientsController@edit')->name('admin.clients.edit');
 		Route::post('/clients/edit', 'Admin\ClientsController@edit')->name('admin.clients.update');
@@ -213,8 +214,25 @@ Route::prefix('admin')->group(function() {
 		Route::get('/get-notes', 'Admin\ClientsController@getnotes')->name('admin.clients.getnotes');
 		Route::get('/convertapplication', 'Admin\ClientsController@convertapplication')->name('admin.clients.convertapplication');
 		Route::get('/deleteservices', 'Admin\ClientsController@deleteservices')->name('admin.clients.deleteservices');
-        Route::get('/deletedocs', 'Admin\ClientsController@deletedocs')->name('admin.clients.deletedocs');
-		Route::post('/renamedoc', 'Admin\ClientsController@renamedoc')->name('admin.clients.renamedoc');
+        
+        /*---------- Client Documents Management (NEW CONTROLLER) ----------*/
+        Route::post('/documents/add-edu-checklist', 'Admin\Clients\ClientDocumentsController@addedudocchecklist')->name('admin.clients.documents.addedudocchecklist');
+        Route::post('/documents/upload-edu-document', 'Admin\Clients\ClientDocumentsController@uploadedudocument')->name('admin.clients.documents.uploadedudocument');
+        Route::post('/documents/add-visa-checklist', 'Admin\Clients\ClientDocumentsController@addvisadocchecklist')->name('admin.clients.documents.addvisadocchecklist');
+        Route::post('/documents/upload-visa-document', 'Admin\Clients\ClientDocumentsController@uploadvisadocument')->name('admin.clients.documents.uploadvisadocument');
+        Route::post('/documents/rename', 'Admin\Clients\ClientDocumentsController@renamedoc')->name('admin.clients.documents.renamedoc');
+        Route::get('/documents/delete', 'Admin\Clients\ClientDocumentsController@deletedocs')->name('admin.clients.documents.deletedocs');
+        Route::post('/documents/verify', 'Admin\Clients\ClientDocumentsController@verifydoc')->name('admin.clients.documents.verifydoc');
+        Route::get('/documents/get-visa-checklist', 'Admin\Clients\ClientDocumentsController@getvisachecklist')->name('admin.clients.documents.getvisachecklist');
+        Route::post('/documents/not-used', 'Admin\Clients\ClientDocumentsController@notuseddoc')->name('admin.clients.documents.notuseddoc');
+        Route::post('/documents/rename-checklist', 'Admin\Clients\ClientDocumentsController@renamechecklistdoc')->name('admin.clients.documents.renamechecklistdoc');
+        Route::post('/documents/back-to-doc', 'Admin\Clients\ClientDocumentsController@backtodoc')->name('admin.clients.documents.backtodoc');
+        Route::post('/documents/download', 'Admin\Clients\ClientDocumentsController@download_document')->name('admin.clients.documents.download');
+        Route::post('/documents/add-personal-category', 'Admin\Clients\ClientDocumentsController@addPersonalDocCategory')->name('admin.clients.documents.addPersonalDocCategory');
+        Route::post('/documents/update-personal-category', 'Admin\Clients\ClientDocumentsController@updatePersonalDocCategory')->name('admin.clients.documents.updatePersonalDocCategory');
+        Route::post('/documents/add-visa-category', 'Admin\Clients\ClientDocumentsController@addVisaDocCategory')->name('admin.clients.documents.addVisaDocCategory');
+        Route::post('/documents/update-visa-category', 'Admin\Clients\ClientDocumentsController@updateVisaDocCategory')->name('admin.clients.documents.updateVisaDocCategory');
+        
 		Route::post('/savetoapplication', 'Admin\ClientsController@savetoapplication');
 
 		/*---------- Branch Management ----------*/

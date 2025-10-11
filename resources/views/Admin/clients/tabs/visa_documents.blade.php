@@ -134,7 +134,7 @@
                                                                 <a class="renamechecklist" data-id="<?= $fetch->id ?>" href="javascript:;" style="display: none;"></a>
                                                                 <a class="renamedoc" data-id="<?= $fetch->id ?>" href="javascript:;" style="display: none;"></a>
                                                                 <a class="download-file" data-filelink="<?= $fetch->myfile ?>" data-filename="<?= $fetch->myfile_key ?>" href="#" style="display: none;"></a>
-                                                                <a class="notuseddoc" data-id="<?= $fetch->id ?>" data-doctype="visa" data-href="notuseddoc" href="javascript:;" style="display: none;"></a>
+                                                                <a class="notuseddoc" data-id="<?= $fetch->id ?>" data-doctype="visa" data-href="documents/not-used" href="javascript:;" style="display: none;"></a>
                                                             <?php endif; ?>
                                                         </td>
                                                     </tr>

@@ -73,9 +73,14 @@ use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
 use App\Mail\HubdocInvoiceMail;
 use App\Services\SmsService;
+use App\Traits\ClientAuthorization;
+use App\Traits\ClientHelpers;
+use App\Traits\ClientQueries;
 
 class ClientsController extends Controller
 {
+    use ClientAuthorization, ClientHelpers, ClientQueries;
+    
     protected $openAiClient;
     protected $smsService;
     /**
@@ -103,97 +108,29 @@ class ClientsController extends Controller
      * @return \Illuminate\Http\Response
     */
     public function index(Request $request)
-	{  //dd($request->all());
-		//check authorization start
-        /* if($check)
-        {
-            return Redirect::to('/admin/dashboard')->with('error',config('constants.unauthorized'));
-        } */
-		//check authorization end
-	    $roles = \App\Models\UserRole::find(Auth::user()->role);
-		$newarray = json_decode($roles->module_access);
-		$module_access = (array) $newarray;
-		if(array_key_exists('20',  $module_access)) {
-		    $query 		= Admin::where('is_archived', '=', '0')->where('role', '=', '7')->where('type', '=', 'client') ->whereNull('is_deleted');
-
-            $totalData 	= $query->count();	//for all data
-            //dd($totalData);
-            if ($request->has('client_id'))
-            {
-                $client_id 		= 	$request->input('client_id');
-                if(trim($client_id) != '')
-                {
-                    $query->where('client_id', '=', $client_id);
-                }
-            }
-
-            if ($request->has('type'))
-            {
-                $type 		= 	$request->input('type');
-                if(trim($type) != '')
-                {
-                    $query->where('type', 'LIKE', $type);
-                }
-            }
-
-            if ($request->has('name')) {
-                $name = trim($request->input('name'));
-                if ($name != '') {
-                    $query->where(function ($q) use ($name) {
-                        $q->where('first_name', 'LIKE', '%' . $name . '%')
-                          ->orWhere('last_name', 'LIKE', '%' . $name . '%')
-                          ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$name}%"]);
-                    });
-                }
-            }
-
-            if ($request->has('email'))
-            {
-                $email 		= 	$request->input('email');
-                if(trim($email) != '')
-                {
-                    $query->where('email', $email);
-                }
-            }
-
-            /*if ($request->has('phone'))
-            {
-                $phone 		= 	$request->input('phone');
-                if(trim($phone) != '')
-                {
-                    //$query->where('phone', $phone);
-                    $query->where('phone', 'LIKE','%'.$phone.'%')->orwhere('att_phone', 'LIKE','%'.$phone.'%');
-                }
-            }*/
-
-            if ($request->has('phone')) {
-                $phone = trim($request->input('phone'));
-                if ($phone != '') {
-                    $query->where(function ($q) use ($phone) {
-                        $q->where('phone', 'LIKE', '%' . $phone . '%')
-                          ->orWhere('country_code', 'LIKE', '%' . $phone . '%')
-                          ->orWhereRaw("CONCAT(country_code, phone) LIKE ?", ["%{$phone}%"]);
-                    });
-                }
-            }
-
-            //$lists		= $query->toSql(); //dd($lists);
-            $lists		= $query->sortable(['id' => 'desc'])->paginate(20);
-
+	{
+		// Check authorization using trait
+		if ($this->hasModuleAccess('20')) {
+		    $query = $this->getBaseClientQuery();
+            $totalData = $query->count();
+            
+            // Apply filters using trait
+            $query = $this->applyClientFilters($query, $request);
+            
+            $lists = $query->sortable(['id' => 'desc'])->paginate(20);
 		} else {
-		    $query 		= Admin::where('id', '=', '')->where('role', '=', '7')->whereNull('is_deleted');
-		    $lists		= $query->sortable(['id' => 'desc'])->paginate(20);
+		    $query = $this->getEmptyClientQuery();
+		    $lists = $query->sortable(['id' => 'desc'])->paginate(20);
 		    $totalData = 0;
 		}
+		
 		return view('Admin.clients.index', compact(['lists', 'totalData']));
     }
 
     public function clientsmatterslist(Request $request)
-    {   //dd($request->all());
-        $roles = \App\Models\UserRole::find(Auth::user()->role);
-        $newarray = json_decode($roles->module_access);
-        $module_access = (array) $newarray;
-        if(array_key_exists('20',  $module_access)) {
+    {
+        // Check authorization using trait
+        if ($this->hasModuleAccess('20')) {
             $sortField = $request->get('sort', 'cm.id');
             $sortDirection = $request->get('direction', 'desc');
 
@@ -257,10 +194,8 @@ class ClientsController extends Controller
 
     public function clientsemaillist(Request $request)
     {
-        $roles = \App\Models\UserRole::find(Auth::user()->role);
-        $newarray = json_decode($roles->module_access);
-        $module_access = (array) $newarray;
-        if(array_key_exists('20',  $module_access)) {
+        // Check authorization using trait
+        if ($this->hasModuleAccess('20')) {
             $sortField = $request->get('sort', 'id');
             $sortDirection = $request->get('direction', 'desc');
 
@@ -1250,21 +1185,7 @@ class ClientsController extends Controller
         }
     }
 
-    public function getNextCounter($currentCounter) {
-        // Convert current counter to an integer
-        $counter = intval($currentCounter);
-
-        // Increment the counter
-        $counter++;
-
-        // If the counter exceeds 99999, reset it to 1
-        if ($counter > 99999) {
-            $counter = 1;
-        }
-
-        // Format the counter as a 5-digit number with leading zeros
-        return str_pad($counter, 5, '0', STR_PAD_LEFT);
-    }
+    // getNextCounter method moved to ClientHelpers trait
 
 	/*public function downloadpdf(Request $request, $id = NULL){
 	    $fetchd = \App\Models\Document::where('id',$id)->first();

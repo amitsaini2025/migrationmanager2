@@ -644,6 +644,10 @@ Route::prefix('admin')->group(function() {
 		//Toggle client portal status
 		Route::post('/clients/toggle-client-portal', 'Admin\ClientsController@toggleClientPortal')->name('admin.clients.toggleClientPortal');
 
+		// DateTime backend for appointment scheduling
+		Route::post('/getdatetimebackend', [App\Http\Controllers\HomeController::class, 'getdatetimebackend'])->name('getdatetimebackend');
+		Route::post('/getdisableddatetime', [App\Http\Controllers\HomeController::class, 'getdisableddatetime'])->name('getdisableddatetime');
+
 
 	});
 

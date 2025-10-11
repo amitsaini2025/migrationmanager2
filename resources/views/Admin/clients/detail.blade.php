@@ -59,11 +59,7 @@ use App\Http\Controllers\Controller;
                         <a href="javascript:;" class="create_note_d" datatype="note" title="Add Notes"><i class="fas fa-plus"></i></a>
                         <a href="javascript:;" data-id="{{@$fetchedData->id}}" data-email="{{@$fetchedData->email}}" data-name="{{@$fetchedData->first_name}} {{@$fetchedData->last_name}}" class="clientemail" title="Compose Mail"><i class="fa fa-envelope"></i></a>
                         <a href="javascript:;" datatype="not_picked_call" class="not_picked_call" title="Not Picked Call"><i class="fas fa-mobile-alt"></i></a>
-                        @if($fetchedData->is_archived == 0)
-                            <a class="arcivedval" href="javascript:;" onclick="arcivedAction({{$fetchedData->id}}, 'admins')" title="Archive"><i class="fas fa-archive"></i></a>
-                        @else
-                            <a class="arcivedval archived-active" href="javascript:;" onclick="arcivedAction({{$fetchedData->id}}, 'admins')" title="UnArchive"><i class="fas fa-archive"></i></a>
-                        @endif
+                        <a href="javascript:;" data-toggle="modal" data-target="#create_appoint" title="Add Appointment"><i class="fas fa-calendar-plus"></i></a>
                     </div>
                     
                     <!-- Client Portal Toggle -->
@@ -433,6 +429,7 @@ use App\Http\Controllers\Controller;
     </aside>
 </div>
 
+@include('Admin/clients/modals/appointment')
 @include('Admin/clients/addclientmodal')
 @include('Admin/clients/editclientmodal')
 
@@ -1184,8 +1181,8 @@ use App\Http\Controllers\Controller;
             checkStarClient: '{{ route("check.star.client") }}',
             getInfoByReceiptId: '{{ URL::to("/admin/clients/getInfoByReceiptId") }}',
             notPickedCall: '{{ URL::to("/admin/not-picked-call") }}',
-            getDateTimeBackend: '{{ URL::to("/getdatetimebackend") }}',
-            getDisabledDateTime: '{{ URL::to("/getdisableddatetime") }}',
+            getDateTimeBackend: '{{ URL::to("/admin/getdatetimebackend") }}',
+            getDisabledDateTime: '{{ URL::to("/admin/getdisableddatetime") }}',
             checkCostAssignment: '{{ URL::to("/admin/clients/check-cost-assignment") }}',
             getVisaAgreementAgent: '{{ URL::to("/admin/clients/getVisaAggreementMigrationAgentDetail") }}',
             generateAgreement: '{{ route("clients.generateagreement") }}',

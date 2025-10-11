@@ -113,7 +113,7 @@
                                                                         <input type="hidden" name="doccategory" value="<?= $catVal->title ?>">
 
                                                                         <a href="javascript:;" class="btn btn-primary add-document" data-fileid="<?= $fetch->id ?>"><i class="fa fa-plus"></i> Add Document</a>
-				                                                        <input class="docupload" data-fileid="<?= $fetch->id ?>" data-doccategory="<?= $id ?>" type="file" name="document_upload"  style="display: none;">
+				                                                        <input class="docupload" data-fileid="<?= $fetch->id ?>" data-doccategory="<?= $id ?>" type="file" name="document_upload"/>
                                                                     </form>
                                                                 </div>
                                                             <?php endif; ?>

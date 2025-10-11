@@ -5232,6 +5232,9 @@ Bansal Immigration`;
                 return false;
             }
 
+            // Show immediate feedback that upload is starting
+            $('.custom-error-msg').html('<span class="alert alert-info"><i class="fa fa-clock-o"></i> Uploading document...</span>');
+
             $.ajax({
                 url: site_url + '/admin/upload-edudocument',
                 type: 'POST',
@@ -5246,66 +5249,27 @@ Bansal Immigration`;
                         var row = $('#id_' + fileidL);
                         var docNameWithoutExt = ress.filename.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_").toLowerCase();
 
-                        // Replace upload TD content
-                        var uploadTd = row.find('td').eq(3);
+                        // Replace upload TD content (Column 1 = File Name)
+                        var uploadTd = row.find('td').eq(1);
                         uploadTd.html(
-                            '<div data-id="' + fileidL + '" data-name="' + docNameWithoutExt + '" class="doc-row">' +
+                            '<div data-id="' + fileidL + '" data-name="' + docNameWithoutExt + '" class="doc-row" title="Uploaded by: Admin" oncontextmenu="showFileContextMenu(event, ' + fileidL + ', \'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'' + doccategoryL + '\', \'' + (ress.status_value || 'draft') + '\'); return false;">' +
                                 '<a href="javascript:void(0);" onclick="previewFile(\'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'preview-container-' + doccategoryL + '\')">' +
                                     '<i class="fas fa-file-image"></i> <span>' + ress.filename + '</span>' +
                                 '</a>' +
                             '</div>'
                         );
 
-                        // Generate signature-related anchor
-                        let signatureAction = '';
-                        if (ress.filetype.toLowerCase() === 'pdf') {
-                            if (ress.status_value === 'draft') {
-                                signatureAction = '<a target="_blank" href="' + site_url + '/admin/documents/' + fileidL + '/edit" class="dropdown-item">Send To Signature</a>';
-                            } else if (ress.status_value === 'sent') {
-                                signatureAction = '<a target="_blank" href="' + site_url + '/admin/documents/' + fileidL + '" class="dropdown-item">Check To Signature</a>';
-                            } else if (ress.status_value === 'signed') {
-                                signatureAction = '<a target="_blank" href="' + site_url + '/admin/download-signed/' + fileidL + '" class="dropdown-item">Download Signed</a>';
-                            }
-                        }
-
-                        // Replace action TD content
-                        var actionTd = row.find('td').eq(4);
-                        
-                        
+                        // Add hidden elements for context menu actions (Column 2 = Actions)
+                        var actionTd = row.find('td').eq(2);
                         actionTd.html(
-                            '<div class="dropdown d-inline">' +
-                                '<button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Action</button>' +
-                                '<div class="dropdown-menu">' +
-                                    '<a class="dropdown-item renamechecklist" href="javascript:;">Rename Checklist</a>' +
-                                    '<a class="dropdown-item renamedoc" href="javascript:;">Rename File Name</a>' +
-                                    '<a target="_blank" class="dropdown-item" href="' + ress.fileurl + '">Preview</a>' +
-                                    '<a href="#" class="dropdown-item download-file" data-filelink="' + ress.fileurl + '" data-filename="' + ress.filekey + '">Download</a>' +
-                                    '<a data-id="' + fileidL + '" class="dropdown-item notuseddoc" data-doctype="' + ress.doctype + '" data-doccategory="' + ress.doccategory + '" data-href="notuseddoc" href="javascript:;">Not Used</a>' +
-                                    '<a target="_blank" href="' + site_url + '/admin/documents/' + fileidL + '/edit" class="dropdown-item">Send To Signature</a>' +
-                                '</div>' +
-                            '</div>'
+                            '<a class="renamechecklist" data-id="' + fileidL + '" href="javascript:;" style="display: none;"></a>' +
+                            '<a class="renamedoc" data-id="' + fileidL + '" href="javascript:;" style="display: none;"></a>' +
+                            '<a class="download-file" data-filelink="' + ress.fileurl + '" data-filename="' + ress.filekey + '" href="#" style="display: none;"></a>' +
+                            '<a class="notuseddoc" data-id="' + fileidL + '" data-doctype="' + ress.doctype + '" data-href="notuseddoc" href="javascript:;" style="display: none;"></a>'
                         );
                         
                         // Ensure the row has the proper class for event delegation
                         row.addClass('drow');
-                       
-                        
-                        // Re-attach event handlers for the newly created elements
-                        setTimeout(function() {
-                            // Re-initialize any necessary event handlers
-                            if (typeof $.fn.dropdown !== 'undefined') {
-                                actionTd.find('.dropdown-toggle').dropdown();
-                            }
-                           
-                            
-                            // Ensure the row is properly structured for event delegation
-                            if (!row.hasClass('drow')) {
-                                row.addClass('drow');
-                            }
-                            
-                            // Force re-initialization of event handlers by triggering a custom event
-                            $(document).trigger('actionButtonsCreated', [actionTd]);
-                        }, 100);
                     } else {
                         $('.custom-error-msg').html('<span class="alert alert-danger">' + ress.message + '</span>');
                     }
@@ -5415,60 +5379,27 @@ Bansal Immigration`;
                         var row = $('#id_' + fileidL1);
                         var docNameWithoutExt = ress.filename.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_").toLowerCase();
 
-                        // Replace upload TD content
-                        var uploadTd = row.find('td').eq(3);
+                        // Replace upload TD content (Column 1 = File Name)
+                        var uploadTd = row.find('td').eq(1);
                         uploadTd.html(
-                            '<div data-id="' + fileidL1 + '" data-name="' + docNameWithoutExt + '" class="doc-row">' +
+                            '<div data-id="' + fileidL1 + '" data-name="' + docNameWithoutExt + '" class="doc-row" title="Uploaded by: Admin" oncontextmenu="showVisaFileContextMenu(event, ' + fileidL1 + ', \'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'' + visa_doc_cat + '\', \'' + (ress.status_value || 'draft') + '\'); return false;">' +
                                 '<a href="javascript:void(0);" onclick="previewFile(\'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'preview-container-migdocumnetlist\')">' +
                                     '<i class="fas fa-file-image"></i> <span>' + ress.filename + '</span>' +
                                 '</a>' +
                             '</div>'
                         );
 
-                        // Generate signature-related anchor
-                        let signatureAction = '';
-                        if (ress.filetype.toLowerCase() === 'pdf') {
-                            signatureAction = '<a target="_blank" href="' + site_url + '/admin/documents/' + fileidL1 + '/edit" class="dropdown-item">Send To Signature</a>';
-                        }
-
-                        // Replace action TD content
-                        var actionTd = row.find('td').eq(4);
-                        
-                        
+                        // Add hidden elements for context menu actions (Column 2 = Actions)
+                        var actionTd = row.find('td').eq(2);
                         actionTd.html(
-                            '<div class="dropdown d-inline">' +
-                                '<button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Action</button>' +
-                                '<div class="dropdown-menu">' +
-                                    '<a class="dropdown-item renamechecklist" href="javascript:;">Rename Checklist</a>' +
-                                    '<a class="dropdown-item renamedoc" href="javascript:;">Rename File Name</a>' +
-                                    '<a target="_blank" class="dropdown-item" href="' + ress.fileurl + '">Preview</a>' +
-                                    '<a href="#" class="dropdown-item download-file" data-filelink="' + ress.fileurl + '" data-filename="' + ress.filekey + '">Download</a>' +
-                                    '<a data-id="' + fileidL1 + '" class="dropdown-item notuseddoc" data-doctype="' + ress.doctype + '" data-doccategory="' + ress.doccategory + '" data-href="notuseddoc" href="javascript:;">Not Used</a>' +
-                                    signatureAction +
-                                '</div>' +
-                            '</div>'
+                            '<a class="renamechecklist" data-id="' + fileidL1 + '" href="javascript:;" style="display: none;"></a>' +
+                            '<a class="renamedoc" data-id="' + fileidL1 + '" href="javascript:;" style="display: none;"></a>' +
+                            '<a class="download-file" data-filelink="' + ress.fileurl + '" data-filename="' + ress.filekey + '" href="#" style="display: none;"></a>' +
+                            '<a class="notuseddoc" data-id="' + fileidL1 + '" data-doctype="visa" data-href="notuseddoc" href="javascript:;" style="display: none;"></a>'
                         );
                         
                         // Ensure the row has the proper class for event delegation
                         row.addClass('drow');
-                       
-                        
-                        // Re-attach event handlers for the newly created elements
-                        setTimeout(function() {
-                            // Re-initialize any necessary event handlers
-                            if (typeof $.fn.dropdown !== 'undefined') {
-                                actionTd.find('.dropdown-toggle').dropdown();
-                            }
-                           
-                            
-                            // Ensure the row is properly structured for event delegation
-                            if (!row.hasClass('drow')) {
-                                row.addClass('drow');
-                            }
-                            
-                            // Force re-initialization of event handlers by triggering a custom event
-                            $(document).trigger('visaActionButtonsCreated', [actionTd]);
-                        }, 100);
                     } else {
                         $('.custom-error-msg').html('<span class="alert alert-danger">' + ress.message + '</span>');
                     }

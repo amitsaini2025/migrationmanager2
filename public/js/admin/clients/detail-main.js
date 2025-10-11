@@ -1,36 +1,42 @@
 ﻿    // Global flag to prevent redirects during page initialization
     var isInitializing = true;
 
+    // Global function for adjusting activity feed height
+    function adjustActivityFeedHeight() {
+        // Safety check - ensure required DOM elements exist
+        if (!$('.activity-feed').length || !$('.main-content').length || !$('.crm-container').length) {
+            return; // Exit silently if elements don't exist (DOM not ready)
+        }
+        
+        // Calculate maximum available height (viewport minus header/navigation)
+        let windowHeight = $(window).height();
+        let maxAvailableHeight = windowHeight - 120; // Account for header and navigation
+        
+        // Force container to recalculate layout
+        $('.crm-container').css('align-items', 'flex-start');
+        
+        // Reset main-content to allow natural height
+        $('.main-content').css('max-height', 'none');
+        $('.main-content').css('overflow-y', 'visible');
+        $('.main-content').css('height', 'auto');
+        
+        // Get the actual main-content height after reset
+        let mainContentHeight = $('.main-content').outerHeight();
+        
+        // Set Activity Feed height to match main-content height, but not exceed viewport
+        let targetHeight = Math.min(mainContentHeight, maxAvailableHeight);
+        
+        // Set Activity Feed height dynamically
+        $('.activity-feed').css('max-height', targetHeight + 'px');
+        $('.activity-feed').css('height', targetHeight + 'px');
+        
+        // Ensure proper overflow handling
+        $('.activity-feed').css('overflow-y', 'auto');
+    }
+
     $(document).ready(function() {
         
         // Flag to prevent redirects during page initialization (now global)
-
-        function adjustActivityFeedHeight() {
-            // Calculate maximum available height (viewport minus header/navigation)
-            let windowHeight = $(window).height();
-            let maxAvailableHeight = windowHeight - 120; // Account for header and navigation
-            
-            // Force container to recalculate layout
-            $('.crm-container').css('align-items', 'flex-start');
-            
-            // Reset main-content to allow natural height
-            $('.main-content').css('max-height', 'none');
-            $('.main-content').css('overflow-y', 'visible');
-            $('.main-content').css('height', 'auto');
-            
-            // Get the actual main-content height after reset
-            let mainContentHeight = $('.main-content').outerHeight();
-            
-            // Set Activity Feed height to match main-content height, but not exceed viewport
-            let targetHeight = Math.min(mainContentHeight, maxAvailableHeight);
-            
-            // Set Activity Feed height dynamically
-            $('.activity-feed').css('max-height', targetHeight + 'px');
-            $('.activity-feed').css('height', targetHeight + 'px');
-            
-            // Ensure proper overflow handling
-            $('.activity-feed').css('overflow-y', 'auto');
-        }
 
         // Run on load
         adjustActivityFeedHeight();

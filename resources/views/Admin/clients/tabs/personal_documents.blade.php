@@ -67,9 +67,7 @@
                                         <table class="checklist-table">
                                             <thead>
                                                 <tr>
-                                                    <th>SNo.</th>
                                                     <th>Checklist</th>
-                                                    <th>Added By</th>
                                                     <th>File Name</th>
                                                     <th></th>
                                                 </tr>
@@ -92,19 +90,14 @@
                                                         : 'https://' . env('AWS_BUCKET') . '.s3.' . env('AWS_DEFAULT_REGION') . '.amazonaws.com/' . $clientId . '/personal/' . $fetch->myfile;
                                                     ?>
                                                     <tr class="drow" id="id_<?= $fetch->id ?>">
-                                                        <td><?= $docKey + 1 ?></td>
                                                         <td style="white-space: initial;">
-                                                            <div data-id="<?= $fetch->id ?>" data-personalchecklistname="<?= htmlspecialchars($fetch->checklist) ?>" class="personalchecklist-row">
+                                                            <div data-id="<?= $fetch->id ?>" data-personalchecklistname="<?= htmlspecialchars($fetch->checklist) ?>" class="personalchecklist-row" title="Uploaded by: <?= htmlspecialchars($admin->first_name ?? 'NA') ?> on <?= date('d/m/Y H:i', strtotime($fetch->created_at)) ?>">
                                                                 <span><?= htmlspecialchars($fetch->checklist) ?></span>
                                                             </div>
                                                         </td>
                                                         <td style="white-space: initial;">
-                                                            <?= htmlspecialchars($admin->first_name ?? 'NA') ?><br>
-                                                            <?= date('d/m/Y', strtotime($fetch->created_at)) ?>
-                                                        </td>
-                                                        <td style="white-space: initial;">
                                                             <?php if ($fetch->file_name): ?>
-                                                                <div data-id="<?= $fetch->id ?>" data-name="<?= htmlspecialchars($fetch->file_name) ?>" class="doc-row">
+                                                                <div data-id="<?= $fetch->id ?>" data-name="<?= htmlspecialchars($fetch->file_name) ?>" class="doc-row" title="Uploaded by: <?= htmlspecialchars($admin->first_name ?? 'NA') ?> on <?= date('d/m/Y H:i', strtotime($fetch->created_at)) ?>" oncontextmenu="showFileContextMenu(event, <?= $fetch->id ?>, '<?= htmlspecialchars($fetch->filetype) ?>', '<?= $fileUrl ?>', '<?= $id ?>', '<?= $fetch->status ?? 'draft' ?>'); return false;">
                                                                     <a href="javascript:void(0);" onclick="previewFile('<?= $fetch->filetype ?>','<?= $fileUrl ?>','preview-container-<?= $id ?>')">
                                                                         <i class="fas fa-file-image"></i> <span><?= htmlspecialchars($fetch->file_name . '.' . $fetch->filetype) ?></span>
                                                                     </a>
@@ -126,48 +119,7 @@
                                                             <?php endif; ?>
                                                         </td>
                                                         <td>
-                                                            <?php if ($fetch->myfile): ?>
-                                                                <div class="dropdown d-inline">
-                                                                    <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Action</button>
-                                                                    <div class="dropdown-menu">
-                                                                        <a class="dropdown-item renamechecklist" href="javascript:;">Rename Checklist</a>
-                                                                        <a class="dropdown-item renamedoc" href="javascript:;">Rename File Name</a>
-                                                                        <a target="_blank" class="dropdown-item" href="<?= $fetch->myfile ?>">Preview</a>
-                                                                        <?php
-                                                                        $fileExt = pathinfo($fetch->myfile, PATHINFO_EXTENSION);
-                                                                        if (in_array($fileExt, ['jpg', 'png', 'jpeg'])): ?>
-                                                                            <a target="_blank" class="dropdown-item" href="<?= URL::to('/admin/document/download/pdf') ?>/<?= $fetch->id ?>">PDF</a>
-                                                                        <?php endif; ?>
-                                                                        <a href="#" class="dropdown-item download-file" data-filelink="<?= $fetch->myfile ?>" data-filename="<?= $fetch->myfile_key ?>">Download</a>
-                                                                        <a data-id="<?= $fetch->id ?>" class="dropdown-item notuseddoc" data-doctype="personal" data-doccategory="<?= $catVal->title ?>" data-href="notuseddoc" href="javascript:;">Not Used</a>
-
-                                                                        @if (strtolower($fetch->filetype) === 'pdf')
-                                                                            @if ($fetch->status === 'draft')
-                                                                                <form method="GET" action="{{ route('documents.edit', $fetch->id) }}" target="_blank" style="display: inline;">
-                                                                                    <button type="submit" class="dropdown-item" style="background: none; border: none; width: 100%; text-align: left; padding: 0.25rem 1.5rem;">
-                                                                                        Send To Signature
-                                                                                    </button>
-                                                                                </form>
-                                                                            @endif
-
-                                                                            @if($fetch->status === 'sent')
-                                                                                <form method="GET" action="{{ route('documents.index', $fetch->id) }}" target="_blank" style="display: inline;">
-                                                                                    <button type="submit" class="dropdown-item" style="background: none; border: none; width: 100%; text-align: left; padding: 0.25rem 1.5rem;">
-                                                                                        Check To Signature
-                                                                                    </button>
-                                                                                </form>
-                                                                            @endif
-
-                                                                            @if($fetch->status === 'signed')
-                                                                                <a target="_blank" href="{{ route('download.signed', $fetch->id) }}" class="dropdown-item">Download Signed</a>
-                                                                            @endif
-
-                                                                        @endif
-
-
-                                                                    </div>
-                                                                </div>
-                                                            <?php endif; ?>
+                                                            <!-- Action dropdown removed - functionality moved to right-click context menu -->
                                                         </td>
                                                     </tr>
                                                 <?php endforeach; ?>
@@ -211,7 +163,7 @@
                                                                             @endif
 
                                                                             @if($fetch->status === 'signed')
-                                                                                <a target="_blank" href="{{ route('admin.download.signed', $fetch->id) }}" class="dropdown-item">Download Signed</a>
+                                                                                <a target="_blank" href="{{ route('download.signed', $fetch->id) }}" class="dropdown-item">Download Signed</a>
                                                                             @endif
 
                                                                         @endif
@@ -235,4 +187,190 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Custom Context Menu -->
+            <div id="fileContextMenu" class="context-menu" style="display: none; position: absolute; background: white; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000; min-width: 180px;">
+                <div class="context-menu-item" onclick="handleContextAction('rename-checklist')" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee;">
+                    <i class="fa fa-edit" style="margin-right: 8px;"></i> Rename Checklist
+                </div>
+                <div class="context-menu-item" onclick="handleContextAction('rename-doc')" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee;">
+                    <i class="fa fa-file-text" style="margin-right: 8px;"></i> Rename File Name
+                </div>
+                <div class="context-menu-item" onclick="handleContextAction('preview')" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee;">
+                    <i class="fa fa-eye" style="margin-right: 8px;"></i> Preview
+                </div>
+                <div id="context-pdf-option" class="context-menu-item" onclick="handleContextAction('pdf')" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee; display: none;">
+                    <i class="fa fa-file-pdf" style="margin-right: 8px;"></i> PDF
+                </div>
+                <div class="context-menu-item" onclick="handleContextAction('download')" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee;">
+                    <i class="fa fa-download" style="margin-right: 8px;"></i> Download
+                </div>
+                <div class="context-menu-item" onclick="handleContextAction('not-used')" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee;">
+                    <i class="fa fa-trash" style="margin-right: 8px;"></i> Not Used
+                </div>
+                <div id="context-send-signature" class="context-menu-item" onclick="handleContextAction('send-signature')" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee; display: none;">
+                    <i class="fa fa-signature" style="margin-right: 8px;"></i> Send To Signature
+                </div>
+                <div id="context-check-signature" class="context-menu-item" onclick="handleContextAction('check-signature')" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee; display: none;">
+                    <i class="fa fa-check-circle" style="margin-right: 8px;"></i> Check To Signature
+                </div>
+                <div id="context-download-signed" class="context-menu-item" onclick="handleContextAction('download-signed')" style="padding: 8px 12px; cursor: pointer; display: none;">
+                    <i class="fa fa-file-signature" style="margin-right: 8px;"></i> Download Signed
+                </div>
+            </div>
+
+            <script>
+                let currentContextFile = null;
+                let currentContextData = {};
+
+                function showFileContextMenu(event, fileId, fileType, fileUrl, categoryId, fileStatus) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    currentContextFile = fileId;
+                    currentContextData = {
+                        fileId: fileId,
+                        fileType: fileType,
+                        fileUrl: fileUrl,
+                        categoryId: categoryId,
+                        fileStatus: fileStatus
+                    };
+
+                    const menu = document.getElementById('fileContextMenu');
+                    
+                    // Show/hide PDF option based on file type
+                    const pdfOption = document.getElementById('context-pdf-option');
+                    const fileExt = fileType.toLowerCase();
+                    if (['jpg', 'png', 'jpeg'].includes(fileExt)) {
+                        pdfOption.style.display = 'block';
+                    } else {
+                        pdfOption.style.display = 'none';
+                    }
+
+                    // Show/hide signature options based on file type and status
+                    const sendSignature = document.getElementById('context-send-signature');
+                    const checkSignature = document.getElementById('context-check-signature');
+                    const downloadSigned = document.getElementById('context-download-signed');
+                    
+                    if (fileType.toLowerCase() === 'pdf') {
+                        if (fileStatus === 'draft') {
+                            sendSignature.style.display = 'block';
+                            checkSignature.style.display = 'none';
+                            downloadSigned.style.display = 'none';
+                        } else if (fileStatus === 'sent') {
+                            sendSignature.style.display = 'none';
+                            checkSignature.style.display = 'block';
+                            downloadSigned.style.display = 'none';
+                        } else if (fileStatus === 'signed') {
+                            sendSignature.style.display = 'none';
+                            checkSignature.style.display = 'none';
+                            downloadSigned.style.display = 'block';
+                        } else {
+                            sendSignature.style.display = 'none';
+                            checkSignature.style.display = 'none';
+                            downloadSigned.style.display = 'none';
+                        }
+                    } else {
+                        sendSignature.style.display = 'none';
+                        checkSignature.style.display = 'none';
+                        downloadSigned.style.display = 'none';
+                    }
+
+                    // Position menu at cursor with edge detection
+                    const MENU_WIDTH = 180;
+                    const MENU_HEIGHT = 350;
+                    
+                    // Get scroll position
+                    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+                    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    
+                    // Get viewport dimensions
+                    const viewportWidth = window.innerWidth;
+                    const viewportHeight = window.innerHeight;
+                    
+                    // Use clientX/Y for viewport-relative position, then add scroll for document position
+                    let menuLeft = event.clientX + scrollLeft + 5;
+                    let menuTop = event.clientY + scrollTop + 5;
+                    
+                    // Check right edge - if menu would go beyond viewport, show on left
+                    if (event.clientX + MENU_WIDTH + 5 > viewportWidth) {
+                        menuLeft = event.clientX + scrollLeft - MENU_WIDTH - 5;
+                    }
+                    
+                    // Check bottom edge - if menu would go beyond viewport, show above
+                    if (event.clientY + MENU_HEIGHT + 5 > viewportHeight) {
+                        menuTop = event.clientY + scrollTop - MENU_HEIGHT - 5;
+                    }
+                    
+                    // Apply position
+                    menu.style.left = menuLeft + 'px';
+                    menu.style.top = menuTop + 'px';
+
+                    menu.style.display = 'block';
+
+                    // Hide menu when clicking elsewhere
+                    setTimeout(() => {
+                        document.addEventListener('click', hideContextMenu);
+                    }, 100);
+                }
+
+                function hideContextMenu() {
+                    const menu = document.getElementById('fileContextMenu');
+                    menu.style.display = 'none';
+                    document.removeEventListener('click', hideContextMenu);
+                }
+
+                function handleContextAction(action) {
+                    if (!currentContextFile) return;
+
+                    hideContextMenu();
+
+                    switch(action) {
+                        case 'rename-checklist':
+                            $('.renamechecklist[data-id="' + currentContextFile + '"]').click();
+                            break;
+                        case 'rename-doc':
+                            $('.renamedoc[data-id="' + currentContextFile + '"]').click();
+                            break;
+                        case 'preview':
+                            window.open(currentContextData.fileUrl, '_blank');
+                            break;
+                        case 'pdf':
+                            const pdfUrl = '{{ URL::to('/admin/document/download/pdf') }}/' + currentContextFile;
+                            window.open(pdfUrl, '_blank');
+                            break;
+                        case 'download':
+                            $('.download-file[data-filelink="' + currentContextData.fileUrl + '"]').click();
+                            break;
+                        case 'not-used':
+                            $('.notuseddoc[data-id="' + currentContextFile + '"]').click();
+                            break;
+                        case 'send-signature':
+                            const sendSignatureUrl = '{{ route('documents.edit', ':id') }}'.replace(':id', currentContextFile);
+                            window.open(sendSignatureUrl, '_blank');
+                            break;
+                        case 'check-signature':
+                            const checkSignatureUrl = '{{ route('documents.index', ':id') }}'.replace(':id', currentContextFile);
+                            window.open(checkSignatureUrl, '_blank');
+                            break;
+                        case 'download-signed':
+                            const downloadSignedUrl = '{{ route('download.signed', ':id') }}'.replace(':id', currentContextFile);
+                            window.open(downloadSignedUrl, '_blank');
+                            break;
+                    }
+                }
+
+                // Hide context menu on escape key
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        hideContextMenu();
+                    }
+                });
+            </script>
+
+            <style>
+                .context-menu-item:hover {
+                    background-color: #f8f9fa;
+                }
+            </style>
 

@@ -79,26 +79,20 @@ class ClientDocumentsController extends Controller
                     foreach($fetchd as $docKey=>$fetch)
                     {
                         $admin = Admin::where('id', $fetch->user_id)->first();
+                        $fileUrl = $fetch->myfile_key ? $fetch->myfile : 'https://' . env('AWS_BUCKET') . '.s3.' . env('AWS_DEFAULT_REGION') . '.amazonaws.com/' . $clientid . '/personal/' . $fetch->myfile;
                         ?>
                         <tr class="drow" id="id_<?php echo $fetch->id; ?>">
-                            <td><?php echo $docKey+1;?></td>
                             <td style="white-space: initial;">
-                                <div data-id="<?php echo $fetch->id;?>" data-personalchecklistname="<?php echo $fetch->checklist; ?>" class="personalchecklist-row">
-                                    <span><?php echo $fetch->checklist; ?></span>
+                                <div data-id="<?php echo $fetch->id;?>" data-personalchecklistname="<?php echo htmlspecialchars($fetch->checklist); ?>" class="personalchecklist-row" title="Uploaded by: <?php echo htmlspecialchars($admin->first_name ?? 'NA'); ?> on <?php echo date('d/m/Y H:i', strtotime($fetch->created_at)); ?>">
+                                    <span><?php echo htmlspecialchars($fetch->checklist); ?></span>
                                 </div>
                             </td>
                             <td style="white-space: initial;">
                                 <?php
-                                echo $admin->first_name. "<br>";
-                                echo date('d/m/Y', strtotime($fetch->created_at));
-                                ?>
-                            </td>
-                            <td style="white-space: initial;">
-                                <?php
                                 if( isset($fetch->file_name) && $fetch->file_name !=""){ ?>
-                                    <div data-id="<?php echo $fetch->id; ?>" data-name="<?php echo $fetch->file_name; ?>" class="doc-row">
-                                        <a href="javascript:void(0);" onclick="previewFile('<?php echo $fetch->filetype;?>','<?php echo asset($fetch->myfile); ?>','preview-container-<?php echo $request->folder_name;?>')">
-                                            <i class="fas fa-file-image"></i> <span><?php echo $fetch->file_name . '.' . $fetch->filetype; ?></span>
+                                    <div data-id="<?php echo $fetch->id; ?>" data-name="<?php echo htmlspecialchars($fetch->file_name); ?>" class="doc-row" title="Uploaded by: <?php echo htmlspecialchars($admin->first_name ?? 'NA'); ?> on <?php echo date('d/m/Y H:i', strtotime($fetch->created_at)); ?>" oncontextmenu="showFileContextMenu(event, <?php echo $fetch->id; ?>, '<?php echo htmlspecialchars($fetch->filetype); ?>', '<?php echo $fileUrl; ?>', '<?php echo $request->folder_name; ?>', '<?php echo $fetch->status ?? 'draft'; ?>'); return false;">
+                                        <a href="javascript:void(0);" onclick="previewFile('<?php echo $fetch->filetype;?>','<?php echo $fileUrl; ?>','preview-container-<?php echo $request->folder_name;?>')">
+                                            <i class="fas fa-file-image"></i> <span><?php echo htmlspecialchars($fetch->file_name . '.' . $fetch->filetype); ?></span>
                                         </a>
                                     </div>
                                 <?php
@@ -114,65 +108,20 @@ class ClientDocumentsController extends Controller
                                             <input type="hidden" name="doctype" value="personal">
                                             <input type="hidden" name="doccategory" value="<?php echo $request->doccategory;?>">
                                             <a href="javascript:;" class="btn btn-primary add-document" data-fileid="<?php echo $fetch->id;?>"><i class="fa fa-plus"></i> Add Document</a>
-                                            <input class="docupload" data-fileid="<?php echo $fetch->id;?>" data-doccategory="<?php echo $request->doccategory;?>" type="file" name="document_upload" style="display: none;">
+                                            <input class="docupload" data-fileid="<?php echo $fetch->id;?>" data-doccategory="<?php echo $request->doccategory;?>" type="file" name="document_upload"/>
                                         </form>
                                     </div>
                                 <?php
                                 }?>
                             </td>
-                            <td style="white-space: initial;">
-                                <?php
-                                if( isset($fetch->file_name) && $fetch->file_name !="")
-                                { ?>
-                                    <div class="dropdown d-inline">
-                                        <button class="btn btn-primary dropdown-toggle" type="button" id="" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="white-space: nowrap;overflow: hidden;text-overflow: ellipsis;">Action</button>
-                                        <div class="dropdown-menu">
-                                            <a class="dropdown-item renamechecklist" href="javascript:;">Rename Checklist</a>
-                                            <a class="dropdown-item renamedoc" href="javascript:;">Rename File Name</a>
-                                            <?php
-                                            $url = 'https://'.env('AWS_BUCKET').'.s3.'. env('AWS_DEFAULT_REGION') . '.amazonaws.com/';
-                                            ?>
-                                            <a target="_blank" class="dropdown-item" href="<?php echo $fetch->myfile; ?>">Preview</a>
-                                            <?php
-                                            $explodeimg = explode('.',$fetch->myfile);
-                                            if($explodeimg[1] == 'jpg'|| $explodeimg[1] == 'png'|| $explodeimg[1] == 'jpeg'){
-                                            ?>
-                                                <a target="_blank" class="dropdown-item" href="<?php echo \URL::to('/admin/document/download/pdf'); ?>/<?php echo $fetch->id; ?>">PDF</a>
-                                            <?php } ?>
-                                            <a href="#" class="dropdown-item download-file" data-filelink="<?php echo $fetch->myfile; ?>" data-filename="<?php echo $fetch->myfile_key; ?>">Download</a>
-
-                                            <a data-id="<?php echo $fetch->id; ?>" class="dropdown-item notuseddoc" data-doctype="personal" data-doccategory="<?php echo $request->doccategory;?>" data-href="notuseddoc" href="javascript:;">Not Used</a>
-
-                                            <?php
-                                            if (strtolower($fetch->filetype) === 'pdf')
-                                            {
-                                                if ($fetch->status === 'draft'){
-                                                    $url1 = route('documents.edit', $fetch->id);
-                                                ?>
-                                                    <a target="_blank" href="<?php echo $url1;?>" class="dropdown-item">Send To Signature</a>
-                                                <?php
-                                                }
-
-                                                if($fetch->status === 'sent') {
-
-                                                    $url2 = route('documents.index', $fetch->id);
-                                                ?>
-                                                    <a target="_blank" href="<?php echo $url2;?>" class="dropdown-item">Check To Signature</a>
-                                                <?php
-                                                }
-
-                                                if($fetch->status === 'signed') {
-                                                    $url3 = route('download.signed', $fetch->id);
-                                                ?>
-                                                    <a target="_blank" href="<?php echo $url3;?>" class="dropdown-item">Download Signed</a>
-                                                <?php
-                                                }
-                                            }?>
-
-                                        </div>
-                                    </div>
-                                <?php
-                                }?>
+                            <td>
+                                <!-- Hidden elements for context menu actions -->
+                                <?php if ($fetch->myfile): ?>
+                                    <a class="renamechecklist" data-id="<?php echo $fetch->id; ?>" href="javascript:;" style="display: none;"></a>
+                                    <a class="renamedoc" data-id="<?php echo $fetch->id; ?>" href="javascript:;" style="display: none;"></a>
+                                    <a class="download-file" data-filelink="<?php echo $fetch->myfile; ?>" data-filename="<?php echo $fetch->myfile_key; ?>" href="#" style="display: none;"></a>
+                                    <a class="notuseddoc" data-id="<?php echo $fetch->id; ?>" data-doctype="personal" data-doccategory="<?php echo $request->doccategory;?>" data-href="documents/not-used" href="javascript:;" style="display: none;"></a>
+                                <?php endif; ?>
                             </td>
                         </tr>
 			        <?php
@@ -394,19 +343,13 @@ class ClientDocumentsController extends Controller
                     $response['status'] 	= 	true;
                     $response['message']	=	'You have added uploaded your visa checklist';
 
-                    // Filter documents by folder_name and client_matter_id at query level
-                    $query = Document::where('client_id',$clientid)
+                    // Get all documents for this client (original behavior - no strict filtering)
+                    $fetchd = Document::where('client_id',$clientid)
                         ->whereNull('not_used_doc')
                         ->where('doc_type',$doctype)
                         ->where('type',$request->type)
-                        ->where('folder_name', $request->folder_name);
-                    
-                    // Only filter by client_matter_id if it's provided
-                    if ($request->client_matter_id !== null && $request->client_matter_id !== '') {
-                        $query->where('client_matter_id', $request->client_matter_id);
-                    }
-                    
-                    $fetchd = $query->orderby('created_at', 'DESC')->get();
+                        ->orderby('updated_at', 'DESC')
+                        ->get();
                     
                     ob_start();
                     foreach($fetchd as $visaKey=>$fetch)
@@ -414,8 +357,18 @@ class ClientDocumentsController extends Controller
                         $admin = Admin::where('id', $fetch->user_id)->first();
                         $VisaDocumentType = VisaDocumentType::where('id', $fetch->folder_name)->first();
                         $fileUrl = $fetch->myfile_key ? $fetch->myfile : 'https://' . env('AWS_BUCKET') . '.s3.' . env('AWS_DEFAULT_REGION') . '.amazonaws.com/' . $fetch->client_id . '/visa/' . $fetch->myfile;
+                        
+                        // Hide non-matching documents with CSS (original behavior)
+                        if (
+                            $request->client_matter_id != $fetch->client_matter_id ||
+                            $request->folder_name != $fetch->folder_name
+                        ) {
+                            $showCls = "style='display: none;'";
+                        } else {
+                            $showCls = "";
+                        }
                         ?>
-                        <tr class="drow" data-matterid="<?php echo $fetch->client_matter_id;?>" data-catid="<?php echo $fetch->folder_name;?>" id="id_<?php echo $fetch->id; ?>">
+                        <tr class="drow" data-matterid="<?php echo $fetch->client_matter_id;?>" data-catid="<?php echo $fetch->folder_name;?>" id="id_<?php echo $fetch->id; ?>" <?php echo $showCls;?>>
                             <td style="white-space: initial;">
                                 <div data-id="<?php echo $fetch->id;?>" data-visachecklistname="<?php echo htmlspecialchars($fetch->checklist); ?>" class="visachecklist-row" title="Uploaded by: <?php echo htmlspecialchars($admin->first_name ?? 'NA'); ?> on <?php echo date('d/m/Y H:i', strtotime($fetch->created_at)); ?>">
                                     <span><?php echo htmlspecialchars($fetch->checklist); ?></span>
@@ -742,24 +695,85 @@ class ClientDocumentsController extends Controller
      * Delete Document
      */
     public function deletedocs(Request $request) {
-        // TODO: Copy full method from ClientsController lines 6234-6281
-        echo json_encode(['status' => false, 'message' => 'Method under construction']);
+        $note_id = $request->note_id;
+        if(\App\Models\Document::where('id',$note_id)->exists()){
+            $data = DB::table('documents')->where('id', @$note_id)->first();
+            $admin = DB::table('admins')->select('client_id')->where('id', @$data->client_id)->first();
+            $res = DB::table('documents')->where('id', @$note_id)->delete();
+            //Storage::disk('s3')->delete('documents/' . $data->myfile);
+            if($data->doc_type == 'migration') {
+                Storage::disk('s3')->delete($admin->client_id.'/'.$data->doc_type.'/'.$data->myfile_key);
+            } else {
+                Storage::disk('s3')->delete($admin->client_id.'/'.$data->doc_type.'/'.$data->myfile_key);
+            }
+            if($res){
+                $subject = 'deleted a document';
+
+                $objs = new ActivitiesLog;
+                $objs->client_id = $data->client_id;
+                $objs->created_by = Auth::user()->id;
+                $objs->description = '';
+                $objs->subject = $subject;
+                $objs->save();
+                $response['status'] 	= 	true;
+                $response['data']	=	'Document removed successfully';
+                if(isset($data->doc_type) && $data->doc_type == 'personal'){
+                    $response['doc_categry']	= $data->folder_name;
+                } else {
+                    $response['doc_categry']	= "";
+                }
+            }else{
+                $response['status'] 	= 	false;
+                $response['message']	=	'Please try again';
+                if(isset($data->doc_type) && $data->doc_type == 'personal'){
+                    $response['doc_categry']	= $data->folder_name;
+                } else {
+                    $response['doc_categry']	= "";
+                }
+            }
+        } else {
+            $response['status'] 	= 	false;
+            $response['message']	=	'Please try again';
+            if(isset($data->doc_type) && $data->doc_type == 'personal'){
+                $response['doc_categry']	= $data->folder_name;
+            } else {
+                $response['doc_categry']	= "";
+            }
+        }
+        echo json_encode($response);
     }
 
-    /**
-     * Verify Document
-     */
-    public function verifydoc(Request $request) {
-        // TODO: Copy full method from ClientsController lines 11510-11562
-        echo json_encode(['status' => false, 'message' => 'Method under construction']);
-    }
 
     /**
      * Get Visa Checklist
      */
     public function getvisachecklist(Request $request) {
-        // TODO: Copy full method from ClientsController lines 11565-11592
-        echo json_encode(['status' => false, 'message' => 'Method under construction']);
+        if( ClientMatter::where('id', $request->client_matter_id)->exists()){
+            $clientMatterInfo = ClientMatter::select('sel_matter_id')->where('id',$request->client_matter_id)->first();
+            //dd($clientMatterInfo->sel_matter_id);
+            if( isset($clientMatterInfo) ){
+                $visaCheckListInfo = VisaDocChecklist::select('id','name')->whereRaw("FIND_IN_SET($clientMatterInfo->sel_matter_id, matter_id)")->get();
+                //dd($visaCheckListInfo);
+                if( !empty($visaCheckListInfo) && count($visaCheckListInfo)>0 ){
+                    $response['status'] 	= 	true;
+                    $response['message']	=	'Visa checklist is successfully fetched.';
+                    $response['visaCheckListInfo']	=	$visaCheckListInfo;
+                } else {
+                    $response['status'] 	= 	false;
+                    $response['message']	=	'Please try again';
+                    $response['visaCheckListInfo'] = array();
+                }
+            } else {
+                $response['status'] 	= 	false;
+                $response['message']	=	'Please try again';
+                $response['visaCheckListInfo']	=	array();
+            }
+        } else {
+            $response['status'] 	= 	false;
+            $response['message']	=	'Please try again';
+            $response['visaCheckListInfo']	=	array();
+        }
+        echo json_encode($response);
     }
 
     /**
@@ -867,32 +881,236 @@ class ClientDocumentsController extends Controller
      * Move Document Back from Not Used
      */
     public function backtodoc(Request $request) {
-        // TODO: Copy full method from ClientsController lines 11749-11815
-        echo json_encode(['status' => false, 'message' => 'Method under construction']);
+        $doc_id = $request->doc_id;
+        $doc_type = $request->doc_type;
+        if(\App\Models\Document::where('id',$doc_id)->exists()){
+            $upd = DB::table('documents')->where('id', $doc_id)->update(array('not_used_doc' => null));
+            if($upd){
+                $docInfo = \App\Models\Document::where('id',$doc_id)->first();
+                $subject = $doc_type.' document moved to '.$doc_type.' document tab';
+                $objs = new ActivitiesLog;
+                $objs->client_id = $docInfo->client_id;
+                $objs->created_by = Auth::user()->id;
+                $objs->description = '';
+                $objs->subject = $subject;
+                $objs->save();
+
+                if($docInfo){
+                    if( isset($docInfo->user_id) && $docInfo->user_id!= "" ){
+                        $adminInfo = \App\Models\Admin::select('first_name')->where('id',$docInfo->user_id)->first();
+                        $response['Added_By'] = $adminInfo->first_name;
+                        $response['Added_date'] = date('d/m/Y',strtotime($docInfo->created_at));
+                    } else {
+                        $response['Added_By'] = "N/A";
+                        $response['Added_date'] = "N/A";
+                    }
+
+                    if( isset($docInfo->checklist_verified_by) && $docInfo->checklist_verified_by!= "" ){
+                        $verifyInfo = \App\Models\Admin::select('first_name')->where('id',$docInfo->checklist_verified_by)->first();
+                        $response['Verified_By'] = $verifyInfo->first_name;
+                        $response['Verified_At'] = date('d/m/Y',strtotime($docInfo->checklist_verified_at));
+                    } else {
+                        $response['Verified_By'] = "N/A";
+                        $response['Verified_At'] = "N/A";
+                    }
+                }
+
+                $response['docInfo'] = $docInfo;
+                $response['doc_type'] = $doc_type;
+                $response['doc_id'] = $doc_id;
+                $response['status'] = 	true;
+                $response['data']	=	$doc_type.' document moved to '.$doc_type.' document tab';
+            } else {
+                $response['status'] 	= 	false;
+                $response['message']	=	'Please try again';
+                $response['doc_type'] = "";
+                $response['doc_id'] = "";
+                $response['docInfo'] = "";
+
+                $response['Added_By'] = "";
+                $response['Added_date'] = "";
+                $response['Verified_By'] = "";
+                $response['Verified_At'] = "";
+            }
+        } else {
+            $response['status'] 	= 	false;
+            $response['message']	=	'Please try again';
+            $response['doc_type'] = "";
+            $response['doc_id'] = "";
+            $response['docInfo'] = "";
+
+            $response['Added_By'] = "";
+            $response['Added_date'] = "";
+            $response['Verified_By'] = "";
+            $response['Verified_At'] = "";
+        }
+        echo json_encode($response);
     }
 
     /**
      * Download Document (S3 Temporary URL)
      */
     public function download_document(Request $request) {
-        // TODO: Copy full method from ClientsController lines 12441-12481
-        return abort(501, 'Method under construction');
+        $fileUrl = $request->input('filelink');
+        $filename = $request->input('filename', 'downloaded.pdf');
+
+        if (!$fileUrl) {
+            return abort(400, 'Missing file URL');
+        }
+
+        try {
+            // Extract S3 key from the URL
+            $parsed = parse_url($fileUrl);
+            if (!isset($parsed['path'])) {
+                return abort(400, 'Invalid S3 URL format');
+            }
+            
+            $s3Key = ltrim(urldecode($parsed['path']), '/');
+            
+            // Check if file exists in S3
+            if (!Storage::disk('s3')->exists($s3Key)) {
+                return abort(404, 'File not found in S3');
+            }
+            
+            // Generate temporary URL with proper headers
+            $tempUrl = Storage::disk('s3')->temporaryUrl(
+                $s3Key,
+                now()->addMinutes(5), // 5 minutes expiration
+                [
+                    'ResponseContentDisposition' => 'attachment; filename="' . $filename . '"',
+                    'ResponseContentType' => 'application/pdf'
+                ]
+            );
+            
+            // Redirect to S3 temporary URL
+            return redirect($tempUrl);
+            
+        } catch (\Exception $e) {
+            \Log::error('S3 download error: ' . $e->getMessage());
+            return abort(500, 'Error generating download link');
+        }
     }
 
     /**
      * Add Personal Document Category
      */
     public function addPersonalDocCategory(Request $request) {
-        // TODO: Copy full method from ClientsController lines 13219-13281
-        return response()->json(['status' => false, 'message' => 'Method under construction']);
+        $categoryTitle = trim($request->input('personal_doc_category'));
+        $clientId = $request->input('clientid');
+
+        $request->merge(['personal_doc_category' => $categoryTitle]);
+
+        // Basic validation
+        $validator = \Validator::make($request->all(), [
+            'personal_doc_category' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => $validator->errors()->first('personal_doc_category')
+            ]);
+        }
+
+        // RULE 1: If status=1 and client_id is NULL, title must be unique globally (only one)
+        $existsForNullClient = PersonalDocumentType::where('title', $categoryTitle)
+            ->where('status', 1)
+            ->whereNull('client_id')
+            ->exists();
+
+        if ($existsForNullClient) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This category already exists globally (for NULL client).'
+            ]);
+        }
+
+        // RULE 2: Same title with status=1 for same client_id is not allowed
+        $existsForSameClient = PersonalDocumentType::where('title', $categoryTitle)
+            ->where('status', 1)
+            ->where('client_id', $clientId)
+            ->exists();
+
+        if ($existsForSameClient) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This category already exists for this client.'
+            ]);
+        }
+
+        try {
+            $category = new PersonalDocumentType();
+            $category->title = $categoryTitle;
+            $category->status = 1;
+            $category->client_id = $clientId ?? null;
+            $category->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Personal Document Category added successfully.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Error adding category: ' . $e->getMessage()
+            ]);
+        }
     }
 
     /**
      * Update Personal Document Category
      */
     public function updatePersonalDocCategory(Request $request) {
-        // TODO: Copy full method from ClientsController lines 13284-13336
-        return response()->json(['status' => false, 'message' => 'Method under construction']);
+        $request->validate([
+            'id' => 'required|exists:personal_document_types,id',
+            'title' => 'required|string|max:255',
+        ]);
+
+        $category = PersonalDocumentType::findOrFail($request->id);
+        $clientId = $category->client_id; // Get the client_id of the category being updated
+
+        // Check if the category is client-generated
+        if ($category->client_id === null) {
+            return response()->json(['success' => false, 'message' => 'Only client-generated categories can be updated.']);
+        }
+
+        $categoryTitle = trim($request->input('title'));
+
+        // RULE 1: If status=1 and client_id is NULL, title must be unique globally (only one)
+        $existsForNullClient = PersonalDocumentType::where('title', $categoryTitle)
+            ->where('status', 1)
+            ->whereNull('client_id')
+            ->exists();
+
+        if ($existsForNullClient) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This category already exists globally for all client.Pls try other.'
+            ]);
+        }
+
+        // RULE 2: Same title with status=1 for same client_id is not allowed (excluding the current category)
+        $existsForSameClient = PersonalDocumentType::where('title', $categoryTitle)
+            ->where('status', 1)
+            ->where('client_id', $clientId)
+            ->where('id', '!=', $category->id) // Exclude the current category
+            ->exists();
+
+        if ($existsForSameClient) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This category already exists for this client.Pls try other.'
+            ]);
+        }
+
+        try {
+            $category->title = $categoryTitle;
+            $category->save();
+
+            return response()->json(['status' => true,'message' => 'This category is updated successfully.']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Error updating category: ' . $e->getMessage()]);
+        }
     }
 
     /**

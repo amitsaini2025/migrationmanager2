@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ClientsController;
-use App\Http\Controllers\Admin\ClientNotesController;
+use App\Http\Controllers\Admin\Clients\ClientNotesController;
 
 /*
 |--------------------------------------------------------------------------
@@ -202,10 +202,10 @@ Route::prefix('admin')->group(function() {
         Route::post('/not-picked-call', 'Admin\ClientsController@notpickedcall')->name('admin.clients.notpickedcall');
 		Route::get('/viewnotedetail', [ClientNotesController::class, 'viewnotedetail']);
 		Route::get('/viewapplicationnote', [ClientNotesController::class, 'viewapplicationnote']);
-		Route::post('/saveprevvisa', 'Admin\ClientsController@saveprevvisa');
-		Route::post('/saveonlineprimaryform', 'Admin\ClientsController@saveonlineform');
-		Route::post('/saveonlinesecform', 'Admin\ClientsController@saveonlineform');
-		Route::post('/saveonlinechildform', 'Admin\ClientsController@saveonlineform');
+		Route::post('/saveprevvisa', [ClientNotesController::class, 'saveprevvisa']);
+		Route::post('/saveonlineprimaryform', [ClientNotesController::class, 'saveonlineform']);
+		Route::post('/saveonlinesecform', [ClientNotesController::class, 'saveonlineform']);
+		Route::post('/saveonlinechildform', [ClientNotesController::class, 'saveonlineform']);
 		//archived Start
 		Route::get('/archived', 'Admin\ClientsController@archived')->name('admin.clients.archived');
 		Route::get('/change-client-status', 'Admin\ClientsController@updateclientstatus')->name('admin.clients.updateclientstatus');
@@ -257,7 +257,7 @@ Route::prefix('admin')->group(function() {
 		Route::get('/updateappointmentstatus/{status}/{id}', 'Admin\ClientsController@updateappointmentstatus');
 		Route::get('/get-appointments', 'Admin\ClientsController@getAppointments');
 
-        Route::get('/pinnote', 'Admin\ClientsController@pinnote');
+        Route::get('/pinnote', [ClientNotesController::class, 'pinnote']);
         Route::get('/pinactivitylog', 'Admin\ClientsController@pinactivitylog');
 
 		Route::get('/getintrestedservice', 'Admin\ClientsController@getintrestedservice');

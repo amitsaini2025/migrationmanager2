@@ -232,15 +232,18 @@ class PointsService
 
     /**
      * Calculate employment points (Australian + Overseas, capped at 20)
+     * Only counts experiences marked as "relevant"
      */
     protected function calculateEmploymentPoints(Admin $client, Carbon $referenceDate): array
     {
-        // Load employment history
+        // Load employment history - ONLY relevant experiences
         $experiences = $client->experiences ?? collect();
         
-        // Use actual field name: job_country
-        $auYears = $this->calculateFTEYears($experiences->where('job_country', 'Australia'), $referenceDate);
-        $osYears = $this->calculateFTEYears($experiences->where('job_country', '!=', 'Australia'), $referenceDate);
+        // Filter by relevant_experience = 1 first, then by country
+        $relevantExperiences = $experiences->where('relevant_experience', 1);
+        
+        $auYears = $this->calculateFTEYears($relevantExperiences->where('job_country', 'Australia'), $referenceDate);
+        $osYears = $this->calculateFTEYears($relevantExperiences->where('job_country', '!=', 'Australia'), $referenceDate);
         
         $auPoints = $this->getEmploymentPoints($auYears, 'australian');
         $osPoints = $this->getEmploymentPoints($osYears, 'overseas');
@@ -260,7 +263,8 @@ class PointsService
     }
 
     /**
-     * Calculate full-time equivalent years from experience records
+     * Calculate years from experience records
+     * Note: For EOI purposes, any employment 20+ hours/week counts as full-time
      */
     protected function calculateFTEYears($experiences, Carbon $referenceDate): float
     {
@@ -284,14 +288,9 @@ class PointsService
             
             $days = $start->diffInDays($end);
             
-            // Apply FTE multiplier if available, otherwise default to 1.0 (full-time)
-            // If job_type indicates part-time, use 0.5 multiplier as estimate
-            $fte = $exp->fte_multiplier ?? 1.0;
-            if (!isset($exp->fte_multiplier) && isset($exp->job_type) && stripos($exp->job_type, 'part') !== false) {
-                $fte = 0.5; // Rough estimate for part-time work
-            }
-            
-            $totalDays += ($days * $fte);
+            // Count all work as full-time (20+ hours/week qualifies for EOI)
+            // No FTE multiplier needed - part-time, casual, full-time all count the same
+            $totalDays += $days;
         }
         
         return round($totalDays / 365, 2);
@@ -442,59 +441,32 @@ class PointsService
 
     /**
      * Check if client has Australian study requirement
+     * Uses manual entry from Additional Information section
      */
     protected function hasAustralianStudy(Admin $client): bool
     {
-        $qualifications = $client->qualifications ?? collect();
-        
-        return $qualifications->contains(function ($qual) {
-            // Check if country is Australia
-            if ($qual->country !== 'Australia') {
-                return false;
-            }
-            
-            // Calculate duration from start_date and finish_date
-            if (!$qual->start_date || !$qual->finish_date) {
-                return false;
-            }
-            
-            try {
-                $start = Carbon::parse($qual->start_date);
-                $finish = Carbon::parse($qual->finish_date);
-                $durationYears = $finish->diffInYears($start);
-                
-                return $durationYears >= 2; // Minimum 2 years required
-            } catch (\Exception $e) {
-                return false;
-            }
-        });
+        // Use manual entry field (staff verifies 2+ years Australian study)
+        return $client->australian_study == 1;
     }
 
     /**
      * Check if client has specialist education (STEM)
+     * Uses manual entry from Additional Information section
      */
     protected function hasSpecialistEducation(Admin $client): bool
     {
-        $qualifications = $client->qualifications ?? collect();
-        
-        // Check if specialist_education column exists, otherwise return false
-        return $qualifications->contains(function ($qual) {
-            return ($qual->specialist_education ?? 0) == 1 
-                || ($qual->stem_qualification ?? 0) == 1;
-        });
+        // Use manual entry field (staff verifies STEM Masters/PhD by research)
+        return $client->specialist_education == 1;
     }
 
     /**
      * Check if client has regional study
+     * Uses manual entry from Additional Information section
      */
     protected function hasRegionalStudy(Admin $client): bool
     {
-        $qualifications = $client->qualifications ?? collect();
-        
-        // Check if regional_study column exists, otherwise return false
-        return $qualifications->contains(function ($qual) {
-            return ($qual->regional_study ?? 0) == 1;
-        });
+        // Use manual entry field (staff verifies regional Australian study)
+        return $client->regional_study == 1;
     }
 
     /**
@@ -518,19 +490,30 @@ class PointsService
 
     /**
      * Calculate partner points
+     * Only includes partner if marital status is 'Married' or 'De Facto'
      */
     protected function calculatePartnerPoints(Admin $client, Carbon $referenceDate): array
     {
-        // Check marital status
-        if (!$client->partner || $client->marital_status === 'Single') {
+        // Check marital status - only Married/De Facto partners count for points
+        if (!$client->marital_status || !in_array($client->marital_status, ['Married', 'De Facto'])) {
             return [
-                'detail' => 'Single or partner is citizen/PR (10 pts)',
+                'detail' => 'Single (10 pts)',
                 'points' => 10,
-                'category' => 'single_or_pr',
+                'category' => 'single',
+                'note' => 'Marital status: ' . ($client->marital_status ?: 'Not set'),
             ];
         }
 
+        // Get partner from spouse details (if exists)
         $partner = $client->partner;
+        
+        if (!$partner) {
+            return [
+                'detail' => 'No partner information (10 pts)',
+                'points' => 10,
+                'category' => 'single',
+            ];
+        }
         
         // Partner is citizen/PR - check if columns exist
         if (($partner->is_citizen ?? 0) == 1 || ($partner->has_pr ?? 0) == 1) {

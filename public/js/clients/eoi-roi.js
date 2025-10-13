@@ -16,7 +16,16 @@
 
     // Initialize when DOM is ready
     $(document).ready(function() {
+        console.log('[EOI-ROI] DOM ready, initializing...');
         initEoiRoi();
+        
+        // Also try to load points after a short delay to ensure everything is ready
+        setTimeout(function() {
+            if (state.clientId) {
+                console.log('[EOI-ROI] Delayed points load triggered');
+                loadPoints();
+            }
+        }, 1000);
     });
 
     function initEoiRoi() {
@@ -24,6 +33,9 @@
         const clientDetailElement = document.querySelector('[data-client-id]');
         if (clientDetailElement) {
             state.clientId = clientDetailElement.dataset.clientId;
+            console.log('[EOI-ROI] Client ID detected:', state.clientId);
+        } else {
+            console.error('[EOI-ROI] Client ID not found - data-client-id attribute missing');
         }
 
         // Initialize components
@@ -33,12 +45,20 @@
         
         // Load EOI records when tab is activated
         $('#eoiroi').on('show', function() {
+            console.log('[EOI-ROI] Tab activated, loading records...');
             loadEoiRecords();
         });
         
         // If tab is already visible, load records
         if ($('#eoiroi').is(':visible')) {
+            console.log('[EOI-ROI] Tab already visible, loading records...');
             loadEoiRecords();
+        }
+        
+        // Also try to load points immediately if we have a client ID
+        if (state.clientId) {
+            console.log('[EOI-ROI] Client ID available, loading points...');
+            loadPoints();
         }
     }
 
@@ -103,11 +123,8 @@
                     state.eoiRecords = response.data;
                     renderEoiTable();
                     
-                    // Load points if there are EOI records
-                    if (state.eoiRecords.length > 0) {
-                        $('#points-summary-section').show();
-                        loadPoints();
-                    }
+                    // Always load points calculation
+                    loadPoints();
                 }
             },
             error: function(xhr) {
@@ -338,11 +355,15 @@
 
     // Load points calculation
     function loadPoints(subclass) {
-        if (!state.clientId) return;
+        if (!state.clientId) {
+            console.error('[EOI-ROI] Cannot load points - client ID not set');
+            return;
+        }
 
-        subclass = subclass || $('#points-subclass-selector').val() || null;
+        subclass = subclass || $('#points-subclass-selector').val() || '189';
 
         const url = `/admin/clients/${state.clientId}/eoi-roi/calculate-points?subclass=${subclass || ''}`;
+        console.log('[EOI-ROI] Loading points from URL:', url);
 
         $('#points-summary-content').html('<div class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Calculating points...</div>');
 
@@ -353,14 +374,26 @@
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             },
             success: function(response) {
+                console.log('[EOI-ROI] Points calculation response:', response);
                 if (response.success) {
                     state.currentPoints = response.data;
                     renderPointsSummary(response.data);
+                } else {
+                    console.error('[EOI-ROI] Points calculation failed:', response.message);
+                    $('#points-summary-content').html('<div class="text-center text-danger"><i class="fas fa-exclamation-triangle"></i> Points calculation failed: ' + (response.message || 'Unknown error') + '</div>');
                 }
             },
             error: function(xhr) {
-                console.error('Error calculating points:', xhr);
-                $('#points-summary-content').html('<div class="text-center text-danger"><i class="fas fa-exclamation-triangle"></i> Error calculating points</div>');
+                console.error('[EOI-ROI] Error calculating points:', xhr);
+                let errorMsg = 'Error calculating points';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                } else if (xhr.status === 404) {
+                    errorMsg = 'Points calculation endpoint not found (404)';
+                } else if (xhr.status === 500) {
+                    errorMsg = 'Server error during points calculation (500)';
+                }
+                $('#points-summary-content').html('<div class="text-center text-danger"><i class="fas fa-exclamation-triangle"></i> ' + errorMsg + '</div>');
             }
         });
     }
@@ -369,40 +402,99 @@
     function renderPointsSummary(data) {
         const content = $('#points-summary-content');
         
-        let html = `
-            <div class="points-total-badge">${data.total} Points</div>
-            
-            <div class="points-breakdown">
-                <h4>Points Breakdown</h4>
-        `;
+        // Map category names to display names
+        const categoryNames = {
+            'age': 'Age',
+            'english': 'English Test',
+            'education': 'Education',
+            'employment': 'Work Experience',
+            'bonuses': 'Other Bonuses',
+            'partner': 'Partner Skills',
+            'nomination': 'Nomination'
+        };
 
-        // Render breakdown
+        // Build the main table rows
+        let tableRows = '';
         for (const [category, info] of Object.entries(data.breakdown)) {
-            const displayCategory = category.replace('_', ' ').toUpperCase();
-            html += `
-                <div class="points-breakdown-item">
-                    <span><strong>${displayCategory}:</strong> ${info.detail}</span>
-                    <span class="badge badge-primary">${info.points} pts</span>
-                </div>
+            const displayCategory = categoryNames[category] || category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+            let details = info.detail || 'Not claimed';
+            
+            // Special handling for employment (split AU/OS)
+            if (category === 'employment' && info.au_years !== undefined && info.os_years !== undefined) {
+                details = '';
+                if (info.au_years > 0) {
+                    details += `Australian: ${info.au_years} years`;
+                }
+                if (info.os_years > 0) {
+                    if (details) details += ', ';
+                    details += `Overseas: ${info.os_years} years`;
+                }
+                if (!details) details = 'Not claimed';
+            }
+            
+            // Special handling for bonuses (split into individual items)
+            if (category === 'bonuses' && info.items && info.items.length > 0) {
+                details = info.items.join(', ');
+            } else if (category === 'bonuses' && info.points === 0) {
+                details = 'Not claimed';
+            }
+            
+            tableRows += `
+                <tr>
+                    <td class="points-category">${displayCategory}</td>
+                    <td class="points-details">${details}</td>
+                    <td class="points-value">${info.points}</td>
+                </tr>
             `;
         }
 
-        html += '</div>';
-
-        // Render warnings
+        // Build warnings section
+        let warningsHtml = '';
         if (data.warnings && data.warnings.length > 0) {
-            html += '<div class="points-warnings"><h4>Upcoming Changes & Warnings</h4>';
+            warningsHtml += '<div class="points-warnings-title">Upcoming Changes</div>';
             
             data.warnings.forEach(function(warning) {
-                html += `
+                const iconClass = warning.severity === 'high' ? 'fas fa-exclamation-triangle' : 'fas fa-info-circle';
+                warningsHtml += `
                     <div class="points-warning severity-${warning.severity}">
-                        <strong>${warning.type.replace('_', ' ').toUpperCase()}:</strong> ${warning.message}
+                        <i class="${iconClass} points-warning-icon"></i>
+                        ${warning.message}
                     </div>
                 `;
             });
-            
-            html += '</div>';
         }
+
+        const html = `
+            <div class="points-summary-layout">
+                <div class="points-summary-main">
+                    <table class="points-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Details</th>
+                                <th>Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="points-summary-sidebar">
+                    <div class="points-total-display">
+                        <div class="points-total-number">${data.total}</div>
+                        <div class="points-total-label">Current total</div>
+                    </div>
+                    
+                    ${warningsHtml}
+                    
+                    <div class="points-info-text">
+                        Points calculated based on current client data from Personal Details, Qualifications, Experience, and Test Scores sections.
+                    </div>
+                </div>
+            </div>
+        `;
 
         content.html(html);
     }
@@ -452,8 +544,15 @@
 
     // Export for external access if needed
     window.EoiRoi = {
-        reload: loadEoiRecords,
-        refreshPoints: loadPoints
+        reload: function() {
+            console.log('[EOI-ROI] Manual reload triggered');
+            loadEoiRecords();
+        },
+        refreshPoints: function() {
+            console.log('[EOI-ROI] Manual refresh points triggered');
+            loadPoints();
+        },
+        init: initEoiRoi
     };
 
 })();

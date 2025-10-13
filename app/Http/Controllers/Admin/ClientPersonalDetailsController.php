@@ -1441,6 +1441,8 @@ class ClientPersonalDetailsController extends Controller
                     return $this->saveCharacterInfoSection($request, $client);
                 case 'partnerInfo':
                     return $this->savePartnerInfoSection($request, $client);
+                case 'partnerEoiInfo':
+                    return $this->savePartnerEoiInfoSection($request, $client);
                 case 'childrenInfo':
                     return $this->saveChildrenInfoSection($request, $client);
                 case 'eoiInfo':
@@ -2175,9 +2177,20 @@ class ClientPersonalDetailsController extends Controller
             $pyTest = $request->input('py_test');
             $pyDate = $request->input('py_date');
             
+            // New EOI qualification fields
+            $australianStudy = $request->input('australian_study');
+            $australianStudyDate = $request->input('australian_study_date');
+            $specialistEducation = $request->input('specialist_education');
+            $specialistEducationDate = $request->input('specialist_education_date');
+            $regionalStudy = $request->input('regional_study');
+            $regionalStudyDate = $request->input('regional_study_date');
+            
             // Convert date format if needed
             $naatiDateFormatted = null;
             $pyDateFormatted = null;
+            $australianStudyDateFormatted = null;
+            $specialistEducationDateFormatted = null;
+            $regionalStudyDateFormatted = null;
             
             if (!empty($naatiDate)) {
                 $naatiDateObj = \DateTime::createFromFormat('d/m/Y', $naatiDate);
@@ -2189,11 +2202,39 @@ class ClientPersonalDetailsController extends Controller
                 $pyDateFormatted = $pyDateObj ? $pyDateObj->format('Y-m-d') : null;
             }
             
+            if (!empty($australianStudyDate)) {
+                $australianStudyDateObj = \DateTime::createFromFormat('d/m/Y', $australianStudyDate);
+                $australianStudyDateFormatted = $australianStudyDateObj ? $australianStudyDateObj->format('Y-m-d') : null;
+            }
+            
+            if (!empty($specialistEducationDate)) {
+                $specialistEducationDateObj = \DateTime::createFromFormat('d/m/Y', $specialistEducationDate);
+                $specialistEducationDateFormatted = $specialistEducationDateObj ? $specialistEducationDateObj->format('Y-m-d') : null;
+            }
+            
+            if (!empty($regionalStudyDate)) {
+                $regionalStudyDateObj = \DateTime::createFromFormat('d/m/Y', $regionalStudyDate);
+                $regionalStudyDateFormatted = $regionalStudyDateObj ? $regionalStudyDateObj->format('Y-m-d') : null;
+            }
+            
+            // Save all fields
             $client->naati_test = $naatiTest;
             $client->naati_date = $naatiDateFormatted;
             $client->py_test = $pyTest;
             $client->py_date = $pyDateFormatted;
+            $client->australian_study = $australianStudy;
+            $client->australian_study_date = $australianStudyDateFormatted;
+            $client->specialist_education = $specialistEducation;
+            $client->specialist_education_date = $specialistEducationDateFormatted;
+            $client->regional_study = $regionalStudy;
+            $client->regional_study_date = $regionalStudyDateFormatted;
             $client->save();
+
+            // Clear points cache when EOI qualification data changes
+            if (class_exists('\App\Services\PointsService')) {
+                $pointsService = new \App\Services\PointsService();
+                $pointsService->clearCache($client->id);
+            }
 
             return response()->json([
                 'success' => true,
@@ -2284,6 +2325,94 @@ class ClientPersonalDetailsController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error saving partner information: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    private function savePartnerEoiInfoSection($request, $client)
+    {
+        try {
+            $selectedPartnerId = $request->input('selected_partner_id');
+            
+            if (!$selectedPartnerId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please select a partner for EOI calculation'
+                ], 400);
+            }
+
+            // Get the selected partner's data from their actual profile
+            $partnerClient = \App\Models\Admin::find($selectedPartnerId);
+            if (!$partnerClient) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Selected partner not found'
+                ], 404);
+            }
+
+            // Get or create spouse details record
+            $spouseDetail = \App\Models\ClientSpouseDetail::firstOrNew(['client_id' => $client->id]);
+            
+            // Auto-populate from partner's actual profile
+            $spouseDetail->related_client_id = $selectedPartnerId;
+            $spouseDetail->dob = $partnerClient->dob;
+            
+            // Check if partner is citizen/PR from their visa records
+            $spouseDetail->is_citizen = 0; // Default
+            $spouseDetail->has_pr = 0; // Default
+            
+            // Get partner's English test scores
+            $partnerTestScore = $partnerClient->testScores()->latest()->first();
+            if ($partnerTestScore) {
+                $spouseDetail->spouse_has_english_score = 1;
+                $spouseDetail->spouse_test_type = $partnerTestScore->test_type;
+                $spouseDetail->spouse_listening_score = $partnerTestScore->listening;
+                $spouseDetail->spouse_reading_score = $partnerTestScore->reading;
+                $spouseDetail->spouse_writing_score = $partnerTestScore->writing;
+                $spouseDetail->spouse_speaking_score = $partnerTestScore->speaking;
+                $spouseDetail->spouse_overall_score = $partnerTestScore->overall_score;
+                $spouseDetail->spouse_test_date = $partnerTestScore->test_date;
+            } else {
+                $spouseDetail->spouse_has_english_score = 0;
+                $spouseDetail->spouse_test_type = null;
+                $spouseDetail->spouse_listening_score = null;
+                $spouseDetail->spouse_reading_score = null;
+                $spouseDetail->spouse_writing_score = null;
+                $spouseDetail->spouse_speaking_score = null;
+                $spouseDetail->spouse_overall_score = null;
+                $spouseDetail->spouse_test_date = null;
+            }
+
+            // Get partner's skills assessment
+            $partnerOccupation = $partnerClient->occupations()->latest()->first();
+            if ($partnerOccupation) {
+                $spouseDetail->spouse_has_skill_assessment = 1;
+                $spouseDetail->spouse_nomi_occupation = $partnerOccupation->nomi_occupation;
+                $spouseDetail->spouse_assessment_date = $partnerOccupation->dates;
+                $spouseDetail->spouse_skill_assessment_status = 'Valid'; // Default status
+            } else {
+                $spouseDetail->spouse_has_skill_assessment = 0;
+                $spouseDetail->spouse_nomi_occupation = null;
+                $spouseDetail->spouse_assessment_date = null;
+                $spouseDetail->spouse_skill_assessment_status = null;
+            }
+
+            $spouseDetail->save();
+
+            // Clear points cache when partner EOI data changes
+            if (class_exists('\App\Services\PointsService')) {
+                $pointsService = new \App\Services\PointsService();
+                $pointsService->clearCache($client->id);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Partner EOI information updated successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error saving partner EOI information: ' . $e->getMessage()
             ], 500);
         }
     }

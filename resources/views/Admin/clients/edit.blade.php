@@ -981,20 +981,44 @@
                         <div id="additionalInfoSummary" class="summary-view">
                             <div class="summary-grid">
                                 <div class="summary-item">
-                                    <span class="summary-label">NAATI Test:</span>
+                                    <span class="summary-label">NAATI/CCL Test:</span>
                                     <span class="summary-value">{{ $fetchedData->naati_test ? 'Yes' : 'No' }}</span>
                                 </div>
                                 <div class="summary-item">
-                                    <span class="summary-label">NAATI Date:</span>
+                                    <span class="summary-label">NAATI/CCL Date:</span>
                                     <span class="summary-value">{{ $fetchedData->naati_date ? date('d/m/Y', strtotime($fetchedData->naati_date)) : 'Not set' }}</span>
                                 </div>
                                 <div class="summary-item">
-                                    <span class="summary-label">PY Test:</span>
+                                    <span class="summary-label">Professional Year (PY):</span>
                                     <span class="summary-value">{{ $fetchedData->py_test ? 'Yes' : 'No' }}</span>
                                 </div>
                                 <div class="summary-item">
                                     <span class="summary-label">PY Date:</span>
                                     <span class="summary-value">{{ $fetchedData->py_date ? date('d/m/Y', strtotime($fetchedData->py_date)) : 'Not set' }}</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="summary-label">Australian Study:</span>
+                                    <span class="summary-value">{{ $fetchedData->australian_study ? 'Yes' : 'No' }}</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="summary-label">Australian Study Date:</span>
+                                    <span class="summary-value">{{ $fetchedData->australian_study_date ? date('d/m/Y', strtotime($fetchedData->australian_study_date)) : 'Not set' }}</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="summary-label">Specialist Education (STEM):</span>
+                                    <span class="summary-value">{{ $fetchedData->specialist_education ? 'Yes' : 'No' }}</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="summary-label">Specialist Education Date:</span>
+                                    <span class="summary-value">{{ $fetchedData->specialist_education_date ? date('d/m/Y', strtotime($fetchedData->specialist_education_date)) : 'Not set' }}</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="summary-label">Regional Study:</span>
+                                    <span class="summary-value">{{ $fetchedData->regional_study ? 'Yes' : 'No' }}</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="summary-label">Regional Study Date:</span>
+                                    <span class="summary-value">{{ $fetchedData->regional_study_date ? date('d/m/Y', strtotime($fetchedData->regional_study_date)) : 'Not set' }}</span>
                                 </div>
                             </div>
                         </div>
@@ -1003,26 +1027,59 @@
                         <div id="additionalInfoEdit" class="edit-view" style="display: none;">
                             <div class="content-grid">
                                 <div class="form-group">
-                                    <label for="naatiTest">NAATI Test</label>
+                                    <label for="naatiTest">NAATI/CCL Test <small class="text-muted">(5 pts)</small></label>
                                     <select id="naatiTest" name="naati_test">
                                         <option value="0" {{ !$fetchedData->naati_test ? 'selected' : '' }}>No</option>
                                         <option value="1" {{ $fetchedData->naati_test ? 'selected' : '' }}>Yes</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label for="naatiDate">NAATI Date</label>
+                                    <label for="naatiDate">NAATI/CCL Date</label>
                                     <input type="text" id="naatiDate" name="naati_date" value="{{ $fetchedData->naati_date ? date('d/m/Y', strtotime($fetchedData->naati_date)) : '' }}" placeholder="dd/mm/yyyy" class="date-picker">
                                 </div>
                                 <div class="form-group">
-                                    <label for="pyTest">PY Test</label>
+                                    <label for="pyTest">Professional Year (PY) <small class="text-muted">(5 pts)</small></label>
                                     <select id="pyTest" name="py_test">
                                         <option value="0" {{ !$fetchedData->py_test ? 'selected' : '' }}>No</option>
                                         <option value="1" {{ $fetchedData->py_test ? 'selected' : '' }}>Yes</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label for="pyDate">PY Date</label>
+                                    <label for="pyDate">PY Completion Date</label>
                                     <input type="text" id="pyDate" name="py_date" value="{{ $fetchedData->py_date ? date('d/m/Y', strtotime($fetchedData->py_date)) : '' }}" placeholder="dd/mm/yyyy" class="date-picker">
+                                </div>
+                                <div class="form-group">
+                                    <label for="australianStudy">Australian Study Requirement <small class="text-muted">(5 pts - 2+ years in Australia)</small></label>
+                                    <select id="australianStudy" name="australian_study">
+                                        <option value="0" {{ !$fetchedData->australian_study ? 'selected' : '' }}>No</option>
+                                        <option value="1" {{ $fetchedData->australian_study ? 'selected' : '' }}>Yes</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="australianStudyDate">Australian Study Completion Date</label>
+                                    <input type="text" id="australianStudyDate" name="australian_study_date" value="{{ $fetchedData->australian_study_date ? date('d/m/Y', strtotime($fetchedData->australian_study_date)) : '' }}" placeholder="dd/mm/yyyy" class="date-picker">
+                                </div>
+                                <div class="form-group">
+                                    <label for="specialistEducation">Specialist Education (STEM) <small class="text-muted">(10 pts - Masters/PhD by research)</small></label>
+                                    <select id="specialistEducation" name="specialist_education">
+                                        <option value="0" {{ !$fetchedData->specialist_education ? 'selected' : '' }}>No</option>
+                                        <option value="1" {{ $fetchedData->specialist_education ? 'selected' : '' }}>Yes</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="specialistEducationDate">Specialist Education Completion Date</label>
+                                    <input type="text" id="specialistEducationDate" name="specialist_education_date" value="{{ $fetchedData->specialist_education_date ? date('d/m/Y', strtotime($fetchedData->specialist_education_date)) : '' }}" placeholder="dd/mm/yyyy" class="date-picker">
+                                </div>
+                                <div class="form-group">
+                                    <label for="regionalStudy">Regional Study <small class="text-muted">(5 pts - studied in regional Australia)</small></label>
+                                    <select id="regionalStudy" name="regional_study">
+                                        <option value="0" {{ !$fetchedData->regional_study ? 'selected' : '' }}>No</option>
+                                        <option value="1" {{ $fetchedData->regional_study ? 'selected' : '' }}>Yes</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="regionalStudyDate">Regional Study Completion Date</label>
+                                    <input type="text" id="regionalStudyDate" name="regional_study_date" value="{{ $fetchedData->regional_study_date ? date('d/m/Y', strtotime($fetchedData->regional_study_date)) : '' }}" placeholder="dd/mm/yyyy" class="date-picker">
                                 </div>
                             </div>
                             
@@ -1260,6 +1317,139 @@
                             <div class="edit-actions">
                                 <button type="button" class="btn btn-primary" onclick="savePartnerInfo()">Save</button>
                                 <button type="button" class="btn btn-secondary" onclick="cancelEdit('partnerInfo')">Cancel</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Partner EOI Information Section -->
+                    <section class="form-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-chart-line"></i> Partner EOI Information</h3>
+                            <div class="section-actions">
+                                <button type="button" class="edit-section-btn" onclick="toggleEditMode('partnerEoiInfo')">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Summary View -->
+                        <div id="partnerEoiInfoSummary" class="summary-view">
+                            @php
+                                $activePartners = $clientPartners->whereIn('relationship_type', ['Husband', 'Wife', 'Defacto'])->where('related_client_id', '!=', null);
+                                $partnerSpouseDetail = $fetchedData->partner;
+                            @endphp
+                            
+                            @if($fetchedData->marital_status && in_array($fetchedData->marital_status, ['Married', 'De Facto']))
+                                @if($activePartners->count() > 0 && $partnerSpouseDetail)
+                                    <div class="summary-grid">
+                                        <div class="summary-item">
+                                            <span class="summary-label">Partner Selected:</span>
+                                            <span class="summary-value">
+                                                @if($partnerSpouseDetail->relatedClient)
+                                                    {{ $partnerSpouseDetail->relatedClient->first_name }} {{ $partnerSpouseDetail->relatedClient->last_name }}
+                                                @else
+                                                    {{ $partnerSpouseDetail->details ?: 'Not set' }}
+                                                @endif
+                                            </span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Partner Age:</span>
+                                            <span class="summary-value">
+                                                @if($partnerSpouseDetail->dob)
+                                                    {{ \Carbon\Carbon::parse($partnerSpouseDetail->dob)->age }} years old
+                                                @else
+                                                    Not set
+                                                @endif
+                                            </span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Is Australian Citizen:</span>
+                                            <span class="summary-value">{{ $partnerSpouseDetail->is_citizen ? 'Yes' : 'No' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Has PR:</span>
+                                            <span class="summary-value">{{ $partnerSpouseDetail->has_pr ? 'Yes' : 'No' }}</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <span class="summary-label">Has English Test:</span>
+                                            <span class="summary-value">{{ $partnerSpouseDetail->spouse_has_english_score ? 'Yes' : 'No' }}</span>
+                                        </div>
+                                        @if($partnerSpouseDetail->spouse_has_english_score)
+                                            <div class="summary-item">
+                                                <span class="summary-label">English Test Type:</span>
+                                                <span class="summary-value">{{ $partnerSpouseDetail->spouse_test_type ?: 'Not set' }}</span>
+                                            </div>
+                                            <div class="summary-item">
+                                                <span class="summary-label">Overall Score:</span>
+                                                <span class="summary-value">{{ $partnerSpouseDetail->spouse_overall_score ?: 'Not set' }}</span>
+                                            </div>
+                                        @endif
+                                        <div class="summary-item">
+                                            <span class="summary-label">Has Skills Assessment:</span>
+                                            <span class="summary-value">{{ $partnerSpouseDetail->spouse_has_skill_assessment ? 'Yes' : 'No' }}</span>
+                                        </div>
+                                        @if($partnerSpouseDetail->spouse_has_skill_assessment)
+                                            <div class="summary-item">
+                                                <span class="summary-label">Nominated Occupation:</span>
+                                                <span class="summary-value">{{ $partnerSpouseDetail->spouse_nomi_occupation ?: 'Not set' }}</span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @else
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle"></i> 
+                                        No active partner selected for EOI calculation. Please add a partner in the Partner section above and ensure they are linked to an existing client profile.
+                                    </div>
+                                @endif
+                            @else
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i> 
+                                    Partner information is not used for EOI points calculation. Current marital status: <strong>{{ $fetchedData->marital_status ?: 'Not set' }}</strong>
+                                    <br><small>Partner data is preserved for records but excluded from points calculation.</small>
+                                </div>
+                            @endif
+                        </div>
+
+                        <!-- Edit View -->
+                        <div id="partnerEoiInfoEdit" class="edit-view" style="display: none;">
+                            @if($fetchedData->marital_status && in_array($fetchedData->marital_status, ['Married', 'De Facto']))
+                                <div class="content-grid">
+                                    <div class="form-group">
+                                        <label for="selectedPartner">Select Partner for EOI Calculation</label>
+                                        <select id="selectedPartner" name="selected_partner_id">
+                                            <option value="">Select Partner</option>
+                                            @foreach($activePartners as $partner)
+                                                <option value="{{ $partner->related_client_id }}" 
+                                                    {{ $partnerSpouseDetail && $partnerSpouseDetail->related_client_id == $partner->related_client_id ? 'selected' : '' }}>
+                                                    @if($partner->relatedClient)
+                                                        {{ $partner->relatedClient->first_name }} {{ $partner->relatedClient->last_name }} ({{ $partner->relatedClient->client_id }})
+                                                    @else
+                                                        {{ $partner->details }}
+                                                    @endif
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <small class="form-text text-muted">Select which partner to use for EOI points calculation. Data will be auto-populated from their profile.</small>
+                                    </div>
+                                </div>
+                                
+                                <div id="partnerEoiAutoData" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
+                                    <h5><i class="fas fa-sync"></i> Auto-Populated Partner Data</h5>
+                                    <div id="partnerDataDisplay">
+                                        <p class="text-muted">Select a partner above to see their EOI information</p>
+                                    </div>
+                                </div>
+                            @else
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i> 
+                                    Partner EOI information is only available when marital status is "Married" or "De Facto".
+                                    <br><small>Current status: <strong>{{ $fetchedData->marital_status ?: 'Not set' }}</strong></small>
+                                </div>
+                            @endif
+                            
+                            <div class="edit-actions">
+                                <button type="button" class="btn btn-primary" onclick="savePartnerEoiInfo()">Save</button>
+                                <button type="button" class="btn btn-secondary" onclick="cancelEdit('partnerEoiInfo')">Cancel</button>
                             </div>
                         </div>
                     </section>

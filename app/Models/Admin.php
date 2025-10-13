@@ -24,7 +24,9 @@ class Admin extends Authenticatable
 	protected $fillable = [
         'id', 'role', 'first_name', 'last_name', 'email', 'password', 'decrypt_password', 'country', 'state', 'city', 'address', 'zip', 'profile_img', 'status', 'service_token', 'token_generated_at', 'cp_status','cp_random_code','cp_code_verify','cp_token_generated_at', 'visa_expiry_verified_at', 'visa_expiry_verified_by', 'naati_test', 'py_test', 'naati_date', 'py_date', 'created_at', 'updated_at',
         // Lead-specific fields (exist in database but were missing from fillable array)
-        'type', 'service', 'lead_quality', 'att_phone', 'att_email', 'client_id', 'is_archived', 'is_deleted', 'lead_status', 'lead_id', 'comments_note', 'phone', 'dob', 'gender', 'martial_status', 'contact_type', 'email_type'
+        'type', 'service', 'lead_quality', 'att_phone', 'att_email', 'client_id', 'is_archived', 'is_deleted', 'lead_status', 'lead_id', 'comments_note', 'phone', 'dob', 'gender', 'martial_status', 'contact_type', 'email_type',
+        // EOI qualification fields for points calculation
+        'australian_study', 'australian_study_date', 'specialist_education', 'specialist_education_date', 'regional_study', 'regional_study_date'
     ];
 
 	/**
@@ -114,5 +116,15 @@ class Admin extends Authenticatable
     public function partner()
     {
         return $this->hasOne(\App\Models\ClientSpouseDetail::class, 'client_id');
+    }
+
+    public function occupations(): HasMany
+    {
+        return $this->hasMany(\App\Models\ClientOccupation::class, 'client_id');
+    }
+
+    public function clientPartners(): HasMany
+    {
+        return $this->hasMany(\App\Models\ClientRelationship::class, 'client_id');
     }
 }

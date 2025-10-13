@@ -1,5 +1,5 @@
 {{-- EOI/ROI Tab Content --}}
-<div class="tab-pane" id="eoiroi-tab" style="display:none;">
+<div class="tab-pane" id="eoiroi-tab">
     <div class="eoi-roi-container">
         <div class="eoi-roi-header">
             <h2>
@@ -193,18 +193,19 @@
         </div>
 
         {{-- Points Summary Section --}}
-        <div class="eoi-roi-section" id="points-summary-section" style="display:none;">
-            <h3>
-                <i class="fas fa-calculator"></i> Points Calculation Summary
-                <button type="button" class="btn btn-sm btn-info float-right" id="btn-refresh-points">
+        <div class="eoi-roi-section" id="points-summary-section">
+            <div class="points-summary-header">
+                <h3>
+                    <i class="fas fa-calculator"></i> Points Summary
+                </h3>
+                <button type="button" class="btn btn-sm btn-info" id="btn-refresh-points">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
-            </h3>
+            </div>
             
             <div class="points-summary-controls">
                 <label>Calculate for Subclass:</label>
                 <select class="form-control" id="points-subclass-selector" style="width: auto; display: inline-block;">
-                    <option value="">No subclass</option>
                     <option value="189">Subclass 189</option>
                     <option value="190">Subclass 190</option>
                     <option value="491">Subclass 491</option>
@@ -280,43 +281,147 @@
     border-top: 1px solid #e0e0e0;
 }
 
-.points-summary-controls {
-    margin-bottom: 20px;
-}
-
-.points-total-badge {
-    font-size: 48px;
-    font-weight: bold;
-    color: #28a745;
-    text-align: center;
-    margin: 20px 0;
-}
-
-.points-breakdown {
-    margin: 20px 0;
-}
-
-.points-breakdown-item {
+.points-summary-header {
     display: flex;
     justify-content: space-between;
-    padding: 10px;
-    border-bottom: 1px solid #f0f0f0;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
 }
 
-.points-warnings {
+.points-summary-header h3 {
+    margin: 0;
+    font-size: 24px;
+    color: #333;
+}
+
+.points-summary-controls {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.points-summary-controls label {
+    margin-right: 10px;
+    font-weight: 600;
+}
+
+.points-summary-layout {
+    display: flex;
+    gap: 30px;
     margin-top: 20px;
 }
 
+.points-summary-main {
+    flex: 2;
+}
+
+.points-summary-sidebar {
+    flex: 1;
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    height: fit-content;
+}
+
+.points-total-display {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.points-total-number {
+    font-size: 36px;
+    font-weight: bold;
+    margin: 0;
+}
+
+.points-total-label {
+    font-size: 14px;
+    opacity: 0.9;
+    margin: 5px 0 0 0;
+}
+
+.points-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.points-table th {
+    background-color: #f8f9fa;
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.points-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.points-table tr:last-child td {
+    border-bottom: none;
+}
+
+.points-category {
+    font-weight: 600;
+    color: #333;
+}
+
+.points-details {
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.points-value {
+    font-weight: bold;
+    color: #28a745;
+    text-align: right;
+}
+
+.points-warnings-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 15px;
+}
+
 .points-warning {
-    padding: 10px;
-    margin: 5px 0;
+    padding: 15px;
+    margin-bottom: 10px;
     border-left: 4px solid #ffc107;
     background-color: #fff3cd;
+    border-radius: 4px;
 }
 
 .points-warning.severity-high {
     border-left-color: #dc3545;
     background-color: #f8d7da;
+}
+
+.points-warning-icon {
+    margin-right: 8px;
+}
+
+.points-info-text {
+    font-size: 12px;
+    color: #6c757d;
+    line-height: 1.4;
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #e9ecef;
+    border-radius: 4px;
 }
 
 .badge-status {

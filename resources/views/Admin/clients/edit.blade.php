@@ -1093,12 +1093,12 @@
                     <!-- Character Section -->
                     <section class="form-section">
                         <div class="section-header">
-                            <h3><i class="fas fa-shield-alt"></i> Character/Health Declaration</h3>
+                            <h3><i class="fas fa-shield-alt"></i> Character&History</h3>
                             <div class="section-actions">
                                 <button type="button" class="edit-section-btn" onclick="toggleEditMode('characterInfo')">
                                     <i class="fas fa-pen"></i>
                                 </button>
-                                <button type="button" class="add-section-btn" onclick="addCharacterRow('characterContainer', 'character_detail')" title="Add Character/Health Declaration">
+                                <button type="button" class="add-section-btn" onclick="addCharacterRow('characterContainer', 'character_detail')" title="Add Character&History">
                                     <i class="fas fa-plus"></i>
                                 </button>
                             </div>
@@ -1111,6 +1111,18 @@
                                     @foreach($clientCharacters as $index => $character)
                                         <div class="passport-entry-compact" style="margin-bottom: 12px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #dc3545;">
                                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: start;">
+                                                <div class="summary-item-inline">
+                                                    <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">TYPE:</span>
+                                                    <span class="summary-value" style="color: #212529; font-weight: 500;">
+                                                        @switch($character->type_of_character)
+                                                            @case(1) Criminal @break
+                                                            @case(2) Military/ Intelligence Work @break
+                                                            @case(3) Visa/ Citizenship/ refusal/ cancellation/ deportation @break
+                                                            @case(4) Health Declaration @break
+                                                            @default Not set
+                                                        @endswitch
+                                                    </span>
+                                                </div>
                                                 <div class="summary-item-inline">
                                                     <span class="summary-label" style="font-weight: 600; color: #6c757d; font-size: 0.85em;">CHARACTER DETAIL:</span>
                                                     <span class="summary-value" style="color: #212529; font-weight: 500;">{{ $character->character_detail ?: 'Not set' }}</span>
@@ -1135,7 +1147,17 @@
                                         <input type="hidden" name="character_id[{{ $index }}]" value="{{ $character->id }}">
                                         <div class="content-grid">
                                             <div class="form-group">
-                                                <label>Character/Health Declaration Detail</label>
+                                                <label>Type</label>
+                                                <select name="type_of_character[{{ $index }}]" required>
+                                                    <option value="">Select Type</option>
+                                                    <option value="1" {{ $character->type_of_character == 1 ? 'selected' : '' }}>Criminal</option>
+                                                    <option value="2" {{ $character->type_of_character == 2 ? 'selected' : '' }}>Military/ Intelligence Work</option>
+                                                    <option value="3" {{ $character->type_of_character == 3 ? 'selected' : '' }}>Visa/ Citizenship/ refusal/ cancellation/ deportation</option>
+                                                    <option value="4" {{ $character->type_of_character == 4 ? 'selected' : '' }}>Health Declaration</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Character&History Detail</label>
                                                 <textarea name="character_detail[{{ $index }}]" rows="3" placeholder="Enter character/health declaration details">{{ $character->character_detail }}</textarea>
                                             </div>
                                         </div>
@@ -1143,7 +1165,7 @@
                                 @endforeach
                             </div>
 
-                            <button type="button" class="add-item-btn" onclick="addCharacterRow('characterContainer', 'character_detail')"><i class="fas fa-plus-circle"></i> Add Character/Health Declaration</button>
+                            <button type="button" class="add-item-btn" onclick="addCharacterRow('characterContainer', 'character_detail')"><i class="fas fa-plus-circle"></i> Add Character&History</button>
                             <div class="edit-actions">
                                 <button type="button" class="btn btn-primary" onclick="saveCharacterInfo()">Save</button>
                                 <button type="button" class="btn btn-secondary" onclick="cancelEdit('characterInfo')">Cancel</button>

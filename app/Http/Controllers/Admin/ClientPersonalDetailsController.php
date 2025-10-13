@@ -2265,9 +2265,11 @@ class ClientPersonalDetailsController extends Controller
 
             // Insert new character records
             foreach ($characters as $charData) {
-                if (!empty($charData['detail'])) {
+                if (!empty($charData['detail']) && !empty($charData['type_of_character'])) {
                     ClientCharacter::create([
                         'client_id' => $client->id,
+                        'admin_id' => auth()->id(),
+                        'type_of_character' => $charData['type_of_character'],
                         'character_detail' => $charData['detail']
                     ]);
                 }
@@ -2298,13 +2300,42 @@ class ClientPersonalDetailsController extends Controller
             }
 
             // Delete existing partner records for this client (filter by partner relationship types)
+            // First, get the related_client_ids that will be affected
+            $existingRelationships = ClientRelationship::where('client_id', $client->id)
+                ->whereIn('relationship_type', ['Husband', 'Wife', 'Ex-Wife', 'Defacto'])
+                ->get();
+            
+            // Delete the main relationships
             ClientRelationship::where('client_id', $client->id)
                 ->whereIn('relationship_type', ['Husband', 'Wife', 'Ex-Wife', 'Defacto'])
                 ->delete();
+            
+            // Delete reciprocal relationships
+            foreach ($existingRelationships as $relationship) {
+                if ($relationship->related_client_id) {
+                    ClientRelationship::where('client_id', $relationship->related_client_id)
+                        ->where('related_client_id', $client->id)
+                        ->whereIn('relationship_type', ['Husband', 'Wife', 'Ex-Wife', 'Defacto'])
+                        ->delete();
+                }
+            }
 
             // Insert new partner records
             foreach ($partners as $partnerData) {
                 if (!empty($partnerData['details']) || !empty($partnerData['relationship_type'])) {
+                    // Convert DOB from dd/mm/yyyy to YYYY-mm-dd format
+                    $dob = null;
+                    if (!empty($partnerData['dob']) && $partnerData['dob'] !== 'dd/mm/yyyy') {
+                        try {
+                            $dobDate = \Carbon\Carbon::createFromFormat('d/m/Y', $partnerData['dob']);
+                            $dob = $dobDate->format('Y-m-d');
+                        } catch (\Exception $e) {
+                            // If date format is invalid, set to null
+                            $dob = null;
+                        }
+                    }
+                    
+                    // Create the main relationship entry
                     ClientRelationship::create([
                         'admin_id' => auth()->id(),
                         'client_id' => $client->id,
@@ -2312,8 +2343,40 @@ class ClientPersonalDetailsController extends Controller
                         'details' => $partnerData['details'],
                         'relationship_type' => $partnerData['relationship_type'] ?? null,
                         'gender' => $partnerData['gender'] ?? null,
-                        'company_type' => $partnerData['company_type'] ?? null
+                        'company_type' => $partnerData['company_type'] ?? null,
+                        'last_name' => $partnerData['last_name'] ?? null,
+                        'dob' => $dob,
+                        'email' => $partnerData['email'] ?? null,
+                        'first_name' => $partnerData['first_name'] ?? null,
+                        'phone' => $partnerData['phone'] ?? null
                     ]);
+                    
+                    // Create reciprocal relationship entry if partner_id exists (existing client)
+                    if (!empty($partnerData['partner_id'])) {
+                        // Get the related client's details for the reciprocal entry
+                        $relatedClient = Admin::where('id', $partnerData['partner_id'])->where('role', '7')->first();
+                        
+                        if ($relatedClient) {
+                            // Determine reciprocal relationship type
+                            $reciprocalRelationshipType = $this->getReciprocalRelationshipType($partnerData['relationship_type']);
+                            
+                            // Create reciprocal entry
+                            ClientRelationship::create([
+                                'admin_id' => auth()->id(),
+                                'client_id' => $partnerData['partner_id'],
+                                'related_client_id' => $client->id,
+                                'details' => $client->first_name . ' ' . $client->last_name . ' (' . $client->email . ', ' . $client->phone . ', ' . $client->client_id . ')',
+                                'relationship_type' => $reciprocalRelationshipType,
+                                'gender' => $client->gender ?? null,
+                                'company_type' => $client->company_type ?? null,
+                                'last_name' => $client->last_name ?? null,
+                                'dob' => $client->dob ?? null,
+                                'email' => $client->email ?? null,
+                                'first_name' => $client->first_name ?? null,
+                                'phone' => $client->phone ?? null
+                            ]);
+                        }
+                    }
                 }
             }
 
@@ -2326,6 +2389,25 @@ class ClientPersonalDetailsController extends Controller
                 'success' => false,
                 'message' => 'Error saving partner information: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Get reciprocal relationship type
+     */
+    private function getReciprocalRelationshipType($relationshipType)
+    {
+        switch ($relationshipType) {
+            case 'Husband':
+                return 'Wife';
+            case 'Wife':
+                return 'Husband';
+            case 'Ex-Wife':
+                return 'Ex-Husband';
+            case 'Defacto':
+                return 'Defacto';
+            default:
+                return $relationshipType; // Return same type if no specific reciprocal
         }
     }
 

@@ -31,7 +31,7 @@
         </div>
         
         <div class="form-group">
-            <label>Relationship Type</label>
+            <label>Relationship Type <span class="text-danger">*</span></label>
             <select name="{{ $fieldPrefix }}_relationship_type[{{ $index }}]" required>
                 <option value="">Select Relationship</option>
                 @foreach($relationshipOptions as $option)
@@ -53,8 +53,8 @@
         </div>
         
         <div class="form-group">
-            <label>Company Type</label>
-            <select name="{{ $fieldPrefix }}_company_type[{{ $index }}]">
+            <label>Company Type <span class="text-danger">*</span></label>
+            <select name="{{ $fieldPrefix }}_company_type[{{ $index }}]" required>
                 <option value="">Select Company Type</option>
                 <option value="Accompany Member" {{ $member->company_type == 'Accompany Member' ? 'selected' : '' }}>Accompany Member</option>
                 <option value="Non-Accompany Member" {{ $member->company_type == 'Non-Accompany Member' ? 'selected' : '' }}>Non-Accompany Member</option>
@@ -73,7 +73,7 @@
                 <input type="text" name="{{ $fieldPrefix }}_first_name[{{ $index }}]" placeholder="First Name">
             </div>
             <div class="form-group">
-                <label>Last Name</label>
+                <label>Last Name <span class="text-danger">*</span></label>
                 <input type="text" name="{{ $fieldPrefix }}_last_name[{{ $index }}]" placeholder="Last Name">
             </div>
             <div class="form-group">
@@ -81,7 +81,7 @@
                 <input type="text" name="{{ $fieldPrefix }}_phone[{{ $index }}]" placeholder="Phone">
             </div>
             <div class="form-group">
-                <label>DOB</label>
+                <label>DOB <span class="text-danger">*</span></label>
                 <input type="text" name="{{ $fieldPrefix }}_dob[{{ $index }}]" placeholder="dd/mm/yyyy" class="date-picker">
             </div>
         </div>

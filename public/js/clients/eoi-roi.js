@@ -18,24 +18,17 @@
     $(document).ready(function() {
         console.log('[EOI-ROI] DOM ready, initializing...');
         initEoiRoi();
-        
-        // Also try to load points after a short delay to ensure everything is ready
-        setTimeout(function() {
-            if (state.clientId) {
-                console.log('[EOI-ROI] Delayed points load triggered');
-                loadPoints();
-            }
-        }, 1000);
+        // Don't load data immediately - wait for tab activation
     });
 
     function initEoiRoi() {
-        // Get client ID from page data
-        const clientDetailElement = document.querySelector('[data-client-id]');
-        if (clientDetailElement) {
-            state.clientId = clientDetailElement.dataset.clientId;
+        // Get client ID from page configuration
+        if (window.ClientDetailConfig && window.ClientDetailConfig.encodeId) {
+            state.clientId = window.ClientDetailConfig.encodeId;
             console.log('[EOI-ROI] Client ID detected:', state.clientId);
         } else {
-            console.error('[EOI-ROI] Client ID not found - data-client-id attribute missing');
+            console.error('[EOI-ROI] Client ID not found - ClientDetailConfig.encodeId missing');
+            return;
         }
 
         // Initialize components
@@ -43,34 +36,54 @@
         initializeDatepickers();
         bindEventHandlers();
         
-        // Load EOI records when tab is activated
-        $('#eoiroi').on('show', function() {
-            console.log('[EOI-ROI] Tab activated, loading records...');
-            loadEoiRecords();
+        // Listen for tab activation via sidebar tabs (using correct ID)
+        $(document).on('click', '.client-nav-button[data-tab="eoiroi"]', function() {
+            console.log('[EOI-ROI] Tab button clicked, loading records...');
+            setTimeout(function() {
+                if (state.clientId) {
+                    loadEoiRecords();
+                }
+            }, 200);
         });
         
-        // If tab is already visible, load records
-        if ($('#eoiroi').is(':visible')) {
-            console.log('[EOI-ROI] Tab already visible, loading records...');
+        // Check if tab is already active (e.g., direct URL navigation)
+        if ($('#eoiroi-tab').hasClass('active')) {
+            console.log('[EOI-ROI] Tab already active on load, loading records...');
             loadEoiRecords();
         }
         
-        // Also try to load points immediately if we have a client ID
-        if (state.clientId) {
-            console.log('[EOI-ROI] Client ID available, loading points...');
-            loadPoints();
+        // Always show points summary section when EOI-ROI tab is initialized
+        $('#points-summary-section').show();
+        
+        // Check if data was pre-loaded by sidebar-tabs.js
+        if (window.tempEoiData) {
+            console.log('[EOI-ROI] Found pre-loaded data, rendering...');
+            state.eoiRecords = window.tempEoiData;
+            renderEoiTable();
+            delete window.tempEoiData;
         }
+        
+        console.log('[EOI-ROI] Initialized, waiting for tab activation');
     }
 
     function initializeSelect2() {
         $('#eoi-states').select2({
             placeholder: 'Select state(s)',
-            allowClear: true
+            allowClear: true,
+            width: '100%',
+            minimumResultsForSearch: Infinity,
+            dropdownAutoWidth: true,
+            tags: false,
+            tokenSeparators: [','],
+            closeOnSelect: false
         });
+        
+        // Initialize occupation autocomplete
+        initializeOccupationAutocomplete();
     }
 
     function initializeDatepickers() {
-        $('.datepicker').datepicker({
+        $('.eoi-datepicker').datepicker({
             format: 'dd/mm/yyyy',
             autoclose: true,
             todayHighlight: true
@@ -90,8 +103,8 @@
         // Delete button
         $('#btn-delete-eoi').on('click', handleDelete);
 
-        // Table row click
-        $(document).on('click', '#eoi-roi-tbody tr:not(.no-data-row)', handleRowClick);
+        // EOI reference link click
+        $(document).on('click', '.eoi-ref-link', handleEoiRefClick);
 
         // Password toggle
         $('#toggle-password').on('click', togglePasswordVisibility);
@@ -123,7 +136,8 @@
                     state.eoiRecords = response.data;
                     renderEoiTable();
                     
-                    // Always load points calculation
+                    // Always show points section and load points calculation
+                    $('#points-summary-section').show();
                     loadPoints();
                 }
             },
@@ -142,7 +156,7 @@
         if (state.eoiRecords.length === 0) {
             tbody.html(`
                 <tr class="no-data-row">
-                    <td colspan="9" class="text-center">
+                    <td colspan="8" class="text-center">
                         <i class="fas fa-info-circle"></i> No EOI/ROI records found. Click "Add New EOI" to get started.
                     </td>
                 </tr>
@@ -154,7 +168,7 @@
             const row = $('<tr>').attr('data-eoi-id', eoi.id);
             
             row.html(`
-                <td>${eoi.eoi_number || 'N/A'}</td>
+                <td><a href="#" class="eoi-ref-link" data-eoi-id="${eoi.id}">${eoi.eoi_number || 'N/A'}</a></td>
                 <td>${eoi.formatted_subclasses || 'N/A'}</td>
                 <td>${eoi.formatted_states || 'N/A'}</td>
                 <td>${eoi.occupation || 'N/A'}</td>
@@ -162,11 +176,6 @@
                 <td>${eoi.submission_date || 'N/A'}</td>
                 <td>${eoi.roi || 'N/A'}</td>
                 <td><span class="badge-status ${eoi.status}">${capitalizeFirst(eoi.status)}</span></td>
-                <td>
-                    <button class="btn btn-sm btn-primary" title="Edit">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                </td>
             `);
             
             tbody.append(row);
@@ -194,13 +203,15 @@
         $('#eoi-id').val('');
         $('#eoi-states').val(null).trigger('change');
         $('input[name="eoi_subclasses[]"]').prop('checked', false);
+        clearOccupationSelection();
         state.selectedEoiId = null;
     }
 
-    // Handle row click
-    function handleRowClick(e) {
-        const row = $(e.currentTarget);
-        const eoiId = row.data('eoi-id');
+    // Handle EOI reference click
+    function handleEoiRefClick(e) {
+        e.preventDefault();
+        const link = $(e.currentTarget);
+        const eoiId = link.data('eoi-id');
         
         loadEoiRecord(eoiId);
     }
@@ -235,7 +246,19 @@
     function populateForm(data) {
         $('#eoi-id').val(data.id);
         $('#eoi-number').val(data.eoi_number);
-        $('#eoi-occupation').val(data.occupation);
+        
+        // Handle occupation data
+        if (data.occupation) {
+            $('#eoi-occupation').val(data.occupation);
+            // If we have ANZSCO data, populate hidden fields
+            if (data.anzsco_occupation_id) {
+                $('#eoi-anzsco-id').val(data.anzsco_occupation_id);
+            }
+            if (data.anzsco_code) {
+                $('#eoi-anzsco-code').val(data.anzsco_code);
+            }
+        }
+        
         $('#eoi-points').val(data.points);
         $('#eoi-submission-date').val(data.submission_date);
         $('#eoi-invitation-date').val(data.invitation_date);
@@ -272,6 +295,15 @@
         const selectedStates = $('#eoi-states').val();
         if (!selectedStates || selectedStates.length === 0) {
             showNotification('Please select at least one state', 'error');
+            return false;
+        }
+
+        // Validate occupation is selected from database
+        const occupationInput = $('#eoi-occupation');
+        const anzscoId = $('#eoi-anzsco-id').val();
+        if (!occupationInput.val() || !anzscoId) {
+            showNotification('Please select a valid occupation from the dropdown', 'error');
+            occupationInput.focus();
             return false;
         }
 
@@ -407,8 +439,13 @@
             'age': 'Age',
             'english': 'English Test',
             'education': 'Education',
-            'employment': 'Work Experience',
-            'bonuses': 'Other Bonuses',
+            'australian_work_experience': 'Australian Work Experience',
+            'overseas_work_experience': 'Overseas Work Experience',
+            'australian_study': 'Australian Study',
+            'specialist_education': 'Specialist Education',
+            'regional_study': 'Regional Study',
+            'naati_ccl': 'NAATI/CCL',
+            'professional_year': 'Professional Year',
             'partner': 'Partner Skills',
             'nomination': 'Nomination'
         };
@@ -417,27 +454,7 @@
         let tableRows = '';
         for (const [category, info] of Object.entries(data.breakdown)) {
             const displayCategory = categoryNames[category] || category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-            let details = info.detail || 'Not claimed';
-            
-            // Special handling for employment (split AU/OS)
-            if (category === 'employment' && info.au_years !== undefined && info.os_years !== undefined) {
-                details = '';
-                if (info.au_years > 0) {
-                    details += `Australian: ${info.au_years} years`;
-                }
-                if (info.os_years > 0) {
-                    if (details) details += ', ';
-                    details += `Overseas: ${info.os_years} years`;
-                }
-                if (!details) details = 'Not claimed';
-            }
-            
-            // Special handling for bonuses (split into individual items)
-            if (category === 'bonuses' && info.items && info.items.length > 0) {
-                details = info.items.join(', ');
-            } else if (category === 'bonuses' && info.points === 0) {
-                details = 'Not claimed';
-            }
+            const details = info.detail || 'Not claimed';
             
             tableRows += `
                 <tr>
@@ -540,6 +557,162 @@
     function capitalizeFirst(str) {
         if (!str) return '';
         return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    // Initialize occupation autocomplete
+    function initializeOccupationAutocomplete() {
+        const occupationInput = $('#eoi-occupation');
+        const autocompleteContainer = $('.autocomplete-items');
+        
+        let searchTimeout;
+        
+        occupationInput.on('input', function() {
+            const query = $(this).val().trim();
+            
+            // Clear previous timeout
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            
+            // Clear autocomplete if input is empty
+            if (query.length === 0) {
+                autocompleteContainer.hide();
+                clearOccupationSelection();
+                return;
+            }
+            
+            // Debounce search - wait 300ms after user stops typing
+            searchTimeout = setTimeout(() => {
+                if (query.length >= 2) {
+                    searchOccupations(query, autocompleteContainer[0], $(this));
+                }
+            }, 300);
+        });
+        
+        occupationInput.on('focus', function() {
+            const query = $(this).val().trim();
+            if (query.length >= 2) {
+                autocompleteContainer.show();
+            }
+        });
+        
+        // Hide autocomplete when clicking outside
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('.form-group').length) {
+                autocompleteContainer.hide();
+            }
+        });
+        
+        // Handle keyboard navigation
+        occupationInput.on('keydown', function(e) {
+            const items = autocompleteContainer.find('.autocomplete-item');
+            const selected = autocompleteContainer.find('.autocomplete-item.selected');
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (selected.length) {
+                    selected.removeClass('selected');
+                    selected.next().addClass('selected');
+                } else {
+                    items.first().addClass('selected');
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (selected.length) {
+                    selected.removeClass('selected');
+                    selected.prev().addClass('selected');
+                } else {
+                    items.last().addClass('selected');
+                }
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (selected.length) {
+                    selected.click();
+                }
+            } else if (e.key === 'Escape') {
+                autocompleteContainer.hide();
+            }
+        });
+    }
+    
+    // Search occupations via API
+    async function searchOccupations(query, autocompleteContainer, inputElement) {
+        try {
+            // Show loading indicator
+            autocompleteContainer.innerHTML = '<div class="autocomplete-item"><span class="anzsco-loading"></span> Searching...</div>';
+            autocompleteContainer.style.display = 'block';
+            
+            const response = await fetch(`/admin/anzsco/search?q=${encodeURIComponent(query)}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                credentials: 'same-origin'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Search failed: ${response.status} ${response.statusText}`);
+            }
+            
+            const occupations = await response.json();
+            
+            if (occupations.length === 0) {
+                autocompleteContainer.innerHTML = '<div class="autocomplete-item text-muted">No occupations found</div>';
+                return;
+            }
+            
+            // Build autocomplete items
+            autocompleteContainer.innerHTML = '';
+            occupations.forEach(occ => {
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                
+                item.innerHTML = `
+                    <div>
+                        <span class="anzsco-code">${occ.anzsco_code}</span> - 
+                        <span class="anzsco-title">${occ.occupation_title}</span>
+                    </div>
+                `;
+                
+                item.addEventListener('click', function() {
+                    fillOccupationData(inputElement, occ);
+                    autocompleteContainer.innerHTML = '';
+                    autocompleteContainer.style.display = 'none';
+                });
+                
+                autocompleteContainer.appendChild(item);
+            });
+            
+        } catch (error) {
+            console.error('Occupation search error:', error);
+            autocompleteContainer.innerHTML = '<div class="autocomplete-item text-danger">Error searching occupations. Please try again.</div>';
+        }
+    }
+    
+    // Fill occupation data into form fields
+    function fillOccupationData(inputElement, occupationData) {
+        if (!inputElement) return;
+        
+        // Fill occupation name with code for display
+        const displayText = `${occupationData.anzsco_code} - ${occupationData.occupation_title}`;
+        inputElement.val(displayText);
+        inputElement.addClass('from-database');
+        inputElement.data('anzsco-id', occupationData.id);
+        
+        // Fill hidden fields
+        $('#eoi-anzsco-id').val(occupationData.id);
+        $('#eoi-anzsco-code').val(occupationData.anzsco_code);
+        
+        console.log('[EOI-ROI] Occupation selected:', occupationData.occupation_title, occupationData.anzsco_code);
+    }
+    
+    // Clear occupation selection
+    function clearOccupationSelection() {
+        $('#eoi-anzsco-id').val('');
+        $('#eoi-anzsco-code').val('');
+        $('#eoi-occupation').removeClass('from-database').removeData('anzsco-id');
     }
 
     // Export for external access if needed

@@ -10,6 +10,7 @@ class ClientSpouseDetail extends Model
     protected $fillable = [
         'client_id',
         'admin_id',
+        'related_client_id',
         'spouse_has_english_score',
         'spouse_test_type',
         'spouse_listening_score',

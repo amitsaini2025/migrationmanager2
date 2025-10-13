@@ -1406,7 +1406,7 @@ function initializeDatepickers() {
  * Toggle Spouse Details Section based on Marital Status
  */
 function toggleSpouseDetailsSection() {
-    const maritalStatus = document.getElementById('martialStatus').value;
+    const maritalStatus = document.getElementById('maritalStatus').value;
     const spouseDetailsSection = document.getElementById('spouseDetailsSection');
 
     // Check if the spouseDetailsSection element exists before trying to access its style
@@ -1865,7 +1865,7 @@ window.saveBasicInfo = function() {
     formData.append('dob', document.getElementById('dob').value);
     formData.append('age', document.getElementById('age').value);
     formData.append('gender', document.getElementById('gender').value);
-    formData.append('marital_status', document.getElementById('martialStatus').value);
+    formData.append('marital_status', document.getElementById('maritalStatus').value);
     
     saveSectionData('basicInfo', formData, function() {
         // Update summary view on success
@@ -1895,7 +1895,7 @@ window.saveBasicInfo = function() {
             </div>
             <div class="summary-item">
                 <span class="summary-label">Marital Status:</span>
-                <span class="summary-value">${document.getElementById('martialStatus').value || 'Not set'}</span>
+                <span class="summary-value">${document.getElementById('maritalStatus').value || 'Not set'}</span>
             </div>
         `;
         
@@ -2776,6 +2776,58 @@ window.saveExperienceInfo = function() {
 };
 
 /**
+ * Toggle date field visibility based on requirement selection
+ */
+function toggleDateFieldVisibility(requirementSelectId, dateFieldId) {
+    const requirementSelect = document.getElementById(requirementSelectId);
+    const dateField = document.getElementById(dateFieldId);
+    const dateFormGroup = dateField.closest('.form-group');
+    
+    if (requirementSelect && dateFormGroup) {
+        if (requirementSelect.value === '1') {
+            dateFormGroup.style.display = 'block';
+            dateField.required = true;
+        } else {
+            dateFormGroup.style.display = 'none';
+            dateField.required = false;
+            dateField.value = ''; // Clear the date when requirement is No
+        }
+    }
+}
+
+/**
+ * Initialize Additional Information section
+ */
+function initializeAdditionalInfo() {
+    // Set up event listeners for all requirement dropdowns
+    const requirementMappings = [
+        { requirement: 'naatiTest', date: 'naatiDate' },
+        { requirement: 'pyTest', date: 'pyDate' },
+        { requirement: 'australianStudy', date: 'australianStudyDate' },
+        { requirement: 'specialistEducation', date: 'specialistEducationDate' },
+        { requirement: 'regionalStudy', date: 'regionalStudyDate' }
+    ];
+    
+    requirementMappings.forEach(mapping => {
+        const requirementSelect = document.getElementById(mapping.requirement);
+        if (requirementSelect) {
+            // Initialize visibility on page load
+            toggleDateFieldVisibility(mapping.requirement, mapping.date);
+            
+            // Add change event listener
+            requirementSelect.addEventListener('change', function() {
+                toggleDateFieldVisibility(mapping.requirement, mapping.date);
+            });
+        }
+    });
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    initializeAdditionalInfo();
+});
+
+/**
  * Save additional information and update summary
  */
 window.saveAdditionalInfo = function() {
@@ -2785,11 +2837,47 @@ window.saveAdditionalInfo = function() {
     const pyTest = document.getElementById('pyTest').value;
     const pyDate = document.getElementById('pyDate').value;
     
+    // New EOI qualification fields
+    const australianStudy = document.getElementById('australianStudy').value;
+    const australianStudyDate = document.getElementById('australianStudyDate').value;
+    const specialistEducation = document.getElementById('specialistEducation').value;
+    const specialistEducationDate = document.getElementById('specialistEducationDate').value;
+    const regionalStudy = document.getElementById('regionalStudy').value;
+    const regionalStudyDate = document.getElementById('regionalStudyDate').value;
+    
+    // Validate required date fields
+    if (naatiTest == '1' && !naatiDate.trim()) {
+        alert('Please enter NAATI/CCL Date when NAATI/CCL Test is Yes');
+        return;
+    }
+    if (pyTest == '1' && !pyDate.trim()) {
+        alert('Please enter PY Completion Date when Professional Year is Yes');
+        return;
+    }
+    if (australianStudy == '1' && !australianStudyDate.trim()) {
+        alert('Please enter Australian Study Completion Date when Australian Study Requirement is Yes');
+        return;
+    }
+    if (specialistEducation == '1' && !specialistEducationDate.trim()) {
+        alert('Please enter Specialist Education Completion Date when Specialist Education is Yes');
+        return;
+    }
+    if (regionalStudy == '1' && !regionalStudyDate.trim()) {
+        alert('Please enter Regional Study Completion Date when Regional Study is Yes');
+        return;
+    }
+    
     const formData = new FormData();
     formData.append('naati_test', naatiTest);
     formData.append('naati_date', naatiDate);
     formData.append('py_test', pyTest);
     formData.append('py_date', pyDate);
+    formData.append('australian_study', australianStudy);
+    formData.append('australian_study_date', australianStudyDate);
+    formData.append('specialist_education', specialistEducation);
+    formData.append('specialist_education_date', specialistEducationDate);
+    formData.append('regional_study', regionalStudy);
+    formData.append('regional_study_date', regionalStudyDate);
     
     saveSectionData('additionalInfo', formData, function() {
         // Update summary view on success
@@ -2798,20 +2886,44 @@ window.saveAdditionalInfo = function() {
         
         summaryGrid.innerHTML = `
             <div class="summary-item">
-                <span class="summary-label">NAATI Test:</span>
+                <span class="summary-label">NAATI/CCL Test:</span>
                 <span class="summary-value">${naatiTest == '1' ? 'Yes' : 'No'}</span>
             </div>
             <div class="summary-item">
-                <span class="summary-label">NAATI Date:</span>
+                <span class="summary-label">NAATI/CCL Date:</span>
                 <span class="summary-value">${naatiDate || 'Not set'}</span>
             </div>
             <div class="summary-item">
-                <span class="summary-label">PY Test:</span>
+                <span class="summary-label">Professional Year (PY):</span>
                 <span class="summary-value">${pyTest == '1' ? 'Yes' : 'No'}</span>
             </div>
             <div class="summary-item">
-                <span class="summary-label">PY Date:</span>
+                <span class="summary-label">PY Completion Date:</span>
                 <span class="summary-value">${pyDate || 'Not set'}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Australian Study Requirement:</span>
+                <span class="summary-value">${australianStudy == '1' ? 'Yes' : 'No'}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Australian Study Completion Date:</span>
+                <span class="summary-value">${australianStudyDate || 'Not set'}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Specialist Education (STEM):</span>
+                <span class="summary-value">${specialistEducation == '1' ? 'Yes' : 'No'}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Specialist Education Completion Date:</span>
+                <span class="summary-value">${specialistEducationDate || 'Not set'}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Regional Study:</span>
+                <span class="summary-value">${regionalStudy == '1' ? 'Yes' : 'No'}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Regional Study Completion Date:</span>
+                <span class="summary-value">${regionalStudyDate || 'Not set'}</span>
             </div>
         `;
         
@@ -3219,6 +3331,186 @@ window.saveChildrenInfo = function() {
         cancelEdit('childrenInfo');
     });
 };
+
+// ===== PARTNER EOI INFORMATION FUNCTIONS =====
+
+window.savePartnerEoiInfo = function() {
+    // Get the selected partner ID
+    const selectedPartnerSelect = document.querySelector('select[name="selected_partner_id"]');
+    const selectedPartnerId = selectedPartnerSelect ? selectedPartnerSelect.value : '';
+    
+    if (!selectedPartnerId) {
+        showNotification('Please select a partner for EOI calculation', 'error');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('selected_partner_id', selectedPartnerId);
+    
+    saveSectionData('partnerEoiInfo', formData, function() {
+        showNotification('Partner EOI information saved successfully!', 'success');
+        
+        // Return to summary view
+        cancelEdit('partnerEoiInfo');
+        
+        // Reload page to show updated data
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
+    });
+};
+
+// ===== PARTNER EOI AUTO-POPULATION FUNCTIONS =====
+
+// Function to fetch and display partner EOI data when partner is selected
+function fetchPartnerEoiData(partnerId) {
+    if (!partnerId) {
+        // Reset display when no partner is selected
+        document.getElementById('partnerDataDisplay').innerHTML = '<p style="color: #666666;">Select a partner above to see their EOI information</p>';
+        return;
+    }
+
+    // Show loading state
+    document.getElementById('partnerDataDisplay').innerHTML = '<p style="color: #666666;"><i class="fas fa-spinner fa-spin"></i> Loading partner data...</p>';
+
+    // Fetch partner data
+    fetch(`/admin/clients/partner-eoi-data/${partnerId}`, {
+        method: 'GET',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayPartnerEoiData(data.data);
+        } else {
+            document.getElementById('partnerDataDisplay').innerHTML = `<p style="color: #dc3545;">Error: ${data.message}</p>`;
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching partner EOI data:', error);
+        document.getElementById('partnerDataDisplay').innerHTML = '<p style="color: #dc3545;">Error loading partner data. Please try again.</p>';
+    });
+}
+
+// Function to display partner EOI data in a formatted way
+function displayPartnerEoiData(partnerData) {
+    let html = `
+        <div style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #dee2e6;">
+            <h6 style="color: #495057; margin-bottom: 15px; font-weight: 600;">
+                <i class="fas fa-user"></i> ${partnerData.partner_name}
+            </h6>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div class="summary-item">
+                    <span style="font-weight: 600; color: #6c757d; font-size: 0.85em;">DATE OF BIRTH:</span><br>
+                    <span style="color: #212529; font-weight: 500;">${partnerData.dob}</span>
+                </div>
+                
+                <div class="summary-item">
+                    <span style="font-weight: 600; color: #6c757d; font-size: 0.85em;">CITIZENSHIP:</span><br>
+                    <span style="color: #212529; font-weight: 500;">${partnerData.is_citizen ? 'Yes' : 'No'}</span>
+                </div>
+                
+                <div class="summary-item">
+                    <span style="font-weight: 600; color: #6c757d; font-size: 0.85em;">PERMANENT RESIDENCY:</span><br>
+                    <span style="color: #212529; font-weight: 500;">${partnerData.has_pr ? 'Yes' : 'No'}</span>
+                </div>
+            </div>
+    `;
+
+    // Add English Test section if available
+    if (partnerData.english_test) {
+        html += `
+            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+                <h6 style="color: #495057; margin-bottom: 10px; font-weight: 600;">
+                    <i class="fas fa-language"></i> English Test Results
+                </h6>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;">
+                    <div class="summary-item">
+                        <span style="font-weight: 600; color: #6c757d; font-size: 0.8em;">TEST TYPE:</span><br>
+                        <span style="color: #212529; font-weight: 500;">${partnerData.english_test.test_type}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span style="font-weight: 600; color: #6c757d; font-size: 0.8em;">LISTENING:</span><br>
+                        <span style="color: #212529; font-weight: 500;">${partnerData.english_test.listening}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span style="font-weight: 600; color: #6c757d; font-size: 0.8em;">READING:</span><br>
+                        <span style="color: #212529; font-weight: 500;">${partnerData.english_test.reading}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span style="font-weight: 600; color: #6c757d; font-size: 0.8em;">WRITING:</span><br>
+                        <span style="color: #212529; font-weight: 500;">${partnerData.english_test.writing}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span style="font-weight: 600; color: #6c757d; font-size: 0.8em;">SPEAKING:</span><br>
+                        <span style="color: #212529; font-weight: 500;">${partnerData.english_test.speaking}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span style="font-weight: 600; color: #6c757d; font-size: 0.8em;">OVERALL:</span><br>
+                        <span style="color: #212529; font-weight: 500;">${partnerData.english_test.overall}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span style="font-weight: 600; color: #6c757d; font-size: 0.8em;">TEST DATE:</span><br>
+                        <span style="color: #212529; font-weight: 500;">${partnerData.english_test.test_date}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Add Skills Assessment section if available
+    if (partnerData.skills_assessment) {
+        html += `
+            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+                <h6 style="color: #495057; margin-bottom: 10px; font-weight: 600;">
+                    <i class="fas fa-briefcase"></i> Skills Assessment
+                </h6>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                    <div class="summary-item">
+                        <span style="font-weight: 600; color: #6c757d; font-size: 0.8em;">HAS ASSESSMENT:</span><br>
+                        <span style="color: #212529; font-weight: 500;">${partnerData.skills_assessment.has_assessment}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span style="font-weight: 600; color: #6c757d; font-size: 0.8em;">OCCUPATION:</span><br>
+                        <span style="color: #212529; font-weight: 500;">${partnerData.skills_assessment.occupation}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span style="font-weight: 600; color: #6c757d; font-size: 0.8em;">ASSESSMENT DATE:</span><br>
+                        <span style="color: #212529; font-weight: 500;">${partnerData.skills_assessment.assessment_date}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span style="font-weight: 600; color: #6c757d; font-size: 0.8em;">STATUS:</span><br>
+                        <span style="color: #212529; font-weight: 500;">${partnerData.skills_assessment.status}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    html += '</div>';
+
+    document.getElementById('partnerDataDisplay').innerHTML = html;
+}
+
+// Add event listener for partner selection dropdown
+document.addEventListener('DOMContentLoaded', function() {
+    const partnerSelect = document.querySelector('select[name="selected_partner_id"]');
+    if (partnerSelect) {
+        partnerSelect.addEventListener('change', function() {
+            fetchPartnerEoiData(this.value);
+        });
+        
+        // If a partner is already selected, load their data
+        if (partnerSelect.value) {
+            fetchPartnerEoiData(partnerSelect.value);
+        }
+    }
+});
 
 /**
  * Save EOI information and update summary
@@ -3728,9 +4020,9 @@ $(document).ready(function() {
     toggleSpouseDetailsSection();
 
     // Run on Marital Status change
-    const martialStatusElement = document.getElementById('martialStatus');
-    if (martialStatusElement) {
-        martialStatusElement.addEventListener('change', function() {
+    const maritalStatusElement = document.getElementById('maritalStatus');
+    if (maritalStatusElement) {
+        maritalStatusElement.addEventListener('change', function() {
             toggleSpouseDetailsSection();
         });
     }

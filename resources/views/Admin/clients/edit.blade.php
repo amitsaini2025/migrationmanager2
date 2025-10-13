@@ -133,7 +133,7 @@
                                 </div>
                                 <div class="summary-item">
                                     <span class="summary-label">Marital Status:</span>
-                                    <span class="summary-value">{{ $fetchedData->martial_status ?: 'Not set' }}</span>
+                                    <span class="summary-value">{{ $fetchedData->marital_status ?: 'Not set' }}</span>
                                 </div>
                             </div>
                         </div>
@@ -194,17 +194,17 @@
                                 </div>
 
                                 <div class="form-group">
-                                    <label for="martialStatus">Marital Status</label>
-                                    <select id="martialStatus" name="martial_status">
+                                    <label for="maritalStatus">Marital Status</label>
+                                    <select id="maritalStatus" name="marital_status">
                                         <option value="">Select Marital Status</option>
-                                        <option value="Single" {{ $fetchedData->martial_status == 'Single' ? 'selected' : '' }}>Single</option>
-                                        <option value="Married" {{ $fetchedData->martial_status == 'Married' ? 'selected' : '' }}>Married</option>
-                                        <option value="Defacto" {{ ($fetchedData->martial_status == 'Defacto' || $fetchedData->martial_status == 'De Facto') ? 'selected' : '' }}>De Facto</option>
-                                        <option value="Separated" {{ $fetchedData->martial_status == 'Separated' ? 'selected' : '' }}>Separated</option>
-                                        <option value="Divorced" {{ $fetchedData->martial_status == 'Divorced' ? 'selected' : '' }}>Divorced</option>
-                                        <option value="Widowed" {{ $fetchedData->martial_status == 'Widowed' ? 'selected' : '' }}>Widowed</option>
+                                        <option value="Single" {{ $fetchedData->marital_status == 'Single' ? 'selected' : '' }}>Single</option>
+                                        <option value="Married" {{ $fetchedData->marital_status == 'Married' ? 'selected' : '' }}>Married</option>
+                                        <option value="Defacto" {{ ($fetchedData->marital_status == 'Defacto' || $fetchedData->marital_status == 'De Facto') ? 'selected' : '' }}>De Facto</option>
+                                        <option value="Separated" {{ $fetchedData->marital_status == 'Separated' ? 'selected' : '' }}>Separated</option>
+                                        <option value="Divorced" {{ $fetchedData->marital_status == 'Divorced' ? 'selected' : '' }}>Divorced</option>
+                                        <option value="Widowed" {{ $fetchedData->marital_status == 'Widowed' ? 'selected' : '' }}>Widowed</option>
                                     </select>
-                                    @error('martial_status')
+                                    @error('marital_status')
                                         <span class="text-danger">{{ $message }}</span>
                                     @enderror
                                 </div>
@@ -993,15 +993,15 @@
                                     <span class="summary-value">{{ $fetchedData->py_test ? 'Yes' : 'No' }}</span>
                                 </div>
                                 <div class="summary-item">
-                                    <span class="summary-label">PY Date:</span>
+                                    <span class="summary-label">PY Completion Date:</span>
                                     <span class="summary-value">{{ $fetchedData->py_date ? date('d/m/Y', strtotime($fetchedData->py_date)) : 'Not set' }}</span>
                                 </div>
                                 <div class="summary-item">
-                                    <span class="summary-label">Australian Study:</span>
+                                    <span class="summary-label">Australian Study Requirement:</span>
                                     <span class="summary-value">{{ $fetchedData->australian_study ? 'Yes' : 'No' }}</span>
                                 </div>
                                 <div class="summary-item">
-                                    <span class="summary-label">Australian Study Date:</span>
+                                    <span class="summary-label">Australian Study Completion Date:</span>
                                     <span class="summary-value">{{ $fetchedData->australian_study_date ? date('d/m/Y', strtotime($fetchedData->australian_study_date)) : 'Not set' }}</span>
                                 </div>
                                 <div class="summary-item">
@@ -1009,7 +1009,7 @@
                                     <span class="summary-value">{{ $fetchedData->specialist_education ? 'Yes' : 'No' }}</span>
                                 </div>
                                 <div class="summary-item">
-                                    <span class="summary-label">Specialist Education Date:</span>
+                                    <span class="summary-label">Specialist Education Completion Date:</span>
                                     <span class="summary-value">{{ $fetchedData->specialist_education_date ? date('d/m/Y', strtotime($fetchedData->specialist_education_date)) : 'Not set' }}</span>
                                 </div>
                                 <div class="summary-item">
@@ -1017,7 +1017,7 @@
                                     <span class="summary-value">{{ $fetchedData->regional_study ? 'Yes' : 'No' }}</span>
                                 </div>
                                 <div class="summary-item">
-                                    <span class="summary-label">Regional Study Date:</span>
+                                    <span class="summary-label">Regional Study Completion Date:</span>
                                     <span class="summary-value">{{ $fetchedData->regional_study_date ? date('d/m/Y', strtotime($fetchedData->regional_study_date)) : 'Not set' }}</span>
                                 </div>
                             </div>
@@ -1458,7 +1458,7 @@
                                 <div id="partnerEoiAutoData" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
                                     <h5><i class="fas fa-sync"></i> Auto-Populated Partner Data</h5>
                                     <div id="partnerDataDisplay">
-                                        <p class="text-muted">Select a partner above to see their EOI information</p>
+                                        <p style="color: #666666;">Select a partner above to see their EOI information</p>
                                     </div>
                                 </div>
                             @else

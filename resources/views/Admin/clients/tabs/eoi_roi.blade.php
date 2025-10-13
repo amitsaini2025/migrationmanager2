@@ -25,12 +25,11 @@
                             <th>Submission</th>
                             <th>ROI</th>
                             <th>Status</th>
-                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="eoi-roi-tbody">
                         <tr class="no-data-row">
-                            <td colspan="9" class="text-center">
+                            <td colspan="8" class="text-center">
                                 <i class="fas fa-info-circle"></i> No EOI/ROI records found. Click "Add New EOI" to get started.
                             </td>
                         </tr>
@@ -55,9 +54,14 @@
                     
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="eoi-occupation">Occupation (ANZSCO)</label>
-                            <input type="text" class="form-control" id="eoi-occupation" name="eoi_occupation" 
-                                   placeholder="e.g., 261313">
+                            <label for="eoi-occupation">Occupation (ANZSCO) <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control occupation-autocomplete" id="eoi-occupation" 
+                                   name="eoi_occupation" placeholder="Search occupation..." autocomplete="off" required>
+                            <div class="autocomplete-items"></div>
+                            
+                            <!-- Hidden fields to store selected occupation data -->
+                            <input type="hidden" id="eoi-anzsco-id" name="anzsco_occupation_id">
+                            <input type="hidden" id="eoi-anzsco-code" name="anzsco_code">
                         </div>
                     </div>
                 </div>
@@ -85,7 +89,7 @@
                         <div class="form-group">
                             <label>State(s) <span class="text-danger">*</span></label>
                             <select class="form-control select2-multiple" id="eoi-states" name="eoi_states[]" 
-                                    multiple="multiple" required>
+                                    multiple="multiple" required style="min-width: 200px;">
                                 <option value="ACT">ACT</option>
                                 <option value="NSW">NSW</option>
                                 <option value="NT">NT</option>
@@ -113,7 +117,7 @@
                     <div class="col-md-4">
                         <div class="form-group">
                             <label for="eoi-submission-date">Submission Date</label>
-                            <input type="text" class="form-control datepicker" id="eoi-submission-date" 
+                            <input type="text" class="form-control eoi-datepicker" id="eoi-submission-date" 
                                    name="eoi_submission_date" placeholder="dd/mm/yyyy">
                         </div>
                     </div>
@@ -137,7 +141,7 @@
                     <div class="col-md-4">
                         <div class="form-group">
                             <label for="eoi-invitation-date">Invitation Date</label>
-                            <input type="text" class="form-control datepicker" id="eoi-invitation-date" 
+                            <input type="text" class="form-control eoi-datepicker" id="eoi-invitation-date" 
                                    name="eoi_invitation_date" placeholder="dd/mm/yyyy">
                         </div>
                     </div>
@@ -145,7 +149,7 @@
                     <div class="col-md-4">
                         <div class="form-group">
                             <label for="eoi-nomination-date">Nomination Date</label>
-                            <input type="text" class="form-control datepicker" id="eoi-nomination-date" 
+                            <input type="text" class="form-control eoi-datepicker" id="eoi-nomination-date" 
                                    name="eoi_nomination_date" placeholder="dd/mm/yyyy">
                         </div>
                     </div>
@@ -269,6 +273,56 @@
 
 #eoi-roi-table tbody tr:hover {
     background-color: #f5f5f5;
+}
+
+.eoi-ref-link {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.eoi-ref-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.select2-container {
+    width: 100% !important;
+}
+
+.select2-container .select2-selection--multiple {
+    min-height: 38px !important;
+    padding: 6px 8px !important;
+    border: 1px solid #ced4da !important;
+    border-radius: 0.25rem !important;
+    background-color: #fff !important;
+}
+
+.select2-container .select2-selection--multiple .select2-selection__choice {
+    background-color: #e3f2fd;
+    border: 1px solid #2196f3;
+    border-radius: 4px;
+    color: #1976d2;
+    font-size: 14px;
+    padding: 4px 8px;
+    margin: 2px 4px 2px 0;
+    display: inline-block;
+    vertical-align: top;
+}
+
+.select2-container .select2-selection--multiple .select2-selection__rendered {
+    padding: 0 !important;
+    line-height: normal !important;
+}
+
+.select2-container .select2-selection--multiple .select2-selection__choice__remove {
+    color: #6c757d;
+    margin-right: 4px;
+    font-weight: bold;
+}
+
+.select2-container .select2-selection--multiple .select2-selection__choice__remove:hover {
+    color: #dc3545;
 }
 
 .checkbox-inline {
@@ -437,6 +491,57 @@
 .badge-status.nominated { background-color: #17a2b8; color: white; }
 .badge-status.rejected { background-color: #dc3545; color: white; }
 .badge-status.withdrawn { background-color: #6c757d; color: white; }
+
+/* Occupation Autocomplete Styles */
+.autocomplete-items {
+    position: absolute;
+    border: 1px solid #d4d4d4;
+    border-bottom: none;
+    border-top: none;
+    z-index: 99;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: white;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+}
+
+.autocomplete-item {
+    padding: 10px;
+    cursor: pointer;
+    background-color: #fff;
+    border-bottom: 1px solid #d4d4d4;
+}
+
+.autocomplete-item:hover {
+    background-color: #e9e9e9;
+}
+
+.autocomplete-item.selected {
+    background-color: #007bff;
+    color: white;
+}
+
+.anzsco-loading {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.form-group {
+    position: relative;
+}
 </style>
 
 @push('scripts')

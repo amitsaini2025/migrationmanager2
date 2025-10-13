@@ -178,6 +178,7 @@ Route::prefix('admin')->group(function() {
 		Route::get('/clients/edit/{id}', [ClientsController::class, 'edit'])->name('admin.clients.edit');
 		Route::post('/clients/edit', [ClientsController::class, 'edit'])->name('admin.clients.update');
 		Route::post('/clients/save-section', [ClientPersonalDetailsController::class, 'saveSection'])->name('admin.clients.saveSection');
+		Route::get('/clients/partner-eoi-data/{partnerId}', [ClientPersonalDetailsController::class, 'getPartnerEoiData'])->name('admin.clients.partnerEoiData');
 
         // Phone Verification Routes
         Route::prefix('clients/phone')->name('clients.phone.')->group(function () {

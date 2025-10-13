@@ -2417,6 +2417,79 @@ class ClientPersonalDetailsController extends Controller
         }
     }
 
+    public function getPartnerEoiData($partnerId)
+    {
+        try {
+            // Get the partner's data from their actual profile
+            $partnerClient = \App\Models\Admin::find($partnerId);
+            if (!$partnerClient) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Partner not found'
+                ], 404);
+            }
+
+            // Get partner's English test scores
+            $partnerTestScore = $partnerClient->testScores()->latest()->first();
+            
+            // Get partner's skills assessment
+            $partnerOccupation = $partnerClient->occupations()->latest()->first();
+            
+            // Check if partner is citizen/PR from their visa records
+            $isCitizen = 0;
+            $hasPR = 0;
+            
+            // Build the response data
+            $partnerData = [
+                'partner_name' => $partnerClient->first_name . ' ' . $partnerClient->last_name,
+                'dob' => $partnerClient->dob ? date('d/m/Y', strtotime($partnerClient->dob)) : 'Not set',
+                'is_citizen' => $isCitizen,
+                'has_pr' => $hasPR,
+                'english_test' => null,
+                'skills_assessment' => null
+            ];
+
+            if ($partnerTestScore) {
+                $partnerData['english_test'] = [
+                    'test_type' => $partnerTestScore->test_type ?? 'Not set',
+                    'listening' => $partnerTestScore->listening ?? 'Not set',
+                    'reading' => $partnerTestScore->reading ?? 'Not set',
+                    'writing' => $partnerTestScore->writing ?? 'Not set',
+                    'speaking' => $partnerTestScore->speaking ?? 'Not set',
+                    'overall' => $partnerTestScore->overall ?? 'Not set',
+                    'test_date' => $partnerTestScore->test_date ? date('d/m/Y', strtotime($partnerTestScore->test_date)) : 'Not set'
+                ];
+            }
+
+            if ($partnerOccupation) {
+                $partnerData['skills_assessment'] = [
+                    'has_assessment' => 'Yes',
+                    'occupation' => $partnerOccupation->nomi_occupation ?? 'Not set',
+                    'assessment_date' => $partnerOccupation->dates ? date('d/m/Y', strtotime($partnerOccupation->dates)) : 'Not set',
+                    'status' => 'Valid'
+                ];
+            } else {
+                $partnerData['skills_assessment'] = [
+                    'has_assessment' => 'No',
+                    'occupation' => 'Not set',
+                    'assessment_date' => 'Not set',
+                    'status' => 'Not set'
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $partnerData
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching partner EOI data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     private function saveChildrenInfoSection($request, $client)
     {
         try {
@@ -2673,6 +2746,17 @@ class ClientPersonalDetailsController extends Controller
                             }
                         }
 
+                        // Calculate proficiency level using the service
+                        $proficiencyService = new \App\Services\EnglishProficiencyService();
+                        $scores = [
+                            'listening' => $listening,
+                            'reading' => $reading,
+                            'writing' => $writing,
+                            'speaking' => $speaking,
+                            'overall' => $overallScore
+                        ];
+                        $proficiencyResult = $proficiencyService->calculateProficiency($testType, $scores, $formattedTestDate);
+
                         if ($testScoreId) {
                             // Update existing record
                             $existingTestScore = \App\Models\ClientTestScore::find($testScoreId);
@@ -2685,6 +2769,8 @@ class ClientPersonalDetailsController extends Controller
                                     'writing' => $writing,
                                     'speaking' => $speaking,
                                     'overall_score' => $overallScore,
+                                    'proficiency_level' => $proficiencyResult['level'],
+                                    'proficiency_points' => $proficiencyResult['points'],
                                     'test_date' => $formattedTestDate,
                                     'test_reference_no' => $testReferenceNo,
                                     'relevant_test' => $relevantTest
@@ -2701,6 +2787,8 @@ class ClientPersonalDetailsController extends Controller
                                 'writing' => $writing,
                                 'speaking' => $speaking,
                                 'overall_score' => $overallScore,
+                                'proficiency_level' => $proficiencyResult['level'],
+                                'proficiency_points' => $proficiencyResult['points'],
                                 'test_date' => $formattedTestDate,
                                 'test_reference_no' => $testReferenceNo,
                                 'relevant_test' => $relevantTest

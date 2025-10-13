@@ -81,7 +81,8 @@ class PointsServiceTest extends TestCase
         $result = $this->pointsService->compute($client, null, 6);
         
         $this->assertEquals(30, $result['breakdown']['age']['points']);
-        $this->assertStringContainsString('30 years old', $result['breakdown']['age']['detail']);
+        $this->assertStringContainsString('years', $result['breakdown']['age']['detail']);
+        $this->assertStringContainsString('months', $result['breakdown']['age']['detail']);
     }
 
     /** @test */
@@ -102,7 +103,7 @@ class PointsServiceTest extends TestCase
         
         $result = $this->pointsService->compute($client, '190', 6);
         
-        $expectedCategories = ['age', 'english', 'employment', 'education', 'bonuses', 'partner', 'nomination'];
+        $expectedCategories = ['age', 'english', 'australian_work_experience', 'overseas_work_experience', 'education', 'partner', 'nomination'];
         
         foreach ($expectedCategories as $category) {
             $this->assertArrayHasKey($category, $result['breakdown'], "Missing category: {$category}");

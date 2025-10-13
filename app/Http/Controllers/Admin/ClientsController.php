@@ -3068,6 +3068,17 @@ class ClientsController extends Controller
 
                     // Only save if testType is provided and at least one score or date is present
                     if (!empty($testType) && (!empty($listening) || !empty($reading) || !empty($writing) || !empty($speaking) || !empty($overallScore) || !empty($formatted_test_date))) {
+                        // Calculate proficiency level using the service
+                        $proficiencyService = new \App\Services\EnglishProficiencyService();
+                        $scores = [
+                            'listening' => $listening,
+                            'reading' => $reading,
+                            'writing' => $writing,
+                            'speaking' => $speaking,
+                            'overall' => $overallScore
+                        ];
+                        $proficiencyResult = $proficiencyService->calculateProficiency($testType, $scores, $formatted_test_date);
+
                         ClientTestScore::create([
                             'admin_id' => Auth::user()->id,
                             'client_id' => $obj->id,
@@ -3078,6 +3089,8 @@ class ClientsController extends Controller
                             'speaking' => $speaking,
                             'test_date' => $formatted_test_date,
                             'overall_score' => $overallScore,
+                            'proficiency_level' => $proficiencyResult['level'],
+                            'proficiency_points' => $proficiencyResult['points'],
                             'relevant_test' => $relevant_test,
                             'test_reference_no' => $test_reference_no
                         ]);

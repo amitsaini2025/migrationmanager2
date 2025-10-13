@@ -85,17 +85,18 @@ class PointsService
         $englishData = $this->calculateEnglishPoints($client, $invitationDate);
         $breakdown['english'] = $englishData;
         
-        // 3. Employment points (combined AU + Overseas, capped at 20)
-        $employmentData = $this->calculateEmploymentPoints($client, $invitationDate);
-        $breakdown['employment'] = $employmentData;
+        // 3. Employment points (separate AU and Overseas)
+        $australianWorkData = $this->calculateAustralianWorkExperience($client, $invitationDate);
+        $overseasWorkData = $this->calculateOverseasWorkExperience($client, $invitationDate);
+        $breakdown['australian_work_experience'] = $australianWorkData;
+        $breakdown['overseas_work_experience'] = $overseasWorkData;
         
         // 4. Education points
         $educationData = $this->calculateEducationPoints($client);
         $breakdown['education'] = $educationData;
         
-        // 5. Other bonuses (Australian study, specialist, regional, NAATI, PY)
-        $bonusData = $this->calculateBonusPoints($client);
-        $breakdown['bonuses'] = $bonusData;
+        // 5. Bonus points (separate categories)
+        $this->addBonusCategories($client, $breakdown);
         
         // 6. Partner points
         $partnerData = $this->calculatePartnerPoints($client, $invitationDate);
@@ -131,12 +132,17 @@ class PointsService
             ];
         }
 
-        $age = Carbon::parse($client->dob)->diffInYears($referenceDate);
+        $ageDiff = Carbon::parse($client->dob)->diff($referenceDate);
+        $ageYears = $ageDiff->y;
+        $ageMonths = $ageDiff->m;
+        
+        // Calculate total age in years for points calculation
+        $age = $ageYears + ($ageMonths / 12);
         
         foreach (self::AGE_BRACKETS as [$min, $max, $points]) {
             if ($age >= $min && $age <= $max) {
                 return [
-                    'detail' => "{$age} years old",
+                    'detail' => "{$ageYears} years {$ageMonths} months",
                     'points' => $points,
                     'age' => $age,
                 ];
@@ -145,7 +151,7 @@ class PointsService
         
         // Age 45+ or under 18
         return [
-            'detail' => "{$age} years old (outside eligible range)",
+            'detail' => "{$ageYears} years {$ageMonths} months (outside eligible range)",
             'points' => 0,
             'age' => $age,
             'warning' => $age >= 45,
@@ -153,7 +159,7 @@ class PointsService
     }
 
     /**
-     * Calculate English language points
+     * Calculate English language points using stored proficiency levels
      */
     protected function calculateEnglishPoints(Admin $client, Carbon $referenceDate): array
     {
@@ -189,11 +195,29 @@ class PointsService
             ];
         }
 
-        // Get best valid test
+        // Get best valid test based on stored proficiency points
         $bestTest = $validTests->sortByDesc(function ($test) {
-            return $this->deriveEnglishLevel($test);
+            return $test->proficiency_points ?? 0;
         })->first();
 
+        // Use stored proficiency level and points if available
+        if ($bestTest->proficiency_level && $bestTest->proficiency_points !== null) {
+            $points = $bestTest->proficiency_points;
+            
+            // Convert proficiency level to lowercase for consistency
+            $level = strtolower(str_replace(' English', '', $bestTest->proficiency_level));
+            
+            return [
+                'detail' => $bestTest->proficiency_level,
+                'points' => $points,
+                'level' => $level,
+                'test_type' => $bestTest->test_type ?? 'Unknown',
+                'test_date' => $bestTest->test_date,
+                'expiry_date' => Carbon::parse($bestTest->test_date)->addYears(3)->format('Y-m-d'),
+            ];
+        }
+
+        // Fallback to old calculation method if proficiency level not stored
         $level = $this->deriveEnglishLevel($bestTest);
         $points = match ($level) {
             'superior' => self::ENGLISH_SUPERIOR,
@@ -231,34 +255,46 @@ class PointsService
     }
 
     /**
-     * Calculate employment points (Australian + Overseas, capped at 20)
-     * Only counts experiences marked as "relevant"
+     * Calculate Australian work experience points
+     * Only counts experiences marked as "relevant" in Australia
      */
-    protected function calculateEmploymentPoints(Admin $client, Carbon $referenceDate): array
+    protected function calculateAustralianWorkExperience(Admin $client, Carbon $referenceDate): array
     {
         // Load employment history - ONLY relevant experiences
         $experiences = $client->experiences ?? collect();
         
-        // Filter by relevant_experience = 1 first, then by country
-        $relevantExperiences = $experiences->where('relevant_experience', 1);
+        // Filter by relevant_experience = 1 and Australia
+        $relevantExperiences = $experiences->where('relevant_experience', 1)->where('job_country', 'Australia');
         
-        $auYears = $this->calculateFTEYears($relevantExperiences->where('job_country', 'Australia'), $referenceDate);
-        $osYears = $this->calculateFTEYears($relevantExperiences->where('job_country', '!=', 'Australia'), $referenceDate);
-        
-        $auPoints = $this->getEmploymentPoints($auYears, 'australian');
-        $osPoints = $this->getEmploymentPoints($osYears, 'overseas');
-        
-        // Combined cap at 20
-        $totalPoints = min(20, $auPoints + $osPoints);
+        $years = $this->calculateFTEYears($relevantExperiences, $referenceDate);
+        $points = $this->getEmploymentPoints($years, 'australian');
         
         return [
-            'detail' => sprintf('AU: %.1f yrs (%d pts), OS: %.1f yrs (%d pts)', 
-                $auYears, $auPoints, $osYears, $osPoints),
-            'points' => $totalPoints,
-            'au_years' => $auYears,
-            'au_points' => $auPoints,
-            'os_years' => $osYears,
-            'os_points' => $osPoints,
+            'detail' => $years > 0 ? sprintf('%.1f years', $years) : 'Not claimed',
+            'points' => $points,
+            'years' => $years,
+        ];
+    }
+
+    /**
+     * Calculate Overseas work experience points
+     * Only counts experiences marked as "relevant" outside Australia
+     */
+    protected function calculateOverseasWorkExperience(Admin $client, Carbon $referenceDate): array
+    {
+        // Load employment history - ONLY relevant experiences
+        $experiences = $client->experiences ?? collect();
+        
+        // Filter by relevant_experience = 1 and not Australia
+        $relevantExperiences = $experiences->where('relevant_experience', 1)->where('job_country', '!=', 'Australia');
+        
+        $years = $this->calculateFTEYears($relevantExperiences, $referenceDate);
+        $points = $this->getEmploymentPoints($years, 'overseas');
+        
+        return [
+            'detail' => $years > 0 ? sprintf('%.1f years', $years) : 'Not claimed',
+            'points' => $points,
+            'years' => $years,
         ];
     }
 
@@ -390,53 +426,50 @@ class PointsService
     }
 
     /**
-     * Calculate bonus points (Australian study, specialist education, regional, NAATI, PY)
+     * Add individual bonus categories to breakdown
+     * Only includes categories where points are claimed
      */
-    protected function calculateBonusPoints(Admin $client): array
+    protected function addBonusCategories(Admin $client, array &$breakdown): void
     {
-        $bonuses = [];
-        $totalPoints = 0;
-        
         // Australian Study Requirement
-        $ausStudy = $this->hasAustralianStudy($client);
-        if ($ausStudy) {
-            $bonuses[] = 'Australian Study (5 pts)';
-            $totalPoints += 5;
+        if ($this->hasAustralianStudy($client)) {
+            $breakdown['australian_study'] = [
+                'detail' => 'Australian Study',
+                'points' => 5,
+            ];
         }
         
         // Specialist Education (STEM Masters/PhD)
-        $specialist = $this->hasSpecialistEducation($client);
-        if ($specialist) {
-            $bonuses[] = 'Specialist Education (10 pts)';
-            $totalPoints += 10;
+        if ($this->hasSpecialistEducation($client)) {
+            $breakdown['specialist_education'] = [
+                'detail' => 'Specialist Education',
+                'points' => 10,
+            ];
         }
         
         // Regional Study
-        $regional = $this->hasRegionalStudy($client);
-        if ($regional) {
-            $bonuses[] = 'Regional Study (5 pts)';
-            $totalPoints += 5;
+        if ($this->hasRegionalStudy($client)) {
+            $breakdown['regional_study'] = [
+                'detail' => 'Regional Study',
+                'points' => 5,
+            ];
         }
         
         // NAATI/CCL
-        $naati = $this->hasNAATI($client);
-        if ($naati) {
-            $bonuses[] = 'NAATI/CCL (5 pts)';
-            $totalPoints += 5;
+        if ($this->hasNAATI($client)) {
+            $breakdown['naati_ccl'] = [
+                'detail' => 'NAATI/CCL',
+                'points' => 5,
+            ];
         }
         
         // Professional Year
-        $py = $this->hasProfessionalYear($client);
-        if ($py) {
-            $bonuses[] = 'Professional Year (5 pts)';
-            $totalPoints += 5;
+        if ($this->hasProfessionalYear($client)) {
+            $breakdown['professional_year'] = [
+                'detail' => 'Professional Year',
+                'points' => 5,
+            ];
         }
-        
-        return [
-            'detail' => !empty($bonuses) ? implode(', ', $bonuses) : 'None',
-            'points' => $totalPoints,
-            'items' => $bonuses,
-        ];
     }
 
     /**

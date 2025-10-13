@@ -80,15 +80,18 @@ class ClientEoiReference extends Model
             if ($model->eoi_states && is_array($model->eoi_states) && count($model->eoi_states) > 0) {
                 $model->EOI_state = $model->eoi_states[0];
             }
+        });
 
-            // Track who is making changes
+        // Separate events for audit fields to prevent recursion
+        static::creating(function ($model) {
             if (auth()->guard('admin')->check()) {
-                $adminId = auth()->guard('admin')->id();
-                
-                if (!$model->exists) {
-                    $model->created_by = $adminId;
-                }
-                $model->updated_by = $adminId;
+                $model->created_by = auth()->guard('admin')->id();
+            }
+        });
+
+        static::updating(function ($model) {
+            if (auth()->guard('admin')->check()) {
+                $model->updated_by = auth()->guard('admin')->id();
             }
         });
     }

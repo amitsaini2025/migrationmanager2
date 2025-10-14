@@ -130,11 +130,15 @@ class ClientPersonalDetailsController extends Controller
         if ($apiKey) {
             $url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json';
             
+            // Determine the best search strategy based on the query
+            $searchParams = $this->getOptimalSearchParams($query);
+            
             $params = http_build_query([
                 'input' => $query,
                 'key' => $apiKey,
-                'types' => 'address',
-                'components' => 'country:au' // Restrict to Australia
+                'types' => $searchParams['types'],
+                'components' => 'country:au', // Restrict to Australia
+                'fields' => 'place_id,description,structured_formatting'
             ]);
             
             $ch = curl_init();
@@ -149,12 +153,110 @@ class ClientPersonalDetailsController extends Controller
             
             // Check if Google API is working
             if ($httpCode === 200 && isset($data['status']) && $data['status'] !== 'REQUEST_DENIED') {
+                // Post-process the results to ensure house numbers are preserved
+                $data = $this->postProcessAddressResults($data, $query);
                 return response()->json($data);
             }
         }
         
         // Fallback: Use free geocoding service for basic suggestions
         return $this->getFallbackAddressSuggestions($query);
+    }
+    
+    /**
+     * Get optimal search parameters based on query content
+     */
+    private function getOptimalSearchParams($query)
+    {
+        // Check if query contains a house number (starts with digits)
+        if (preg_match('/^\d+[A-Za-z]?\s+/', $query)) {
+            // Query has house number with street name, use geocode for better results
+            return [
+                'types' => 'geocode'
+            ];
+        } elseif (preg_match('/^\d+[A-Za-z]?$/', $query)) {
+            // Only house number is typed, use establishment type to get more relevant results
+            return [
+                'types' => 'establishment'
+            ];
+        } else {
+            // No house number, use address type
+            return [
+                'types' => 'address'
+            ];
+        }
+    }
+    
+    /**
+     * Post-process address results to ensure house numbers are preserved and match the query
+     */
+    private function postProcessAddressResults($data, $originalQuery)
+    {
+        if (!isset($data['predictions']) || !is_array($data['predictions'])) {
+            return $data;
+        }
+        
+        $filteredPredictions = [];
+        $queryLower = strtolower(trim($originalQuery));
+        
+        foreach ($data['predictions'] as $prediction) {
+            $description = $prediction['description'];
+            $descriptionLower = strtolower($description);
+            
+            // Check if the prediction starts with or contains the query text
+            if (strpos($descriptionLower, $queryLower) === 0 || 
+                strpos($descriptionLower, $queryLower) !== false) {
+                
+                // Extract house number from original query if present
+                preg_match('/^(\d+[A-Za-z]?)\s*(.*)/', $originalQuery, $matches);
+                if (count($matches) >= 2) {
+                    $houseNumber = $matches[1];
+                    
+                    // If the description doesn't start with the house number, prepend it
+                    if (!preg_match('/^' . preg_quote($houseNumber, '/') . '/i', $description)) {
+                        $prediction['description'] = $houseNumber . ' ' . $description;
+                    }
+                }
+                
+                $filteredPredictions[] = $prediction;
+            }
+        }
+        
+        // If no matching results, try a more flexible approach
+        if (empty($filteredPredictions)) {
+            foreach ($data['predictions'] as $prediction) {
+                $description = $prediction['description'];
+                
+                // Extract house number from original query if present
+                preg_match('/^(\d+[A-Za-z]?)\s*(.*)/', $originalQuery, $matches);
+                if (count($matches) >= 2) {
+                    $houseNumber = $matches[1];
+                    $streetName = trim($matches[2]);
+                    
+                    // If we have a street name, check if the description contains it
+                    if (!empty($streetName) && stripos($description, $streetName) !== false) {
+                        // Ensure the description starts with the house number
+                        if (!preg_match('/^' . preg_quote($houseNumber, '/') . '/i', $description)) {
+                            $prediction['description'] = $houseNumber . ' ' . $description;
+                        }
+                        $filteredPredictions[] = $prediction;
+                    } elseif (empty($streetName)) {
+                        // If only house number is typed, prepend it to any address
+                        if (!preg_match('/^' . preg_quote($houseNumber, '/') . '/i', $description)) {
+                            $prediction['description'] = $houseNumber . ' ' . $description;
+                        }
+                        $filteredPredictions[] = $prediction;
+                    }
+                }
+            }
+        }
+        
+        // Limit to 5 results and use filtered results if available
+        if (!empty($filteredPredictions)) {
+            $data['predictions'] = array_slice($filteredPredictions, 0, 5);
+        }
+        
+        return $data;
     }
     
     /**
@@ -187,13 +289,19 @@ class ClientPersonalDetailsController extends Controller
             $predictions = [];
             if (is_array($results)) {
                 foreach ($results as $result) {
+                    // Format the display name to be more consistent with Google Places format
+                    $formattedDescription = $this->formatFallbackAddress($result, $query);
+                    
                     $predictions[] = [
                         'place_id' => 'fallback_' . md5($result['display_name']),
-                        'description' => $result['display_name'],
-                        'formatted_address' => $result['display_name']
+                        'description' => $formattedDescription,
+                        'formatted_address' => $formattedDescription
                     ];
                 }
             }
+            
+            // Post-process fallback results to ensure house numbers are preserved
+            $predictions = $this->postProcessFallbackResults($predictions, $query);
             
             return response()->json([
                 'status' => 'OK',
@@ -207,6 +315,128 @@ class ClientPersonalDetailsController extends Controller
                 'predictions' => []
             ]);
         }
+    }
+    
+    /**
+     * Format fallback address to match Google Places format
+     */
+    private function formatFallbackAddress($result, $originalQuery)
+    {
+        $address = $result['address'] ?? [];
+        $displayName = $result['display_name'] ?? '';
+        
+        // Extract house number from original query if present
+        preg_match('/^(\d+[A-Za-z]?)\s+(.+)/', $originalQuery, $matches);
+        
+        if (count($matches) >= 3) {
+            $houseNumber = $matches[1];
+            $streetName = trim($matches[2], ', ');
+            
+            // Build a cleaner address format
+            $parts = [];
+            
+            // Add house number and street
+            $parts[] = $houseNumber . ' ' . $streetName;
+            
+            // Add suburb if available
+            if (isset($address['suburb'])) {
+                $parts[] = $address['suburb'];
+            } elseif (isset($address['village'])) {
+                $parts[] = $address['village'];
+            }
+            
+            // Add state abbreviation
+            if (isset($address['state'])) {
+                $state = $address['state'];
+                // Convert full state names to abbreviations
+                $stateAbbr = $this->getStateAbbreviation($state);
+                $parts[] = $stateAbbr;
+            }
+            
+            // Add country
+            $parts[] = 'Australia';
+            
+            return implode(', ', $parts);
+        }
+        
+        return $displayName;
+    }
+    
+    /**
+     * Get state abbreviation from full state name
+     */
+    private function getStateAbbreviation($state)
+    {
+        $stateMap = [
+            'New South Wales' => 'NSW',
+            'Victoria' => 'VIC',
+            'Queensland' => 'QLD',
+            'South Australia' => 'SA',
+            'Western Australia' => 'WA',
+            'Tasmania' => 'TAS',
+            'Northern Territory' => 'NT',
+            'Australian Capital Territory' => 'ACT'
+        ];
+        
+        return $stateMap[$state] ?? $state;
+    }
+    
+    /**
+     * Post-process fallback results to ensure house numbers are preserved and match the query
+     */
+    private function postProcessFallbackResults($predictions, $originalQuery)
+    {
+        $filteredPredictions = [];
+        $queryLower = strtolower(trim($originalQuery));
+        
+        // Extract house number from original query if present
+        preg_match('/^(\d+[A-Za-z]?)\s*(.*)/', $originalQuery, $matches);
+        if (count($matches) >= 2) {
+            $houseNumber = $matches[1];
+            $streetName = trim($matches[2]);
+            
+            foreach ($predictions as $prediction) {
+                $description = $prediction['description'];
+                $descriptionLower = strtolower($description);
+                
+                // Check if the prediction starts with or contains the query text
+                if (strpos($descriptionLower, $queryLower) === 0 || 
+                    strpos($descriptionLower, $queryLower) !== false) {
+                    
+                    // Ensure the prediction starts with the house number
+                    if (!preg_match('/^' . preg_quote($houseNumber, '/') . '/i', $description)) {
+                        $prediction['description'] = $houseNumber . ' ' . $description;
+                    }
+                    
+                    $filteredPredictions[] = $prediction;
+                }
+            }
+            
+            // If no matching results, try to prepend house number to relevant addresses
+            if (empty($filteredPredictions)) {
+                foreach ($predictions as $prediction) {
+                    $description = $prediction['description'];
+                    
+                    if (!empty($streetName) && stripos($description, $streetName) !== false) {
+                        // Ensure the description starts with the house number
+                        if (!preg_match('/^' . preg_quote($houseNumber, '/') . '/i', $description)) {
+                            $prediction['description'] = $houseNumber . ' ' . $description;
+                        }
+                        $filteredPredictions[] = $prediction;
+                    } elseif (empty($streetName)) {
+                        // If only house number is typed, prepend it to any address
+                        if (!preg_match('/^' . preg_quote($houseNumber, '/') . '/i', $description)) {
+                            $prediction['description'] = $houseNumber . ' ' . $description;
+                        }
+                        $filteredPredictions[] = $prediction;
+                    }
+                }
+            }
+            
+            return !empty($filteredPredictions) ? array_slice($filteredPredictions, 0, 5) : $predictions;
+        }
+        
+        return $predictions;
     }
 
     // Method 2: Get place details with fallback

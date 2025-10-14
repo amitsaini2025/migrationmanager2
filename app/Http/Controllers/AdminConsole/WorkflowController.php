@@ -77,53 +77,49 @@ class WorkflowController extends Controller
             if(!$save) {
 				return redirect()->back()->with('error', Config::get('constants.server_error'));
 			} else {
-				return Redirect::to('/admin/workflow')->with('success', 'Workflow Stages Added Successfully');
+				return redirect()->route('adminconsole.features.workflow.index')->with('success', 'Workflow Stages Added Successfully');
 			}
 		}
     }
 
-	public function edit(Request $request, $id = NULL)
+	/**
+	 * Show the form for editing the specified workflow stage.
+	 */
+	public function edit($id)
 	{
 		//check authorization end
-		if ($request->isMethod('post')) {
-			$requestData = 	$request->all(); //dd($requestData);
-			//$this->validate($request, ['name' => 'required|max:255']);
-            $this->validate($request, [
-                //'name' => 'required|max:255',
-                'stage_name' => 'required|array', // Ensure it is an array
-                'stage_name.*' => 'required|string|max:255', // Validate each item in the array
-            ]);
-			/*$obj			= 	Workflow::find(@$requestData['id']);
-			$obj->name	=	@$requestData['name'];
-			$saved		=	$obj->save();*/
-			/*$stages = $requestData['stage_name'];
-            $remove = WorkflowStage::where('id' , $requestData['id'])->delete();
-			foreach($stages as $stage){
-				$o = new WorkflowStage;
-				$o->w_id = $requestData['id'];
-				$o->name = $stage;
-				$save	=	$o->save();
-			}*/
-            $saved = WorkflowStage::where('id', $requestData['id'])->update(['name' => $requestData['stage_name'][0]]);
-			if(!$saved) {
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+		
+		if(isset($id) && !empty($id)) {
+			$id = $this->decodeString($id);
+			if(WorkflowStage::where('id', '=', $id)->exists()) {
+				$fetchedData = WorkflowStage::find($id);
+				return view('AdminConsole.features.workflow.edit', compact(['fetchedData']));
 			} else {
-				return Redirect::to('/admin/workflow')->with('success', 'Workflow Stages Edited Successfully');
+				return redirect()->route('adminconsole.features.workflow.index')->with('error', 'Workflow Stages Not Exist');
 			}
+		} else {
+			return redirect()->route('adminconsole.features.workflow.index')->with('error', Config::get('constants.unauthorized'));
 		}
-		else
-		{
-			if(isset($id) && !empty($id)) {
-				$id = $this->decodeString($id);
-				if(WorkflowStage::where('id', '=', $id)->exists()) {
-					$fetchedData = WorkflowStage::find($id); //dd($fetchedData);
-					return view('AdminConsole.features.workflow.edit', compact(['fetchedData']));
-				} else {
-					return Redirect::to('/admin/workflow')->with('error', 'Workflow Stages Not Exist');
-				}
-			} else {
-				return Redirect::to('/admin/workflow')->with('error', Config::get('constants.unauthorized'));
-			}
+	}
+
+	/**
+	 * Update the specified workflow stage in storage.
+	 */
+	public function update(Request $request, $id)
+	{
+		//check authorization end
+		
+		$requestData = $request->all();
+		$this->validate($request, [
+			'stage_name' => 'required|array', // Ensure it is an array
+			'stage_name.*' => 'required|string|max:255', // Validate each item in the array
+		]);
+		
+		$saved = WorkflowStage::where('id', $id)->update(['name' => $requestData['stage_name'][0]]);
+		if(!$saved) {
+			return redirect()->back()->with('error', Config::get('constants.server_error'));
+		} else {
+			return redirect()->route('adminconsole.features.workflow.index')->with('success', 'Workflow Stages Updated Successfully');
 		}
 	}
 }

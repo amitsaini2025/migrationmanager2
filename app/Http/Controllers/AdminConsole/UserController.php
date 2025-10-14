@@ -132,7 +132,7 @@ class UserController extends Controller
 			if(!$saved) {
 				return redirect()->back()->with('error', Config::get('constants.server_error'));
 			} else {
-				return Redirect::to('/admin/users/active')->with('success', 'User added Successfully');
+				return redirect()->route('adminconsole.system.users.active')->with('success', 'User added Successfully');
 			}
 		}
         return view('AdminConsole.system.users.create');
@@ -154,92 +154,105 @@ class UserController extends Controller
         return str_pad($counter, 5, '0', STR_PAD_LEFT);
     }
 
-	public function edit(Request $request, $id = NULL)
+	/**
+	 * Show the form for editing the specified user.
+	 */
+	public function edit($id)
 	{
 		//check authorization start
-        $check = $this->checkAuthorizationAction('user_management', $request->route()->getActionMethod(), Auth::user()->role);
+        $check = $this->checkAuthorizationAction('user_management', 'edit', Auth::user()->role);
         if($check)
         {
             return Redirect::to('/admin/dashboard')->with('error',config('constants.unauthorized'));
         }
 		//check authorization end
-		$usertype 		= UserRole::all();
-		if ($request->isMethod('post'))
+		$usertype = UserRole::all();
+		
+		if(isset($id) && !empty($id))
 		{
-			$requestData 		= 	$request->all();
-
-			$this->validate($request, [
-                'first_name' => 'required|max:255',
-                'last_name' => 'required|max:255',
-                'phone' => 'required|max:255',
-            ]);
-
-			$obj				= 	Admin::find(@$requestData['id']);
-
-			$obj->first_name	=	@$requestData['first_name'];
-			$obj->last_name		=	@$requestData['last_name'];
-			$obj->email		=	@$requestData['email'];
-			$obj->telephone		=	@$requestData['country_code'];
-			$obj->position		=	@$requestData['position'];
-
-			$obj->phone			=	@$requestData['phone'];
-			$obj->role			=	@$requestData['role'];
-			$obj->office_id		=	@$requestData['office'];
-			$obj->telephone		=	@$requestData['country_code'];
-			$obj->team		    =	@$requestData['team'];
-
-            if( isset($requestData['permission']) && $requestData['permission'] !="" ){
-			    $obj->permission		=	implode(",", $requestData['permission'] );
-			}else{
-			    $obj->permission		=	"";
-			}
-
-			if(isset($requestData['show_dashboard_per'])){
-			    $obj->show_dashboard_per		=	1;
-			}else{
-			     $obj->show_dashboard_per		=	0;
-			}
-			if(!empty(@$requestData['password']))
-            {
-                $obj->password				=	Hash::make(@$requestData['password']);
-            }
-
-			$obj->phone						=	@$requestData['phone'];
-			$saved							=	$obj->save();
-
-			if(!$saved)
+			//$id = $this->decodeString($id);
+			if(Admin::where('id', '=', $id)->exists())
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				$fetchedData = Admin::find($id);
+				return view('AdminConsole.system.users.edit', compact(['fetchedData', 'usertype']));
 			}
-
 			else
 			{
-				return Redirect::to('/admin/users/view/'.@$requestData['id'])->with('success', 'User Edited Successfully');
+				return redirect()->route('adminconsole.system.users.index')->with('error', 'User Not Exist');
 			}
 		}
-
 		else
-		{ //dd('elseee'.$id);
-			if(isset($id) && !empty($id))
-			{
+		{
+			return redirect()->route('adminconsole.system.users.index')->with('error', Config::get('constants.unauthorized'));
+		}
+	}
 
-				//$id = $this->decodeString($id);
-				if(Admin::where('id', '=', $id)->exists())
-				{
-					$fetchedData = Admin::find($id); //dd($fetchedData);
-					return view('AdminConsole.system.users.edit', compact(['fetchedData', 'usertype']));
-				}
-				else
-				{
-					return Redirect::to('/admin/users')->with('error', 'User Not Exist');
-				}
-			}
-			else
-			{
-				return Redirect::to('/admin/users')->with('error', Config::get('constants.unauthorized'));
-			}
+	/**
+	 * Update the specified user in storage.
+	 */
+	public function update(Request $request, $id)
+	{
+		//check authorization start
+        $check = $this->checkAuthorizationAction('user_management', 'update', Auth::user()->role);
+        if($check)
+        {
+            return Redirect::to('/admin/dashboard')->with('error',config('constants.unauthorized'));
+        }
+		//check authorization end
+		
+		$requestData = $request->all();
+
+		$this->validate($request, [
+			'first_name' => 'required|max:255',
+			'last_name' => 'required|max:255',
+			'phone' => 'required|max:255',
+		]);
+
+		$obj = Admin::find($id);
+		if (!$obj) {
+			return redirect()->route('adminconsole.system.users.index')->with('error', 'User Not Found');
 		}
 
+		$obj->first_name = @$requestData['first_name'];
+		$obj->last_name = @$requestData['last_name'];
+		$obj->email = @$requestData['email'];
+		$obj->telephone = @$requestData['country_code'];
+		$obj->position = @$requestData['position'];
+
+		$obj->phone = @$requestData['phone'];
+		$obj->role = @$requestData['role'];
+		$obj->office_id = @$requestData['office'];
+		$obj->telephone = @$requestData['country_code'];
+		$obj->team = @$requestData['team'];
+
+		if( isset($requestData['permission']) && $requestData['permission'] !="" ){
+			$obj->permission = implode(",", $requestData['permission'] );
+		}else{
+			$obj->permission = "";
+		}
+
+		if(isset($requestData['show_dashboard_per'])){
+			$obj->show_dashboard_per = 1;
+		}else{
+			 $obj->show_dashboard_per = 0;
+		}
+		
+		if(!empty(@$requestData['password']))
+		{
+			$obj->password = Hash::make(@$requestData['password']);
+		}
+
+		$obj->phone = @$requestData['phone'];
+		$saved = $obj->save();
+
+		if(!$saved)
+		{
+			return redirect()->back()->with('error', Config::get('constants.server_error'));
+		}
+		else
+		{
+			return redirect()->route('adminconsole.system.users.view', $id)->with('success', 'User Updated Successfully');
+		}
 	}
 
 	public function savezone(Request $request)
@@ -262,7 +275,7 @@ class UserController extends Controller
 
 			else
 			{
-				return Redirect::to('/admin/users/view/'.@$requestData['user_id'])->with('success', 'User Edited Successfully');
+				return redirect()->route('adminconsole.system.users.view', $requestData['user_id'])->with('success', 'User Edited Successfully');
 			}
 		}
 
@@ -281,7 +294,7 @@ class UserController extends Controller
             }
             else
             {
-                return Redirect::to('/admin/users/active')->with('error', 'User Not Exist');
+                return redirect()->route('adminconsole.system.users.active')->with('error', 'User Not Exist');
             }
         }
 	}
@@ -373,110 +386,122 @@ class UserController extends Controller
 			}
 			else
 			{
-				return Redirect::to('/admin/users/clientlist')->with('success', 'Client Added Successfully');
+				return redirect()->route('adminconsole.system.users.clientlist')->with('success', 'Client Added Successfully');
 			}
 		}
 
 		return view('AdminConsole.system.users.createclient');
 	}
 
-	public function editclient(Request $request, $id = NULL)
+	/**
+	 * Show the form for editing the specified client.
+	 */
+	public function editclient($id)
 	{
 		//check authorization start
-			$check = $this->checkAuthorizationAction('user_management', $request->route()->getActionMethod(), Auth::user()->role);
+			$check = $this->checkAuthorizationAction('user_management', 'editclient', Auth::user()->role);
 			if($check)
 			{
 				return Redirect::to('/admin/dashboard')->with('error',config('constants.unauthorized'));
 			}
 		//check authorization end
-		$usertype 		= UserType::all();
-		if ($request->isMethod('post'))
+		$usertype = UserType::all();
+		
+		if(isset($id) && !empty($id))
 		{
-			$requestData 		= 	$request->all();
-
-			$this->validate($request, [
-										'company_name' => 'required|max:255',
-										'first_name' => 'required|max:255',
-										'last_name' => 'required|max:255',
-										'company_website' => 'required|max:255',
-										'email' => 'required|max:255|unique:admins,email,'.$requestData['id'],
-										'password' => 'required|max:255',
-										'phone' => 'required|max:255'
-									  ]);
-
-			$obj							= 	Admin::find(@$requestData['id']);
-
-			$obj->company_name	=	@$requestData['company_name'];
-			$obj->first_name	=	@$requestData['first_name'];
-			$obj->last_name		=	@$requestData['last_name'];
-			$obj->company_website		=	@$requestData['company_website'];
-			$obj->email			=	@$requestData['email'];
-			$obj->password	=	Hash::make(@$requestData['password']);
-
-			if(!empty(@$requestData['password']))
-				{
-					$obj->password				=	Hash::make(@$requestData['password']);
-					//$objAdmin->decrypt_password		=	@$requestData['password'];
-				}
-			$obj->phone	=	@$requestData['phone'];
-			$obj->country	=	@$requestData['country'];
-			$obj->city	=	@$requestData['city'];
-			$obj->gst_no	=	@$requestData['gst_no'];
-			$obj->role	=	7;
-
-			/* Profile Image Upload Function Start */
-			if($request->hasfile('profile_img'))
+			$id = $this->decodeString($id);
+			if(Admin::where('id', '=', $id)->exists())
 			{
-				/* Unlink File Function Start */
-					if($requestData['profile_img'] != '')
-						{
-							$this->unlinkFile($requestData['old_profile_img'], Config::get('constants.profile_imgs'));
-						}
-				/* Unlink File Function End */
-
-				$profile_img = $this->uploadFile($request->file('profile_img'), Config::get('constants.profile_imgs'));
+				$fetchedData = Admin::find($id);
+				return view('AdminConsole.system.users.editclient', compact(['fetchedData', 'usertype']));
 			}
 			else
 			{
-				$profile_img = @$requestData['old_profile_img'];
-			}
-		/* Profile Image Upload Function End */
-			$obj->profile_img			=	@$profile_img;
-			$saved							=	$obj->save();
-
-			if(!$saved)
-			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
-			}
-
-			else
-			{
-				return Redirect::to('/admin/users/clientlist')->with('success', 'Client Edited Successfully');
+				return redirect()->route('adminconsole.system.users.clientlist')->with('error', 'Client Not Exist');
 			}
 		}
-
 		else
 		{
-			if(isset($id) && !empty($id))
-			{
+			return redirect()->route('adminconsole.system.users.clientlist')->with('error', Config::get('constants.unauthorized'));
+		}
+	}
 
-				$id = $this->decodeString($id);
-				if(Admin::where('id', '=', $id)->exists())
-				{
-					$fetchedData = Admin::find($id);
-					return view('AdminConsole.system.users.editclient', compact(['fetchedData', 'usertype']));
-				}
-				else
-				{
-					return Redirect::to('/admin/users/clientlist')->with('error', 'Client Not Exist');
-				}
-			}
-			else
+	/**
+	 * Update the specified client in storage.
+	 */
+	public function updateclient(Request $request, $id)
+	{
+		//check authorization start
+			$check = $this->checkAuthorizationAction('user_management', 'updateclient', Auth::user()->role);
+			if($check)
 			{
-				return Redirect::to('/admin/users/clientlist')->with('error', Config::get('constants.unauthorized'));
+				return Redirect::to('/admin/dashboard')->with('error',config('constants.unauthorized'));
 			}
+		//check authorization end
+		
+		$requestData = $request->all();
+
+		$this->validate($request, [
+			'company_name' => 'required|max:255',
+			'first_name' => 'required|max:255',
+			'last_name' => 'required|max:255',
+			'company_website' => 'required|max:255',
+			'email' => 'required|max:255|unique:admins,email,'.$id,
+			'password' => 'required|max:255',
+			'phone' => 'required|max:255'
+		]);
+
+		$obj = Admin::find($id);
+		if (!$obj) {
+			return redirect()->route('adminconsole.system.users.clientlist')->with('error', 'Client Not Found');
 		}
 
+		$obj->company_name = @$requestData['company_name'];
+		$obj->first_name = @$requestData['first_name'];
+		$obj->last_name = @$requestData['last_name'];
+		$obj->company_website = @$requestData['company_website'];
+		$obj->email = @$requestData['email'];
+
+		if(!empty(@$requestData['password']))
+		{
+			$obj->password = Hash::make(@$requestData['password']);
+		}
+		
+		$obj->phone = @$requestData['phone'];
+		$obj->country = @$requestData['country'];
+		$obj->city = @$requestData['city'];
+		$obj->gst_no = @$requestData['gst_no'];
+		$obj->role = 7;
+
+		/* Profile Image Upload Function Start */
+		if($request->hasfile('profile_img'))
+		{
+			/* Unlink File Function Start */
+				if($requestData['profile_img'] != '')
+					{
+						$this->unlinkFile($requestData['old_profile_img'], Config::get('constants.profile_imgs'));
+					}
+			/* Unlink File Function End */
+
+			$profile_img = $this->uploadFile($request->file('profile_img'), Config::get('constants.profile_imgs'));
+		}
+		else
+		{
+			$profile_img = @$requestData['old_profile_img'];
+		}
+		/* Profile Image Upload Function End */
+		
+		$obj->profile_img = @$profile_img;
+		$saved = $obj->save();
+
+		if(!$saved)
+		{
+			return redirect()->back()->with('error', Config::get('constants.server_error'));
+		}
+		else
+		{
+			return redirect()->route('adminconsole.system.users.clientlist')->with('success', 'Client Updated Successfully');
+		}
 	}
 
 	public function active(Request $request)

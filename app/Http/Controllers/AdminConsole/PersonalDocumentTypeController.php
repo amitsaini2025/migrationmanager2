@@ -63,41 +63,56 @@ class PersonalDocumentTypeController extends Controller
 			}
 			else
 			{
-				return Redirect::to('/admin/personal-document-type')->with('success', 'Personal Document Type Created Successfully');
+				return redirect()->route('adminconsole.features.personaldocumenttype.index')->with('success', 'Personal Document Type Created Successfully');
 			}
 		}
         return view('AdminConsole.features.personaldocumenttype.create');
 	}
 
-	public function edit(Request $request, $id = NULL)
+	/**
+	 * Show the form for editing the specified personal document type.
+	 */
+	public function edit($id)
 	{
         //check authorization end
-        if ($request->isMethod('post')) {
-            $requestData 		= 	$request->all(); //dd($requestData);
-            $this->validate($request,
-                ['title' => 'required|unique:personal_document_types,title,'.$requestData['id']]
-            );
-
-            $obj		= 	PersonalDocumentType::find(@$requestData['id']);
-            $obj->title	=	@$requestData['title'];
-            $saved	=	$obj->save();
-            if(!$saved) {
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+        
+		if(isset($id) && !empty($id)) {
+			$id = $this->decodeString($id);
+			if(PersonalDocumentType::where('id', '=', $id)->exists()) {
+				$fetchedData = PersonalDocumentType::find($id);
+				return view('AdminConsole.features.personaldocumenttype.edit', compact(['fetchedData']));
 			} else {
-				return Redirect::to('/admin/personal-document-type')->with('success', 'Personal Document Type Updated Successfully');
+				return redirect()->route('adminconsole.features.personaldocumenttype.index')->with('error', 'Personal Document Type Not Exist');
 			}
 		} else {
-			if(isset($id) && !empty($id)) {
-                $id = $this->decodeString($id);
-				if(PersonalDocumentType::where('id', '=', $id)->exists()) {
-					$fetchedData = PersonalDocumentType::find($id);
-                    return view('AdminConsole.features.personaldocumenttype.edit', compact(['fetchedData']));
-				} else {
-					return Redirect::to('/admin/personal-document-type')->with('error', 'Personal Document Type Not Exist');
-				}
-			} else {
-				return Redirect::to('/admin/personal-document-type')->with('error', Config::get('constants.unauthorized'));
-			}
+			return redirect()->route('adminconsole.features.personaldocumenttype.index')->with('error', Config::get('constants.unauthorized'));
+		}
+    }
+
+	/**
+	 * Update the specified personal document type in storage.
+	 */
+	public function update(Request $request, $id)
+	{
+        //check authorization end
+        
+        $requestData = $request->all();
+        $this->validate($request,
+            ['title' => 'required|unique:personal_document_types,title,'.$id]
+        );
+
+        $obj = PersonalDocumentType::find($id);
+        if (!$obj) {
+			return redirect()->route('adminconsole.features.personaldocumenttype.index')->with('error', 'Personal Document Type Not Found');
+		}
+        
+        $obj->title = @$requestData['title'];
+        $saved = $obj->save();
+        
+        if(!$saved) {
+			return redirect()->back()->with('error', Config::get('constants.server_error'));
+		} else {
+			return redirect()->route('adminconsole.features.personaldocumenttype.index')->with('success', 'Personal Document Type Updated Successfully');
 		}
     }
 

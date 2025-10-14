@@ -6,9 +6,9 @@
 <div class="main-content">
 	<section class="section">
 		<div class="section-body">
-			<form method="POST" action="{{ url('admin/documentchecklist/edit') }}" name="edit-checklist" autocomplete="off" enctype="multipart/form-data">
+			<form method="POST" action="{{ route('adminconsole.features.documentchecklist.update', $fetchedData->id) }}" name="edit-checklist" autocomplete="off" enctype="multipart/form-data">
 				@csrf
-				<input type="hidden" name="id" value="{{ @$fetchedData->id }}">
+				@method('PUT')
 				<div class="row">
 					<div class="col-12 col-md-12 col-lg-12">
 						<div class="card">

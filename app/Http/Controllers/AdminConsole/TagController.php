@@ -81,64 +81,69 @@ class TagController extends Controller
 			}
 			else
 			{
-				return Redirect::to('/admin/tags')->with('success', 'Record Added Successfully');
+				return redirect()->route('adminconsole.features.tags.index')->with('success', 'Record Added Successfully');
 			}				
 		}	
 
 		return view('AdminConsole.features.tags.create');	
 	}
 	
-	public function edit(Request $request, $id = NULL)
+	/**
+	 * Show the form for editing the specified tag.
+	 */
+	public function edit($id)
 	{
-	
 		//check authorization end
 		
-		if ($request->isMethod('post')) 
+		if(isset($id) && !empty($id))
 		{
-			$requestData 		= 	$request->all();
-			
-			$this->validate($request, [										
-										'name' => 'required|max:255'
-									  ]);
-								  					  
-			$obj			= 	Tag::find(@$requestData['id']);	
-			$obj->updated_by	=	Auth::user()->id;			
-			$obj->name	=	@$requestData['name'];
-			$saved							=	$obj->save();
-			
-			if(!$saved)
+			$id = $this->decodeString($id);	
+			if(Tag::where('id', '=', $id)->exists()) 
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				$fetchedData = Tag::find($id);
+				return view('AdminConsole.features.tags.edit', compact(['fetchedData']));
 			}
-			
-			else
+			else 
 			{
-				return Redirect::to('/admin/tags')->with('success', 'Record updated Successfully');
-			}				
-		}
-
+				return redirect()->route('adminconsole.features.tags.index')->with('error', 'Record Not Exist');
+			}	
+		} 
 		else
-		{		
-			if(isset($id) && !empty($id))
-			{
-				
-				$id = $this->decodeString($id);	
-				if(Tag::where('id', '=', $id)->exists()) 
-				{
-					$fetchedData = Tag::find($id);
-					return view('AdminConsole.features.tags.edit', compact(['fetchedData']));
-				}
-				else 
-				{
-					return Redirect::to('/admin/tags')->with('error', 'Record Not Exist');
-				}	
-			} 
-			else
-			{
-				return Redirect::to('/admin/tags')->with('error', Config::get('constants.unauthorized'));
-			}		 
-		} 	
+		{
+			return redirect()->route('adminconsole.features.tags.index')->with('error', Config::get('constants.unauthorized'));
+		}		 
+	}
+
+	/**
+	 * Update the specified tag in storage.
+	 */
+	public function update(Request $request, $id)
+	{
+		//check authorization end
 		
+		$requestData = $request->all();
+		
+		$this->validate($request, [										
+									'name' => 'required|max:255'
+								  ]);
+							  					  
+		$obj = Tag::find($id);
+		if (!$obj) {
+			return redirect()->route('adminconsole.features.tags.index')->with('error', 'Record Not Found');
+		}
+		
+		$obj->updated_by = Auth::user()->id;			
+		$obj->name = @$requestData['name'];
+		$saved = $obj->save();
+		
+		if(!$saved)
+		{
+			return redirect()->back()->with('error', Config::get('constants.server_error'));
+		}
+		else
+		{
+			return redirect()->route('adminconsole.features.tags.index')->with('success', 'Record Updated Successfully');
+		}				
 	}
 }
 

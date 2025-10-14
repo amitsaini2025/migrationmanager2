@@ -7,7 +7,7 @@
 <div class="main-content">
     <section class="section">
         <div class="section-body">
-            <form method="POST" action="{{ url('admin/documentchecklist/store') }}" name="add-checklist" autocomplete="off" enctype="multipart/form-data">
+            <form method="POST" action="{{ route('adminconsole.features.documentchecklist.store') }}" name="add-checklist" autocomplete="off" enctype="multipart/form-data">
                 @csrf
                 <div class="row">
                     <div class="col-12 col-md-12 col-lg-12">

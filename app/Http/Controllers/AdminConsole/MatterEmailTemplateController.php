@@ -72,53 +72,62 @@ class MatterEmailTemplateController extends Controller
 			}
 			else
 			{
-				//return Redirect::to('/admin/matter_email_template')->with('success', 'Matter Email Template Added Successfully');
-				return Redirect::to('/admin/matter')->with('success', 'Matter Email Template Added Successfully');
+				return redirect()->route('adminconsole.features.matter.index')->with('success', 'Matter Email Template Added Successfully');
 			}				
 		}	
 		return view('AdminConsole.features.matteremailtemplate.create');	
 	}
 	
-	public function edit(Request $request, $templateId = NULL, $matterId = NULL)
+	/**
+	 * Show the form for editing the specified matter email template.
+	 */
+	public function edit($templateId, $matterId = NULL)
 	{
-		if ($request->isMethod('post')) 
+		if(isset($templateId) && !empty($templateId))
 		{
-			$requestData 		= 	$request->all(); //dd($requestData);
-			$obj			    = 	MatterEmailTemplate::find(@$requestData['id']);
-			$obj->matter_id	    =	@$requestData['matter_id'];
-			$obj->name	        =	@$requestData['name'];
-			$obj->subject	    =	@$requestData['subject'];
-			$obj->description	=	@$requestData['description'];
-			$saved				=	$obj->save();
-			if(!$saved)
+			//$id = $this->decodeString($id);	
+			if(MatterEmailTemplate::where('id', '=', $templateId)->exists()) 
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				$fetchedData = MatterEmailTemplate::find($templateId);
+				return view('AdminConsole.features.matteremailtemplate.edit', compact(['fetchedData','matterId']));
 			}
-			else
+			else 
 			{
-				return Redirect::to('/admin/matter')->with('success', 'Matter Email Template Edited Successfully');
-			}				
+				return redirect()->route('adminconsole.features.matteremailtemplate.index')->with('error', 'Matter Email Template Not Exist');
+			}	
+		} 
+		else
+		{
+			return redirect()->route('adminconsole.features.matteremailtemplate.index')->with('error', Config::get('constants.unauthorized'));
+		}
+	}
+
+	/**
+	 * Update the specified matter email template in storage.
+	 */
+	public function update(Request $request, $templateId)
+	{
+		$requestData = $request->all();
+		
+		$obj = MatterEmailTemplate::find($templateId);
+		if (!$obj) {
+			return redirect()->route('adminconsole.features.matteremailtemplate.index')->with('error', 'Matter Email Template Not Found');
+		}
+		
+		$obj->matter_id = @$requestData['matter_id'];
+		$obj->name = @$requestData['name'];
+		$obj->subject = @$requestData['subject'];
+		$obj->description = @$requestData['description'];
+		$saved = $obj->save();
+		
+		if(!$saved)
+		{
+			return redirect()->back()->with('error', Config::get('constants.server_error'));
 		}
 		else
-		{		
-			if(isset($templateId) && !empty($templateId))
-			{
-				//$id = $this->decodeString($id);	
-				if(MatterEmailTemplate::where('id', '=', $templateId)->exists()) 
-				{
-					$fetchedData = MatterEmailTemplate::find($templateId);
-					return view('AdminConsole.features.matteremailtemplate.edit', compact(['fetchedData','matterId']));
-				}
-				else 
-				{
-					return Redirect::to('/admin/matter_email_template')->with('error', 'Matter Email Template Not Exist');
-				}	
-			} 
-			else
-			{
-				return Redirect::to('/admin/matter_email_template')->with('error', Config::get('constants.unauthorized'));
-			}		
-		} 	
+		{
+			return redirect()->route('adminconsole.features.matter.index')->with('success', 'Matter Email Template Updated Successfully');
+		}				
 	}
 }
 

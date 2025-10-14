@@ -3574,7 +3574,6 @@ class ClientsController extends Controller
                 : '/admin/clients/detail/'.$encodedId;
 
             return Redirect::to($redirectUrl)->with('success',  ($requestData['type'] ?? 'Client') . ' edited successfully');
-            //return Redirect::to('/admin/clients/detail/' . base64_encode(convert_uuencode($requestData['id'])))->with('success', ($requestData['type'] ?? 'Client') . ' edited successfully');
         }
     }
 
@@ -4277,10 +4276,10 @@ class ClientsController extends Controller
                     'encodeId', 'id1','clientFamilyDetails', 'activeTab', 'isEoiMatter'
                 ));
             } else {
-                return redirect('/admin/clients')->with('error', 'Clients Not Exist');
+                return redirect()->route('admin.clients.index')->with('error', 'Clients Not Exist');
             }
         } else {
-            return redirect('/admin/clients')->with('error', Config::get('constants.unauthorized'));
+            return redirect()->route('admin.clients.index')->with('error', Config::get('constants.unauthorized'));
         }
     }
 

@@ -12,7 +12,7 @@
 						<div class="card-header">
 							<h4>Users</h4>
 							<div class="card-header-action">
-								<a href="{{URL::to('admin/users/create')}}" class="btn btn-primary">Add User</a>
+								<a href="{{route('adminconsole.system.users.create')}}" class="btn btn-primary">Add User</a>
 							</div>
 						</div>
 						<div class="card-body">
@@ -82,7 +82,7 @@
                                                         if(\Auth::user()->id != $list->id) //if loggedin user is not same
                                                         {?>
                                                             <div class="card-header-action">
-                                                                <a href="{{URL::to('admin/users/edit/'.$list->id)}}" class="btn btn-primary">Edit User</a>
+                                                                <a href="{{route('adminconsole.system.users.edit', $list->id)}}" class="btn btn-primary">Edit User</a>
                                                             </div>
                                                         <?php
                                                         } ?>

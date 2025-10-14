@@ -10,7 +10,7 @@
 <div class="main-content">
 	<section class="section">
 		<div class="section-body">
-			<form action="{{ url('admin/userrole/store') }}" method="POST" name="add-userrole" autocomplete="off" enctype="multipart/form-data">
+			<form action="{{ route('adminconsole.system.roles.store') }}" method="POST" name="add-userrole" autocomplete="off" enctype="multipart/form-data">
 				@csrf
 				<div class="row">
 					<div class="col-12 col-md-12 col-lg-12">

@@ -229,7 +229,7 @@ class AdminController extends Controller
 											Auth::guard('admin')->logout();
 											$request->session()->flush();
 
-											return redirect('/admin')->with('success', 'Your Password has been changed successfully.');
+											return redirect()->route('admin.dashboard')->with('success', 'Your Password has been changed successfully.');
 										}
 									else
 										{

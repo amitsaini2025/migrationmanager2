@@ -37,21 +37,21 @@ Route::prefix('adminconsole')->name('adminconsole.')->middleware(['auth:admin'])
         Route::get('/matter/create', [MatterController::class, 'create'])->name('matter.create');
         Route::post('/matter/store', [MatterController::class, 'store'])->name('matter.store');
         Route::get('/matter/edit/{id}', [MatterController::class, 'edit'])->name('matter.edit');
-        Route::post('/matter/update', [MatterController::class, 'edit'])->name('matter.update');
+        Route::put('/matter/{id}', [MatterController::class, 'update'])->name('matter.update');
         
         // Tags routes
         Route::get('/tags', [TagController::class, 'index'])->name('tags.index');
         Route::get('/tags/create', [TagController::class, 'create'])->name('tags.create');
         Route::post('/tags/store', [TagController::class, 'store'])->name('tags.store');
         Route::get('/tags/edit/{id}', [TagController::class, 'edit'])->name('tags.edit');
-        Route::post('/tags/update', [TagController::class, 'edit'])->name('tags.update');
+        Route::put('/tags/{id}', [TagController::class, 'update'])->name('tags.update');
         
         // Workflow routes
         Route::get('/workflow', [WorkflowController::class, 'index'])->name('workflow.index');
         Route::get('/workflow/create', [WorkflowController::class, 'create'])->name('workflow.create');
         Route::post('/workflow/store', [WorkflowController::class, 'store'])->name('workflow.store');
         Route::get('/workflow/edit/{id}', [WorkflowController::class, 'edit'])->name('workflow.edit');
-        Route::post('/workflow/update', [WorkflowController::class, 'edit'])->name('workflow.update');
+        Route::put('/workflow/{id}', [WorkflowController::class, 'update'])->name('workflow.update');
         Route::get('/workflow/deactivate-workflow/{id}', [WorkflowController::class, 'deactivateWorkflow'])->name('workflow.deactivate');
         Route::get('/workflow/activate-workflow/{id}', [WorkflowController::class, 'activateWorkflow'])->name('workflow.activate');
         
@@ -60,35 +60,35 @@ Route::prefix('adminconsole')->name('adminconsole.')->middleware(['auth:admin'])
         Route::get('/emails/create', [EmailController::class, 'create'])->name('emails.create');
         Route::post('/emails/store', [EmailController::class, 'store'])->name('emails.store');
         Route::get('/emails/edit/{id}', [EmailController::class, 'edit'])->name('emails.edit');
-        Route::post('/emails/update', [EmailController::class, 'edit'])->name('emails.update');
+        Route::put('/emails/{id}', [EmailController::class, 'update'])->name('emails.update');
         
         // CRM Email Template routes
         Route::get('/crm-email-template', [CrmEmailTemplateController::class, 'index'])->name('crmemailtemplate.index');
         Route::get('/crm-email-template/create', [CrmEmailTemplateController::class, 'create'])->name('crmemailtemplate.create');
         Route::post('/crm-email-template/store', [CrmEmailTemplateController::class, 'store'])->name('crmemailtemplate.store');
         Route::get('/crm-email-template/edit/{id}', [CrmEmailTemplateController::class, 'edit'])->name('crmemailtemplate.edit');
-        Route::post('/crm-email-template/update', [CrmEmailTemplateController::class, 'edit'])->name('crmemailtemplate.update');
+        Route::put('/crm-email-template/{id}', [CrmEmailTemplateController::class, 'update'])->name('crmemailtemplate.update');
         
         // Matter Email Template routes
         Route::get('/matter-email-template', [MatterEmailTemplateController::class, 'index'])->name('matteremailtemplate.index');
         Route::get('/matter-email-template/create', [MatterEmailTemplateController::class, 'create'])->name('matteremailtemplate.create');
         Route::post('/matter-email-template/store', [MatterEmailTemplateController::class, 'store'])->name('matteremailtemplate.store');
         Route::get('/matter-email-template/edit/{id}', [MatterEmailTemplateController::class, 'edit'])->name('matteremailtemplate.edit');
-        Route::post('/matter-email-template/update', [MatterEmailTemplateController::class, 'edit'])->name('matteremailtemplate.update');
+        Route::put('/matter-email-template/{id}', [MatterEmailTemplateController::class, 'update'])->name('matteremailtemplate.update');
         
         // Matter Other Email Template routes
         Route::get('/matter-other-email-template', [MatterOtherEmailTemplateController::class, 'index'])->name('matterotheremailtemplate.index');
         Route::get('/matter-other-email-template/create', [MatterOtherEmailTemplateController::class, 'create'])->name('matterotheremailtemplate.create');
         Route::post('/matter-other-email-template/store', [MatterOtherEmailTemplateController::class, 'store'])->name('matterotheremailtemplate.store');
         Route::get('/matter-other-email-template/edit/{id}', [MatterOtherEmailTemplateController::class, 'edit'])->name('matterotheremailtemplate.edit');
-        Route::post('/matter-other-email-template/update', [MatterOtherEmailTemplateController::class, 'edit'])->name('matterotheremailtemplate.update');
+        Route::put('/matter-other-email-template/{id}', [MatterOtherEmailTemplateController::class, 'update'])->name('matterotheremailtemplate.update');
         
         // Personal Document Type routes
         Route::get('/personal-document-type', [PersonalDocumentTypeController::class, 'index'])->name('personaldocumenttype.index');
         Route::get('/personal-document-type/create', [PersonalDocumentTypeController::class, 'create'])->name('personaldocumenttype.create');
         Route::post('/personal-document-type/store', [PersonalDocumentTypeController::class, 'store'])->name('personaldocumenttype.store');
         Route::get('/personal-document-type/edit/{id}', [PersonalDocumentTypeController::class, 'edit'])->name('personaldocumenttype.edit');
-        Route::post('/personal-document-type/update', [PersonalDocumentTypeController::class, 'edit'])->name('personaldocumenttype.update');
+        Route::put('/personal-document-type/{id}', [PersonalDocumentTypeController::class, 'update'])->name('personaldocumenttype.update');
         Route::post('/personal-document-type/checkcreatefolder', [PersonalDocumentTypeController::class, 'checkcreatefolder']);
         
         // Visa Document Type routes
@@ -96,7 +96,7 @@ Route::prefix('adminconsole')->name('adminconsole.')->middleware(['auth:admin'])
         Route::get('/visa-document-type/create', [VisaDocumentTypeController::class, 'create'])->name('visadocumenttype.create');
         Route::post('/visa-document-type/store', [VisaDocumentTypeController::class, 'store'])->name('visadocumenttype.store');
         Route::get('/visa-document-type/edit/{id}', [VisaDocumentTypeController::class, 'edit'])->name('visadocumenttype.edit');
-        Route::post('/visa-document-type/update', [VisaDocumentTypeController::class, 'edit'])->name('visadocumenttype.update');
+        Route::put('/visa-document-type/{id}', [VisaDocumentTypeController::class, 'update'])->name('visadocumenttype.update');
         Route::post('/visa-document-type/checkcreatefolder', [VisaDocumentTypeController::class, 'checkcreatefolder']);
         
         // Document Checklist routes
@@ -104,7 +104,7 @@ Route::prefix('adminconsole')->name('adminconsole.')->middleware(['auth:admin'])
         Route::get('/document-checklist/create', [DocumentChecklistController::class, 'create'])->name('documentchecklist.create');
         Route::post('/document-checklist/store', [DocumentChecklistController::class, 'store'])->name('documentchecklist.store');
         Route::get('/document-checklist/edit/{id}', [DocumentChecklistController::class, 'edit'])->name('documentchecklist.edit');
-        Route::post('/document-checklist/update', [DocumentChecklistController::class, 'edit'])->name('documentchecklist.update');
+        Route::put('/document-checklist/{id}', [DocumentChecklistController::class, 'update'])->name('documentchecklist.update');
         
     });
     
@@ -117,7 +117,7 @@ Route::prefix('adminconsole')->name('adminconsole.')->middleware(['auth:admin'])
         Route::post('/users/store', [UserController::class, 'store'])->name('users.store');
         Route::get('/users/edit/{id}', [UserController::class, 'edit'])->name('users.edit');
         Route::get('/users/view/{id}', [UserController::class, 'view'])->name('users.view');
-        Route::post('/users/update', [UserController::class, 'edit'])->name('users.update');
+        Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
         Route::post('/users/savezone', [UserController::class, 'savezone']);
         Route::get('/users/active', [UserController::class, 'active'])->name('users.active');
         Route::get('/users/inactive', [UserController::class, 'inactive'])->name('users.inactive');
@@ -126,19 +126,20 @@ Route::prefix('adminconsole')->name('adminconsole.')->middleware(['auth:admin'])
         Route::get('/users/createclient', [UserController::class, 'createclient'])->name('users.createclient');
         Route::post('/users/storeclient', [UserController::class, 'storeclient'])->name('users.storeclient');
         Route::get('/users/editclient/{id}', [UserController::class, 'editclient'])->name('users.editclient');
-        Route::post('/users/updateclient', [UserController::class, 'editclient'])->name('users.updateclient');
+        Route::put('/users/client/{id}', [UserController::class, 'updateclient'])->name('users.updateclient');
         
         // Roles routes
         Route::get('/roles', [UserroleController::class, 'index'])->name('roles.index');
         Route::get('/roles/create', [UserroleController::class, 'create'])->name('roles.create');
         Route::post('/roles/store', [UserroleController::class, 'store'])->name('roles.store');
         Route::get('/roles/edit/{id}', [UserroleController::class, 'edit'])->name('roles.edit');
-        Route::post('/roles/update', [UserroleController::class, 'edit'])->name('roles.update');
+        Route::put('/roles/{id}', [UserroleController::class, 'update'])->name('roles.update');
         
         // Teams routes
         Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
         Route::get('/teams/edit/{id}', [TeamController::class, 'edit'])->name('teams.edit');
         Route::post('/teams/store', [TeamController::class, 'store'])->name('teams.store');
+        Route::put('/teams/{id}', [TeamController::class, 'update'])->name('teams.update');
         
         // Offices routes
         Route::get('/offices', [BranchesController::class, 'index'])->name('offices.index');
@@ -147,7 +148,7 @@ Route::prefix('adminconsole')->name('adminconsole.')->middleware(['auth:admin'])
         Route::get('/offices/edit/{id}', [BranchesController::class, 'edit'])->name('offices.edit');
         Route::get('/offices/view/{id}', [BranchesController::class, 'view'])->name('offices.view');
         Route::get('/offices/view/client/{id}', [BranchesController::class, 'viewclient'])->name('offices.viewclient');
-        Route::post('/offices/update', [BranchesController::class, 'edit'])->name('offices.update');
+        Route::put('/offices/{id}', [BranchesController::class, 'update'])->name('offices.update');
         
         // Client Email List route
         Route::get('/clientsemaillist', [\App\Http\Controllers\Admin\ClientsController::class, 'clientsemaillist'])->name('clientsemaillist');
@@ -163,8 +164,8 @@ Route::prefix('adminconsole')->name('adminconsole.')->middleware(['auth:admin'])
         Route::get('/anzsco/create', [AnzscoOccupationController::class, 'create'])->name('anzsco.create');
         Route::post('/anzsco/store', [AnzscoOccupationController::class, 'store'])->name('anzsco.store');
         Route::get('/anzsco/edit/{id}', [AnzscoOccupationController::class, 'edit'])->name('anzsco.edit');
-        Route::post('/anzsco/update', [AnzscoOccupationController::class, 'edit'])->name('anzsco.update');
-        Route::get('/anzsco/import', [AnzscoOccupationController::class, 'import'])->name('anzsco.import');
-        Route::post('/anzsco/import', [AnzscoOccupationController::class, 'import'])->name('anzsco.import');
+        Route::put('/anzsco/{id}', [AnzscoOccupationController::class, 'update'])->name('anzsco.update');
+        Route::get('/anzsco/import', [AnzscoOccupationController::class, 'importPage'])->name('anzsco.import');
+        Route::post('/anzsco/import', [AnzscoOccupationController::class, 'import'])->name('anzsco.import.store');
     });
 });

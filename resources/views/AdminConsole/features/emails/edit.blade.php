@@ -7,9 +7,9 @@
 <div class="main-content">
 	<section class="section">
 		<div class="section-body">
-			<form action="{{route('adminconsole.features.emails.update')}}" name="add-emails" autocomplete="off" enctype="multipart/form-data" method="POST">
-    			<input type="hidden" name="_token" value="{{ csrf_token() }}">
-    			<input type="hidden" name="id" value="{{ @$fetchedData->id }}">
+			<form action="{{route('adminconsole.features.emails.update', $fetchedData->id)}}" name="add-emails" autocomplete="off" enctype="multipart/form-data" method="POST">
+    			@csrf
+    			@method('PUT')
 
 				<div class="row">
 					<div class="col-12 col-md-12 col-lg-12">

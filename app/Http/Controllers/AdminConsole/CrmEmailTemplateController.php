@@ -78,62 +78,67 @@ class CrmEmailTemplateController extends Controller
 			}
 			else
 			{
-				return Redirect::to('/admin/crm_email_template')->with('success', 'Crm Email Template Added Successfully');
+				return redirect()->route('adminconsole.features.crmemailtemplate.index')->with('success', 'Crm Email Template Added Successfully');
 			}				
 		}	
 
 		return view('AdminConsole.features.crmemailtemplate.create');	
 	}
 	
-	public function edit(Request $request, $id = NULL)
+	/**
+	 * Show the form for editing the specified CRM email template.
+	 */
+	public function edit($id)
 	{
-	
 		//check authorization end
 		
-		if ($request->isMethod('post')) 
+		if(isset($id) && !empty($id))
 		{
-			$requestData 		= 	$request->all();
-								  					  
-			$obj			= 	CrmEmailTemplate::find(@$requestData['id']);
-			$obj->name	=	@$requestData['name'];
-			$obj->subject	=	@$requestData['subject'];
-			$obj->description	=	@$requestData['description'];
-			
-			$saved							=	$obj->save();
-			
-			if(!$saved)
+			$id = $this->decodeString($id);	
+			if(CrmEmailTemplate::where('id', '=', $id)->exists()) 
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				$fetchedData = CrmEmailTemplate::find($id);
+				return view('AdminConsole.features.crmemailtemplate.edit', compact(['fetchedData']));
 			}
-			
-			else
+			else 
 			{
-				return Redirect::to('/admin/crm_email_template')->with('success', 'Crm Email Template Edited Successfully');
-			}				
-		}
-
+				return redirect()->route('adminconsole.features.crmemailtemplate.index')->with('error', 'Crm Email Template Not Exist');
+			}	
+		} 
 		else
-		{		
-			if(isset($id) && !empty($id))
-			{
-				
-				$id = $this->decodeString($id);	
-				if(CrmEmailTemplate::where('id', '=', $id)->exists()) 
-				{
-					$fetchedData = CrmEmailTemplate::find($id);
-					return view('AdminConsole.features.crmemailtemplate.edit', compact(['fetchedData']));
-				}
-				else 
-				{
-					return Redirect::to('/admin/crm_email_template')->with('error', 'Crm Email Template Not Exist');
-				}	
-			} 
-			else
-			{
-				return Redirect::to('/admin/crm_email_template')->with('error', Config::get('constants.unauthorized'));
-			}		
-		} 	
+		{
+			return redirect()->route('adminconsole.features.crmemailtemplate.index')->with('error', Config::get('constants.unauthorized'));
+		}		
+	}
+
+	/**
+	 * Update the specified CRM email template in storage.
+	 */
+	public function update(Request $request, $id)
+	{
+		//check authorization end
 		
+		$requestData = $request->all();
+						  					  
+		$obj = CrmEmailTemplate::find($id);
+		if (!$obj) {
+			return redirect()->route('adminconsole.features.crmemailtemplate.index')->with('error', 'Crm Email Template Not Found');
+		}
+		
+		$obj->name = @$requestData['name'];
+		$obj->subject = @$requestData['subject'];
+		$obj->description = @$requestData['description'];
+		
+		$saved = $obj->save();
+		
+		if(!$saved)
+		{
+			return redirect()->back()->with('error', Config::get('constants.server_error'));
+		}
+		else
+		{
+			return redirect()->route('adminconsole.features.crmemailtemplate.index')->with('success', 'Crm Email Template Updated Successfully');
+		}				
 	}
 }
 

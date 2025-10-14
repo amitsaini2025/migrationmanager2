@@ -43,8 +43,8 @@ Route::get('/clear-cache', function() {
 /*--------------------------------------------------
 | SECTION: Exception Handling
 |--------------------------------------------------*/
-Route::get('/exception', 'ExceptionController@index')->name('exception');
-Route::post('/exception', 'ExceptionController@index')->name('exception');
+Route::get('/exception', 'ExceptionController@index')->name('exception.index');
+Route::post('/exception', 'ExceptionController@index')->name('exception.store');
 
 /*--------------------------------------------------
 | SECTION: Authentication Routes
@@ -68,8 +68,8 @@ Route::prefix('admin')->group(function() {
 
     /*---------- Login and Logout ----------*/
     Route::get('/', 'Auth\AdminLoginController@showLoginForm')->name('admin.login');
-    Route::get('/login', 'Auth\AdminLoginController@showLoginForm')->name('admin.login');
-    Route::post('/login', 'Auth\AdminLoginController@login')->name('admin.login');
+    Route::get('/login', 'Auth\AdminLoginController@showLoginForm');
+    Route::post('/login', 'Auth\AdminLoginController@login')->name('admin.login.post');
     Route::post('/logout', 'Auth\AdminLoginController@logout')->name('admin.logout');
 
 	/*---------- Dashboard Routes ----------*/
@@ -89,11 +89,11 @@ Route::prefix('admin')->group(function() {
 
 	/*---------- General Admin Routes ----------*/
     Route::get('/my_profile', 'Admin\AdminController@myProfile')->name('admin.my_profile');
-    Route::post('/my_profile', 'Admin\AdminController@myProfile')->name('admin.my_profile');
+    Route::post('/my_profile', 'Admin\AdminController@myProfile')->name('admin.my_profile.update');
     Route::get('/change_password', 'Admin\AdminController@change_password')->name('admin.change_password');
-    Route::post('/change_password', 'Admin\AdminController@change_password')->name('admin.change_password');
+    Route::post('/change_password', 'Admin\AdminController@change_password')->name('admin.change_password.update');
     Route::get('/sessions', 'Admin\AdminController@sessions')->name('admin.sessions');
-    Route::post('/sessions', 'Admin\AdminController@sessions')->name('admin.sessions');
+    Route::post('/sessions', 'Admin\AdminController@sessions')->name('admin.sessions.update');
     Route::post('/update_action', 'Admin\AdminController@updateAction');
     Route::post('/approved_action', 'Admin\AdminController@approveAction');
     Route::post('/process_action', 'Admin\AdminController@processAction');

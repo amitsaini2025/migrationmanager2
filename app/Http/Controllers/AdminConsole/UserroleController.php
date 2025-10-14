@@ -94,67 +94,83 @@ class UserroleController extends Controller
 			}
 			else
 			{
-				return Redirect::to('/admin/userrole')->with('success', 'User Role added Successfully');
+				return redirect()->route('adminconsole.system.roles.index')->with('success', 'User Role added Successfully');
 			}				
 		}	
 
 		return view('AdminConsole.system.roles.create');	
 	}
 	
-	public function edit(Request $request, $id = NULL)
+	/**
+	 * Show the form for editing the specified user role.
+	 */
+	public function edit($id)
 	{			
 		//check authorization start	
-			$check = $this->checkAuthorizationAction('user_role', $request->route()->getActionMethod(), Auth::user()->role);
+			$check = $this->checkAuthorizationAction('user_role', 'edit', Auth::user()->role);
 			if($check)
 			{
 				return Redirect::to('/admin/dashboard')->with('error',config('constants.unauthorized'));
 			}	
 		//check authorization end
-		$usertype 		= UserType::all();
+		$usertype = UserType::all();
 		
-		if ($request->isMethod('post')) 
+		if(isset($id) && !empty($id))
 		{
-			$requestData 		= 	$request->all();
-			
-			/* $this->validate($request, [
-										'usertype' => 'required|max:255|unique:user_roles,usertype,'.$requestData['id']
-									  ]); */									  
-									  
-			$obj				= 	UserRole::find($requestData['id']);
-			$obj->name	=	@$requestData['name'];
-			$obj->description	=	@$requestData['description'];
-			$obj->module_access	=	json_encode(@$requestData['module_access']);
-			
-			$saved				=	$obj->save();
-			
-			if(!$saved)
+			$id = $this->decodeString($id);	
+			if(UserRole::where('id', '=', $id)->exists()) 
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				$fetchedData = UserRole::find($id);
+				return view('AdminConsole.system.roles.edit', compact(['fetchedData', 'usertype']));
 			}
 			else
 			{
-				return Redirect::to('/admin/userrole')->with('success', 'User Role Edited Successfully');
-			}				
+				return redirect()->route('adminconsole.system.roles.index')->with('error', 'User Role Not Exist');
+			}	
 		}
 		else
-		{	
-			if(isset($id) && !empty($id))
+		{
+			return redirect()->route('adminconsole.system.roles.index')->with('error', Config::get('constants.unauthorized'));
+		}
+	}
+
+	/**
+	 * Update the specified user role in storage.
+	 */
+	public function update(Request $request, $id)
+	{			
+		//check authorization start	
+			$check = $this->checkAuthorizationAction('user_role', 'update', Auth::user()->role);
+			if($check)
 			{
-				$id = $this->decodeString($id);	
-				if(UserRole::where('id', '=', $id)->exists()) 
-				{
-					$fetchedData = UserRole::find($id);
-					return view('AdminConsole.system.roles.edit', compact(['fetchedData', 'usertype']));
-				}
-				else
-				{
-					return Redirect::to('/admin/userrole')->with('error', 'User Not Exist');
-				}	
-			}
-			else
-			{
-				return Redirect::to('/admin/userrole')->with('error', Config::get('constants.unauthorized'));
-			}		
+				return Redirect::to('/admin/dashboard')->with('error',config('constants.unauthorized'));
+			}	
+		//check authorization end
+		
+		$requestData = $request->all();
+		
+		/* $this->validate($request, [
+									'usertype' => 'required|max:255|unique:user_roles,usertype,'.$id
+								  ]); */									  
+								  
+		$obj = UserRole::find($id);
+		if (!$obj) {
+			return redirect()->route('adminconsole.system.roles.index')->with('error', 'User Role Not Found');
+		}
+		
+		$obj->name = @$requestData['name'];
+		$obj->description = @$requestData['description'];
+		$obj->module_access = json_encode(@$requestData['module_access']);
+		
+		$saved = $obj->save();
+		
+		if(!$saved)
+		{
+			return redirect()->back()->with('error', Config::get('constants.server_error'));
+		}
+		else
+		{
+			return redirect()->route('adminconsole.system.roles.index')->with('success', 'User Role Updated Successfully');
 		}				
 	}
 }

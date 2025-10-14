@@ -11,7 +11,7 @@
 			</div>
 			<div class="custom-error-msg">
 			</div>
-			<form action="{{ url('admin/users/store') }}" name="edit-user" autocomplete="off" enctype="multipart/form-data" method="POST">
+			<form action="{{ route('adminconsole.system.users.store') }}" name="edit-user" autocomplete="off" enctype="multipart/form-data" method="POST">
                 @csrf
                 <div class="row">
 					<div class="col-12 col-md-12 col-lg-12">

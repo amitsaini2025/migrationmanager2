@@ -310,7 +310,7 @@ body, html {
 													<?php
 													$admin = \App\Models\Admin::where('role', '!=', '7')->where('id', '=', $list->user_id)->first();
 													?>
-													<a href="{{URL::to('/admin/users/view/'.@$admin->id)}}">{{@$admin->first_name}} {{@$admin->last_name}}</a><br>{{@$admin->email}}
+													<a href="{{route('adminconsole.system.users.view', $admin->id)}}">{{@$admin->first_name}} {{@$admin->last_name}}</a><br>{{@$admin->email}}
 													</td>
 													<td ><?php
 													if($list->status == 0){

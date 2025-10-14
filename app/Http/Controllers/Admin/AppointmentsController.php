@@ -239,7 +239,6 @@ class AppointmentsController extends Controller
         }
         //dd($appointExist);
         if( $appointExist > 0 ){
-            //return redirect()->route('appointments.index')->with('error','This appointment time slot is already booked.Please select other time slot.' );
             return redirect()->route('appointments.edit', ['appointment' => $requestData['id']])->with('error','This appointment time slot is already booked.Please select other time slot.' );
         }
 
@@ -319,7 +318,6 @@ class AppointmentsController extends Controller
         /*if($request->route == url('/admin/assignee')){
             return redirect()->route('assignee.index')->with('success','Assignee updated successfully');
         }*/
-        //return redirect()->route('appointments.index')->with('success','Appointment updated successfully');
     }
      
 

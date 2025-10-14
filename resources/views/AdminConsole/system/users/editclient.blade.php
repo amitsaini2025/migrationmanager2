@@ -7,9 +7,9 @@
 <div class="main-content">
 	<section class="section">
 		<div class="section-body"> 
-			<form action="{{ url('admin/users/editclient') }}" method="POST" name="edit-client" autocomplete="off" enctype="multipart/form-data">
+			<form action="{{ route('adminconsole.system.users.updateclient', $fetchedData->id) }}" method="POST" name="edit-client" autocomplete="off" enctype="multipart/form-data">
 				@csrf
-				<input type="hidden" name="id" value="{{ $fetchedData->id }}">
+				@method('PUT')
 				<div class="row">
 					<div class="col-12 col-md-12 col-lg-12">
 						<div class="card">

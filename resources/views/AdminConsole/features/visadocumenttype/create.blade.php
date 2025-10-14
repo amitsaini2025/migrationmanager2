@@ -7,7 +7,7 @@
 <div class="main-content">
 	<section class="section">
 		<div class="section-body">
-			<form action="{{ url('admin/visa-document-type/store') }}" name="add-create-folder" autocomplete="off" enctype="multipart/form-data" method="POST">
+			<form action="{{ route('adminconsole.features.visadocumenttype.store') }}" name="add-create-folder" autocomplete="off" enctype="multipart/form-data" method="POST">
 				@csrf
 				<div class="row">
 					<div class="col-12 col-md-12 col-lg-12">

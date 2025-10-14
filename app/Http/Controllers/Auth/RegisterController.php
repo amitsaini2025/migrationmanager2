@@ -111,7 +111,7 @@ class RegisterController extends Controller
 	
 	protected function registered(Request $request, $user)
     {
-        return redirect('/admin')->with('success','welcome '. $user->name . ' you are registered. Please check your email inbox to verify email.');
+        return redirect()->route('admin.dashboard')->with('success','welcome '. $user->name . ' you are registered. Please check your email inbox to verify email.');
     }
 	 public function verifyUser($token)
     {
@@ -126,9 +126,9 @@ class RegisterController extends Controller
                 $status = "Your e-mail is already verified. You can now login.";
             }
         }else{
-            return redirect('/admin')->with('warning', "Sorry your email cannot be identified.");
+            return redirect()->route('admin.dashboard')->with('warning', "Sorry your email cannot be identified.");
         }
 
-        return redirect('/admin')->with('success', $status);
+        return redirect()->route('admin.dashboard')->with('success', $status);
     }
 }

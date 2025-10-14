@@ -1374,7 +1374,6 @@ class ClientPersonalDetailsController extends Controller
                 : '/admin/clients/detail/'.$encodedId;
 
             return Redirect::to($redirectUrl)->with('success', 'Details updated successfully');
-            //return Redirect::to('/admin/clients/detail/'.base64_encode(convert_uuencode(@$requestData['id'])))->with('success', 'Details updated successfully');
         }
     }
     else

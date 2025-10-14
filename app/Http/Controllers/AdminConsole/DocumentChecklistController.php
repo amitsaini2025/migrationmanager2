@@ -61,53 +61,59 @@ class DocumentChecklistController extends Controller
             if (!$saved) {
                 return redirect()->back()->with('error', Config::get('constants.server_error'));
             } else {
-                return Redirect::to('/admin/documentchecklist')->with('success', 'Checklist Added Successfully');
+                return redirect()->route('adminconsole.features.documentchecklist.index')->with('success', 'Checklist Added Successfully');
             }
         }
         return view('AdminConsole.features.documentchecklist.create');
     }
 
-    public function edit(Request $request, $id = NULL)
+    /**
+     * Show the form for editing the specified document checklist.
+     */
+    public function edit($id)
     {
-        if ($request->isMethod('post'))
-        {
-            $requestData = $request->all();
-            $checklistId = $requestData['id'];
-            $doc_type = $requestData['doc_type'];
-            $this->validate($request, [
-                'doc_type' => 'required',
-                'name' => [
-                    'required',
-                    'max:255',
-                    Rule::unique('document_checklists')->where(function ($query) use ($request) {
-                        return $query->where('doc_type', $request->doc_type); // Correct access to doc_type from the request
-                    })->ignore($checklistId) // Ignore the current record being edited
-                ]
-            ]);
-
-            $obj = DocumentChecklist::find($requestData['id']);
-            $obj->name = $requestData['name'];
-            $obj->doc_type = $requestData['doc_type'];
-            $saved = $obj->save();
-            if (!$saved) {
-                return redirect()->back()->with('error', Config::get('constants.server_error'));
+        if (isset($id) && !empty($id)) {
+            $id = $this->decodeString($id);
+            if (DocumentChecklist::where('id', '=', $id)->exists()) {
+                $fetchedData = DocumentChecklist::find($id);
+                return view('AdminConsole.features.documentchecklist.edit', compact(['fetchedData']));
             } else {
-                return Redirect::to('/admin/documentchecklist')->with('success', 'Checklist Edited Successfully');
+                return redirect()->route('adminconsole.features.documentchecklist.index')->with('error', 'Checklist Not Exist');
             }
+        } else {
+            return redirect()->route('adminconsole.features.documentchecklist.index')->with('error', Config::get('constants.unauthorized'));
         }
-        else
-        {
-            if (isset($id) && !empty($id)) {
-                $id = $this->decodeString($id);
-                if (DocumentChecklist::where('id', '=', $id)->exists()) {
-                    $fetchedData = DocumentChecklist::find($id);
-                    return view('AdminConsole.features.documentchecklist.edit', compact(['fetchedData']));
-                } else {
-                    return Redirect::to('/admin/documentchecklist')->with('error', 'Checklist Not Exist');
-                }
-            } else {
-                return Redirect::to('/admin/documentchecklist')->with('error', Config::get('constants.unauthorized'));
-            }
+    }
+
+    /**
+     * Update the specified document checklist in storage.
+     */
+    public function update(Request $request, $id)
+    {
+        $requestData = $request->all();
+        $this->validate($request, [
+            'doc_type' => 'required',
+            'name' => [
+                'required',
+                'max:255',
+                Rule::unique('document_checklists')->where(function ($query) use ($request) {
+                    return $query->where('doc_type', $request->doc_type);
+                })->ignore($id)
+            ]
+        ]);
+
+        $obj = DocumentChecklist::find($id);
+        if (!$obj) {
+            return redirect()->route('adminconsole.features.documentchecklist.index')->with('error', 'Checklist Not Found');
+        }
+        
+        $obj->name = $requestData['name'];
+        $obj->doc_type = $requestData['doc_type'];
+        $saved = $obj->save();
+        if (!$saved) {
+            return redirect()->back()->with('error', Config::get('constants.server_error'));
+        } else {
+            return redirect()->route('adminconsole.features.documentchecklist.index')->with('success', 'Checklist Updated Successfully');
         }
     }
 }

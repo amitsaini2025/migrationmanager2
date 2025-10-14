@@ -6,13 +6,13 @@
 <div class="crm-container">
 	<div class="main-content">
 	    @if(@$fetchedData)
-			<form action="{{ url('admin/teams/edit') }}" method="POST" name="add-visatype" autocomplete="off" enctype="multipart/form-data">
+			<form action="{{ route('adminconsole.system.teams.update', $fetchedData->id) }}" method="POST" name="add-visatype" autocomplete="off" enctype="multipart/form-data">
 		    	@csrf
-		    	<input type="hidden" name="id" value="{{$fetchedData->id}}">
-			@else
-			<form action="{{ url('admin/teams/store') }}" method="POST" name="add-visatype" autocomplete="off" enctype="multipart/form-data">
-			@csrf
-			@endif
+		    	@method('PUT')
+		@else
+		<form action="{{ route('adminconsole.system.teams.store') }}" method="POST" name="add-visatype" autocomplete="off" enctype="multipart/form-data">
+		@csrf
+		@endif
 				<div class="row">   
 					<div class="col-12 col-md-12 col-lg-12">
 						<div class="card">

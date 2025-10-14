@@ -7,9 +7,9 @@
 <div class="main-content">
 	<section class="section">
 		<div class="section-body">
-			<form action="{{ url('admin/workflow/edit') }}" name="add-visatype" autocomplete="off" enctype="multipart/form-data" method="POST">
+			<form action="{{ route('adminconsole.features.workflow.update', $fetchedData->id) }}" name="add-visatype" autocomplete="off" enctype="multipart/form-data" method="POST">
 				@csrf
-				<input type="hidden" name="id" value="{{ old('id', @$fetchedData->id) }}">
+				@method('PUT')
 				<div class="row">
 					<div class="col-12 col-md-12 col-lg-12">
 						<div class="card">

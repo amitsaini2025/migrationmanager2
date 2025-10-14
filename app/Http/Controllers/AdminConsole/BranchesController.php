@@ -92,77 +92,81 @@ class BranchesController extends Controller
 			}
 			else
 			{
-				return Redirect::to('/admin/branch')->with('success', 'Branch Added Successfully');
+				return redirect()->route('adminconsole.system.offices.index')->with('success', 'Branch Added Successfully');
 			}				
 		}	
 
 		return view('AdminConsole.system.offices.create');	
 	}
 	
-	public function edit(Request $request, $id = NULL)
+	/**
+	 * Show the form for editing the specified branch.
+	 */
+	public function edit($id)
 	{
-	
 		//check authorization end
 		
-		if ($request->isMethod('post')) 
+		if(isset($id) && !empty($id))
 		{
-			$requestData 		= 	$request->all();
-			
-			$this->validate($request, [										
-										'office_name' => 'required|max:255',
-										'country' => 'required|max:255',
-										'email' => 'required|max:255'
-									  ]);
-								  					  
-			$obj			= 	Branch::find(@$requestData['id']);
-						
-			$obj->office_name	=	@$requestData['office_name'];
-			$obj->address	=	@$requestData['address'];
-			$obj->city	=	@$requestData['city'];
-			$obj->state	=	@$requestData['state'];
-			$obj->zip	=	@$requestData['zip'];
-			$obj->country	=	@$requestData['country'];
-			$obj->email	=	@$requestData['email'];
-			$obj->phone	=	@$requestData['phone'];
-			$obj->mobile	=	@$requestData['mobile'];
-			$obj->contact_person	=	@$requestData['contact_person'];
-			$obj->choose_admin	=	@$requestData['choose_admin'];
-			
-			$saved							=	$obj->save();
-			
-			if(!$saved)
+			$id = $this->decodeString($id);	
+			if(Branch::where('id', '=', $id)->exists()) 
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				$fetchedData = Branch::find($id);
+				return view('AdminConsole.system.offices.edit', compact(['fetchedData']));
 			}
-			
-			else
+			else 
 			{
-				return Redirect::to('/admin/branch')->with('success', 'Branch Edited Successfully');
-			}				
-		}
-
+				return redirect()->route('adminconsole.system.offices.index')->with('error', 'Branch Not Exist');
+			}	
+		} 
 		else
-		{		
-			if(isset($id) && !empty($id))
-			{
-				
-				$id = $this->decodeString($id);	
-				if(Branch::where('id', '=', $id)->exists()) 
-				{
-					$fetchedData = Branch::find($id);
-					return view('AdminConsole.system.offices.edit', compact(['fetchedData']));
-				}
-				else 
-				{
-					return Redirect::to('/admin/branch')->with('error', 'Branch Not Exist');
-				}	
-			} 
-			else
-			{
-				return Redirect::to('/admin/branch')->with('error', Config::get('constants.unauthorized'));
-			}		
-		} 	
+		{
+			return redirect()->route('adminconsole.system.offices.index')->with('error', Config::get('constants.unauthorized'));
+		}
+	}
+
+	/**
+	 * Update the specified branch in storage.
+	 */
+	public function update(Request $request, $id)
+	{
+		//check authorization end
 		
+		$requestData = $request->all();
+		
+		$this->validate($request, [										
+									'office_name' => 'required|max:255',
+									'country' => 'required|max:255',
+									'email' => 'required|max:255'
+								  ]);
+							  					  
+		$obj = Branch::find($id);
+		if (!$obj) {
+			return redirect()->route('adminconsole.system.offices.index')->with('error', 'Branch Not Found');
+		}
+					
+		$obj->office_name = @$requestData['office_name'];
+		$obj->address = @$requestData['address'];
+		$obj->city = @$requestData['city'];
+		$obj->state = @$requestData['state'];
+		$obj->zip = @$requestData['zip'];
+		$obj->country = @$requestData['country'];
+		$obj->email = @$requestData['email'];
+		$obj->phone = @$requestData['phone'];
+		$obj->mobile = @$requestData['mobile'];
+		$obj->contact_person = @$requestData['contact_person'];
+		$obj->choose_admin = @$requestData['choose_admin'];
+		
+		$saved = $obj->save();
+		
+		if(!$saved)
+		{
+			return redirect()->back()->with('error', Config::get('constants.server_error'));
+		}
+		else
+		{
+			return redirect()->route('adminconsole.system.offices.index')->with('success', 'Branch Updated Successfully');
+		}				
 	}
 	
 	public function view(Request $request, $id = NULL)
@@ -179,12 +183,12 @@ class BranchesController extends Controller
 				}
 				else 
 				{
-					return Redirect::to('/admin/branch')->with('error', 'Branch Not Exist');
+					return redirect()->route('adminconsole.system.offices.index')->with('error', 'Branch Not Exist');
 				}	
 			} 
 			else
 			{
-				return Redirect::to('/admin/branch')->with('error', Config::get('constants.unauthorized'));
+				return redirect()->route('adminconsole.system.offices.index')->with('error', Config::get('constants.unauthorized'));
 			}		
 		 	
 		
@@ -204,12 +208,12 @@ class BranchesController extends Controller
 				}
 				else 
 				{
-					return Redirect::to('/admin/branch')->with('error', 'Branch Not Exist');
+					return redirect()->route('adminconsole.system.offices.index')->with('error', 'Branch Not Exist');
 				}	
 			} 
 			else
 			{
-				return Redirect::to('/admin/branch')->with('error', Config::get('constants.unauthorized'));
+				return redirect()->route('adminconsole.system.offices.index')->with('error', Config::get('constants.unauthorized'));
 			}		
 		 	
 		

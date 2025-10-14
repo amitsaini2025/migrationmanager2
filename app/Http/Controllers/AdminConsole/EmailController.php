@@ -131,64 +131,70 @@ class EmailController extends Controller
 			}
 			else
 			{
-				return Redirect::to('/admin/emails')->with('success', 'Email Added Successfully');
+				return redirect()->route('adminconsole.features.emails.index')->with('success', 'Email Added Successfully');
 			}
 		}
 
 		return view('AdminConsole.features.emails.create');
 	}
 
-	public function edit(Request $request, $id = NULL)
+	/**
+	 * Show the form for editing the specified email.
+	 */
+	public function edit($id)
 	{
-
 		//check authorization end
 
-		if ($request->isMethod('post'))
+		if(isset($id) && !empty($id))
 		{
-			$requestData 		= 	$request->all();
-            $this->validate($request, ['email' => 'required|max:255|unique:emails,email,'.$requestData['id']]);
-            $obj			= 	Email::find(@$requestData['id']);
-			$obj->email	=	@$requestData['email'];
-			$obj->email_signature	=	@$requestData['email_signature'];
-			$obj->display_name	=	@$requestData['display_name'];
-            $obj->password	=	@$requestData['password'];
-			$obj->status	=	@$requestData['status'];
-			$obj->user_id	=	json_encode(@$requestData['users']);
-            $saved			=	$obj->save();
-
-			if(!$saved)
+			$id = $this->decodeString($id);
+			if(Email::where('id', '=', $id)->exists())
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				$fetchedData = Email::find($id);
+				return view('AdminConsole.features.emails.edit', compact(['fetchedData']));
 			}
-
 			else
 			{
-				return Redirect::to('/admin/emails')->with('success', 'Email Edited Successfully');
+				return redirect()->route('adminconsole.features.emails.index')->with('error', 'Email Not Exist');
 			}
 		}
-
 		else
 		{
-			if(isset($id) && !empty($id))
-			{
-
-				$id = $this->decodeString($id);
-				if(Email::where('id', '=', $id)->exists())
-				{
-					$fetchedData = Email::find($id);
-					return view('AdminConsole.features.emails.edit', compact(['fetchedData']));
-				}
-				else
-				{
-					return Redirect::to('/admin/emails')->with('error', 'Email Not Exist');
-				}
-			}
-			else
-			{
-				return Redirect::to('/admin/emails')->with('error', Config::get('constants.unauthorized'));
-			}
+			return redirect()->route('adminconsole.features.emails.index')->with('error', Config::get('constants.unauthorized'));
 		}
+	}
 
+	/**
+	 * Update the specified email in storage.
+	 */
+	public function update(Request $request, $id)
+	{
+		//check authorization end
+
+		$requestData = $request->all();
+		$this->validate($request, ['email' => 'required|max:255|unique:emails,email,'.$id]);
+		
+		$obj = Email::find($id);
+		if (!$obj) {
+			return redirect()->route('adminconsole.features.emails.index')->with('error', 'Email Not Found');
+		}
+		
+		$obj->email = @$requestData['email'];
+		$obj->email_signature = @$requestData['email_signature'];
+		$obj->display_name = @$requestData['display_name'];
+		$obj->password = @$requestData['password'];
+		$obj->status = @$requestData['status'];
+		$obj->user_id = json_encode(@$requestData['users']);
+		$saved = $obj->save();
+
+		if(!$saved)
+		{
+			return redirect()->back()->with('error', Config::get('constants.server_error'));
+		}
+		else
+		{
+			return redirect()->route('adminconsole.features.emails.index')->with('success', 'Email Updated Successfully');
+		}
 	}
 }
 

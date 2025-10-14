@@ -63,41 +63,56 @@ class VisaDocumentTypeController extends Controller
 			}
 			else
 			{
-				return Redirect::to('/admin/visa-document-type')->with('success', 'Visa Document Type Created Successfully');
+				return redirect()->route('adminconsole.features.visadocumenttype.index')->with('success', 'Visa Document Type Created Successfully');
 			}
 		}
         return view('AdminConsole.features.visadocumenttype.create');
 	}
 
-	public function edit(Request $request, $id = NULL)
+	/**
+	 * Show the form for editing the specified visa document type.
+	 */
+	public function edit($id)
 	{
         //check authorization end
-        if ($request->isMethod('post')) {
-            $requestData 		= 	$request->all(); //dd($requestData);
-            $this->validate($request,
-                ['title' => 'required|unique:visa_document_types,title,'.$requestData['id']]
-            );
-
-            $obj		= 	VisaDocumentType::find(@$requestData['id']);
-            $obj->title	=	@$requestData['title'];
-            $saved	=	$obj->save();
-            if(!$saved) {
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+        
+		if(isset($id) && !empty($id)) {
+			$id = $this->decodeString($id);
+			if(VisaDocumentType::where('id', '=', $id)->exists()) {
+				$fetchedData = VisaDocumentType::find($id);
+				return view('AdminConsole.features.visadocumenttype.edit', compact(['fetchedData']));
 			} else {
-				return Redirect::to('/admin/visa-document-type')->with('success', 'Visa Document Type Updated Successfully');
+				return redirect()->route('adminconsole.features.visadocumenttype.index')->with('error', 'Visa Document Type Not Exist');
 			}
 		} else {
-			if(isset($id) && !empty($id)) {
-                $id = $this->decodeString($id);
-				if(VisaDocumentType::where('id', '=', $id)->exists()) {
-					$fetchedData = VisaDocumentType::find($id);
-                    return view('AdminConsole.features.visadocumenttype.edit', compact(['fetchedData']));
-				} else {
-					return Redirect::to('/admin/visa-document-type')->with('error', 'Visa Document Type Not Exist');
-				}
-			} else {
-				return Redirect::to('/admin/visa-document-type')->with('error', Config::get('constants.unauthorized'));
-			}
+			return redirect()->route('adminconsole.features.visadocumenttype.index')->with('error', Config::get('constants.unauthorized'));
+		}
+    }
+
+	/**
+	 * Update the specified visa document type in storage.
+	 */
+	public function update(Request $request, $id)
+	{
+        //check authorization end
+        
+        $requestData = $request->all();
+        $this->validate($request,
+            ['title' => 'required|unique:visa_document_types,title,'.$id]
+        );
+
+        $obj = VisaDocumentType::find($id);
+        if (!$obj) {
+			return redirect()->route('adminconsole.features.visadocumenttype.index')->with('error', 'Visa Document Type Not Found');
+		}
+        
+        $obj->title = @$requestData['title'];
+        $saved = $obj->save();
+        
+        if(!$saved) {
+			return redirect()->back()->with('error', Config::get('constants.server_error'));
+		} else {
+			return redirect()->route('adminconsole.features.visadocumenttype.index')->with('success', 'Visa Document Type Updated Successfully');
 		}
     }
 

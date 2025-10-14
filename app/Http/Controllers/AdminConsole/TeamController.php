@@ -51,49 +51,60 @@ class TeamController extends Controller
 		//return view('AdminConsole\.features\.producttype.index');	 
 	}
 	
-	public function edit(Request $request, $id = Null){
-	    if ($request->isMethod('post')) 
+	/**
+	 * Show the form for editing the specified team.
+	 */
+	public function edit($id)
+	{
+		if(isset($id) && !empty($id))
 		{
-		    $this->validate($request, [
-										'name' => 'required|max:255'
-									  ]);
-			
-			$requestData 		= 	$request->all();
-		
-			$obj				= 	Team::find($requestData['id']); 
-			$obj->name	        =	@$requestData['name'];
-			$obj->color			=	@$requestData['color'];
-			$saved				=	$obj->save();  
-			
-			if(!$saved)
+			if(Team::where('id', '=', $id)->exists()) 
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				$fetchedData = Team::find($id);
+				$query = Team::where('id', '!=', ''); 
+				$totalData = $query->count();	//for all data
+				$lists = $query->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
+				return view('AdminConsole.system.teams.index', compact(['fetchedData','lists','totalData']));
 			}
-			else
+			else 
 			{
-				return Redirect::to('/admin/teams')->with('success', 'Record update Successfully');
+				return redirect()->route('adminconsole.system.teams.index')->with('error', 'Team Not Exist');
 			}	
-		}else{
-	         if(isset($id) && !empty($id))
-		    	{
-				    if(Team::where('id', '=', $id)->exists()) 
-				    {
-				    	$fetchedData = Team::find($id);
-						$query 		= Team::where('id', '!=', ''); 
-		                $totalData 	= $query->count();	//for all data
-		                $lists		= $query->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
-				    	return view('AdminConsole.system.teams.index', compact(['fetchedData','lists','totalData']));
-				    }
-				else 
-				{
-					return Redirect::to('/admin/teams')->with('error', 'Team Not Exist');
-				}	
-			}
-			else
-			{
-				return Redirect::to('/admin/teams')->with('error', Config::get('constants.unauthorized'));
-			}
 		}
+		else
+		{
+			return redirect()->route('adminconsole.system.teams.index')->with('error', Config::get('constants.unauthorized'));
+		}
+	}
+
+	/**
+	 * Update the specified team in storage.
+	 */
+	public function update(Request $request, $id)
+	{
+		$this->validate($request, [
+			'name' => 'required|max:255'
+		]);
+		
+		$requestData = $request->all();
+	
+		$obj = Team::find($id); 
+		if (!$obj) {
+			return redirect()->route('adminconsole.system.teams.index')->with('error', 'Team Not Found');
+		}
+		
+		$obj->name = @$requestData['name'];
+		$obj->color = @$requestData['color'];
+		$saved = $obj->save();  
+		
+		if(!$saved)
+		{
+			return redirect()->back()->with('error', Config::get('constants.server_error'));
+		}
+		else
+		{
+			return redirect()->route('adminconsole.system.teams.index')->with('success', 'Record Updated Successfully');
+		}	
 	}
 	 
 	public function store(Request $request)
@@ -118,7 +129,7 @@ class TeamController extends Controller
 			}
 			else
 			{
-				return Redirect::to('/admin/teams')->with('success', 'Record Added Successfully');
+				return redirect()->route('adminconsole.system.teams.index')->with('success', 'Record Added Successfully');
 			}				
 		}	
 

@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Admin\Leads;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use App\Models\Admin;
 use App\Models\Lead;
-use Auth;
-use Config;
 
 class LeadAssignmentController extends Controller
 {
@@ -62,9 +62,20 @@ class LeadAssignmentController extends Controller
 
     /**
      * Get assignable users for leads
+     * Only lead owner can access
      */
-    public function getAssignableUsers()
+    public function getAssignableUsers(Request $request)
     {
+        // Check if requesting for a specific lead (ownership verification)
+        $leadId = $request->input('lead_id');
+        
+        if ($leadId) {
+            $lead = Lead::find($leadId);
+            if (!$lead || $lead->user_id != Auth::user()->id) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+        }
+        
         return Admin::select('id', 'first_name', 'last_name', 'email')
             ->where('type', '!=', 'lead')
             ->where('type', '!=', 'client')
@@ -74,9 +85,15 @@ class LeadAssignmentController extends Controller
 
     /**
      * Bulk assign leads to a user
+     * Only super admin can perform bulk assignments
      */
     public function bulkAssign(Request $request)
     {
+        // Check if user is super admin (role = 1)
+        if (Auth::user()->role != 1) {
+            return redirect()->back()->with('error', 'Only super admin can perform bulk assignments');
+        }
+        
         $requestData = $request->all();
         
         if(!isset($requestData['lead_ids']) || !isset($requestData['assign_to'])) {
@@ -89,7 +106,7 @@ class LeadAssignmentController extends Controller
 
         foreach($leadIds as $leadId) {
             $lead = Lead::find($leadId);
-            if($lead && $lead->user_id == Auth::user()->id) {
+            if($lead) {
                 $lead->assignToUser($assignTo);
                 $assignedCount++;
             }

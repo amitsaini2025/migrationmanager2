@@ -137,11 +137,39 @@ class Lead extends Admin
     
     /**
      * Convert lead to client
+     * Preserves follow-up history and logs conversion
      */
     public function convertToClient()
     {
+        // Count existing follow-ups for activity log
+        $followupCount = \App\Models\LeadFollowup::where('lead_id', $this->id)->count();
+        $completedFollowups = \App\Models\LeadFollowup::where('lead_id', $this->id)
+            ->where('status', 'completed')
+            ->count();
+        
+        // Mark lead as converted
         $this->type = 'client';
+        $this->lead_status = 'converted';
         $this->save();
+        
+        // Log the conversion in activities
+        \App\Models\ActivitiesLog::create([
+            'client_id' => $this->id,
+            'created_by' => \Auth::id(),
+            'subject' => 'Lead converted to Client',
+            'description' => "Lead successfully converted to client. " .
+                           "Total follow-ups: {$followupCount}, Completed: {$completedFollowups}. " .
+                           "Follow-up history has been preserved.",
+            'activity_type' => 'lead_converted',
+        ]);
+        
+        // Mark all pending follow-ups with a note
+        \App\Models\LeadFollowup::where('lead_id', $this->id)
+            ->where('status', 'pending')
+            ->update([
+                'notes' => DB::raw("CONCAT(COALESCE(notes, ''), '\n\n[" . now()->format('d/m/Y H:i') . 
+                          "]: Lead converted to client. This follow-up has been preserved for client management.')"),
+            ]);
         
         // Return as Admin model instance with client type
         return Admin::find($this->id);

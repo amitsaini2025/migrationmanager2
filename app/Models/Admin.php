@@ -23,8 +23,10 @@ class Admin extends Authenticatable
 	*/
 	protected $fillable = [
         'id', 'role', 'first_name', 'last_name', 'email', 'password', 'decrypt_password', 'country', 'state', 'city', 'address', 'zip', 'profile_img', 'status', 'service_token', 'token_generated_at', 'cp_status','cp_random_code','cp_code_verify','cp_token_generated_at', 'visa_expiry_verified_at', 'visa_expiry_verified_by', 'naati_test', 'py_test', 'naati_date', 'py_date', 'created_at', 'updated_at',
-        // Lead-specific fields (exist in database but were missing from fillable array)
-        'type', 'service', 'lead_quality', 'att_phone', 'att_email', 'client_id', 'is_archived', 'is_deleted', 'lead_status', 'lead_id', 'comments_note', 'phone', 'dob', 'gender', 'marital_status', 'contact_type', 'email_type',
+        // Lead-specific fields
+        'type', 'service', 'lead_quality', 'att_phone', 'att_email', 'att_country_code', 'client_id', 'is_archived', 'is_deleted', 'lead_status', 'lead_id', 'comments_note', 'phone', 'dob', 'gender', 'marital_status', 'contact_type', 'email_type', 'user_id', 'age', 'passport_number', 'visa_type', 'visaExpiry', 'tagname', 'country_code', 'assignee', 'source', 'related_files', 'preferredIntake', 'country_passport',
+        // Skills and education fields
+        'nomi_occupation', 'skill_assessment', 'high_quali_aus', 'high_quali_overseas', 'relevant_work_exp_aus', 'relevant_work_exp_over', 'naati_py', 'married_partner', 'total_points', 'start_process',
         // EOI qualification fields for points calculation
         'australian_study', 'australian_study_date', 'specialist_education', 'specialist_education_date', 'regional_study', 'regional_study_date'
     ];
@@ -126,5 +128,21 @@ class Admin extends Authenticatable
     public function clientPartners(): HasMany
     {
         return $this->hasMany(\App\Models\ClientRelationship::class, 'client_id');
+    }
+
+    /**
+     * Get the followups for this lead.
+     */
+    public function followups(): HasMany
+    {
+        return $this->hasMany(\App\Models\LeadFollowup::class, 'lead_id');
+    }
+
+    /**
+     * Get the followups assigned to this admin.
+     */
+    public function assignedFollowups(): HasMany
+    {
+        return $this->hasMany(\App\Models\LeadFollowup::class, 'assigned_to');
     }
 }

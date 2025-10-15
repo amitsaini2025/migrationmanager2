@@ -5,12 +5,12 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use App\Models\Admin;
 use App\Models\Lead;
 use App\Models\ClientMatter;
 use App\Models\Matter;
-use Auth;
-use Config;
 
 class LeadConversionController extends Controller
 {
@@ -26,14 +26,21 @@ class LeadConversionController extends Controller
 
     /**
      * Convert lead to client
+     * Only super admin can perform bulk conversions
      */
     public function convertToClient(Request $request)
     {
+        // Check if user is super admin (role = 1)
+        if (Auth::user()->role != 1) {
+            return redirect()->back()->with('error', 'Only super admin can perform bulk conversions');
+        }
+        
         $requestData = $request->all();
         
         // Get all leads (including archived) for conversion
         $enqdatas = Lead::withArchived()->paginate(500);
         
+        $convertedCount = 0;
         foreach($enqdatas as $lead){
             $id = $lead->id;
             $enqdata = Admin::where('lead_id', $id)->first();
@@ -42,13 +49,16 @@ class LeadConversionController extends Controller
                 $obj->created_at = $lead->created_at;
                 $obj->updated_at = $lead->updated_at;
                 $obj->save();
+                $convertedCount++;
             }
-            echo $id.'<br>';
         }
+        
+        return redirect()->back()->with('success', "Converted {$convertedCount} leads successfully");
     }
 
     /**
      * Convert single lead to client with matter creation
+     * Anyone can convert a single lead
      */
     public function convertSingleLead(Request $request)
     {
@@ -116,9 +126,15 @@ class LeadConversionController extends Controller
 
     /**
      * Bulk convert leads to clients
+     * Only super admin can perform bulk conversions
      */
     public function bulkConvertToClient(Request $request)
     {
+        // Check if user is super admin (role = 1)
+        if (Auth::user()->role != 1) {
+            return redirect()->back()->with('error', 'Only super admin can perform bulk conversions');
+        }
+        
         $requestData = $request->all();
         
         if(!isset($requestData['lead_ids'])) {
@@ -151,9 +167,15 @@ class LeadConversionController extends Controller
 
     /**
      * Get conversion statistics
+     * Only super admin can view conversion stats
      */
     public function getConversionStats()
     {
+        // Check if user is super admin (role = 1)
+        if (Auth::user()->role != 1) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        
         $totalLeads = Lead::count();
         $totalClients = Admin::where('role', 7)->where('type', 'client')->count();
         $convertedThisMonth = Admin::where('role', 7)

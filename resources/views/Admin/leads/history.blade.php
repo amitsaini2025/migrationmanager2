@@ -34,7 +34,7 @@
 								</div>
 								<div class="author-mail_sms">
 								<a href="javascript:;" data-id="{{@$fetchedData->id}}" data-email="{{@$fetchedData->email}}" data-name="{{@$fetchedData->first_name}} {{@$fetchedData->last_name}}" class="clientemail" title="Compose Mail"><i class="fa fa-envelope"></i></a>
-								<a href="{{URL::to('/admin/leads/edit/'.base64_encode(convert_uuencode(@$fetchedData->id)))}}" title="Edit"><i class="fa fa-edit"></i></a>								
+								<a href="{{route('admin.leads.edit', base64_encode(convert_uuencode(@$fetchedData->id)))}}" title="Edit"><i class="fa fa-edit"></i></a>								
 							</div>
 							</div>
 							
@@ -230,12 +230,16 @@
 					    </div>" data-original-title="" title=""> Followup</button>
 										
 									</li>
-									@if($fetchedData->converted == 0)
-									<li class="nav-item d-sm-inline-block converclient">
-									    <a style="background: #54ca68;border-radius: 4px;padding: 7px 10px;font-size: 14px;line-height: 18px;color: #fff;border: 0px;" class="nav-link " href="{{URL::to('/admin/leads/convert/'.@$fetchedData->id)}}" onclick="return confirm('Are you sure?')">
-										  <i class="fa fa-user"></i> Convert To Client
-										</a>
-									    </li> 
+								@if($fetchedData->converted == 0)
+								<li class="nav-item d-sm-inline-block converclient">
+								    <form method="POST" action="{{route('admin.leads.convert_single')}}" style="display: inline;">
+								        @csrf
+								        <input type="hidden" name="lead_id" value="{{base64_encode(convert_uuencode($fetchedData->id))}}">
+								        <button type="submit" style="background: #54ca68;border-radius: 4px;padding: 7px 10px;font-size: 14px;line-height: 18px;color: #fff;border: 0px;cursor: pointer;" class="nav-link" onclick="return confirm('Are you sure you want to convert this lead to a client?')">
+								            <i class="fa fa-user"></i> Convert To Client
+								        </button>
+								    </form>
+								    </li>
 									    @endif
 								</ul> 
 							</div>

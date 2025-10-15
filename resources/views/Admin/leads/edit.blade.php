@@ -4,6 +4,7 @@
     <link rel="stylesheet" href="{{ asset('css/address-autocomplete.css') }}">
     <link rel="stylesheet" href="{{asset('css/client-forms.css')}}">
     <link rel="stylesheet" href="{{asset('css/clients/edit-client-components.css')}}">
+    <link rel="stylesheet" href="{{asset('css/leads/lead-form.css')}}">
     <link rel="stylesheet" href="{{asset('css/anzsco-admin.css')}}">
 @endpush
 
@@ -95,9 +96,9 @@
 
             <!-- Main Content Area -->
             <div class="main-content-area">
-                <form id="editLeadForm" action="{{ url('admin/leads/edit') }}" method="POST" enctype="multipart/form-data">
+                <form id="editLeadForm" action="{{ route('admin.leads.update', base64_encode(convert_uuencode($fetchedData->id))) }}" method="POST" enctype="multipart/form-data">
 				@csrf
-                    <input type="hidden" name="id" value="{{ $fetchedData->id }}">
+                    @method('PUT')
 
                 <!-- Personal Section -->
                 <section id="personalSection" class="content-section">
@@ -1539,6 +1540,7 @@
     <script src="{{asset('js/clients/english-proficiency.js')}}"></script>
     <script src="{{asset('js/address-autocomplete.js')}}"></script>
     <script src="{{asset('js/clients/address-regional-codes.js')}}"></script>
+    <script src="{{asset('js/leads/lead-form-navigation.js')}}"></script>
     {{-- Google Maps library removed - using backend proxy for address autocomplete --}}
     @endpush
 @endsection

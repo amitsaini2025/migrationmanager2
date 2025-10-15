@@ -7,6 +7,11 @@ use App\Http\Controllers\Admin\Clients\ClientNotesController;
 use App\Http\Controllers\Admin\ClientPersonalDetailsController;
 use App\Http\Controllers\Admin\PhoneVerificationController;
 use App\Http\Controllers\Admin\EmailVerificationController;
+use App\Http\Controllers\Admin\Leads\LeadController;
+use App\Http\Controllers\Admin\Leads\LeadAssignmentController;
+use App\Http\Controllers\Admin\Leads\LeadConversionController;
+use App\Http\Controllers\Admin\Leads\LeadFollowupController;
+use App\Http\Controllers\Admin\Leads\LeadAnalyticsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -134,30 +139,60 @@ Route::prefix('admin')->group(function() {
 
     // User role routes moved to routes/adminconsole.php
 
-    /*---------- Leads Management ----------*/
+    /*---------- Leads Management (Modern Laravel Syntax) ----------*/
     // Lead CRUD operations
-    Route::get('/leads', 'Admin\Leads\LeadController@index')->name('admin.leads.index');
-    Route::get('/leads/history/{id}', 'Admin\Leads\LeadController@history')->name('admin.leads.history');
-    Route::get('/leads/create', 'Admin\Leads\LeadController@create')->name('admin.leads.create');
-    Route::get('/leads/edit/{id}', 'Admin\Leads\LeadController@edit')->name('admin.leads.edit');
-    Route::post('/leads/edit', 'Admin\Leads\LeadController@edit')->name('admin.leads.edit');
-    Route::post('/leads/store', 'Admin\Leads\LeadController@store')->name('admin.leads.store');
-
-    // Lead Assignment operations
-    Route::post('/leads/assign', 'Admin\Leads\LeadAssignmentController@assign')->name('admin.leads.assign');
-    Route::post('/leads/bulk-assign', 'Admin\Leads\LeadAssignmentController@bulkAssign')->name('admin.leads.bulk_assign');
-    Route::get('/leads/assignable-users', 'Admin\Leads\LeadAssignmentController@getAssignableUsers')->name('admin.leads.assignable_users');
-
-    // Lead Conversion operations
-    Route::get('/leads/convert', 'Admin\Leads\LeadConversionController@convertToClient')->name('admin.leads.convert');
-    Route::post('/leads/convert-single', 'Admin\Leads\LeadConversionController@convertSingleLead')->name('admin.leads.convert_single');
-    Route::post('/leads/bulk-convert', 'Admin\Leads\LeadConversionController@bulkConvertToClient')->name('admin.leads.bulk_convert');
-    Route::get('/leads/conversion-stats', 'Admin\Leads\LeadConversionController@getConversionStats')->name('admin.leads.conversion_stats');
-
-    // Legacy routes (deprecated functionality)
-    Route::get('/leads/notes/delete/{id}', 'Admin\Leads\LeadController@leaddeleteNotes');
-    Route::get('/get-notedetail', 'Admin\Leads\LeadController@getnotedetail');
-    Route::get('/leads/pin/{id}', 'Admin\Leads\LeadController@leadPin');
+    Route::prefix('leads')->name('admin.leads.')->group(function () {
+        // List & Detail
+        Route::get('/', [LeadController::class, 'index'])->name('index');
+        Route::get('/detail/{id}', [LeadController::class, 'detail'])->name('detail');
+        Route::get('/history/{id}', [LeadController::class, 'history'])->name('history');
+        
+        // Create
+        Route::get('/create', [LeadController::class, 'create'])->name('create');
+        Route::post('/store', [LeadController::class, 'store'])->name('store');
+        
+        // Edit & Update (RESTful pattern)
+        Route::get('/{id}/edit', [LeadController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [LeadController::class, 'update'])->name('update');
+        Route::patch('/{id}', [LeadController::class, 'update'])->name('patch');
+        
+        // Assignment operations
+        Route::post('/assign', [LeadAssignmentController::class, 'assign'])->name('assign');
+        Route::post('/bulk-assign', [LeadAssignmentController::class, 'bulkAssign'])->name('bulk_assign');
+        Route::get('/assignable-users', [LeadAssignmentController::class, 'getAssignableUsers'])->name('assignable_users');
+        
+        // Conversion operations
+        Route::get('/convert', [LeadConversionController::class, 'convertToClient'])->name('convert');
+        Route::post('/convert-single', [LeadConversionController::class, 'convertSingleLead'])->name('convert_single');
+        Route::post('/bulk-convert', [LeadConversionController::class, 'bulkConvertToClient'])->name('bulk_convert');
+        Route::get('/conversion-stats', [LeadConversionController::class, 'getConversionStats'])->name('conversion_stats');
+        
+        // Follow-up System
+        Route::prefix('followups')->name('followups.')->group(function () {
+            Route::get('/', [LeadFollowupController::class, 'index'])->name('index');
+            Route::get('/dashboard', [LeadFollowupController::class, 'myFollowups'])->name('dashboard');
+            Route::post('/', [LeadFollowupController::class, 'store'])->name('store');
+            Route::post('/{id}/complete', [LeadFollowupController::class, 'complete'])->name('complete');
+            Route::post('/{id}/reschedule', [LeadFollowupController::class, 'reschedule'])->name('reschedule');
+            Route::post('/{id}/cancel', [LeadFollowupController::class, 'cancel'])->name('cancel');
+        });
+        Route::get('/{leadId}/followups', [LeadFollowupController::class, 'getLeadFollowups'])->name('followups.get');
+        
+        // Analytics (Admin/Team Lead only)
+        Route::prefix('analytics')->name('analytics.')->group(function () {
+            Route::get('/', [LeadAnalyticsController::class, 'index'])->name('index');
+            Route::get('/trends', [LeadAnalyticsController::class, 'getTrends'])->name('trends');
+            Route::get('/export', [LeadAnalyticsController::class, 'export'])->name('export');
+            Route::post('/compare-agents', [LeadAnalyticsController::class, 'compareAgents'])->name('compare');
+        });
+        
+        // Legacy routes (deprecated functionality)
+        Route::get('/notes/delete/{id}', [LeadController::class, 'leaddeleteNotes'])->name('notes.delete');
+        Route::get('/pin/{id}', [LeadController::class, 'leadPin'])->name('pin');
+    });
+    
+    // Global route (outside leads prefix) - kept for backward compatibility
+    Route::get('/get-notedetail', [LeadController::class, 'getnotedetail'])->name('admin.get-notedetail');
 
 	/*---------- Email Templates ----------*/
     Route::get('/email_templates', 'Admin\EmailTemplateController@index')->name('admin.email.index');

@@ -809,3 +809,114 @@ input:checked + .toggle-slider:before { transform: translateX(18px); }
         font-size: 16px;
     }
 }
+
+/* Activity Feed Filters */
+.activity-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.activity-filter-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+    border: 1px solid #dee2e6;
+    background: #fff;
+    color: #495057;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.activity-filter-btn:hover {
+    background: #f8f9fa;
+    border-color: #0d6efd;
+    color: #0d6efd;
+}
+
+.activity-filter-btn.active {
+    background: #0d6efd;
+    color: #fff;
+    border-color: #0d6efd;
+}
+
+.activity-filter-btn i {
+    font-size: 12px;
+}
+
+/* SMS Activity Styling */
+.activity-type-sms {
+    border-left: 3px solid #17a2b8 !important;
+}
+
+.feed-icon-sms {
+    background: linear-gradient(135deg, #17a2b8, #138496) !important;
+    color: #fff !important;
+}
+
+.feed-icon-sms i {
+    color: #fff !important;
+}
+
+.activity-type-sms .feed-content {
+    background: #f0f9fb;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+/* Provider and Status Badges (in description HTML from UnifiedSmsManager) */
+.badge {
+    display: inline-block;
+    padding: 0.25em 0.6em;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.25rem;
+    margin-right: 5px;
+}
+
+.badge-success {
+    background-color: #28a745;
+}
+
+.badge-danger {
+    background-color: #dc3545;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+/* SMS Activity Content Styling */
+.sms-activity p {
+    margin: 5px 0;
+    font-size: 13px;
+}
+
+.sms-activity strong {
+    font-weight: 600;
+    color: #212529;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+/* Hidden by default - shown via filter */
+.feed-item.activity {
+    display: block;
+}
+

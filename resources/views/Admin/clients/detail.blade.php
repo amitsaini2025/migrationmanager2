@@ -348,6 +348,23 @@ use App\Http\Controllers\Controller;
                <input type="checkbox" id="increase-activity-feed-width" title="Expand Width">
             </label>
         </div>
+        
+        <!-- Activity Type Filters -->
+        <div class="activity-filters">
+            <button class="activity-filter-btn active" data-filter="all">
+                <i class="fas fa-list"></i> All
+            </button>
+            <button class="activity-filter-btn" data-filter="sms">
+                <i class="fas fa-sms"></i> SMS
+            </button>
+            <button class="activity-filter-btn" data-filter="note">
+                <i class="fas fa-sticky-note"></i> Notes
+            </button>
+            <button class="activity-filter-btn" data-filter="document">
+                <i class="fas fa-file-alt"></i> Documents
+            </button>
+        </div>
+        
         <ul class="feed-list">
             <?php
             if(
@@ -402,10 +419,13 @@ use App\Http\Controllers\Controller;
             {
                 $admin = \App\Models\Admin::where('id', $activit->created_by)->first();
                 ?>
-                <li class="feed-item feed-item--email activity" id="activity_{{$activit->id}}">
-                    <span class="feed-icon">
+                <li class="feed-item feed-item--email activity {{ $activit->activity_type ? 'activity-type-' . $activit->activity_type : '' }}" id="activity_{{$activit->id}}">
+                    <span class="feed-icon {{ $activit->activity_type === 'sms' ? 'feed-icon-sms' : '' }}">
                         <?php
-                        if (str_contains($activit->subject, "document")) {
+                        // Determine icon based on activity type
+                        if ($activit->activity_type === 'sms') {
+                            echo '<i class="fas fa-sms"></i>';
+                        } elseif (str_contains($activit->subject, "document")) {
                             echo '<i class="fas fa-file-alt"></i>';
                         } else {
                             echo '<i class="fas fa-sticky-note"></i>';
@@ -1145,6 +1165,52 @@ use App\Http\Controllers\Controller;
 <script src="{{URL::to('/')}}/js/popover.js"></script>
 <script src="{{URL::asset('js/bootstrap-datepicker.js')}}"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.full.min.js"></script>
+
+{{-- Activity Feed Filters --}}
+<script>
+$(document).ready(function() {
+    // Activity type filter functionality
+    $('.activity-filter-btn').on('click', function() {
+        // Remove active class from all buttons
+        $('.activity-filter-btn').removeClass('active');
+        
+        // Add active class to clicked button
+        $(this).addClass('active');
+        
+        // Get filter type
+        var filterType = $(this).data('filter');
+        
+        // Show/hide activities based on filter
+        if (filterType === 'all') {
+            $('.feed-item.activity').show();
+        } else if (filterType === 'note') {
+            // Show activities that don't have specific types (default notes) or have note type
+            $('.feed-item.activity').each(function() {
+                var $item = $(this);
+                if (!$item.hasClass('activity-type-sms') && !$item.hasClass('activity-type-document')) {
+                    $item.show();
+                } else {
+                    $item.hide();
+                }
+            });
+        } else if (filterType === 'document') {
+            $('.feed-item.activity').hide();
+            // Show document activities
+            $('.feed-item.activity').each(function() {
+                var $item = $(this);
+                var subject = $item.find('.feed-content strong').text().toLowerCase();
+                if (subject.includes('document')) {
+                    $item.show();
+                }
+            });
+        } else {
+            // Show only activities with specific type
+            $('.feed-item.activity').hide();
+            $('.feed-item.activity-type-' + filterType).show();
+        }
+    });
+});
+</script>
 
 {{-- Sidebar Tabs Management - Dedicated file for sidebar navigation --}}
 <script src="{{URL::asset('js/admin/clients/sidebar-tabs.js')}}"></script>

@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Sms;
 
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Exception;
 
-class CellcastSmsService
+class CellcastProvider
 {
     protected $apiKey;
     protected $baseUrl;
@@ -282,3 +282,4 @@ class CellcastSmsService
         }
     }
 }
+

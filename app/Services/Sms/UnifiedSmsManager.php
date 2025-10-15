@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Sms;
 
 use App\Models\SmsLog;
 use App\Models\ActivitiesLog;
@@ -24,7 +24,7 @@ class UnifiedSmsManager
     protected $cellcastService;
     protected $smsService;
     
-    public function __construct(CellcastSmsService $cellcastService, SmsService $smsService)
+    public function __construct(CellcastProvider $cellcastService, TwilioProvider $smsService)
     {
         $this->cellcastService = $cellcastService;
         $this->smsService = $smsService;

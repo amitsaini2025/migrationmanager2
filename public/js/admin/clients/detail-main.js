@@ -8010,13 +8010,19 @@ Bansal Immigration`;
 
                     $.each(ress.data, function (k, v) {
 
-                        var subjectIcon = v.subject && v.subject.toLowerCase().includes("document")
-
-                            ? '<i class="fas fa-file-alt"></i>'
-
-                            : '<i class="fas fa-sticky-note"></i>';
-
-
+                        // Determine icon based on activity type
+                        var activityType = v.activity_type ?? 'note';
+                        var subjectIcon;
+                        var iconClass = '';
+                        
+                        if (activityType === 'sms') {
+                            subjectIcon = '<i class="fas fa-sms"></i>';
+                            iconClass = 'feed-icon-sms';
+                        } else if (v.subject && v.subject.toLowerCase().includes("document")) {
+                            subjectIcon = '<i class="fas fa-file-alt"></i>';
+                        } else {
+                            subjectIcon = '<i class="fas fa-sticky-note"></i>';
+                        }
 
                         var subject = v.subject ?? '';
 
@@ -8031,14 +8037,14 @@ Bansal Immigration`;
                         var createdBy = v.createdname ?? 'Unknown';
 
                         var fullName = v.name ?? '';
-
-
+                        
+                        var activityTypeClass = activityType ? 'activity-type-' + activityType : '';
 
                         html += `
 
-                            <li class="feed-item feed-item--email activity" id="activity_${v.activity_id}">
+                            <li class="feed-item feed-item--email activity ${activityTypeClass}" id="activity_${v.activity_id}">
 
-                                <span class="feed-icon">
+                                <span class="feed-icon ${iconClass}">
 
                                     ${subjectIcon}
 

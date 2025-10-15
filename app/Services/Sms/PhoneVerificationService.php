@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Sms;
 
 use App\Models\PhoneVerification;
 use App\Models\ClientContact;
@@ -10,14 +10,14 @@ use Illuminate\Support\Facades\Auth;
 
 class PhoneVerificationService
 {
-    protected $smsService;
+    protected $smsManager;
     protected $otpValidMinutes = 5;
     protected $resendCooldownSeconds = 30;
     protected $maxAttemptsPerHour = 3;
 
-    public function __construct(SmsService $smsService)
+    public function __construct(UnifiedSmsManager $smsManager)
     {
-        $this->smsService = $smsService;
+        $this->smsManager = $smsManager;
     }
 
     /**
@@ -75,7 +75,11 @@ class PhoneVerificationService
         $fullNumber = $contact->country_code . $contact->phone;
         $message = "BANSAL IMMIGRATION: Your phone verification code is {$otpCode}. Please provide this code to our staff to verify your phone number. This code expires in {$this->otpValidMinutes} minutes.";
         
-        $smsResult = $this->smsService->sendVerificationCodeSMS($fullNumber, $message);
+        // Use UnifiedSmsManager with proper context for activity logging
+        $smsResult = $this->smsManager->sendSms($fullNumber, $message, 'verification', [
+            'client_id' => $contact->client_id,
+            'contact_id' => $contactId,
+        ]);
 
         if (!$smsResult['success']) {
             $verification->delete();
@@ -209,3 +213,4 @@ class PhoneVerificationService
         return strpos($cleaned, '4444444444') === 0;
     }
 }
+

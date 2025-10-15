@@ -72,7 +72,7 @@ use App\Models\ClientEoiReference;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
 use App\Mail\HubdocInvoiceMail;
-use App\Services\SmsService;
+use App\Services\Sms\UnifiedSmsManager;
 use App\Traits\ClientAuthorization;
 use App\Traits\ClientHelpers;
 use App\Traits\ClientQueries;
@@ -82,16 +82,16 @@ class ClientsController extends Controller
     use ClientAuthorization, ClientHelpers, ClientQueries;
     
     protected $openAiClient;
-    protected $smsService;
+    protected $smsManager;
     /**
      * Create a new controller instance.
      *
      * @return void
      */
-    public function __construct(SmsService $smsService)
+    public function __construct(UnifiedSmsManager $smsManager)
     {
         $this->middleware('auth:admin');
-        $this->smsService = $smsService;
+        $this->smsManager = $smsManager;
 
         $this->openAiClient = new Client([
             'base_uri' => 'https://api.openai.com/v1/',
@@ -4711,7 +4711,8 @@ class ClientsController extends Controller
 					'date' => date('d M Y, H:i A', strtotime($activit->created_at)),
                    'followup_date' => $activit->followup_date,
                    'task_group' => $activit->task_group,
-                   'pin' => $activit->pin
+                   'pin' => $activit->pin,
+                   'activity_type' => $activit->activity_type ?? 'note'
                 );
 			}
 
@@ -5601,26 +5602,30 @@ class ClientsController extends Controller
     //not picked call button click
     public function notpickedcall(Request $request){
         $data = $request->all(); //dd($data);
-        //Get user Phone no and send message via cellcast
+        //Get user Phone no and send message via UnifiedSmsManager
         $userInfo = Admin::select('id','country_code','phone')->where('id', $data['id'])->first();//dd($userInfo);
-        if ( $userInfo) {
-            //$message = 'Call not picked.SMS sent successfully!';
+        
+        $smsResult = null;
+        if ($userInfo) {
             $message = $data['message'];
             $userPhone = $userInfo->country_code."".$userInfo->phone;
-            $this->smsService->sendSms($userPhone,$message);
+            
+            // Use UnifiedSmsManager with proper context (auto-creates activity log)
+            $smsResult = $this->smsManager->sendSms($userPhone, $message, 'notification', [
+                'client_id' => $data['id']
+            ]);
         }
+        
         $recExist = Admin::where('id', $data['id'])->update(['not_picked_call' => $data['not_picked_call']]);
         if($recExist){
             if($data['not_picked_call'] == 1){ //if checked true
-                $objs = new ActivitiesLog;
-                $objs->client_id = $data['id'];
-                $objs->created_by = Auth::user()->id;
-                $objs->description = '<span class="text-semi-bold">Call not picked.SMS sent successfully!</span>';
-                //$objs->subject = "Call not picked";
-                $objs->save();
-
+                // Activity log is now automatically created by UnifiedSmsManager
+                // No need to manually create it here
+                
                 $response['status'] 	= 	true;
-                $response['message']	=	'Call not picked.SMS sent successfully!';
+                $response['message']	=	$smsResult && $smsResult['success'] 
+                    ? 'Call not picked. SMS sent successfully!' 
+                    : 'Call not picked. SMS failed to send.';
                 $response['not_picked_call'] 	= 	$data['not_picked_call'];
             }
             else if($data['not_picked_call'] == 0){

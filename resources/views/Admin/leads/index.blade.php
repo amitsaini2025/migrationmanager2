@@ -245,7 +245,7 @@
                                             </div>
                                         </td>
                                         <td style="white-space: initial;">
-                                            <a href="{{ route('admin.leads.detail', base64_encode(convert_uuencode(@$list->id))) }}">
+                                            <a href="{{ route('admin.clients.detail', base64_encode(convert_uuencode(@$list->id))) }}">
                                                 {{ @$list->first_name == "" ? config('constants.empty') : str_limit(@$list->first_name, '50', '...') }}
                                                 {{ @$list->last_name == "" ? config('constants.empty') : str_limit(@$list->last_name, '50', '...') }}
                                             </a>
@@ -259,7 +259,7 @@
                                             <div class="dropdown action_toggle">
                                                 <a class="dropdown-toggle" type="button" id="" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i data-feather="more-vertical"></i></a>
                                                 <div class="dropdown-menu">
-                                                    <a class="dropdown-item has-icon" href="{{route('admin.leads.edit', base64_encode(convert_uuencode(@$list->id)))}}">
+                                                    <a class="dropdown-item has-icon" href="{{route('admin.clients.edit', base64_encode(convert_uuencode(@$list->id)))}}">
                                                         <i class="fa fa-edit"></i> Edit
                                                     </a>
                                                 </div>

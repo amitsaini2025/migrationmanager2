@@ -1,12 +1,12 @@
 @extends('layouts.admin_client_detail')
-@section('title', 'Completed Activities')
+@section('title', 'Completed Action')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/listing-pagination.css') }}">
 <link rel="stylesheet" href="{{ asset('css/listing-container.css') }}">
 <link rel="stylesheet" href="{{ asset('css/listing-datepicker.css') }}">
 <style>
-    /* Page-specific styles for activities_completed page */
+    /* Page-specific styles for action_completed page */
     .listing-container .filter-buttons { 
         display: flex; 
         flex-wrap: wrap; 
@@ -217,10 +217,10 @@
             <div class="card">
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center flex-wrap">
-                        <h4>Completed Activities</h4>
+                        <h4>Completed Action</h4>
                         <ul class="nav nav-pills" id="client_tabs" role="tablist">
                             <li class="nav-item is_checked_clientn11">
-                                <a class="nav-link active" id="archived-tab" href="{{URL::to('/admin/activities')}}">Incomplete</a>
+                                <a class="nav-link active" id="archived-tab" href="{{URL::to('/admin/action')}}">Incomplete</a>
                             </li>
                         </ul>
                     </div>
@@ -228,7 +228,7 @@
                 
                 <div class="card-body">
                     <div class="tab-content" id="quotationContent">
-                        <form action="{{ route('assignee.activities_completed') }}" method="get">
+                        <form action="{{ route('assignee.action_completed') }}" method="get">
                             <div class="row">
                                 <div class="col-md-12 filter-buttons">
                                     <?php
@@ -250,24 +250,24 @@
                                         $assigneesCount_Personal_Task_type = \App\Models\Note::where('task_group','like','Personal Task')->where('assigned_to',Auth::user()->id)->where('type','client')->where('folloup',1)->where('status',1)->orderBy('created_at', 'desc')->count();
                                     }
                                     ?>
-                                    <a href="{{URL::to('/admin/activities_completed?group_type=All')}}" id="All" class="group_type {{ $task_group == 'All' ? 'active' : '' }}">All <span class="countAction">{{ $assigneesCount_All_type }}</span></a>
+                                    <a href="{{URL::to('/admin/action_completed?group_type=All')}}" id="All" class="group_type {{ $task_group == 'All' ? 'active' : '' }}">All <span class="countAction">{{ $assigneesCount_All_type }}</span></a>
                                     <button type="button">
-                                        <a href="{{URL::to('/admin/activities_completed?group_type=Call')}}" id="Call" class="group_type {{ $task_group == 'Call' ? 'active' : '' }}"><i class="fa fa-phone" aria-hidden="true"></i> Call <span class="countAction">{{ $assigneesCount_call_type }}</span></a>
+                                        <a href="{{URL::to('/admin/action_completed?group_type=Call')}}" id="Call" class="group_type {{ $task_group == 'Call' ? 'active' : '' }}"><i class="fa fa-phone" aria-hidden="true"></i> Call <span class="countAction">{{ $assigneesCount_call_type }}</span></a>
                                     </button>
                                     <button type="button">
-                                        <a href="{{URL::to('/admin/activities_completed?group_type=Checklist')}}" id="Checklist" class="group_type {{ $task_group == 'Checklist' ? 'active' : '' }}"><i class="fa fa-bars" aria-hidden="true"></i> Checklist <span class="countAction">{{ $assigneesCount_Checklist_type }}</span></a>
+                                        <a href="{{URL::to('/admin/action_completed?group_type=Checklist')}}" id="Checklist" class="group_type {{ $task_group == 'Checklist' ? 'active' : '' }}"><i class="fa fa-bars" aria-hidden="true"></i> Checklist <span class="countAction">{{ $assigneesCount_Checklist_type }}</span></a>
                                     </button>
                                     <button type="button">
-                                        <a href="{{URL::to('/admin/activities_completed?group_type=Review')}}" id="Review" class="group_type {{ $task_group == 'Review' ? 'active' : '' }}"><i class="fa fa-check" aria-hidden="true"></i> Review <span class="countAction">{{ $assigneesCount_Review_type }}</span></a>
+                                        <a href="{{URL::to('/admin/action_completed?group_type=Review')}}" id="Review" class="group_type {{ $task_group == 'Review' ? 'active' : '' }}"><i class="fa fa-check" aria-hidden="true"></i> Review <span class="countAction">{{ $assigneesCount_Review_type }}</span></a>
                                     </button>
                                     <button type="button">
-                                        <a href="{{URL::to('/admin/activities_completed?group_type=Query')}}" id="Query" class="group_type {{ $task_group == 'Query' ? 'active' : '' }}"><i class="fa fa-question" aria-hidden="true"></i> Query <span class="countAction">{{ $assigneesCount_Query_type }}</span></a>
+                                        <a href="{{URL::to('/admin/action_completed?group_type=Query')}}" id="Query" class="group_type {{ $task_group == 'Query' ? 'active' : '' }}"><i class="fa fa-question" aria-hidden="true"></i> Query <span class="countAction">{{ $assigneesCount_Query_type }}</span></a>
                                     </button>
                                     <button type="button">
-                                        <a href="{{URL::to('/admin/activities_completed?group_type=Urgent')}}" id="Urgent" class="group_type {{ $task_group == 'Urgent' ? 'active' : '' }}"><i class="fa fa-flag" aria-hidden="true"></i> Urgent <span class="countAction">{{ $assigneesCount_Urgent_type }}</span></a>
+                                        <a href="{{URL::to('/admin/action_completed?group_type=Urgent')}}" id="Urgent" class="group_type {{ $task_group == 'Urgent' ? 'active' : '' }}"><i class="fa fa-flag" aria-hidden="true"></i> Urgent <span class="countAction">{{ $assigneesCount_Urgent_type }}</span></a>
                                     </button>
                                     <button type="button">
-                                        <a href="{{URL::to('/admin/activities_completed?group_type=Personal Task')}}" id="Personal Task" class="group_type {{ $task_group == 'Personal Task' ? 'active' : '' }}"><i class="fa fa-tasks" aria-hidden="true"></i> Personal Task <span class="countAction">{{ $assigneesCount_Personal_Task_type }}</span></a>
+                                        <a href="{{URL::to('/admin/action_completed?group_type=Personal Task')}}" id="Personal Task" class="group_type {{ $task_group == 'Personal Task' ? 'active' : '' }}"><i class="fa fa-tasks" aria-hidden="true"></i> Personal Task <span class="countAction">{{ $assigneesCount_Personal_Task_type }}</span></a>
                                     </button>
                                 </div>
                             </div>
@@ -402,7 +402,7 @@
                                         @else
                                             <tr>
                                                 <td colspan="8" style="text-align: center; padding: 20px;">
-                                                    There are no completed activities.
+                                                    There are no completed actions.
                                                 </td>
                                             </tr>
                                         @endif
@@ -529,8 +529,6 @@ jQuery(document).ready(function($){
                             (($(this).popover('hide').data('bs.popover')||{}).inState||{}).click = false
                         });
                         location.reload();
-                        getallactivities();
-                        getallnotes();
                     } else {
                         alert(obj.message);
                         location.reload();

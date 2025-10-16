@@ -53,7 +53,7 @@
                                 </div>
                             </div>
                             @if($selectedDocument->status === 'signed')
-                                <a href="{{ route('download.signed', $selectedDocument->id) }}"
+                                <a href="{{ route('public.documents.download.signed', $selectedDocument->id) }}"
                                    class="px-3 py-1 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition">
                                     Download Signed
                                 </a>

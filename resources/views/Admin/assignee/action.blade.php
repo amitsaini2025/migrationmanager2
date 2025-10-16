@@ -1,5 +1,5 @@
 @extends('layouts.admin_client_detail')
-@section('title', 'Activities')
+@section('title', 'Action')
 
 @section('content')
 <style>
@@ -515,7 +515,7 @@
                 <h1>Action</h1>
                 <div class="client-status" style="margin-right: 50px;">
                     <a class="btn btn-primary" style="border-radius: 0px;" id="assigned_by_me"  href="{{URL::to('/admin/assigned_by_me')}}">Assigned by me</a>
-                    <a class="btn btn-primary" style="border-radius: 0px;" id="archived-tab"  href="{{URL::to('/admin/activities_completed')}}">Completed</a>
+                    <a class="btn btn-primary" style="border-radius: 0px;" id="archived-tab"  href="{{URL::to('/admin/action_completed')}}">Completed</a>
                     <button class="btn btn-primary tab-button add_my_task" data-container="body" data-role="popover" data-placement="bottom-start" data-html="true" data-content="
                         <div id='popover-content11'>
                             <div class='popover-header' style='background-color: #0d6efd; color: white; padding: 15px 20px; font-weight: 600; font-size: 16px; border-radius: 8px 8px 0 0; margin: -20px -20px 20px -20px;'>Add My Task</div>
@@ -992,7 +992,7 @@ $(function () {
         processing: true,
         serverSide: true,
         ajax: {
-            url: "{{ route('activities.list') }}",
+            url: "{{ route('action.list') }}",
             data: function(d) {
                 d.filter = $('.tab-button.active').data('filter');
                 d.search = $('#searchInput').val(); // Pass the search term to the server
@@ -1321,7 +1321,7 @@ $(function () {
     // Update badge counts
     function updateBadgeCounts() {
         $.ajax({
-            url: "{{ route('activities.counts') }}",
+            url: "{{ route('action.counts') }}",
             method: "GET",
             success: function(data) {
                 $('#all-count').text(data.all || 0);
@@ -1552,8 +1552,6 @@ $(function () {
                             (($(this).popover('hide').data('bs.popover')||{}).inState||{}).click = false
                         });
                         table.draw(false);
-                        getallactivities();
-                        getallnotes();
                     } else {
                         alert(obj.message);
                         table.draw(false);

@@ -81,7 +81,7 @@
         width: 100% !important;
     }
 
-    /* Page-specific margin fix for activities page */
+    /* Page-specific margin fix for action page */
     .listing-container {
         margin-left: 80px !important; /* Add margin to prevent overlap with left sidebar */
     }
@@ -112,10 +112,10 @@
                 <div class="client-status">
                     <ul class="nav nav-pills" id="client_tabs" role="tablist">
                         <li class="nav-item">
-                            <a class="status-badge nav-link active" href="{{ URL::to('/admin/activities') }}">Incomplete</a>
+                            <a class="status-badge nav-link active" href="{{ URL::to('/admin/action') }}">Incomplete</a>
                         </li>
                         <li class="nav-item">
-                            <a class="status-badge nav-link" href="{{ URL::to('/admin/activities_completed') }}">Completed</a>
+                            <a class="status-badge nav-link" href="{{ URL::to('/admin/action_completed') }}">Completed</a>
                         </li>
                     </ul>
                 </div>
@@ -241,7 +241,7 @@
                                         @else
                                             <tr>
                                                 <td colspan="8" style="text-align: center; padding: 20px;">
-                                                    No activities assigned by me.
+                                                    No actions assigned by me.
                                                 </td>
                                             </tr>
                                         @endif

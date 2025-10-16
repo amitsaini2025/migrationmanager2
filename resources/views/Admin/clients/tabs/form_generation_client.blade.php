@@ -301,7 +301,7 @@
                                                                 @endif
 
                                                                 @if($formlist2->status === 'signed')
-                                                                    <a target="_blank" href="{{ route('download.signed', $formlist2->id) }}" class="btn btn-primary">Download Signed</a>
+                                                                    <a target="_blank" href="{{ route('admin.documents.download.signed', $formlist2->id) }}" class="btn btn-primary">Download Signed</a>
                                                                 @endif
 
                                                                 <a target="_blank" href="{{ route('documents.index', $formlist2->id) }}" class="btn btn-primary">Go To Document</a>

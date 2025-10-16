@@ -185,11 +185,11 @@ Route::prefix('admin')->group(function() {
     Route::get('/email_templates/create', 'Admin\EmailTemplateController@create')->name('admin.email.create');
     Route::post('/email_templates/store', 'Admin\EmailTemplateController@store')->name('admin.email.store');
     Route::get('/edit_email_template/{id}', 'Admin\EmailTemplateController@editEmailTemplate')->name('admin.edit_email_template');
-    Route::post('/edit_email_template', 'Admin\EmailTemplateController@editEmailTemplate')->name('admin.edit_email_template');
+    Route::post('/edit_email_template', 'Admin\EmailTemplateController@editEmailTemplate')->name('admin.edit_email_template.update');
 
 	/*---------- API Settings ----------*/
     Route::get('/api-key', 'Admin\AdminController@editapi')->name('admin.edit_api');
-    Route::post('/api-key', 'Admin\AdminController@editapi')->name('admin.edit_api');
+    Route::post('/api-key', 'Admin\AdminController@editapi')->name('admin.edit_api.update');
 
 		/*---------- Clients Management ----------*/
 		Route::get('/clients', [ClientsController::class, 'index'])->name('admin.clients.index');
@@ -421,7 +421,7 @@ Route::prefix('admin')->group(function() {
 
         Route::delete('/destroy_by_me/{note_id}', 'Admin\AssigneeController@destroy_by_me')->name('assignee.destroy_by_me'); //assigned by me
         Route::delete('/destroy_to_me/{note_id}', 'Admin\AssigneeController@destroy_to_me')->name('assignee.destroy_to_me'); //assigned to me
-        Route::get('/activities_completed', 'Admin\AssigneeController@activities_completed')->name('assignee.activities_completed'); //activities completed
+        Route::get('/action_completed', 'Admin\AssigneeController@action_completed')->name('assignee.action_completed'); //action completed
 
 
         Route::delete('/destroy_activity/{note_id}', 'Admin\AssigneeController@destroy_activity')->name('assignee.destroy_activity'); //delete activity
@@ -443,8 +443,8 @@ Route::prefix('admin')->group(function() {
 
 
         //for datatble
-        Route::get('/activities', 'Admin\AssigneeController@activities')->name('assignee.activities');;
-        Route::get('/activities/list','Admin\AssigneeController@getActivities')->name('activities.list');
+        Route::get('/action', 'Admin\AssigneeController@action')->name('assignee.action');;
+        Route::get('/action/list','Admin\AssigneeController@getAction')->name('action.list');
 
 
         Route::post('/get_assignee_list', 'Admin\AssigneeController@get_assignee_list');
@@ -480,19 +480,19 @@ Route::prefix('admin')->group(function() {
 
         //Account Receipts section
         Route::get('/clients/saveaccountreport/{id}', 'Admin\ClientsController@saveaccountreport')->name('admin.clients.saveaccountreport');
-		Route::post('/clients/saveaccountreport', 'Admin\ClientsController@saveaccountreport')->name('admin.clients.saveaccountreport');
+		Route::post('/clients/saveaccountreport', 'Admin\ClientsController@saveaccountreport')->name('admin.clients.saveaccountreport.update');
 
         Route::get('/clients/saveinvoicereport/{id}', 'Admin\ClientsController@saveinvoicereport')->name('admin.clients.saveinvoicereport');
-		Route::post('/clients/saveinvoicereport', 'Admin\ClientsController@saveinvoicereport')->name('admin.clients.saveinvoicereport');
+		Route::post('/clients/saveinvoicereport', 'Admin\ClientsController@saveinvoicereport')->name('admin.clients.saveinvoicereport.update');
 
         Route::get('/clients/saveadjustinvoicereport/{id}', 'Admin\ClientsController@saveadjustinvoicereport')->name('admin.clients.saveadjustinvoicereport');
-		Route::post('/clients/saveadjustinvoicereport', 'Admin\ClientsController@saveadjustinvoicereport')->name('admin.clients.saveadjustinvoicereport');
+		Route::post('/clients/saveadjustinvoicereport', 'Admin\ClientsController@saveadjustinvoicereport')->name('admin.clients.saveadjustinvoicereport.update');
 
         Route::get('/clients/saveofficereport/{id}', 'Admin\ClientsController@saveofficereport')->name('admin.clients.saveofficereport');
-		Route::post('/clients/saveofficereport', 'Admin\ClientsController@saveofficereport')->name('admin.clients.saveofficereport');
+		Route::post('/clients/saveofficereport', 'Admin\ClientsController@saveofficereport')->name('admin.clients.saveofficereport.update');
 
         Route::get('/clients/savejournalreport/{id}', 'Admin\ClientsController@savejournalreport')->name('admin.clients.savejournalreport');
-		Route::post('/clients/savejournalreport', 'Admin\ClientsController@savejournalreport')->name('admin.clients.savejournalreport');
+		Route::post('/clients/savejournalreport', 'Admin\ClientsController@savejournalreport')->name('admin.clients.savejournalreport.update');
 
 
         Route::post('/clients/isAnyInvoiceNoExistInDB', 'Admin\ClientsController@isAnyInvoiceNoExistInDB')->name('admin.clients.isAnyInvoiceNoExistInDB');
@@ -521,7 +521,7 @@ Route::prefix('admin')->group(function() {
         Route::post('/clients/fetchClientContactNo', [ClientPersonalDetailsController::class, 'fetchClientContactNo']);
 
         Route::post('/clients/clientdetailsinfo/{id}', [ClientPersonalDetailsController::class, 'clientdetailsinfo'])->name('admin.clients.clientdetailsinfo');
-        Route::post('/clients/clientdetailsinfo', [ClientPersonalDetailsController::class, 'clientdetailsinfo'])->name('admin.clients.clientdetailsinfo');
+        Route::post('/clients/clientdetailsinfo', [ClientPersonalDetailsController::class, 'clientdetailsinfo'])->name('admin.clients.clientdetailsinfo.update');
 
 
         Route::post('/reassiginboxemail', 'Admin\ClientsController@reassiginboxemail')->name('admin.clients.reassiginboxemail');
@@ -578,7 +578,7 @@ Route::prefix('admin')->group(function() {
         Route::post('/update-client-funds-ledger', 'Admin\ClientsController@updateClientFundsLedger')->name('admin.clients.update-client-funds-ledger');
 
         Route::post('/update-task', 'Admin\AssigneeController@updateTask');
-        Route::get('/activities/counts','Admin\AssigneeController@getActivityCounts' )->name('activities.counts');
+        Route::get('/action/counts','Admin\AssigneeController@getActionCounts' )->name('action.counts');
 
 
         Route::post('/clients/invoiceamount', 'Admin\ClientsController@getInvoiceAmount')->name('admin.clients.invoiceamount');
@@ -630,8 +630,8 @@ Route::prefix('admin')->group(function() {
 
        
 
-        Route::get('/sign/{id}/{token}', 'Admin\DocumentController@sign')->name('documents.sign');
-		Route::get('/documents/{id?}', 'Admin\DocumentController@index')->name('documents.index');
+        Route::get('/sign/{id}/{token}', 'Admin\DocumentController@sign')->name('admin.documents.sign');
+		Route::get('/documents/{id?}', 'Admin\DocumentController@index')->name('admin.documents.show');
   
         //Lead Save cost assignment
         Route::post('/clients/savecostassignmentlead', 'Admin\ClientsController@savecostassignmentlead')->name('clients.savecostassignmentlead');
@@ -669,14 +669,14 @@ Route::prefix('admin')->group(function() {
 
 		Route::post('/documents/{document}/sign', 'Admin\DocumentController@submitSignatures')->name('documents.submitSignatures');
 		Route::post('/documents/{document}/send-reminder', 'Admin\DocumentController@sendReminder')->name('documents.sendReminder');
-		Route::get('/documents/{id}/download-signed', 'Admin\DocumentController@downloadSigned')->name('download.signed');
+		Route::get('/documents/{id}/download-signed', 'Admin\DocumentController@downloadSigned')->name('admin.documents.download.signed');
 		Route::get('/documents/{id}/download-signed-and-thankyou', 'Admin\DocumentController@downloadSignedAndThankyou')->name('documents.signed.download_and_thankyou');
 		Route::get('/documents/thankyou/{id?}', 'Admin\DocumentController@thankyou')->name('documents.thankyou');
 		Route::post('/documents/{document}/send-signing-link', 'Admin\DocumentController@sendSigningLink')->name('documents.sendSigningLink');
 		Route::get('/documents/{id}/page/{page}', 'Admin\DocumentController@getPage')->name('documents.page');
 		Route::get('/documents/{document}/sign', 'Admin\DocumentController@showSignForm')->name('documents.showSignForm');
 
-		Route::get('/download-signed/{id}', 'Admin\DocumentController@downloadSigned')->name('download.signed');
+		Route::get('/download-signed/{id}', 'Admin\DocumentController@downloadSigned')->name('admin.download.signed');
 		  
 		// Test signature route
 		Route::get('/test-signature', function () {
@@ -710,17 +710,17 @@ Route::prefix('admin')->group(function() {
 // Frontend dynamic routing removed - no frontend website
 
 //Frontend Document Controller
-Route::get('/sign/{id}/{token}', [App\Http\Controllers\DocumentController::class, 'sign'])->name('documents.sign');
+Route::get('/sign/{id}/{token}', [App\Http\Controllers\DocumentController::class, 'sign'])->name('public.documents.sign');
 Route::get('/documents/{id}/page/{page}', [App\Http\Controllers\DocumentController::class, 'getPage'])->name('documents.page');
 Route::post('/documents/{document}/sign', [App\Http\Controllers\DocumentController::class, 'submitSignatures'])->name('documents.submitSignatures');
 
 Route::get('/documents/thankyou/{id?}', [App\Http\Controllers\DocumentController::class, 'thankyou'])->name('documents.thankyou');
 
 Route::post('/documents/{document}/send-reminder', [App\Http\Controllers\DocumentController::class, 'sendReminder'])->name('documents.sendReminder');
-Route::get('/documents/{id}/download-signed', [App\Http\Controllers\DocumentController::class, 'downloadSigned'])->name('download.signed');
+Route::get('/documents/{id}/download-signed', [App\Http\Controllers\DocumentController::class, 'downloadSigned'])->name('public.documents.download.signed');
 Route::get('/documents/{id}/download-signed-and-thankyou', [App\Http\Controllers\DocumentController::class, 'downloadSignedAndThankyou'])->name('documents.signed.download_and_thankyou');
 Route::get('/documents/thankyou/{id?}', [App\Http\Controllers\DocumentController::class, 'thankyou'])->name('documents.thankyou');
-Route::get('/documents/{id?}', [App\Http\Controllers\DocumentController::class, 'index'])->name('documents.index');
+Route::get('/documents/{id?}', [App\Http\Controllers\DocumentController::class, 'index'])->name('public.documents.index');
 
 // Public email verification route (no auth required)
 Route::get('/verify-email/{token}', [EmailVerificationController::class, 'verifyEmail'])->name('admin.clients.email.verify');

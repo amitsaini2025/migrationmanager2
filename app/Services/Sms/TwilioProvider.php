@@ -17,12 +17,31 @@ class TwilioProvider implements SmsProviderInterface
         $authToken = config('services.twilio.auth_token');
         $this->fromNumber = config('services.twilio.from');
         
-        $this->twilioClient = new TwilioClient($accountSid, $authToken);
+        // Only create TwilioClient if credentials are available
+        if (!empty($accountSid) && !empty($authToken)) {
+            $this->twilioClient = new TwilioClient($accountSid, $authToken);
+        } else {
+            $this->twilioClient = null;
+        }
     }
 
     public function sendSms(string $to, string $message): array
     {
         try {
+            // Check if Twilio client is available
+            if ($this->twilioClient === null) {
+                Log::warning('Twilio SMS skipped - credentials not configured', [
+                    'to' => $to,
+                    'message' => $message
+                ]);
+                
+                return [
+                    'success' => false,
+                    'error' => 'Twilio credentials not configured',
+                    'to' => $to
+                ];
+            }
+
             // Convert single number to array if needed
             $numbers = is_array($to) ? $to : [$to];
             $results = [];

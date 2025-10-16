@@ -317,8 +317,6 @@
 									(($(this).popover('hide').data('bs.popover')||{}).inState||{}).click = false  // fix for BS 3.3.6
 							});
 							location.reload();
-							getallactivities();
-							getallnotes();
 
 						}else{
 							alert(obj.message);

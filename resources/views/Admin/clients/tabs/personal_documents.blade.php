@@ -175,7 +175,7 @@
                                                                             @endif
 
                                                                             @if($fetch->status === 'signed')
-                                                                                <a target="_blank" href="{{ route('download.signed', $fetch->id) }}" class="dropdown-item">Download Signed</a>
+                                                                                <a target="_blank" href="{{ route('admin.documents.download.signed', $fetch->id) }}" class="dropdown-item">Download Signed</a>
                                                                             @endif
 
                                                                         @endif
@@ -376,7 +376,7 @@
                             window.open(checkSignatureUrl, '_blank');
                             break;
                         case 'download-signed':
-                            const downloadSignedUrl = '{{ route('download.signed', ':id') }}'.replace(':id', currentContextFile);
+                            const downloadSignedUrl = '{{ route('admin.documents.download.signed', ':id') }}'.replace(':id', currentContextFile);
                             window.open(downloadSignedUrl, '_blank');
                             break;
                     }

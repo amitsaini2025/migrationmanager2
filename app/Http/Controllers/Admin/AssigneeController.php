@@ -154,7 +154,7 @@ class AssigneeController extends Controller
          ->with('i', (request()->input('page', 1) - 1) * 20);
     }
 
-    public function activities_completed(Request $request)
+    public function action_completed(Request $request)
     {   //dd($request->all());
         $req_data = $request->all();
         if( isset($req_data['group_type'])  && $req_data['group_type'] != ""){
@@ -184,14 +184,14 @@ class AssigneeController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(20);
         //dd(count($assignees_completed));
-        return view('Admin.assignee.activities_completed',compact('assignees_completed','task_group'))->with('i', (request()->input('page', 1) - 1) * 20);
+        return view('Admin.assignee.action_completed',compact('assignees_completed','task_group'))->with('i', (request()->input('page', 1) - 1) * 20);
     }
 
-    public function activities() {
-        return view('Admin.assignee.activities');
+    public function action() {
+        return view('Admin.assignee.action');
     }
 
-    public function getActivities(Request $request)
+    public function getAction(Request $request)
     {
         try {
             if ($request->ajax()) {
@@ -382,7 +382,7 @@ class AssigneeController extends Controller
                 return $response;
             }
         } catch (\Exception $e) {
-            Log::error('Error in getActivities: ' . $e->getMessage(), [
+            Log::error('Error in getAction: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
@@ -398,7 +398,7 @@ class AssigneeController extends Controller
         }
     }
 
-    public function getActivityCounts(Request $request)
+    public function getActionCounts(Request $request)
     {
         $counts = [
             'all' => 0,
@@ -520,9 +520,9 @@ class AssigneeController extends Controller
             $assign_user = Admin::find($appointment->assigned_to);
             if($assign_user){
                 $assign_full_name = $assign_user->first_name." ".$assign_user->last_name;
-                $objs->subject = 'deleted activity for '.@$assign_full_name;
+                $objs->subject = 'deleted action for '.@$assign_full_name;
             } else {
-                $objs->subject = 'deleted activity ';
+                $objs->subject = 'deleted action ';
             }
 
             $objs->description = '<p>'.$appointment->description.'</p>';
@@ -559,9 +559,9 @@ class AssigneeController extends Controller
             $assign_user = Admin::find($appointment->assigned_to);
             if($assign_user){
                 $assign_full_name = $assign_user->first_name." ".$assign_user->last_name;
-                $objs->subject = 'deleted activity for '.@$assign_full_name;
+                $objs->subject = 'deleted action for '.@$assign_full_name;
             } else {
-                $objs->subject = 'deleted activity ';
+                $objs->subject = 'deleted action ';
             }
 
             $objs->description = '<p>'.$appointment->description.'</p>';
@@ -591,9 +591,9 @@ class AssigneeController extends Controller
             $assign_user = Admin::find($appointment->assigned_to);
             if($assign_user){
                 $assign_full_name = $assign_user->first_name." ".$assign_user->last_name;
-                $objs->subject = 'deleted completed activity for '.@$assign_full_name;
+                $objs->subject = 'deleted completed action for '.@$assign_full_name;
             } else {
-                $objs->subject = 'deleted completed activity ';
+                $objs->subject = 'deleted completed action ';
             }
 
             $objs->description = '<p>'.$appointment->description.'</p>';
@@ -605,7 +605,7 @@ class AssigneeController extends Controller
             $objs->followup_date = @$appointment->followup_datetime;
             $objs->task_group = @$appointment->task_group;
             $objs->save();
-            return redirect()->route('assignee.activities_completed')->with('success','Activity deleted successfully');
+            return redirect()->route('assignee.action_completed')->with('success','Action deleted successfully');
         }
     }
 

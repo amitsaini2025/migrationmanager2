@@ -20,7 +20,7 @@
                 </div>
             </div>
             <a href="{{route('admin.officevisits.waiting')}}" class="icon-btn" title="In Person"><i class="fas fa-user-check"></i></a>
-            <a href="{{route('assignee.activities')}}" class="icon-btn" title="Action"><i class="fas fa-tasks"></i></a>
+            <a href="{{route('assignee.action')}}" class="icon-btn" title="Action"><i class="fas fa-tasks"></i></a>
             <div class="icon-dropdown js-dropdown">
                 <a href="{{route('admin.clients.index')}}" class="icon-btn" title="Clients"><i class="fas fa-users"></i></a>
                 <div class="icon-dropdown-menu">

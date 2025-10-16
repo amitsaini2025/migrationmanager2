@@ -44,14 +44,31 @@
 
         // Get the actual main-content height after reset
 
-        let mainContentHeight = $('.main-content').outerHeight();
+        let mainContentHeight = $('.main-content').outerHeight(); console.log(mainContentHeight);
 
         
 
-        // Set Activity Feed height to match main-content height, but not exceed viewport
+        // Get Activity Feed content height to determine if it has data
+        let activityFeedContentHeight = $('.activity-feed').prop('scrollHeight');
+        let activityFeedVisibleHeight = $('.activity-feed').outerHeight();
+        
+        // Check if Activity Feed has substantial content (more than just empty space)
+        let hasSubstantialContent = activityFeedContentHeight > 100; // Adjust threshold as needed
+        
+        console.log('Activity Feed content height:', activityFeedContentHeight);
+        console.log('Activity Feed visible height:', activityFeedVisibleHeight);
+        console.log('Has substantial content:', hasSubstantialContent);
 
-        let targetHeight = Math.min(mainContentHeight, maxAvailableHeight);
-
+        // Set Activity Feed height based on content availability
+        let targetHeight;
+        if (hasSubstantialContent) {
+            // When Activity Feed has large content, use Math.max to ensure it can expand
+            targetHeight = Math.max(mainContentHeight, maxAvailableHeight);
+        } else {
+            // When Activity Feed has no data or less data, use Math.min to prevent large vacant space
+            targetHeight = Math.min(mainContentHeight, maxAvailableHeight);
+        }
+        console.log('Target height:', targetHeight);
         
 
         // Set Activity Feed height dynamically

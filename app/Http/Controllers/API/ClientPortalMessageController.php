@@ -48,11 +48,19 @@ class ClientPortalMessageController extends Controller
 
             // Get sender information
             $sender = null;
+            $senderShortname = null;
             if ($clientId) {
                 $sender = DB::table('admins')
                     ->select('id', 'first_name', 'last_name', 'email')
                     ->where('id', $clientId)
                     ->first();
+                
+                // Generate 2-character shortname from sender's name
+                if ($sender) {
+                    $firstInitial = $sender->first_name ? strtoupper(substr($sender->first_name, 0, 1)) : '';
+                    $lastInitial = $sender->last_name ? strtoupper(substr($sender->last_name, 0, 1)) : '';
+                    $senderShortname = $firstInitial . $lastInitial;
+                }
             }
 
             // Get client matter info for notifications
@@ -112,20 +120,38 @@ class ClientPortalMessageController extends Controller
             $messageId = DB::table('messages')->insertGetId($messageData);
 
             if ($messageId) {
-                // Get recipient names for all target recipients
+                // Get recipient details for all target recipients
                 $recipientUsers = DB::table('admins')
                     ->whereIn('id', $targetRecipients)
-                    ->select('id', DB::raw("CONCAT(first_name, ' ', last_name) as full_name"))
-                    ->pluck('full_name', 'id')
-                    ->toArray();
+                    ->select('id', 'first_name', 'last_name', DB::raw("CONCAT(first_name, ' ', last_name) as full_name"))
+                    ->get()
+                    ->keyBy('id');
+
+                // Build recipient_ids array with detailed info
+                $recipientIdsWithDetails = [];
+                foreach ($targetRecipients as $recipientId) {
+                    $recipientUser = $recipientUsers->get($recipientId);
+                    if ($recipientUser) {
+                        $firstInitial = $recipientUser->first_name ? strtoupper(substr($recipientUser->first_name, 0, 1)) : '';
+                        $lastInitial = $recipientUser->last_name ? strtoupper(substr($recipientUser->last_name, 0, 1)) : '';
+                        $recipientShortname = $firstInitial . $lastInitial;
+                        
+                        $recipientIdsWithDetails[] = [
+                            'recipient_id' => $recipientId,
+                            'recipient' => $recipientUser->full_name,
+                            'recipient_shortname' => $recipientShortname
+                        ];
+                    }
+                }
 
                 // Insert recipients into pivot table
                 $recipientRecords = [];
                 foreach ($targetRecipients as $recipientId) {
+                    $recipientUser = $recipientUsers->get($recipientId);
                     $recipientRecords[] = [
                         'message_id' => $messageId,
                         'recipient_id' => $recipientId,
-                        'recipient' => $recipientUsers[$recipientId] ?? null, // Store recipient name
+                        'recipient' => $recipientUser ? $recipientUser->full_name : null, // Store recipient name
                         'is_read' => false,
                         'read_at' => null,
                         'created_at' => now(),
@@ -140,7 +166,8 @@ class ClientPortalMessageController extends Controller
                     'message' => $message,
                     'sender' => $sender ? $sender->first_name . ' ' . $sender->last_name : null,
                     'sender_id' => $clientId,
-                    'recipient_ids' => $targetRecipients, // Include all recipient IDs
+                    'sender_shortname' => $senderShortname,
+                    'recipient_ids' => $recipientIdsWithDetails,
                     'sent_at' => now()->toISOString(),
                     'client_matter_id' => $clientMatterId,
                     'recipient_count' => count($targetRecipients)
@@ -283,15 +310,45 @@ class ClientPortalMessageController extends Controller
                     // Get current user's read status if they're a recipient
                     $currentUserRecipient = $recipients->firstWhere('recipient_id', $clientId);
                     
-                    // Get recipient details
+                    // Get recipient details with names
                     $recipientIds = $recipients->pluck('recipient_id')->toArray();
-                    $recipientNames = [];
+                    $recipientIdsWithDetails = [];
                     if (!empty($recipientIds)) {
-                        $recipientNames = DB::table('admins')
+                        $recipientUsers = DB::table('admins')
                             ->whereIn('id', $recipientIds)
-                            ->select('id', DB::raw("CONCAT(first_name, ' ', last_name) as name"))
-                            ->pluck('name', 'id')
-                            ->toArray();
+                            ->select('id', 'first_name', 'last_name', DB::raw("CONCAT(first_name, ' ', last_name) as full_name"))
+                            ->get()
+                            ->keyBy('id');
+                        
+                        foreach ($recipientIds as $recipientId) {
+                            $recipientUser = $recipientUsers->get($recipientId);
+                            if ($recipientUser) {
+                                $firstInitial = $recipientUser->first_name ? strtoupper(substr($recipientUser->first_name, 0, 1)) : '';
+                                $lastInitial = $recipientUser->last_name ? strtoupper(substr($recipientUser->last_name, 0, 1)) : '';
+                                $recipientShortname = $firstInitial . $lastInitial;
+                                
+                                $recipientIdsWithDetails[] = [
+                                    'recipient_id' => $recipientId,
+                                    'recipient' => $recipientUser->full_name,
+                                    'recipient_shortname' => $recipientShortname
+                                ];
+                            }
+                        }
+                    }
+
+                    // Get sender's shortname
+                    $senderShortname = null;
+                    if ($msg->sender_id) {
+                        $senderInfo = DB::table('admins')
+                            ->where('id', $msg->sender_id)
+                            ->select('first_name', 'last_name')
+                            ->first();
+                        
+                        if ($senderInfo) {
+                            $firstInitial = $senderInfo->first_name ? strtoupper(substr($senderInfo->first_name, 0, 1)) : '';
+                            $lastInitial = $senderInfo->last_name ? strtoupper(substr($senderInfo->last_name, 0, 1)) : '';
+                            $senderShortname = $firstInitial . $lastInitial;
+                        }
                     }
 
                     return [
@@ -299,11 +356,11 @@ class ClientPortalMessageController extends Controller
                         'message' => $msg->message,
                         'sender' => $msg->sender,
                         'sender_id' => $msg->sender_id,
+                        'sender_shortname' => $senderShortname,
                         'is_sender' => $msg->sender_id == $clientId,
                         'is_recipient' => $currentUserRecipient !== null,
-                        'recipient_ids' => $recipientIds,
-                        'recipients' => $recipientNames,
-                        'recipient_count' => count($recipientIds),
+                        'recipient_ids' => $recipientIdsWithDetails,
+                        'recipient_count' => count($recipientIdsWithDetails),
                         'sent_at' => $msg->sent_at,
                         'is_read' => $currentUserRecipient ? (bool)$currentUserRecipient->is_read : null,
                         'read_at' => $currentUserRecipient ? $currentUserRecipient->read_at : null,
@@ -382,12 +439,14 @@ class ClientPortalMessageController extends Controller
                 ], 403);
             }
 
-            // Get all recipients with their read status
+            // Get all recipients with their read status and names
             $recipients = DB::table('message_recipients')
                 ->join('admins', 'message_recipients.recipient_id', '=', 'admins.id')
                 ->where('message_id', $id)
                 ->select(
                     'message_recipients.recipient_id',
+                    'admins.first_name',
+                    'admins.last_name',
                     DB::raw("CONCAT(admins.first_name, ' ', admins.last_name) as recipient_name"),
                     'message_recipients.is_read',
                     'message_recipients.read_at'
@@ -397,6 +456,21 @@ class ClientPortalMessageController extends Controller
             // Get current user's read status if they're a recipient
             $currentUserRecipient = $recipients->firstWhere('recipient_id', $clientId);
 
+            // Get sender's shortname
+            $senderShortname = null;
+            if ($message->sender_id) {
+                $senderInfo = DB::table('admins')
+                    ->where('id', $message->sender_id)
+                    ->select('first_name', 'last_name')
+                    ->first();
+                
+                if ($senderInfo) {
+                    $firstInitial = $senderInfo->first_name ? strtoupper(substr($senderInfo->first_name, 0, 1)) : '';
+                    $lastInitial = $senderInfo->last_name ? strtoupper(substr($senderInfo->last_name, 0, 1)) : '';
+                    $senderShortname = $firstInitial . $lastInitial;
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -404,12 +478,18 @@ class ClientPortalMessageController extends Controller
                     'message' => $message->message,
                     'sender' => $message->sender,
                     'sender_id' => $message->sender_id,
+                    'sender_shortname' => $senderShortname,
                     'is_sender' => $isSender,
                     'is_recipient' => $isRecipient,
                     'recipients' => $recipients->map(function ($recipient) {
+                        $firstInitial = $recipient->first_name ? strtoupper(substr($recipient->first_name, 0, 1)) : '';
+                        $lastInitial = $recipient->last_name ? strtoupper(substr($recipient->last_name, 0, 1)) : '';
+                        $recipientShortname = $firstInitial . $lastInitial;
+                        
                         return [
                             'recipient_id' => $recipient->recipient_id,
                             'recipient_name' => $recipient->recipient_name,
+                            'recipient_shortname' => $recipientShortname,
                             'is_read' => (bool)$recipient->is_read,
                             'read_at' => $recipient->read_at
                         ];
@@ -552,11 +632,57 @@ class ClientPortalMessageController extends Controller
             $admin = $request->user();
             $clientId = $admin->id;
 
-            // Count unread messages from pivot table
-            $unreadCount = DB::table('message_recipients')
-                ->where('recipient_id', $clientId)
-                ->where('is_read', false)
-                ->count();
+            // Validate request
+            $validator = Validator::make($request->all(), [
+                'client_matter_id' => 'required|integer|min:1',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $clientMatterId = $request->input('client_matter_id');
+
+            // Get messages where current user is the sender for specific client matter
+            $sentMessages = DB::table('messages')
+                ->where('sender_id', $clientId)
+                ->where('client_matter_id', $clientMatterId)
+                ->pluck('id')
+                ->toArray();
+
+            if (empty($sentMessages)) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'unread_count' => 0
+                    ]
+                ], 200);
+            }
+
+            // Count messages where at least one recipient has read the message
+            $readMessagesCount = DB::table('message_recipients')
+                ->whereIn('message_id', $sentMessages)
+                ->where('is_read', true)
+                ->distinct('message_id')
+                ->count('message_id');
+
+            // Calculate unread count: Total sent messages - Read messages count
+            $totalSentMessages = count($sentMessages);
+            $unreadCount = $totalSentMessages - $readMessagesCount;
+
+            // Log for debugging
+            Log::info('Get Unread Count API', [
+                'user_id' => $clientId,
+                'user_name' => $admin->first_name . ' ' . $admin->last_name,
+                'client_matter_id' => $clientMatterId,
+                'total_sent_messages' => $totalSentMessages,
+                'read_messages_count' => $readMessagesCount,
+                'unread_count' => $unreadCount
+            ]);
 
             return response()->json([
                 'success' => true,

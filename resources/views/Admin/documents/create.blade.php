@@ -76,7 +76,7 @@
             <!-- Back Link -->
             <div class="mt-6 text-center">
                 <a
-                    href="{{ route('documents.index') }}"
+                    href="{{ route('admin.documents.index') }}"
                     class="text-blue-600 dark:text-blue-400 hover:underline"
                 >
                     Back to Documents

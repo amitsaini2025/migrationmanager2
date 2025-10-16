@@ -293,18 +293,18 @@
                                                         <td class="p-4 whitespace-nowrap text-sm text-gray-700 border border-gray-300">
                                                             @if (strtolower($formlist2->filetype) === 'pdf')
                                                                 @if ($formlist2->status === 'draft')
-                                                                    <a target="_blank" href="{{ route('documents.edit', $formlist2->id) }}" class="btn btn-primary">Create Signature Link</a>
+                                                                    <a target="_blank" href="{{ route('admin.documents.edit', $formlist2->id) }}" class="btn btn-primary">Create Signature Link</a>
                                                                 @endif
 
                                                                 @if($formlist2->status === 'sent')
-                                                                    <a target="_blank" href="{{ route('documents.index', $formlist2->id) }}" class="btn btn-primary">Check To Signature</a>
+                                                                    <a target="_blank" href="{{ route('admin.documents.index', $formlist2->id) }}" class="btn btn-primary">Check To Signature</a>
                                                                 @endif
 
                                                                 @if($formlist2->status === 'signed')
                                                                     <a target="_blank" href="{{ route('admin.documents.download.signed', $formlist2->id) }}" class="btn btn-primary">Download Signed</a>
                                                                 @endif
 
-                                                                <a target="_blank" href="{{ route('documents.index', $formlist2->id) }}" class="btn btn-primary">Go To Document</a>
+                                                                <a target="_blank" href="{{ route('admin.documents.index', $formlist2->id) }}" class="btn btn-primary">Go To Document</a>
 
 
                                                                 

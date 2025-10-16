@@ -182,7 +182,7 @@
                                                                         @if (strtolower($fetch->filetype) === 'pdf')
 
                                                                             @if ($fetch->status === 'draft')
-                                                                                <form method="GET" action="{{ route('documents.edit', $fetch->id) }}" target="_blank" style="display: inline;">
+                                                                                <form method="GET" action="{{ route('admin.documents.edit', $fetch->id) }}" target="_blank" style="display: inline;">
                                                                                     <button type="submit" class="dropdown-item" style="background: none; border: none; width: 100%; text-align: left; padding: 0.25rem 1.5rem;">
                                                                                         Send To Signature
                                                                                     </button>
@@ -190,7 +190,7 @@
                                                                             @endif
 
                                                                             @if($fetch->status === 'sent')
-                                                                                <a target="_blank" href="{{ route('documents.index', $fetch->id) }}" class="dropdown-item">Check To Signature</a>
+                                                                                <a target="_blank" href="{{ route('admin.documents.index', $fetch->id) }}" class="dropdown-item">Check To Signature</a>
                                                                             @endif
 
                                                                             @if($fetch->status === 'signed')
@@ -388,11 +388,11 @@
                             $('.notuseddoc[data-id="' + currentVisaContextFile + '"]').click();
                             break;
                         case 'send-signature':
-                            const sendSignatureUrl = '{{ route('documents.edit', ':id') }}'.replace(':id', currentVisaContextFile);
+                            const sendSignatureUrl = '{{ route('admin.documents.edit', ':id') }}'.replace(':id', currentVisaContextFile);
                             window.open(sendSignatureUrl, '_blank');
                             break;
                         case 'check-signature':
-                            const checkSignatureUrl = '{{ route('documents.index', ':id') }}'.replace(':id', currentVisaContextFile);
+                            const checkSignatureUrl = '{{ route('admin.documents.index', ':id') }}'.replace(':id', currentVisaContextFile);
                             window.open(checkSignatureUrl, '_blank');
                             break;
                         case 'download-signed':

@@ -387,7 +387,7 @@ class DocumentController extends Controller
                 'filename' => $uploadedFile->getClientOriginalName()
             ]);
 
-            return redirect()->route('documents.index')->with('success', 'Document uploaded successfully!');
+            return redirect()->route('admin.documents.index')->with('success', 'Document uploaded successfully!');
         } catch (\Exception $e) {
             return $this->handleError(
                 $e,
@@ -418,7 +418,7 @@ class DocumentController extends Controller
         $documentId = (int) $id;
         if ($documentId <= 0) {
             \Log::warning('Invalid document ID provided for edit', ['id' => $id]);
-            return redirect()->route('documents.index')->with('error', 'Invalid document ID.');
+            return redirect()->route('admin.documents.index')->with('error', 'Invalid document ID.');
         }
 
         try {
@@ -446,7 +446,7 @@ class DocumentController extends Controller
             // Check if PDF file exists
             if (!$pdfPath || ! \Storage::disk('s3')->exists($pdfPath)) {
                 \Log::error('PDF file not found for document: ' . $documentId);
-                return redirect()->route('documents.index')->with('error', 'Document file not found.');
+                return redirect()->route('admin.documents.index')->with('error', 'Document file not found.');
             } 
 
              // Download PDF from S3 to a temp file
@@ -458,7 +458,7 @@ class DocumentController extends Controller
                  $pdfPages = $this->countPdfPages($tmpPdfPath);
                  if (!$pdfPages || $pdfPages < 1) {
                     \Log::error('Failed to count PDF pages for document: ' . $documentId);
-                    return redirect()->route('documents.index')->with('error', 'Failed to read PDF file.');
+                    return redirect()->route('admin.documents.index')->with('error', 'Failed to read PDF file.');
                 }
                 // Get page dimensions
                  $pagesDimensions = $this->getPdfPageDimensions($tmpPdfPath, $pdfPages);
@@ -476,7 +476,7 @@ class DocumentController extends Controller
             /*$pdfPages = $this->countPdfPages($pdfPath);
             if (!$pdfPages || $pdfPages < 1) {
                 \Log::error('Failed to count PDF pages for document: ' . $documentId);
-                return redirect()->route('documents.index')->with('error', 'Failed to read PDF file.');
+                return redirect()->route('admin.documents.index')->with('error', 'Failed to read PDF file.');
             }*/
 
             // Get page dimensions
@@ -500,7 +500,7 @@ class DocumentController extends Controller
                 $e,
                 'document_edit',
                 'An error occurred while loading the document for editing.',
-                'documents.index',
+                'admin.documents.index',
                 ['document_id' => $documentId]
             );
         }
@@ -632,7 +632,7 @@ class DocumentController extends Controller
                 'user_id' => auth('admin')->id()
             ]);
 
-            return redirect()->route('documents.index', ['id' => $document->id])->with('success', 'Signature locations added successfully!');
+            return redirect()->route('admin.documents.index', ['id' => $document->id])->with('success', 'Signature locations added successfully!');
         } catch (\Exception $e) {
             return $this->handleError(
                 $e,
@@ -872,7 +872,7 @@ class DocumentController extends Controller
                 'user_id' => auth('admin')->id()
             ]);
 
-            return redirect()->route('documents.index', ['id' => $document->id])->with('success', 'Signing link sent successfully!');
+            return redirect()->route('admin.documents.index', ['id' => $document->id])->with('success', 'Signing link sent successfully!');
         } catch (\Exception $e) {
             return $this->handleError(
                 $e,
@@ -1028,7 +1028,7 @@ class DocumentController extends Controller
                     'document_id' => $document->id,
                     'signer_document_id' => $signer->document_id
                 ]);
-                return redirect('documents.index', ['id' => $document->id])->with('error', 'Invalid signing attempt.');
+                return redirect()->route('admin.documents.index', ['id' => $document->id])->with('error', 'Invalid signing attempt.');
             }
 
             \Log::info("Starting signature submission", [
@@ -1523,13 +1523,13 @@ class DocumentController extends Controller
         $documentId = (int) $id;
         if ($documentId <= 0) {
             \Log::warning('Invalid document ID in sign method', ['id' => $id]);
-            return redirect()->route('documents.index')->with('error', 'Invalid document link.');
+            return redirect()->route('admin.documents.index')->with('error', 'Invalid document link.');
         }
 
         // Validate token format
         if (!$token || !is_string($token) || strlen($token) < 32 || !preg_match('/^[a-zA-Z0-9]+$/', $token)) {
             \Log::warning('Invalid token format in sign method', ['token_length' => strlen($token ?? '')]);
-            return redirect()->route('documents.index', ['id' => $documentId])->with('error', 'Invalid or expired signing link.');
+            return redirect()->route('admin.documents.index', ['id' => $documentId])->with('error', 'Invalid or expired signing link.');
         }
 
         try {
@@ -1559,7 +1559,7 @@ class DocumentController extends Controller
                     'signer_exists' => !is_null($signer),
                     'signer_status' => $signer ? $signer->status : 'none'
                 ]);
-                return redirect()->route('documents.index', ['id' => $documentId])->with('error', 'Invalid or expired signing link.');
+                return redirect()->route('admin.documents.index', ['id' => $documentId])->with('error', 'Invalid or expired signing link.');
             }
 
             // Check token expiration (optional - add expiration logic)
@@ -1607,7 +1607,7 @@ class DocumentController extends Controller
                 $e,
                 'document_sign',
                 'An error occurred while loading the signing page.',
-                'documents.index',
+                'admin.documents.index',
                 ['document_id' => $documentId, 'token_present' => !empty($token)]
             );
         }

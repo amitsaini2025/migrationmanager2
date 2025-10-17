@@ -107,6 +107,37 @@
 
             <!-- Main Content Area -->
             <div class="main-content-area">
+                
+                {{-- Error Display Section --}}
+                @if($errors->any())
+                    <div class="alert alert-danger" style="margin: 20px 0; padding: 15px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px;">
+                        <h4 style="margin: 0 0 10px 0; color: #721c24; font-size: 16px;">
+                            <i class="fas fa-exclamation-triangle"></i> Please fix the following errors:
+                        </h4>
+                        <ul style="margin: 0; padding-left: 20px;">
+                            @foreach($errors->all() as $error)
+                                <li style="color: #721c24; margin-bottom: 5px;">{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+                
+                @if(session('error'))
+                    <div class="alert alert-danger" style="margin: 20px 0; padding: 15px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px;">
+                        <h4 style="margin: 0; color: #721c24; font-size: 16px;">
+                            <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
+                        </h4>
+                    </div>
+                @endif
+                
+                @if(session('success'))
+                    <div class="alert alert-success" style="margin: 20px 0; padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px;">
+                        <h4 style="margin: 0; color: #155724; font-size: 16px;">
+                            <i class="fas fa-check-circle"></i> {{ session('success') }}
+                        </h4>
+                    </div>
+                @endif
+                
                 <form id="createLeadForm" action="{{ route('admin.leads.store') }}" method="POST" enctype="multipart/form-data">
                     @csrf
 
@@ -365,6 +396,17 @@
                 }
             });
             
+            // Add invalid event listener to show validation errors clearly
+            form.addEventListener('invalid', function(e) {
+                console.log('Form validation failed on field:', e.target.name);
+                
+                // Scroll to the first invalid field
+                e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Highlight the invalid field
+                e.target.focus();
+            }, true);
+            
             // Handle floating save button click
             floatingSaveBtn.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -380,9 +422,21 @@
                     console.log(key + ': ' + value);
                 }
                 
-                // Simple form submission without complex validation
-                console.log('Submitting form directly...');
-                form.submit();
+                // Use requestSubmit() to trigger HTML5 validation and show error messages
+                console.log('Submitting form with validation...');
+                try {
+                    // Try modern requestSubmit (triggers validation)
+                    if (form.requestSubmit) {
+                        form.requestSubmit();
+                    } else {
+                        // Fallback: trigger click on hidden submit button
+                        hiddenSubmitBtn.click();
+                    }
+                } catch (error) {
+                    console.error('Form submission error:', error);
+                    // Last resort fallback
+                    hiddenSubmitBtn.click();
+                }
             });
             
             // Add scroll-based visibility control
@@ -419,10 +473,12 @@
             // Initialize button state
             updateFloatingButton();
             
-            // Add keyboard shortcut for save (Ctrl+S)
+            // Add keyboard shortcut for save (Ctrl+S or Cmd+S)
             document.addEventListener('keydown', function(e) {
                 if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                     e.preventDefault();
+                    console.log('Keyboard shortcut (Ctrl/Cmd+S) triggered');
+                    // Trigger the floating save button click (which now properly validates)
                     floatingSaveBtn.click();
                 }
             });

@@ -123,28 +123,40 @@ class LeadController extends Controller
      */
     public function store(Request $request)
     {
+        // Debug logging
+        Log::info('Lead store method called');
+        Log::info('Request method: ' . $request->method());
+        Log::info('Request data: ' . json_encode($request->all()));
         
         if ($request->isMethod('post')) {
-            $requestData = $request->all(); 
+            $requestData = $request->all();
             
             // Extract phone and email (now only one of each)
             $primaryPhone = $requestData['phone'][0] ?? null;
             $primaryEmail = $requestData['email'][0] ?? null;
             
+            Log::info('Primary phone: ' . $primaryPhone);
+            Log::info('Primary email: ' . $primaryEmail);
 
             // Validate required fields
-            $this->validate($request, [
-                'first_name' => 'required|max:255',
-                'last_name' => 'required|max:255',
-                'gender' => 'required|max:255',
-                'dob' => 'required',
-                'phone.0' => 'required|max:255',
-                'email.0' => 'required|email|max:255',
-            ], [
-                'phone.0.required' => 'Phone number is required.',
-                'email.0.required' => 'Email address is required.',
-                'email.0.email' => 'Please enter a valid email address.',
-            ]);
+            try {
+                $this->validate($request, [
+                    'first_name' => 'required|max:255',
+                    'last_name' => 'required|max:255',
+                    'gender' => 'required|max:255',
+                    'dob' => 'required',
+                    'phone.0' => 'required|max:255',
+                    'email.0' => 'required|email|max:255',
+                ], [
+                    'phone.0.required' => 'Phone number is required.',
+                    'email.0.required' => 'Email address is required.',
+                    'email.0.email' => 'Please enter a valid email address.',
+                ]);
+                Log::info('Validation passed');
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                Log::error('Validation failed: ' . json_encode($e->errors()));
+                throw $e; // Re-throw to maintain normal flow
+            }
             
            
 
@@ -183,10 +195,13 @@ class LeadController extends Controller
 
             // If there are any custom errors, return them
             if (!empty($errors)) {
+                Log::warning('Custom validation errors: ' . json_encode($errors));
                 return redirect()->back()
                     ->withInput()
                     ->withErrors($errors);
             }
+            
+            Log::info('Custom validation passed - proceeding to insert');
             
 
 
@@ -254,9 +269,13 @@ class LeadController extends Controller
                 ];
 
 
+                Log::info('Attempting to insert lead into database');
+                Log::info('Admin data to insert: ' . json_encode($adminData));
+                
                 try {
                     // Insert into admins table and get the ID
-                    $adminId = \DB::table('admins')->insertGetId($adminData);
+                    $adminId = DB::table('admins')->insertGetId($adminData);
+                    Log::info('Lead inserted successfully with ID: ' . $adminId);
                     
                     // Create an object to maintain compatibility with existing code
                     $admin = (object) array_merge($adminData, ['id' => $adminId]);
@@ -267,13 +286,13 @@ class LeadController extends Controller
                     }
                 } catch (\Illuminate\Database\QueryException $queryException) {
                     // Handle database-specific errors
-                    \Log::error('Database query failed: ' . $queryException->getMessage());
-                    \Log::error('SQL Error Code: ' . $queryException->getCode());
-                    \Log::error('Failed data: ' . json_encode($adminData));
+                    Log::error('Database query failed: ' . $queryException->getMessage());
+                    Log::error('SQL Error Code: ' . $queryException->getCode());
+                    Log::error('Failed data: ' . json_encode($adminData));
                     throw $queryException; // Re-throw to be caught by outer try-catch
                 } catch (\Exception $saveException) {
-                    \Log::error('Insert operation failed: ' . $saveException->getMessage());
-                    \Log::error('Insert exception details: ' . $saveException->getTraceAsString());
+                    Log::error('Insert operation failed: ' . $saveException->getMessage());
+                    Log::error('Insert exception details: ' . $saveException->getTraceAsString());
                     throw $saveException; // Re-throw to be caught by outer try-catch
                 }
                 
@@ -308,17 +327,19 @@ class LeadController extends Controller
                 }
                 
                 DB::commit();
+                Log::info('Transaction committed successfully');
                 
                 // Encode the client/lead ID for the URL
                 $encodedId = base64_encode(convert_uuencode($admin->id));
+                Log::info('Redirecting to edit page with encoded ID: ' . $encodedId);
                 
                 return redirect()->route('admin.clients.edit', ['id' => $encodedId])
                     ->with('success', 'Lead added successfully');
             } catch (\Exception $e) {
                 DB::rollBack();
                 
-                \Log::error('Lead creation failed: ' . $e->getMessage());
-                \Log::error('Stack trace: ' . $e->getTraceAsString());
+                Log::error('Lead creation failed: ' . $e->getMessage());
+                Log::error('Stack trace: ' . $e->getTraceAsString());
                 
                 // Clean up uploaded file if exists
                 // No profile image to clean up
@@ -330,6 +351,7 @@ class LeadController extends Controller
         }
         
         // If not POST, return error
+        Log::error('Invalid request method - not POST. Method was: ' . $request->method());
         return redirect()->route('admin.leads.create')
             ->with('error', 'Invalid request method');
     }

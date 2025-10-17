@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 use App\Models\Admin;
@@ -64,7 +65,6 @@ use Illuminate\Support\Facades\Http;
 
 use App\Models\Form956;
 use PhpOffice\PhpWord\TemplateProcessor;
-use Illuminate\Support\Facades\Log;
 use App\Models\CostAssignmentForm;
 use App\Models\PersonalDocumentType;
 use App\Models\VisaDocumentType;
@@ -10773,18 +10773,37 @@ class ClientsController extends Controller
 
 
     /**
+     * Decode string helper method - consistent with other controllers
+     * 
+     * @param string|null $string
+     * @return string|false
+     */
+    public function decodeString($string = null)
+    {
+        if (empty($string)) {
+            return false;
+        }
+        
+        if (base64_encode(base64_decode($string, true)) === $string) {
+            return convert_uudecode(base64_decode($string));
+        }
+        
+        return false;
+    }
+
+    /**
      * Change client type (lead to client conversion)
      */
-    public function changetype(Request $request, $id = Null, $slug = Null){
-        //dd($request->all());
+    public function changetype(Request $request,$id = Null, $slug = Null){ 
         if(isset($id) && !empty($id)) {
             $id = $this->decodeString($id);
-            // Check if it's a lead first, then fall back to Admin for clients
-            $lead = \App\Models\Lead::withArchived()->find($id);
-            if($lead) {
+            if(Admin::where('id', '=', $id)->where('role', '=', '7')->exists()) {
+                $obj = Admin::find($id);
+                $user_type = $obj->type;
                 if($slug == 'client') {
-                    $lead->user_id = $request['user_id'];
-                    $saved = $lead->convertToClient();
+                    $obj->type = $slug;
+                    $obj->user_id = $request['user_id'];
+                    $saved = $obj->save();
 
                     $matter = new ClientMatter();
                     $matter->user_id = $request['user_id'];
@@ -10805,14 +10824,28 @@ class ClientsController extends Controller
 
                     $matter->workflow_stage_id = 1;
                     $matter->save();
+                    
+                    if($user_type == 'lead'){
+                        $activity = new \App\Models\ActivitiesLog;
+                        $activity->client_id = $request['client_id'];
+                        $activity->created_by = Auth::user()->id;
+                        $activity->subject = 'Lead converted to client. Matter '.$matter->client_unique_matter_no. ' created';
+                        $activity->description = 'Lead converted to client. Matter '.$matter->client_unique_matter_no. ' created';
+                        $activity->save();
 
-                    // Get the last inserted ID
-                    /*$lastInsertedId = $matter->id;
-                    $existingPost = ClientMatter::find($lastInsertedId);
-                    if ($existingPost) { // Update the record
-                        $existingPost->client_unique_matter_id = 'Matter_'.$lastInsertedId;
-                        $existingPost->save();
-                    }*/
+                        $msg = 'Lead converted to client. Matter '.$matter->client_unique_matter_no. ' created';
+                    }  else if($user_type == 'client'){
+                        $activity = new \App\Models\ActivitiesLog;
+                        $activity->client_id = $request['client_id'];
+                        $activity->created_by = Auth::user()->id;
+                        $activity->subject = 'Matter '.$matter->client_unique_matter_no. ' created';
+                        $activity->description = 'Matter '.$matter->client_unique_matter_no. ' created';
+                        $activity->save();
+
+                        $msg = 'Matter '.$matter->client_unique_matter_no. ' created';
+                    }
+                    // Redirect with matter number in URL
+                    return Redirect::to('/admin/clients/detail/'.base64_encode(convert_uuencode(@$id)).'/'.$matter->client_unique_matter_no)->with('success', $msg);
                 } else if($slug == 'lead' ) {
                     $obj->type = $slug;
                     $obj->user_id = "";
@@ -10825,7 +10858,7 @@ class ClientsController extends Controller
         } else {
             return Redirect::to('/admin/clients')->with('error', Config::get('constants.unauthorized'));
         }
-    }
+	}
 
     /**
      * Store follow-up note with assignee information
@@ -10926,6 +10959,56 @@ class ClientsController extends Controller
     {
         $admin = \App\Models\Admin::find($assigneeId);
         return $admin ? $admin->first_name . ' ' . $admin->last_name : 'Unknown Assignee';
+    }
+
+    /**
+     * Save tags for a client
+     * Handles the tag assignment functionality from the client detail modal
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function save_tag(Request $request)
+    {
+        try {
+            // Validate required fields
+            $request->validate([
+                'client_id' => 'required|integer',
+                'tag' => 'array'
+            ]);
+
+            $clientId = $request->input('client_id');
+            $tags = $request->input('tag', []);
+
+            // Find the client
+            $client = \App\Models\Admin::where('id', $clientId)
+                ->where('role', '7') // Client role
+                ->first();
+
+            if (!$client) {
+                return redirect()->back()->with('error', 'Client not found');
+            }
+
+            // Convert tag array to comma-separated string
+            $tagString = '';
+            if (!empty($tags) && is_array($tags)) {
+                // Filter out empty values
+                $validTags = array_filter($tags, function($tag) {
+                    return !empty($tag);
+                });
+                $tagString = implode(',', $validTags);
+            }
+
+            // Update the client's tagname field
+            $client->tagname = $tagString;
+            $client->save();
+
+            return redirect()->back()->with('success', 'Tags saved successfully');
+
+        } catch (\Exception $e) {
+            \Log::error('Error saving tags: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error occurred while saving tags');
+        }
     }
 
 

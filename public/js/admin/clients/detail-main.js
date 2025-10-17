@@ -8333,7 +8333,7 @@ Bansal Immigration`;
 
             $.ajax({
 
-                url: window.ClientDetailConfig.urls.admin + '/' + notuse_doc_href,
+                url: window.ClientDetailConfig.urls.admin + '/documents/not-used',
 
                 type:'POST',
 
@@ -8427,7 +8427,7 @@ Bansal Immigration`;
 
             $.ajax({
 
-                url: window.ClientDetailConfig.urls.admin + '/' + backto_doc_href,
+                url: window.ClientDetailConfig.urls.admin + '/documents/back-to-doc',
 
                 type:'POST',
 
@@ -8629,7 +8629,7 @@ Bansal Immigration`;
 
             $.ajax({
 
-                url: window.ClientDetailConfig.urls.admin + '/' + delhref,
+                url: window.ClientDetailConfig.urls.admin + '/documents/delete',
 
                 type:'GET',
 

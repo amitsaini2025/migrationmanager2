@@ -732,7 +732,7 @@ use App\Http\Controllers\Controller;
 	<div class="modal-dialog">
 		<div class="modal-content popUp">
 			<div class="modal-body text-center">
-				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">Ã—</span></button>
+				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">&times;</span></button>
 				<h4 class="modal-title text-center message col-v-5">Do you want to delete this note?</h4>
 				<button type="submit" style="margin-top: 40px;" class="button btn btn-danger accept">Delete</button>
 				<button type="button" style="margin-top: 40px;" data-dismiss="modal" class="button btn btn-secondary cancel">Cancel</button>
@@ -745,7 +745,7 @@ use App\Http\Controllers\Controller;
 	<div class="modal-dialog">
 		<div class="modal-content popUp">
 			<div class="modal-body text-center">
-				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">Ã—</span></button>
+				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">&times;</span></button>
 				<h4 class="modal-title text-center message col-v-5">Do you want to send this document in Not Use Tab?</h4>
 				<button type="submit" style="margin-top: 40px;" class="button btn btn-danger accept">Send</button>
 				<button type="button" style="margin-top: 40px;" data-dismiss="modal" class="button btn btn-secondary cancel">Cancel</button>
@@ -758,7 +758,7 @@ use App\Http\Controllers\Controller;
 	<div class="modal-dialog">
 		<div class="modal-content popUp">
 			<div class="modal-body text-center">
-				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">Ã—</span></button>
+				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">&times;</span></button>
 				<h4 class="modal-title text-center message col-v-5">Do you want to send this in related document Tab again?</h4>
 				<button type="submit" style="margin-top: 40px;" class="button btn btn-danger accept">Send</button>
 				<button type="button" style="margin-top: 40px;" data-dismiss="modal" class="button btn btn-secondary cancel">Cancel</button>
@@ -771,7 +771,7 @@ use App\Http\Controllers\Controller;
 	<div class="modal-dialog">
 		<div class="modal-content popUp">
 			<div class="modal-body text-center">
-				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">Ã—</span></button>
+				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">&times;</span></button>
 				<h4 class="modal-title text-center message col-v-5">Do you want to verify this doc?</h4>
 				<button type="submit" style="margin-top: 40px;" class="button btn btn-danger accept">Verify</button>
 				<button type="button" style="margin-top: 40px;" data-dismiss="modal" class="button btn btn-secondary cancel">Cancel</button>
@@ -785,7 +785,7 @@ use App\Http\Controllers\Controller;
 	<div class="modal-dialog">
 		<div class="modal-content popUp">
 			<div class="modal-body text-center">
-				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">Ã—</span></button>
+				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">&times;</span></button>
 				<h4 class="modal-title text-center message col-v-5">Do you want to delete this log?</h4>
 				<button type="submit" style="margin-top: 40px;" class="button btn btn-danger accept">Delete</button>
 				<button type="button" style="margin-top: 40px;" data-dismiss="modal" class="button btn btn-secondary cancel">Cancel</button>
@@ -798,7 +798,7 @@ use App\Http\Controllers\Controller;
 	<div class="modal-dialog">
 		<div class="modal-content popUp">
 			<div class="modal-body text-center">
-				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">Ã—</span></button>
+				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">&times;</span></button>
 				<h4 class="modal-title text-center message col-v-5">Do you want to delete this note?</h4>
 				<button type="submit" style="margin-top: 40px;" class="button btn btn-danger accepteducation">Delete</button>
 				<button type="button" style="margin-top: 40px;" data-dismiss="modal" class="button btn btn-secondary cancel">Cancel</button>
@@ -811,7 +811,7 @@ use App\Http\Controllers\Controller;
 	<div class="modal-dialog">
 		<div class="modal-content popUp">
 			<div class="modal-body text-center">
-				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">Ã—</span></button>
+				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">&times;</span></button>
 				<h4 class="modal-title text-center message col-v-5">Do you want to complete the Application?</h4>
 				<button  data-id="" type="submit" style="margin-top: 40px;" class="button btn btn-danger acceptapplication">Complete</button>
 				<button type="button" style="margin-top: 40px;" data-dismiss="modal" class="button btn btn-secondary cancel">Cancel</button>
@@ -824,7 +824,7 @@ use App\Http\Controllers\Controller;
 	<div class="modal-dialog">
 		<div class="modal-content popUp">
 			<div class="modal-body text-center">
-				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">Ã—</span></button>
+				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">&times;</span></button>
 				<h4 class="modal-title text-center message col-v-5">Do you want to delete this Cost Agreement?</h4>
 				<button data-id="" type="submit" style="margin-top: 40px;" class="button btn btn-danger acceptCostAgreementDelete">Yes, Delete</button>
 				<button type="button" style="margin-top: 40px;" data-dismiss="modal" class="button btn btn-secondary cancel">Cancel</button>
@@ -837,7 +837,7 @@ use App\Http\Controllers\Controller;
 	<div class="modal-dialog">
 		<div class="modal-content popUp">
 			<div class="modal-body text-center">
-				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">Ã—</span></button>
+				<button type="button" data-dismiss="modal" aria-label="Close" class="close"><span aria-hidden="true">&times;</span></button>
 				<h4 class="modal-title text-center message col-v-5">Publish Document?</h4>
 				<h5 class="">Publishing documents will allow client to access from client portal , Are you sure you want to continue ?</h5>
 				<button type="submit" style="margin-top: 40px;" class="button btn btn-danger acceptpublishdoc">Publish Anyway</button>

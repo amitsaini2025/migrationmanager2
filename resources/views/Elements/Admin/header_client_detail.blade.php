@@ -19,6 +19,50 @@
                     @endif
                 </div>
             </div>
+            <div class="icon-dropdown js-dropdown">
+                <a href="{{ route('booking.appointments.index') }}" class="icon-btn" title="Website Bookings" style="position: relative;">
+                    <i class="fas fa-globe"></i>
+                    @php
+                        $pendingCount = \App\Models\BookingAppointment::where('status', 'pending')->count();
+                    @endphp
+                    @if($pendingCount > 0)
+                        <span class="badge badge-danger" style="position: absolute; top: -5px; right: -5px; font-size: 10px; padding: 2px 5px; border-radius: 10px;">{{ $pendingCount }}</span>
+                    @endif
+                </a>
+                <div class="icon-dropdown-menu">
+                    <a class="dropdown-item" href="{{ route('booking.appointments.index') }}">
+                        <i class="fas fa-list mr-2"></i> All Bookings
+                    </a>
+                    <a class="dropdown-item" href="{{ route('booking.appointments.index', ['status' => 'pending']) }}">
+                        <i class="fas fa-clock mr-2"></i> Pending
+                        @if($pendingCount > 0)
+                            <span class="badge badge-warning ml-1">{{ $pendingCount }}</span>
+                        @endif
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="{{ route('booking.appointments.calendar', ['type' => 'paid']) }}">
+                        <i class="far fa-calendar-check mr-2"></i> Paid Services
+                    </a>
+                    <a class="dropdown-item" href="{{ route('booking.appointments.calendar', ['type' => 'jrp']) }}">
+                        <i class="far fa-calendar mr-2"></i> JRP Calendar
+                    </a>
+                    <a class="dropdown-item" href="{{ route('booking.appointments.calendar', ['type' => 'education']) }}">
+                        <i class="fas fa-graduation-cap mr-2"></i> Education
+                    </a>
+                    <a class="dropdown-item" href="{{ route('booking.appointments.calendar', ['type' => 'tourist']) }}">
+                        <i class="fas fa-plane mr-2"></i> Tourist Visa
+                    </a>
+                    <a class="dropdown-item" href="{{ route('booking.appointments.calendar', ['type' => 'adelaide']) }}">
+                        <i class="fas fa-city mr-2"></i> Adelaide
+                    </a>
+                    @if(Auth::user() && in_array(Auth::user()->role, [1, 12]))
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="{{ route('booking.sync.dashboard') }}">
+                        <i class="fas fa-sync mr-2"></i> Sync Status
+                    </a>
+                    @endif
+                </div>
+            </div>
             <a href="{{route('admin.officevisits.waiting')}}" class="icon-btn" title="In Person"><i class="fas fa-user-check"></i></a>
             <a href="{{route('assignee.action')}}" class="icon-btn" title="Action"><i class="fas fa-tasks"></i></a>
             <div class="icon-dropdown js-dropdown">

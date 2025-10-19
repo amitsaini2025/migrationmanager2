@@ -94,8 +94,11 @@ return [
         'bucket' => env('AWS_BUCKET'),
     ],
 
-   
-
-  
+    'bansal_api' => [
+        'url' => env('BANSAL_API_URL', 'https://bansalimmigration.com/api/crm'),
+        'token' => env('BANSAL_API_TOKEN'),
+        'timeout' => env('BANSAL_API_TIMEOUT', 30),
+    ],
 
 ];
+

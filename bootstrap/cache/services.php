@@ -51,9 +51,10 @@
     47 => 'App\\Providers\\AuthServiceProvider',
     48 => 'App\\Providers\\BroadcastServiceProvider',
     49 => 'App\\Providers\\EventServiceProvider',
-    50 => 'Maatwebsite\\Excel\\ExcelServiceProvider',
-    51 => 'Mews\\Captcha\\CaptchaServiceProvider',
-    52 => 'Yajra\\DataTables\\DataTablesServiceProvider',
+    50 => 'App\\Providers\\AppointmentSyncServiceProvider',
+    51 => 'Maatwebsite\\Excel\\ExcelServiceProvider',
+    52 => 'Mews\\Captcha\\CaptchaServiceProvider',
+    53 => 'Yajra\\DataTables\\DataTablesServiceProvider',
   ),
   'eager' => 
   array (
@@ -91,9 +92,10 @@
     31 => 'App\\Providers\\AuthServiceProvider',
     32 => 'App\\Providers\\BroadcastServiceProvider',
     33 => 'App\\Providers\\EventServiceProvider',
-    34 => 'Maatwebsite\\Excel\\ExcelServiceProvider',
-    35 => 'Mews\\Captcha\\CaptchaServiceProvider',
-    36 => 'Yajra\\DataTables\\DataTablesServiceProvider',
+    34 => 'App\\Providers\\AppointmentSyncServiceProvider',
+    35 => 'Maatwebsite\\Excel\\ExcelServiceProvider',
+    36 => 'Mews\\Captcha\\CaptchaServiceProvider',
+    37 => 'Yajra\\DataTables\\DataTablesServiceProvider',
   ),
   'deferred' => 
   array (

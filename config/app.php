@@ -154,6 +154,7 @@ return [
         App\Providers\AuthServiceProvider::class,
         App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
+        App\Providers\AppointmentSyncServiceProvider::class,
 		Maatwebsite\Excel\ExcelServiceProvider::class,
         Mews\Captcha\CaptchaServiceProvider::class,
         Yajra\DataTables\DataTablesServiceProvider::class,

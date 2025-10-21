@@ -55,12 +55,16 @@
 					</div>
 				</form>
 			</li>
+			
+			<!-- Signature Dashboard -->
+			<li><a href="{{ route('admin.signatures.index') }}" class="nav-link nav-link-lg" data-toggle="tooltip" data-placement="bottom" title="Signature Dashboard"><i class="fas fa-pen"></i></a></li>
         </ul>
 	</div>
 	<ul class="navbar-nav navbar-right">
 	<li class="dropdown dropdown-list-toggle">
 	<a href="javascript:;" data-toggle="dropdown" title="Add Office Check-In" class="nav-link nav-link-lg opencheckin"><i data-feather="log-in"></i></a>
 	</li>
+	
 		<!-- {{--	<li class="dropdown dropdown-list-toggle">
 			<a href="#" data-toggle="dropdown" class="nav-link nav-link-lg message-toggle"><i data-feather="mail"></i><span class="badge headerBadge1">6</span></a>
             <div class="dropdown-menu dropdown-list dropdown-menu-right pullDown">

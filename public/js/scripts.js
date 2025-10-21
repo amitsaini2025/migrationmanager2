@@ -4,7 +4,14 @@ $(window).on("load", function () {
   $(".loader").fadeOut("slow");
 });
 
-feather.replace();
+// Initialize Feather Icons when DOM is ready
+$(document).ready(function() {
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    } else {
+        console.error('Feather Icons library not loaded');
+    }
+});
 // Global
 $(function () {
   let sidebar_nicescroll_opts = {

@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
 use App\Http\Controllers\DocumentController as PublicDocumentController;
+use App\Http\Controllers\Admin\SignatureDashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -90,6 +91,16 @@ Route::post('/doc-to-pdf/convert', 'Admin\DocToPdfController@convertLocal')->nam
 Route::get('/doc-to-pdf/test', 'Admin\DocToPdfController@testLocalConversion')->name('admin.doc-to-pdf.test');
 Route::get('/doc-to-pdf/test-python', 'Admin\DocToPdfController@testPythonConversion')->name('admin.doc-to-pdf.test-python');
 Route::get('/doc-to-pdf/debug', 'Admin\DocToPdfController@debugConfig')->name('admin.doc-to-pdf.debug');
+
+/*---------- Signature Dashboard Routes ----------*/
+Route::prefix('signatures')->group(function () {
+    Route::get('/', [SignatureDashboardController::class, 'index'])->name('admin.signatures.index');
+    Route::get('/create', [SignatureDashboardController::class, 'create'])->name('admin.signatures.create');
+    Route::post('/', [SignatureDashboardController::class, 'store'])->name('admin.signatures.store');
+    Route::get('/{id}', [SignatureDashboardController::class, 'show'])->name('admin.signatures.show');
+    Route::post('/{id}/reminder', [SignatureDashboardController::class, 'sendReminder'])->name('admin.signatures.reminder');
+    Route::get('/{id}/copy-link', [SignatureDashboardController::class, 'copyLink'])->name('admin.signatures.copy-link');
+});
 
 }); // End of admin routes group
 

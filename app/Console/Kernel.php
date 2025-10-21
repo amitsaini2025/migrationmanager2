@@ -14,7 +14,6 @@ class Kernel extends ConsoleKernel
      */
     protected $commands = [
         '\App\Console\Commands\CronJob',
-        '\App\Console\Commands\BirthDate',
         //'\App\Console\Commands\CompleteTaskRemoval',
 
         '\App\Console\Commands\InPersonCompleteTaskRemoval',
@@ -28,6 +27,12 @@ class Kernel extends ConsoleKernel
         // Lead Follow-up System Commands
         '\App\Console\Commands\SendFollowupReminders',
         '\App\Console\Commands\MarkOverdueFollowups',
+        
+        // Appointment Sync System Commands
+        '\App\Console\Commands\SyncBansalAppointments',
+        '\App\Console\Commands\SendAppointmentReminders',
+        '\App\Console\Commands\TestBansalApiConnection',
+        '\App\Console\Commands\BackfillBansalAppointments',
     ];
 
     /**
@@ -40,8 +45,7 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')
         //          ->hourly();
-		$schedule->command('CronJob:cronjob')->daily();
-		$schedule->command('BirthDate:birthdate')->daily();
+	$schedule->command('CronJob:cronjob')->daily();
         //$schedule->command('CompleteTaskRemoval:daily')->daily();
 
         //InPerson Complete Task Removal daily 1 time
@@ -56,6 +60,20 @@ class Kernel extends ConsoleKernel
         
         // Lead Follow-up System - Mark overdue follow-ups every 15 minutes
         $schedule->command('followups:mark-overdue')->everyFifteenMinutes();
+        
+        // Appointment Sync System - Sync from Bansal website every 10 minutes
+        $schedule->command('booking:sync-appointments --minutes=15')
+            ->everyTenMinutes()
+            ->withoutOverlapping(5) // Max 5 minutes lock time
+            ->runInBackground()
+            ->appendOutputTo(storage_path('logs/appointment-sync.log'));
+        
+        // Appointment Sync System - Send reminders daily at 9 AM
+        $schedule->command('booking:send-reminders')
+            ->dailyAt('09:00')
+            ->timezone('Australia/Melbourne')
+            ->withoutOverlapping(10)
+            ->appendOutputTo(storage_path('logs/appointment-reminders.log'));
     }
 
     /**

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\ApplicationsController;
 use App\Http\Controllers\Admin\OfficeVisitController;
 use App\Http\Controllers\Admin\AppointmentsController;
+use App\Http\Controllers\Admin\BookingAppointmentsController;
 use App\Http\Controllers\HomeController;
 
 /*
@@ -132,4 +133,82 @@ Route::get('/change_assignee', [AppointmentsController::class, 'change_assignee'
 /*---------- Appointment Scheduling Backend ----------*/
 Route::post('/getdatetimebackend', [HomeController::class, 'getdatetimebackend'])->name('getdatetimebackend');
 Route::post('/getdisableddatetime', [HomeController::class, 'getdisableddatetime'])->name('getdisableddatetime');
+
+/*
+|--------------------------------------------------------------------------
+| Website Booking Appointments (Synced from Bansal Website)
+|--------------------------------------------------------------------------
+|
+| Routes for managing appointments synced from the Bansal Immigration
+| public website. This is a separate system from manual appointments.
+|
+*/
+
+Route::controller(BookingAppointmentsController::class)
+    ->prefix('booking')
+    ->name('booking.')
+    ->group(function () {
+        
+        // Appointment List & Views
+        Route::get('/appointments', 'index')->name('appointments.index');
+        
+        // Appointment Detail
+        Route::get('/appointments/{id}', 'show')
+            ->name('appointments.show')
+            ->whereNumber('id');
+        
+        // Get appointment as JSON (for modals/AJAX)
+        Route::get('/appointments/{id}/json', 'getAppointmentJson')
+            ->name('appointments.json')
+            ->whereNumber('id');
+        
+        // Calendar Views (by type)
+        Route::get('/calendar/{type}', 'calendar')
+            ->name('appointments.calendar')
+            ->whereIn('type', ['paid', 'jrp', 'education', 'tourist', 'adelaide']);
+        
+        // Update Actions
+        Route::post('/appointments/{id}/update-status', 'updateStatus')
+            ->name('appointments.update-status')
+            ->whereNumber('id');
+        
+        Route::post('/appointments/{id}/update-consultant', 'updateConsultant')
+            ->name('appointments.update-consultant')
+            ->whereNumber('id');
+        
+        Route::post('/appointments/{id}/add-note', 'addNote')
+            ->name('appointments.add-note')
+            ->whereNumber('id');
+        
+        Route::post('/appointments/{id}/update-followup', 'updateFollowUp')
+            ->name('appointments.update-followup')
+            ->whereNumber('id');
+        
+        Route::post('/appointments/{id}/send-reminder', 'sendReminder')
+            ->name('appointments.send-reminder')
+            ->whereNumber('id');
+        
+        // Bulk Actions
+        Route::post('/appointments/bulk-update-status', 'bulkUpdateStatus')
+            ->name('appointments.bulk-update-status');
+        
+        // Export
+        Route::get('/appointments/export', 'export')
+            ->name('appointments.export');
+        
+        // Sync Management
+        Route::get('/sync/dashboard', 'syncDashboard')
+            ->name('sync.dashboard');
+        
+        Route::get('/sync/stats', 'syncStats')
+            ->name('sync.stats');
+        
+        Route::post('/sync/manual', 'manualSync')
+            ->name('sync.manual')
+            ->middleware('can:trigger-manual-sync');
+        
+        // API endpoints for datatables
+        Route::get('/api/appointments', 'getAppointments')
+            ->name('api.appointments');
+    });
 

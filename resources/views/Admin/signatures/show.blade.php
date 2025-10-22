@@ -118,6 +118,51 @@
         color: white;
     }
     
+    .status-badge.signature_placed {
+        background: #17a2b8;
+        color: white;
+    }
+    
+    .status-badge.void {
+        background: #dc3545;
+        color: white;
+    }
+    
+    .status-badge.archived {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .status-badge.opened-not-signed {
+        background: #ffc107;
+        color: #000;
+    }
+    
+    .status-badge.ready-to-send {
+        background: #17a2b8;
+        color: white;
+    }
+    
+    .status-badge.first-reminder {
+        background: #fd7e14;
+        color: white;
+    }
+    
+    .status-badge.second-reminder {
+        background: #e83e8c;
+        color: white;
+    }
+    
+    .status-badge.final-reminder {
+        background: #dc3545;
+        color: white;
+    }
+    
+    .status-badge:not(.draft):not(.sent):not(.signed):not(.signature_placed):not(.void):not(.archived):not(.opened-not-signed):not(.ready-to-send):not(.first-reminder):not(.second-reminder):not(.final-reminder) {
+        background: #6c757d;
+        color: white;
+    }
+    
     .priority-badge {
         padding: 4px 10px;
         border-radius: 12px;
@@ -278,33 +323,101 @@
         text-decoration: underline;
     }
     
-    .timeline-item {
-        padding: 12px 0;
-        border-left: 2px solid #e9ecef;
-        padding-left: 20px;
-        position: relative;
+    .timeline-container {
+        padding-left: 10px;
+        max-height: 400px;
+        overflow-y: auto;
     }
     
-    .timeline-item::before {
+    .timeline-item {
+        margin-bottom: 20px;
+        position: relative;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .timeline-item:not(:last-child)::before {
         content: '';
         position: absolute;
-        left: -6px;
-        top: 18px;
-        width: 10px;
-        height: 10px;
+        left: 15px;
+        top: 30px;
+        bottom: -20px;
+        width: 2px;
+        background: #e9ecef;
+    }
+    
+    .timeline-icon {
+        width: 30px;
+        height: 30px;
         border-radius: 50%;
-        background: #667eea;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        flex-shrink: 0;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .timeline-item.created .timeline-icon {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .timeline-item.signature_placed .timeline-icon {
+        background: #17a2b8;
+        color: white;
+    }
+    
+    .timeline-item.sent .timeline-icon {
+        background: #ffc107;
+        color: #000;
+    }
+    
+    .timeline-item.signer_added .timeline-icon {
+        background: #007bff;
+        color: white;
+    }
+    
+    .timeline-item.opened .timeline-icon {
+        background: #fd7e14;
+        color: white;
+    }
+    
+    .timeline-item.reminder .timeline-icon {
+        background: #e83e8c;
+        color: white;
+    }
+    
+    .timeline-item.signed .timeline-icon {
+        background: #28a745;
+        color: white;
+    }
+    
+    .timeline-content {
+        flex: 1;
+        min-width: 0;
     }
     
     .timeline-date {
         font-size: 12px;
         color: #6c757d;
-        margin-bottom: 5px;
+        margin-bottom: 4px;
+        font-weight: 500;
     }
     
     .timeline-text {
         font-size: 14px;
-        color: #2c3e50;
+        color: #495057;
+        margin-bottom: 2px;
+        line-height: 1.4;
+    }
+    
+    .timeline-time {
+        font-size: 11px;
+        color: #adb5bd;
+        font-style: italic;
     }
     
     .overdue-warning {
@@ -645,8 +758,11 @@
                 <div class="info-row">
                     <span class="info-label">Status</span>
                     <span class="info-value">
-                        <span class="status-badge {{ $document->status }}">
-                            {{ ucfirst($document->status) }}
+                        @php
+                            $statusInfo = $document->getStatusInfo();
+                        @endphp
+                        <span class="status-badge {{ $statusInfo['class'] }}">
+                            {{ $statusInfo['text'] }}
                         </span>
                     </span>
                 </div>
@@ -697,12 +813,6 @@
                 </div>
                 @endif
 
-                <div class="info-row">
-                    <span class="info-label">Last Activity</span>
-                    <span class="info-value">
-                        {{ $document->last_activity_at ? $document->last_activity_at->format('M d, Y g:i A') : 'N/A' }}
-                    </span>
-                </div>
 
                 @if($document->status === 'signed' && $document->signed_doc_link)
                 <div style="margin-top: 20px; text-align: center;">
@@ -815,9 +925,31 @@
                     </a>
                     @endif
                     
-                    <button type="button" class="btn btn-primary btn-block" onclick="viewDocument()">
-                        <i class="fas fa-eye"></i> View Document
-                    </button>
+                    <a href="{{ route('admin.documents.edit', $document->id) }}" class="btn btn-primary btn-block">
+                        <i class="fas fa-edit"></i> Edit Signature Placement
+                    </a>
+                    
+                    @if($document->signers()->where('status', 'pending')->count() > 0)
+                        @if($document->status === 'sent')
+                        <div style="display: flex; align-items: center; padding: 8px 16px; background: #e8f5e9; border-radius: 6px; color: #2e7d32; font-size: 14px; text-align: center;">
+                            <i class="fas fa-check-circle" style="margin-right: 8px;"></i>
+                            Document sent for signature
+                        </div>
+                        @else
+                        <form action="{{ route('admin.signatures.send', $document->id) }}" method="POST">
+                            @csrf
+                            <button type="submit" class="btn btn-success btn-block" 
+                                    onclick="return confirm('Are you sure you want to send this document for signature? This will send signing links to all pending signers.')">
+                                <i class="fas fa-paper-plane"></i> Send for Signature
+                            </button>
+                        </form>
+                        @endif
+                    @else
+                    <div style="display: flex; align-items: center; padding: 8px 16px; background: #f8f9fa; border-radius: 6px; color: #6c757d; font-size: 14px; text-align: center;">
+                        <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
+                        No pending signers to send to
+                    </div>
+                    @endif
                 </div>
             </div>
 
@@ -857,32 +989,108 @@
                     Activity Timeline
                 </h3>
 
-                <div style="padding-left: 10px;">
-                    <div class="timeline-item">
-                        <div class="timeline-date">{{ $document->created_at->format('M d, Y g:i A') }}</div>
-                        <div class="timeline-text">Document created</div>
-                    </div>
-
-                    @if($document->status !== 'draft' && $document->last_activity_at)
-                    <div class="timeline-item">
-                        <div class="timeline-date">{{ $document->last_activity_at->format('M d, Y g:i A') }}</div>
-                        <div class="timeline-text">Document sent for signature</div>
-                    </div>
+                <div class="timeline-container">
+                    @php
+                        $activities = collect();
+                        
+                        // Document creation
+                        $activities->push([
+                            'date' => $document->created_at,
+                            'text' => 'Document created',
+                            'icon' => 'fas fa-file-plus',
+                            'type' => 'created'
+                        ]);
+                        
+                        // Signature fields placed
+                        if ($document->status === 'signature_placed' || $document->signatureFields->count() > 0) {
+                            $signatureFieldsDate = $document->signatureFields->min('created_at') ?? $document->updated_at;
+                            $activities->push([
+                                'date' => $signatureFieldsDate,
+                                'text' => 'Signature fields placed',
+                                'icon' => 'fas fa-edit',
+                                'type' => 'signature_placed'
+                            ]);
+                        }
+                        
+                        // Document sent for signature
+                        if ($document->status === 'sent' || $document->status === 'signed') {
+                            $sentDate = $document->signers->min('created_at') ?? $document->updated_at;
+                            $activities->push([
+                                'date' => $sentDate,
+                                'text' => 'Document sent for signature',
+                                'icon' => 'fas fa-paper-plane',
+                                'type' => 'sent'
+                            ]);
+                        }
+                        
+                        // Signer activities
+                        foreach ($document->signers as $signer) {
+                            // Signer added
+                            $activities->push([
+                                'date' => $signer->created_at,
+                                'text' => "Signer added: {$signer->name}",
+                                'icon' => 'fas fa-user-plus',
+                                'type' => 'signer_added'
+                            ]);
+                            
+                            // Document opened
+                            if ($signer->opened_at) {
+                                $activities->push([
+                                    'date' => $signer->opened_at,
+                                    'text' => "Opened by {$signer->name}",
+                                    'icon' => 'fas fa-eye',
+                                    'type' => 'opened'
+                                ]);
+                            }
+                            
+                            // Reminders sent
+                            if ($signer->reminder_count > 0) {
+                                for ($i = 1; $i <= $signer->reminder_count; $i++) {
+                                    $reminderDate = $signer->last_reminder_sent_at ?? $signer->updated_at;
+                                    $activities->push([
+                                        'date' => $reminderDate,
+                                        'text' => "Reminder #{$i} sent to {$signer->name}",
+                                        'icon' => 'fas fa-bell',
+                                        'type' => 'reminder'
+                                    ]);
+                                }
+                            }
+                            
+                            // Document signed
+                            if ($signer->signed_at) {
+                                $activities->push([
+                                    'date' => $signer->signed_at,
+                                    'text' => "Signed by {$signer->name}",
+                                    'icon' => 'fas fa-check-circle',
+                                    'type' => 'signed'
+                                ]);
+                            }
+                        }
+                        
+                        // Sort activities by date (newest first)
+                        $activities = $activities->sortByDesc('date');
+                    @endphp
+                    
+                    @if($activities->count() > 0)
+                        @foreach($activities as $activity)
+                        <div class="timeline-item {{ $activity['type'] }}">
+                            <div class="timeline-icon">
+                                <i class="{{ $activity['icon'] }}"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <div class="timeline-date">{{ $activity['date']->format('M d, Y g:i A') }}</div>
+                                <div class="timeline-text">{{ $activity['text'] }}</div>
+                                <div class="timeline-time">{{ $activity['date']->diffForHumans() }}</div>
+                            </div>
+                        </div>
+                        @endforeach
+                    @else
+                        <div class="timeline-item">
+                            <div class="timeline-content">
+                                <div class="timeline-text" style="color: #6c757d; font-style: italic;">No activity yet</div>
+                            </div>
+                        </div>
                     @endif
-
-                    @foreach($document->signers->where('opened_at', '!=', null) as $signer)
-                    <div class="timeline-item">
-                        <div class="timeline-date">{{ $signer->opened_at->format('M d, Y g:i A') }}</div>
-                        <div class="timeline-text">Opened by {{ $signer->name }}</div>
-                    </div>
-                    @endforeach
-
-                    @foreach($document->signers->where('signed_at', '!=', null) as $signer)
-                    <div class="timeline-item">
-                        <div class="timeline-date">{{ $signer->signed_at->format('M d, Y g:i A') }}</div>
-                        <div class="timeline-text">Signed by {{ $signer->name }}</div>
-                    </div>
-                    @endforeach
                 </div>
             </div>
         </div>

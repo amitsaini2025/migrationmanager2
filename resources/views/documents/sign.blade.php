@@ -7,6 +7,50 @@
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
+        /* DocuSign-like UI additions */
+        .ds-tag {
+            position: absolute;
+            top: -14px;
+            left: 0;
+            background-color: #ffcc00;
+            color: #111827;
+            font-weight: 600;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 3px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+            pointer-events: none;
+        }
+        .ds-tag::after {
+            content: '';
+            position: absolute;
+            left: 8px;
+            bottom: -6px;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid #ffcc00;
+        }
+        .signature-field { 
+            border: 2px dashed #9ca3af; 
+            background-color: rgba(255, 204, 0, 0.15);
+            transition: box-shadow 0.2s ease, transform 0.1s ease;
+        }
+        .signature-field:hover { box-shadow: 0 0 0 3px rgba(59,130,246,0.35); }
+        .signature-field.active-focus { animation: pulseFocus 1.2s ease-in-out 2; box-shadow: 0 0 0 3px rgba(59,130,246,0.55); }
+        @keyframes pulseFocus { 0% { transform: scale(1);} 50% { transform: scale(1.02);} 100% { transform: scale(1);} }
+
+        .signing-header {
+            position: sticky; top: 0; z-index: 100; background: #111827; color: #fff;
+            padding: 10px 12px; border-bottom: 1px solid #1f2937; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        }
+        .signing-header .controls { display: flex; gap: 8px; }
+        .btn { border: none; border-radius: 6px; padding: 8px 12px; font-weight: 600; cursor: pointer; }
+        .btn-primary { background: #2563eb; color: #fff; }
+        .btn-secondary { background: #374151; color: #e5e7eb; }
+        .btn-success { background: #059669; color: #fff; }
+        .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
         .signature-pad {
             touch-action: none;
             -webkit-user-select: none;
@@ -151,6 +195,15 @@
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 font-sans antialiased">
+    
+    <div class="signing-header">
+        <div class="progress"><span id="progress-count">0</span> of <span id="progress-total">0</span> required fields</div>
+        <div class="controls">
+            <button id="start-signing-btn" class="btn btn-primary">Start</button>
+            <button id="next-field-btn" class="btn btn-secondary">Next</button>
+            <button id="submit-signatures-btn" class="btn btn-success" style="display:none;">Submit Signatures</button>
+        </div>
+    </div>
     <div class="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
         <div class="max-w-4xl w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 sm:p-8">
             <!-- Header -->
@@ -217,18 +270,45 @@
                             Page {{ $i }}
                         </h2>
                         <div class="relative">
-                            <img
-                                id="pdf-image-{{ $i }}"
-                                src="{{ route('public.documents.page', ['id' => $document->id, 'page' => $i]) }}"
-                                alt="Page {{ $i }}"
-                                class="w-full h-auto rounded-md shadow-sm"
-                                style="max-width: 100%; z-index: 1; pointer-events: none;"
-                            >
+                            <!-- Loading Placeholder -->
+                            <div id="loading-placeholder-{{ $i }}" class="absolute inset-0 flex items-center justify-center bg-gray-100" style="min-height: 600px;">
+                                <div class="text-center">
+                                    <svg class="animate-spin h-12 w-12 text-blue-600 mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <p class="text-gray-600">Loading page {{ $i }}...</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Error Placeholder (hidden by default) -->
+                            <div id="error-placeholder-{{ $i }}" class="absolute inset-0 flex items-center justify-center bg-red-50 hidden" style="min-height: 600px;">
+                                <div class="text-center p-6">
+                                    <svg class="h-16 w-16 text-red-500 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    <p class="text-red-700 font-semibold mb-2">Failed to load page {{ $i }}</p>
+                                    <button onclick="retryLoadImage({{ $i }})" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                        Retry
+                                    </button>
+                                </div>
+                            </div>
+                            
+            <img
+                id="pdf-image-{{ $i }}"
+                src="{{ route('public.documents.page', ['id' => $document->id, 'page' => $i]) }}"
+                alt="Page {{ $i }}"
+                class="w-full h-auto rounded-md shadow-sm"
+                style="max-width: 100%; z-index: 1; pointer-events: none;"
+                onerror="handleImageLoadError(this, {{ $i }})"
+                onload="handleImageLoadSuccess({{ $i }})"
+                data-debug-url="{{ route('public.documents.page', ['id' => $document->id, 'page' => $i]) }}"
+            >
                             @foreach ($signatureFields as $field)
                                 @if ($field->page_number == $i)
                                     <div
                                         id="signature-field-{{ $field->id }}"
-                                        class="signature-field absolute border-2 border-blue-500 bg-blue-100 bg-opacity-30 cursor-pointer"
+                                        class="signature-field absolute cursor-pointer"
                                         data-x-percent="{{ $field->x_percent ?? 0 }}"
                                         data-y-percent="{{ $field->y_percent ?? 0 }}"
                                         data-w-percent="{{ $field->width_percent ?? 0 }}"
@@ -237,7 +317,7 @@
                                         style="z-index: 50; pointer-events: auto;"
                                         onclick="activateSignatureField({{ $field->id }}, {{ $i }})"
                                     >
-                                        <div class="text-xs text-blue-600 text-center mt-2">Click to sign here</div>
+                                        <div class="ds-tag">Sign</div>
                                     </div>
                                 @endif
                             @endforeach
@@ -247,7 +327,7 @@
             </div>
 
             <!-- Signature Form -->
-            <form method="POST" action="{{ route('public.documents.submitSignatures', $document->id) }}">
+            <form id="signature-form" method="POST" action="{{ route('public.documents.submitSignatures', $document->id) }}">
                 @csrf
                 <input type="hidden" name="signer_id" value="{{ $signer->id }}">
                 @for ($i = 1; $i <= $pdfPages; $i++)
@@ -292,8 +372,9 @@
                 <canvas
                     id="signature-pad"
                     class="signature-pad"
-                    width="400"
-                    height="200"
+                    width="450"
+                    height="250"
+                    style="max-width: 100%; width: 100%;"
                 ></canvas>
                 <textarea
                     id="fallback-signature"
@@ -312,97 +393,116 @@
         </div>
     </div>
 
-    <!-- Simple SignaturePad Implementation -->
+    <!-- Professional SignaturePad Implementation -->
     <script>
-        // Simple SignaturePad implementation
-        class SimpleSignaturePad {
-            constructor(canvas, options = {}) {
-                this.canvas = canvas;
-                this.ctx = canvas.getContext('2d');
-                this.ctx.globalCompositeOperation = 'source-over'; // Ensure drawing on transparent
-                this.isDrawing = false;
-                this.points = [];
-                
-                this.options = {
-                    // backgroundColor: options.backgroundColor || 'rgb(255, 255, 255)', // Remove background color for transparency
-                    penColor: options.penColor || 'rgb(0, 0, 0)',
-                    minWidth: options.minWidth || 0.5,
-                    maxWidth: options.maxWidth || 2.5,
-                    ...options
-                };
-                
-                this.clear();
-                this.setupEventListeners();
+        // Image loading handlers - Make them global for inline handlers
+        window.handleImageLoadSuccess = function(pageNum) {
+            const loadingPlaceholder = document.getElementById('loading-placeholder-' + pageNum);
+            const errorPlaceholder = document.getElementById('error-placeholder-' + pageNum);
+            const img = document.getElementById('pdf-image-' + pageNum);
+            
+            if (loadingPlaceholder) loadingPlaceholder.style.display = 'none';
+            if (errorPlaceholder) errorPlaceholder.classList.add('hidden');
+            if (img) img.style.display = 'block';
+            
+            console.log('Successfully loaded PDF page image:', pageNum, 'Dimensions:', img.naturalWidth + 'x' + img.naturalHeight);
+            
+            // Position signature fields after image loads
+            positionSignatureFields(pageNum);
+        };
+
+        window.handleImageLoadError = function(imgElement, pageNum) {
+            const loadingPlaceholder = document.getElementById('loading-placeholder-' + pageNum);
+            const errorPlaceholder = document.getElementById('error-placeholder-' + pageNum);
+            
+            if (loadingPlaceholder) loadingPlaceholder.style.display = 'none';
+            if (errorPlaceholder) errorPlaceholder.classList.remove('hidden');
+            
+            console.error('Failed to load PDF page image:', pageNum, 'URL:', imgElement.src);
+            console.error('Image element:', imgElement);
+        };
+
+        window.retryLoadImage = function(pageNum) {
+            const img = document.getElementById('pdf-image-' + pageNum);
+            const loadingPlaceholder = document.getElementById('loading-placeholder-' + pageNum);
+            const errorPlaceholder = document.getElementById('error-placeholder-' + pageNum);
+            
+            if (errorPlaceholder) errorPlaceholder.classList.add('hidden');
+            if (loadingPlaceholder) loadingPlaceholder.style.display = 'flex';
+            
+            // Force reload by adding timestamp
+            const currentSrc = img.src.split('?')[0];
+            img.src = currentSrc + '?retry=' + Date.now();
+        };
+
+        // Optimized Signature Pad (SignaturePad library + HiDPI scaling)
+        function setupHiDPICanvas(canvas) {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            
+            // Get parent container width for responsive sizing
+            const container = canvas.parentElement;
+            let cssWidth = container ? container.clientWidth : canvas.clientWidth;
+            let cssHeight = 250; // Fixed height
+            
+            // Mobile responsive: use smaller height on narrow screens
+            if (window.innerWidth < 500) {
+                cssHeight = 200;
+                cssWidth = Math.min(cssWidth, window.innerWidth - 40);
             }
             
-            clear() {
-                // Make canvas transparent
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                this.points = [];
+            if (!cssWidth || cssWidth < 100) cssWidth = 400;
+            
+            canvas.style.width = cssWidth + 'px';
+            canvas.style.height = cssHeight + 'px';
+            canvas.width = Math.max(1, Math.floor(cssWidth * ratio));
+            canvas.height = Math.max(1, Math.floor(cssHeight * ratio));
+            
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+            return ratio;
+        }
+
+        function createSignaturePad(canvas) {
+            // ✅ CHECK: Ensure SignaturePad library is loaded
+            if (typeof window.SignaturePad === 'undefined') {
+                console.error('SignaturePad library not loaded!');
+                alert('Signature pad failed to load. Please refresh the page.');
+                useFallback = true;
+                // Show fallback textarea
+                canvas.style.display = 'none';
+                document.getElementById('fallback-signature').style.display = 'block';
+                return null;
             }
             
-            isEmpty() {
-                return this.points.length === 0;
-            }
+            // Ensure canvas has CSS size so offsetWidth/Height are non-zero
+            if (!canvas.style.width) canvas.style.width = '100%';
+            if (!canvas.style.height) canvas.style.height = '200px';
+            setupHiDPICanvas(canvas);
             
-            toDataURL(type = 'image/png') {
-                return this.canvas.toDataURL(type); // PNG supports transparency
-            }
-            
-            setupEventListeners() {
-                const events = ['mousedown', 'mousemove', 'mouseup', 'touchstart', 'touchmove', 'touchend'];
-                
-                events.forEach(event => {
-                    this.canvas.addEventListener(event, (e) => {
-                        e.preventDefault();
-                        this.handleEvent(event, e);
-                    });
+            try {
+                const pad = new window.SignaturePad(canvas, {
+                    minWidth: 0.6,
+                    maxWidth: 2.8,
+                    throttle: 8, // reduce event frequency to avoid lag
+                    minDistance: 2, // smoothing
+                    penColor: 'rgb(0,0,0)',
+                    backgroundColor: 'rgba(0,0,0,0)'
                 });
-            }
-            
-            handleEvent(type, event) {
-                const rect = this.canvas.getBoundingClientRect();
-                let clientX, clientY;
-                
-                if (type.includes('touch')) {
-                    if (event.touches && event.touches[0]) {
-                        clientX = event.touches[0].clientX;
-                        clientY = event.touches[0].clientY;
-                    }
-                } else {
-                    clientX = event.clientX;
-                    clientY = event.clientY;
-                }
-                
-                const x = clientX - rect.left;
-                const y = clientY - rect.top;
-                
-                switch (type) {
-                    case 'mousedown':
-                    case 'touchstart':
-                        this.isDrawing = true;
-                        this.points = [{x, y}];
-                        this.ctx.beginPath();
-                        this.ctx.moveTo(x, y);
-                        break;
-                        
-                    case 'mousemove':
-                    case 'touchmove':
-                        if (this.isDrawing) {
-                            this.points.push({x, y});
-                            this.ctx.lineTo(x, y);
-                            this.ctx.strokeStyle = this.options.penColor;
-                            this.ctx.lineWidth = this.options.maxWidth;
-                            this.ctx.lineCap = 'round';
-                            this.ctx.stroke();
-                        }
-                        break;
-                        
-                    case 'mouseup':
-                    case 'touchend':
-                        this.isDrawing = false;
-                        break;
-                }
+                const onResize = () => {
+                    const data = pad.toData();
+                    setupHiDPICanvas(canvas);
+                    pad.clear();
+                    pad.fromData(data);
+                };
+                window.addEventListener('resize', onResize);
+                return pad;
+            } catch (error) {
+                console.error('Failed to create SignaturePad:', error);
+                alert('Signature pad initialization failed. Using text fallback.');
+                useFallback = true;
+                canvas.style.display = 'none';
+                document.getElementById('fallback-signature').style.display = 'block';
+                return null;
             }
         }
 
@@ -412,6 +512,8 @@
         let savedSignatures = {};
         let useFallback = false;
         let userSavedSignatureData = null; // Store user's signature for reuse
+        let signingFieldOrder = [];
+        let totalRequiredFields = 0;
 
         // Debug function
         function toggleDebug() {
@@ -443,57 +545,40 @@
             debugContent.innerHTML = debugText;
         }
 
-        function initializeSignaturePad() {
-            const canvas = document.getElementById('signature-pad');
-            const fallbackTextarea = document.getElementById('fallback-signature');
-            
-            if (!canvas) {
-                console.error('Canvas not found');
-                return null;
-            }
-
-            // Set canvas size
-            canvas.width = 400;
-            canvas.height = 200;
-
-            try {
-                // Try to create the signature pad
-                const pad = new SimpleSignaturePad(canvas, {
-                    // backgroundColor: 'rgb(255, 255, 255)', // Remove background color for transparency
-                    penColor: 'rgb(0, 0, 0)',
-                    minWidth: 0.5,
-                    maxWidth: 2.5
-                });
-
-                // Show canvas, hide fallback
-                canvas.style.display = 'block';
-                fallbackTextarea.style.display = 'none';
-                useFallback = false;
-
-                return pad;
-            } catch (error) {
-                console.error('Error initializing signature pad:', error);
-                
-                // Fallback to textarea
-                canvas.style.display = 'none';
-                fallbackTextarea.style.display = 'block';
-                useFallback = true;
-                
-                return null;
-            }
-        }
+        // remove legacy initializer
 
         document.addEventListener('DOMContentLoaded', function () {
-            // Initialize signature pad
-            signaturePad = initializeSignaturePad();
+            console.log('Document signing page loaded');
             
-            if (signaturePad) {
-                // Signature pad initialized successfully
-            } else if (useFallback) {
-                // Using fallback signature method
-            } else {
-                console.error('Failed to initialize signature pad');
+            // Debug: Log all image URLs
+            for (let i = 1; i <= {{ $pdfPages }}; i++) {
+                const img = document.getElementById('pdf-image-' + i);
+                if (img) {
+                    console.log('Page ' + i + ' URL:', img.src);
+                }
             }
+            
+            // Delay pad creation until modal is opened so sizing works
+            const fallbackTextarea = document.getElementById('fallback-signature');
+            if (fallbackTextarea) fallbackTextarea.style.display = 'none';
+
+            // Build guided signing sequence and progress
+            signingFieldOrder = Array.from(document.querySelectorAll('.signature-field')).map(el => ({
+                element: el,
+                id: parseInt(el.id.replace('signature-field-', '')),
+                page: parseInt(el.getAttribute('data-page')),
+            }));
+            totalRequiredFields = signingFieldOrder.length;
+            const totalEl = document.getElementById('progress-total');
+            if (totalEl) totalEl.textContent = totalRequiredFields;
+            updateProgress();
+
+            const startBtn = document.getElementById('start-signing-btn');
+            const nextBtn = document.getElementById('next-field-btn');
+            const submitBtn = document.getElementById('submit-signatures-btn');
+            startBtn && startBtn.addEventListener('click', () => goToNextUnsignedField(true));
+            nextBtn && nextBtn.addEventListener('click', () => goToNextUnsignedField(true));
+            submitBtn && submitBtn.addEventListener('click', finishSigning);
         });
 
         function activateSignatureField(fieldId, page) {
@@ -512,18 +597,20 @@
                 pasteBtn.style.display = 'none';
             }
 
-            // Initialize signature pad if not already done
+            // Initialize or reset pad after modal becomes visible
             if (!signaturePad && !useFallback) {
                 try {
-                    signaturePad = initializeSignaturePad();
-                    if (signaturePad) {
-                        // Signature pad initialized
-                    }
+                    requestAnimationFrame(() => {
+                        const canvas = document.getElementById('signature-pad');
+                        if (canvas) {
+                            setupHiDPICanvas(canvas);
+                            signaturePad = createSignaturePad(canvas);
+                        }
+                    });
                 } catch (error) {
                     console.error('Error initializing signature pad:', error);
                 }
             } else if (signaturePad) {
-                // Clear the existing signature
                 signaturePad.clear();
             } else if (useFallback) {
                 // Clear fallback textarea
@@ -603,6 +690,23 @@
             const yPercent = relativeY / naturalHeight;
             const wPercent = fieldWidthNatural / naturalWidth;
             const hPercent = fieldHeightNatural / naturalHeight;
+            
+            // ✅ VALIDATE: Check for invalid calculations
+            if (!isFinite(xPercent) || !isFinite(yPercent) || !isFinite(wPercent) || !isFinite(hPercent)) {
+                console.error('[Signature Error] Invalid percentage calculations!', {
+                    xPercent, yPercent, wPercent, hPercent,
+                    naturalWidth, naturalHeight, displayWidth, displayHeight
+                });
+                alert('Error calculating signature position. Please try again or contact support.');
+                return;
+            }
+
+            if (xPercent < 0 || xPercent > 1 || yPercent < 0 || yPercent > 1) {
+                console.error('[Signature Error] Position out of bounds!', {xPercent, yPercent});
+                alert('Signature position is out of bounds. Please contact support.');
+                return;
+            }
+            
             // Log all relevant info for debugging
             console.log('[Signature Debug] Canvas size:', {width: signaturePad ? signaturePad.canvas.width : 'N/A', height: signaturePad ? signaturePad.canvas.height : 'N/A'});
             console.log('[Signature Debug] Field position (px):', {left: fieldRect.left, top: fieldRect.top, width: fieldElement.offsetWidth, height: fieldElement.offsetHeight});
@@ -621,11 +725,13 @@
                 h_percent: hPercent,
                 page: currentActivePage
             };
-            fieldElement.innerHTML = '<div class="text-xs text-green-600 text-center mt-2">✓ Signed</div>';
-            fieldElement.classList.remove('border-blue-500', 'bg-blue-100');
-            fieldElement.classList.add('border-green-500', 'bg-green-100');
+            fieldElement.innerHTML = '<div class="ds-tag" style="background:#10b981;color:#fff;">Signed</div>';
+            fieldElement.classList.add('signed');
             displaySignatureOnDocument(currentActiveField, signatureData, fieldElement);
             closeSignatureModal();
+            updateProgress();
+            // Auto-advance to next field
+            goToNextUnsignedField(true);
         }
 
         // Paste signature to current field
@@ -660,11 +766,13 @@
                 h_percent: hPercent,
                 page: currentActivePage
             };
-            fieldElement.innerHTML = '<div class="text-xs text-green-600 text-center mt-2">✓ Signed</div>';
-            fieldElement.classList.remove('border-blue-500', 'bg-blue-100');
-            fieldElement.classList.add('border-green-500', 'bg-green-100');
+            fieldElement.innerHTML = '<div class="ds-tag" style="background:#10b981;color:#fff;">Signed</div>';
+            fieldElement.classList.add('signed');
             displaySignatureOnDocument(currentActiveField, userSavedSignatureData, fieldElement);
             closeSignatureModal();
+            updateProgress();
+            // Auto-advance to next field
+            goToNextUnsignedField(true);
         }
 
         function displaySignatureOnDocument(fieldId, signatureData, fieldElement) {
@@ -721,8 +829,8 @@
             }
         }
 
-        // Handle form submission
-        document.querySelector('form').addEventListener('submit', function (e) {
+        // Populate hidden fields before submitting
+        function populateHiddenFields() {
             for (let i = 1; i <= {{ $pdfPages }}; i++) {
                 var pageSignatures = {};
                 var pagePositions = {};
@@ -741,7 +849,7 @@
                 document.getElementById('signature-input-' + i).value = JSON.stringify(pageSignatures);
                 document.getElementById('signature-position-' + i).value = JSON.stringify(pagePositions);
             }
-        });
+        }
 
         // Expose activateSignatureField to global scope for inline onclick
         window.activateSignatureField = activateSignatureField;
@@ -751,10 +859,25 @@
             const img = document.getElementById('pdf-image-' + page);
             if (!img) return;
 
+            // ✅ SAFETY CHECK: Ensure image is loaded and has valid dimensions
             const naturalWidth = img.naturalWidth;
             const naturalHeight = img.naturalHeight;
+            
+            if (!naturalWidth || !naturalHeight || naturalWidth === 0 || naturalHeight === 0) {
+                console.warn(`Page ${page} image not loaded yet. Dimensions: ${naturalWidth}x${naturalHeight}`);
+                // Retry after a short delay
+                setTimeout(() => positionSignatureFields(page), 100);
+                return;
+            }
+            
             const displayWidth = img.clientWidth;
             const displayHeight = img.clientHeight;
+            
+            if (!displayWidth || !displayHeight) {
+                console.warn(`Page ${page} image not rendered yet.`);
+                setTimeout(() => positionSignatureFields(page), 100);
+                return;
+            }
 
             // Consistency check log
             console.log(`Page ${page} Field Positions:`, {
@@ -786,11 +909,27 @@
                     if (img.complete) positionSignatureFields(i);
                 }
             }
-            window.addEventListener('resize', function () {
+            // Debounce function to prevent excessive calls
+            function debounce(func, wait) {
+                let timeout;
+                return function executedFunction(...args) {
+                    const later = () => {
+                        clearTimeout(timeout);
+                        func(...args);
+                    };
+                    clearTimeout(timeout);
+                    timeout = setTimeout(later, wait);
+                };
+            }
+
+            // Update resize handler with debouncing
+            const debouncedReposition = debounce(function() {
                 for (let i = 1; i <= {{ $pdfPages }}; i++) {
                     positionSignatureFields(i);
                 }
-            });
+            }, 150); // Wait 150ms after resize stops
+
+            window.addEventListener('resize', debouncedReposition);
         });
 
         // Page navigation functions
@@ -810,6 +949,36 @@
             }
         }
 
+        // Guided signing helpers
+        function updateProgress() {
+            const signedCount = Object.keys(savedSignatures).length;
+            const total = totalRequiredFields;
+            const progressCount = document.getElementById('progress-count');
+            const submitBtn = document.getElementById('submit-signatures-btn');
+            if (progressCount) progressCount.textContent = signedCount;
+            if (submitBtn) submitBtn.style.display = (signedCount >= total && total > 0) ? 'inline-block' : 'none';
+        }
+
+        function getNextUnsignedField() {
+            const signedIds = new Set(Object.keys(savedSignatures).map(x => parseInt(x)));
+            for (let i = 0; i < signingFieldOrder.length; i++) {
+                const item = signingFieldOrder[i];
+                if (!signedIds.has(item.id)) return item;
+            }
+            return null;
+        }
+
+        function goToNextUnsignedField(openModal) {
+            const nextItem = getNextUnsignedField();
+            if (!nextItem) { updateProgress(); return; }
+            scrollToPage(nextItem.page);
+            requestAnimationFrame(() => {
+                nextItem.element.classList.add('active-focus');
+                setTimeout(() => nextItem.element.classList.remove('active-focus'), 1500);
+                if (openModal) activateSignatureField(nextItem.id, nextItem.page);
+            });
+        }
+
         // Check if all required signature fields are signed
         function validateAllSignatures() {
             const totalFields = document.querySelectorAll('.signature-field').length;
@@ -820,6 +989,13 @@
                 return false;
             }
             return true;
+        }
+
+        function finishSigning() {
+            if (!validateAllSignatures()) return;
+            populateHiddenFields();
+            const form = document.getElementById('signature-form');
+            if (form) form.submit();
         }
 
         // Enhanced form submission with multipage validation

@@ -18,7 +18,11 @@ class Signer extends Authenticatable
         'signed_at',
         'opened_at',
         'last_reminder_sent_at',
-        'reminder_count'
+        'reminder_count',
+        'email_template',
+        'email_subject',
+        'email_message',
+        'from_email'
     ];
 
     protected $casts = [

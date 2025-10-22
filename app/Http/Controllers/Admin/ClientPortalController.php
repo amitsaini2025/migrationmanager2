@@ -131,10 +131,10 @@ class ClientPortalController extends Controller
             ";
 
             // Send email using Mail facade
-            Mail::send('emails.client_portal_active_email', ['content' => $message], function($mail) use ($emailAddress, $subject) {
-                $mail->to($emailAddress)
-                     ->subject($subject)
-                     ->from(config('mail.from.address'), config('mail.from.name'));
+            Mail::send('emails.client_portal_active_email', ['content' => $message], function($message) use ($emailAddress, $subject) {
+                $message->to($emailAddress)
+                       ->subject($subject)
+                       ->from(config('mail.from.address'), config('mail.from.name'));
             });
 
         } catch (\Exception $e) {
@@ -172,10 +172,10 @@ class ClientPortalController extends Controller
             ";
 
             // Send email using Mail facade
-            Mail::send('emails.client_portal_active_email', ['content' => $message], function($mail) use ($emailAddress, $subject) {
-                $mail->to($emailAddress)
-                     ->subject($subject)
-                     ->from(config('mail.from.address'), config('mail.from.name'));
+            Mail::send('emails.client_portal_active_email', ['content' => $message], function($message) use ($emailAddress, $subject) {
+                $message->to($emailAddress)
+                       ->subject($subject)
+                       ->from(config('mail.from.address'), config('mail.from.name'));
             });
 
         } catch (\Exception $e) {

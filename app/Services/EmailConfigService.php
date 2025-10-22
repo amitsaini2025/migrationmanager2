@@ -86,6 +86,7 @@ class EmailConfigService
     public function applyConfig(array $config): void
     {
         config([
+            'mail.default' => 'smtp',  // Switch to SMTP mailer
             'mail.mailers.smtp.host' => $config['host'],
             'mail.mailers.smtp.port' => $config['port'],
             'mail.mailers.smtp.encryption' => $config['encryption'],

@@ -161,6 +161,10 @@ class SignatureDashboardController extends Controller
                 'name' => $request->signer_name,
                 'token' => Str::random(64),
                 'status' => 'pending',
+                'email_template' => $request->email_template ?? 'emails.signature.send',
+                'email_subject' => $request->email_subject,
+                'email_message' => $request->email_message,
+                'from_email' => $request->from_email,
             ]);
             
             // Associate document with matter if specified, or with lead/client if no matter
@@ -264,9 +268,9 @@ class SignatureDashboardController extends Controller
                 }
 
                 // Send email
-                Mail::send($template, $templateData, function ($mail) use ($signer, $subject) {
-                    $mail->to($signer->email, $signer->name)
-                         ->subject($subject);
+                Mail::send($template, $templateData, function ($message) use ($signer, $subject) {
+                    $message->to($signer->email, $signer->name)
+                           ->subject($subject);
                 });
 
                 $successMessage = "Signer added successfully! Signing link sent to {$signer->email}";
@@ -390,6 +394,92 @@ class SignatureDashboardController extends Controller
             return back()->with('success', 'Reminder sent successfully!');
         } else {
             return back()->with('error', 'Failed to send reminder. Please check limits and try again.');
+        }
+    }
+
+    public function sendForSignature(Request $request, $id)
+    {
+        $document = Document::findOrFail($id);
+        
+        // Check authorization
+        $this->authorize('sendReminder', $document);
+        
+        // Check if document has signers
+        $pendingSigners = $document->signers()->where('status', 'pending')->get();
+        
+        if ($pendingSigners->isEmpty()) {
+            return back()->with('error', 'No pending signers found for this document.');
+        }
+        
+        // Allow sending for any status except 'signed', 'void', or 'archived'
+        $blockedStatuses = ['signed', 'void', 'archived'];
+        if (in_array($document->status, $blockedStatuses)) {
+            return back()->with('error', "Document cannot be sent for signature because it is {$document->status}.");
+        }
+        
+        $emailsSent = 0;
+        $errors = [];
+        
+        foreach ($pendingSigners as $signer) {
+            try {
+                // Generate signing URL
+                $signingUrl = url("/sign/{$document->id}/{$signer->token}");
+                
+                // Use the signer's stored email template, or fallback to document type
+                $template = $signer->email_template ?? 'emails.signature.send';
+                if ($document->document_type === 'agreement' && !$signer->email_template) {
+                    $template = 'emails.signature.send_agreement';
+                }
+                
+                // Use the signer's stored email settings, or fallback to defaults
+                $subject = $signer->email_subject ?? 'Document Signature Request from Bansal Migration';
+                $message = $signer->email_message ?? "Please review and sign the attached document.";
+                
+                // Prepare template data
+                $templateData = [
+                    'signerName' => $signer->name,
+                    'documentTitle' => $document->display_title ?? $document->title,
+                    'signingUrl' => $signingUrl,
+                    'message' => $message,
+                    'documentType' => $document->document_type ?? 'document',
+                    'dueDate' => $document->due_at ? $document->due_at->format('F j, Y') : null,
+                ];
+
+                // Apply email configuration - use signer's stored config or default
+                if ($signer->from_email) {
+                    $emailConfig = app(\App\Services\EmailConfigService::class)->forAccount($signer->from_email);
+                    app(\App\Services\EmailConfigService::class)->applyConfig($emailConfig);
+                } else {
+                    $defaultConfig = app(\App\Services\EmailConfigService::class)->getDefaultAccount();
+                    if ($defaultConfig) {
+                        app(\App\Services\EmailConfigService::class)->applyConfig($defaultConfig);
+                    }
+                }
+
+                // Send email
+                Mail::send($template, $templateData, function ($message) use ($signer, $subject) {
+                    $message->to($signer->email, $signer->name)
+                           ->subject($subject);
+                });
+                
+                $emailsSent++;
+                
+            } catch (\Exception $e) {
+                $errors[] = "Failed to send email to {$signer->email}: " . $e->getMessage();
+            }
+        }
+        
+        // Update document status
+        $document->update(['status' => 'sent']);
+        
+        if ($emailsSent > 0) {
+            $message = "Document sent for signature! {$emailsSent} signing link(s) sent successfully.";
+            if (!empty($errors)) {
+                $message .= " However, some emails failed: " . implode(', ', $errors);
+            }
+            return back()->with('success', $message);
+        } else {
+            return back()->with('error', 'Failed to send any emails. Errors: ' . implode(', ', $errors));
         }
     }
 

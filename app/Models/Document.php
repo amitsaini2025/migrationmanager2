@@ -391,4 +391,97 @@ class Document extends Model
 
         return substr($this->signed_hash, 0, 8) . '...' . substr($this->signed_hash, -8);
     }
+
+    /**
+     * Get comprehensive status information for display
+     */
+    public function getStatusInfo()
+    {
+        $pendingSigners = $this->signers()->where('status', 'pending')->get();
+        $openedSigners = $this->signers()->where('status', 'pending')->whereNotNull('opened_at')->get();
+        $signedSigners = $this->signers()->where('status', 'signed')->get();
+        $reminderCount = $this->signers()->max('reminder_count') ?? 0;
+
+        // If document is signed by all signers
+        if ($signedSigners->count() > 0 && $pendingSigners->count() === 0) {
+            return [
+                'text' => 'Signed',
+                'class' => 'signed'
+            ];
+        }
+
+        // If document has been sent and signers have opened but not signed
+        if ($this->status === 'sent' && $openedSigners->count() > 0) {
+            return [
+                'text' => 'Opened - Not Signed',
+                'class' => 'opened-not-signed'
+            ];
+        }
+
+        // If document has been sent and reminders have been sent
+        if ($this->status === 'sent' && $reminderCount > 0) {
+            if ($reminderCount === 1) {
+                return [
+                    'text' => 'First Reminder Sent',
+                    'class' => 'first-reminder'
+                ];
+            } elseif ($reminderCount === 2) {
+                return [
+                    'text' => 'Second Reminder Sent',
+                    'class' => 'second-reminder'
+                ];
+            } elseif ($reminderCount >= 3) {
+                return [
+                    'text' => 'Final Reminder Sent',
+                    'class' => 'final-reminder'
+                ];
+            }
+        }
+
+        // If document has been sent but not opened yet
+        if ($this->status === 'sent' && $openedSigners->count() === 0) {
+            return [
+                'text' => 'Sent for Signature',
+                'class' => 'sent'
+            ];
+        }
+
+        // If document has signature fields placed but not sent
+        if ($this->status === 'signature_placed') {
+            return [
+                'text' => 'Ready to Send',
+                'class' => 'ready-to-send'
+            ];
+        }
+
+        // If document is in draft state
+        if ($this->status === 'draft' || !$this->status) {
+            return [
+                'text' => 'Draft',
+                'class' => 'draft'
+            ];
+        }
+
+        // If document is void
+        if ($this->status === 'void') {
+            return [
+                'text' => 'Void',
+                'class' => 'void'
+            ];
+        }
+
+        // If document is archived
+        if ($this->status === 'archived') {
+            return [
+                'text' => 'Archived',
+                'class' => 'archived'
+            ];
+        }
+
+        // Default fallback
+        return [
+            'text' => ucfirst($this->status ?? 'Draft'),
+            'class' => $this->status ?? 'draft'
+        ];
+    }
 }

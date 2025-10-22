@@ -115,6 +115,7 @@ Route::prefix('signatures')->group(function () {
     
     Route::get('/{id}', [SignatureDashboardController::class, 'show'])->name('admin.signatures.show');
     Route::post('/{id}/reminder', [SignatureDashboardController::class, 'sendReminder'])->name('admin.signatures.reminder');
+    Route::post('/{id}/send', [SignatureDashboardController::class, 'sendForSignature'])->name('admin.signatures.send');
     Route::get('/{id}/copy-link', [SignatureDashboardController::class, 'copyLink'])->name('admin.signatures.copy-link');
     
     // Association management (Phase 3)

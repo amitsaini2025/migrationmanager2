@@ -25,6 +25,7 @@
         "@fullcalendar/list": "^6.1.19",
         "@fullcalendar/timegrid": "^6.1.19",
         "laravel-echo": "^2.2.4",
-        "pusher-js": "^8.4.0"
+        "pusher-js": "^8.4.0",
+        "signature_pad": "^5.1.1"
     }
 }

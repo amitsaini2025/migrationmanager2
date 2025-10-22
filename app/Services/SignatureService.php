@@ -111,15 +111,15 @@ class SignatureService
             ];
 
             // Send email with template
-            Mail::send($template, $templateData, function ($mail) use ($signer, $subject, $options) {
-                $mail->to($signer->email, $signer->name)
-                     ->subject($subject);
+            Mail::send($template, $templateData, function ($message) use ($signer, $subject, $options) {
+                $message->to($signer->email, $signer->name)
+                       ->subject($subject);
                 
                 // Add attachments if provided
                 if (isset($options['attachments']) && is_array($options['attachments'])) {
                     foreach ($options['attachments'] as $attachment) {
                         if (isset($attachment['path']) && file_exists($attachment['path'])) {
-                            $mail->attach($attachment['path'], [
+                            $message->attach($attachment['path'], [
                                 'as' => $attachment['name'] ?? basename($attachment['path']),
                                 'mime' => $attachment['mime'] ?? 'application/octet-stream',
                             ]);
@@ -180,9 +180,9 @@ class SignatureService
                 'dueDate' => $document->due_at ? $document->due_at->format('F j, Y') : null,
             ];
 
-            Mail::send('emails.signature.reminder', $templateData, function ($mail) use ($signer) {
-                $mail->to($signer->email, $signer->name)
-                     ->subject('Reminder: Please Sign Your Document - Bansal Migration');
+            Mail::send('emails.signature.reminder', $templateData, function ($message) use ($signer) {
+                $message->to($signer->email, $signer->name)
+                       ->subject('Reminder: Please Sign Your Document - Bansal Migration');
             });
 
             // Update reminder tracking

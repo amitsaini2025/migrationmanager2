@@ -230,7 +230,7 @@
                     <div class="preview-container" id="preview-container">
                         <img
                             id="preview-image"
-                            src="{{ route('documents.page', ['id' => $document->id, 'page' => 1]) }}"
+                            src="{{ route('admin.documents.page', ['id' => $document->id, 'page' => 1]) }}"
                             alt="Document Preview"
                             style="max-width: 100%; height: auto; display: block;"
                         >
@@ -257,7 +257,7 @@
                         Signature Fields
                     </h2>
                     
-                    <form method="POST" action="{{ route('documents.update', $document->id) }}" id="signature-form">
+                    <form method="POST" action="{{ route('admin.documents.update', $document->id) }}" id="signature-form">
                         @csrf
                         @method('PATCH')
                         <div id="signatures-container">
@@ -354,7 +354,7 @@
             
             // Update preview image with proper route parameters
             const documentId = {{ $document->id }};
-            const baseUrl = '{{ route("documents.page", ["id" => $document->id, "page" => 1]) }}';
+            const baseUrl = '{{ route("admin.documents.page", ["id" => $document->id, "page" => 1]) }}';
             const newUrl = baseUrl.replace('/page/1', `/page/${pageNumber}`);
             const img = document.getElementById('preview-image');
             img.src = newUrl;

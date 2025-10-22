@@ -148,9 +148,172 @@
             padding: 10px;
             resize: none;
         }
+
+        /* Professional Signature Field Styling */
+        .signature-field {
+            transition: all 0.3s ease;
+            border-width: 2px;
+        }
+        .signature-field:hover {
+            box-shadow: 0 0 0 4px rgba(255, 204, 0, 0.3);
+            transform: scale(1.02);
+            border-color: #fbbf24 !important;
+        }
+        .signature-field.signed {
+            background-color: rgba(16, 185, 129, 0.15) !important;
+            border-color: #10b981 !important;
+        }
+        .signature-field.active-highlight {
+            animation: pulseGlow 1.5s ease-in-out 2;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+            50% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.4); }
+        }
+
+        /* DocuSign-style yellow tag with arrow */
+        .ds-tag {
+            position: absolute;
+            top: -18px;
+            left: 0;
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: #1f2937;
+            font-weight: 700;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 100;
+        }
+        .ds-tag::after {
+            content: '';
+            position: absolute;
+            left: 12px;
+            bottom: -6px;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid #f59e0b;
+        }
+        .signature-field.signed .ds-tag {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        .signature-field.signed .ds-tag::after {
+            border-top-color: #059669;
+        }
+
+        /* Sticky Signing Header */
+        .signing-header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: 16px 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .signing-info {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+        .signing-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .title-icon {
+            font-size: 24px;
+        }
+        .progress-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .signing-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .sign-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sign-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+        }
+        .sign-btn-primary {
+            background: #10b981;
+            color: white;
+        }
+        .sign-btn-primary:hover {
+            background: #059669;
+        }
+        .sign-btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        .sign-btn-secondary:hover {
+            background: #4b5563;
+        }
+        .sign-btn-success {
+            background: #f59e0b;
+            color: #1f2937;
+        }
+        .sign-btn-success:hover {
+            background: #d97706;
+        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 font-sans antialiased">
+    
+    <!-- NEW: Signing Progress Header -->
+    <div class="signing-header">
+        <div class="signing-info">
+            <div class="signing-title">
+                <span class="title-icon">📝</span>
+                <span class="title-text">{{ $document->title ?? 'Document' }}</span>
+            </div>
+            <div class="signing-progress">
+                <span class="progress-badge">
+                    <span id="signed-count">0</span>/<span id="total-count">0</span> Signed
+                </span>
+            </div>
+        </div>
+        <div class="signing-actions">
+            <button id="start-signing" class="sign-btn sign-btn-primary">
+                <span>▶</span> Start Signing
+            </button>
+            <button id="next-field" class="sign-btn sign-btn-secondary" style="display:none;">
+                Next Field →
+            </button>
+            <button id="finish-signing" class="sign-btn sign-btn-success" style="display:none;">
+                ✓ Submit All Signatures
+            </button>
+        </div>
+    </div>
+    
     <div class="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
         <div class="max-w-4xl w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 sm:p-8">
             <!-- Header -->
@@ -219,7 +382,7 @@
                         <div class="relative">
                             <img
                                 id="pdf-image-{{ $i }}"
-                                src="{{ route('documents.page', ['id' => $document->id, 'page' => $i]) }}"
+                                src="{{ route('admin.documents.page', ['id' => $document->id, 'page' => $i]) }}"
                                 alt="Page {{ $i }}"
                                 class="w-full h-auto rounded-md shadow-sm"
                                 style="max-width: 100%; z-index: 1; pointer-events: none;"
@@ -228,16 +391,16 @@
                                 @if ($field->page_number == $i)
                                     <div
                                         id="signature-field-{{ $field->id }}"
-                                        class="signature-field absolute border-2 border-blue-500 bg-blue-100 bg-opacity-30 cursor-pointer"
+                                        class="signature-field absolute border-2 border-dashed cursor-pointer"
                                         data-x-percent="{{ $field->x_percent ?? 0 }}"
                                         data-y-percent="{{ $field->y_percent ?? 0 }}"
                                         data-w-percent="{{ $field->width_percent ?? 0 }}"
                                         data-h-percent="{{ $field->height_percent ?? 0 }}"
                                         data-page="{{ $i }}"
-                                        style="z-index: 50; pointer-events: auto;"
+                                        style="border-color: #ffcc00; background-color: rgba(255, 204, 0, 0.15); z-index: 50; pointer-events: auto;"
                                         onclick="activateSignatureField({{ $field->id }}, {{ $i }})"
                                     >
-                                        <div class="text-xs text-blue-600 text-center mt-2">Click to sign here</div>
+                                        <div class="ds-tag">✍️ Sign Here</div>
                                     </div>
                                 @endif
                             @endforeach
@@ -247,7 +410,7 @@
             </div>
 
             <!-- Signature Form -->
-            <form method="POST" action="{{ route('documents.submitSignatures', $document->id) }}">
+            <form method="POST" action="{{ route('admin.documents.submitSignatures', $document->id) }}">
                 @csrf
                 <input type="hidden" name="signer_id" value="{{ $signer->id }}">
                 @for ($i = 1; $i <= $pdfPages; $i++)
@@ -415,6 +578,7 @@
         }
 
         let currentActiveField = null;
+        window.currentActiveField = null; // Make it globally accessible
         let currentActivePage = null;
         let signaturePad = null;
         let savedSignatures = {};
@@ -491,21 +655,10 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            // Initialize signature pad
-            signaturePad = initializeSignaturePad();
-            
-            if (signaturePad) {
-                // Signature pad initialized successfully
-            } else if (useFallback) {
-                // Using fallback signature method
-            } else {
-                console.error('Failed to initialize signature pad');
-            }
-        });
 
         function activateSignatureField(fieldId, page) {
             currentActiveField = fieldId;
+            window.currentActiveField = fieldId; // Keep both in sync
             currentActivePage = page;
 
             // Show the modal
@@ -629,9 +782,9 @@
                 h_percent: hPercent,
                 page: currentActivePage
             };
-            fieldElement.innerHTML = '<div class="text-xs text-green-600 text-center mt-2">✓ Signed</div>';
-            fieldElement.classList.remove('border-blue-500', 'bg-blue-100');
-            fieldElement.classList.add('border-green-500', 'bg-green-100');
+            fieldElement.classList.add('signed');
+            const tag = fieldElement.querySelector('.ds-tag');
+            if (tag) tag.textContent = '✓ Signed';
             displaySignatureOnDocument(currentActiveField, signatureData, fieldElement);
             closeSignatureModal();
         }
@@ -668,9 +821,9 @@
                 h_percent: hPercent,
                 page: currentActivePage
             };
-            fieldElement.innerHTML = '<div class="text-xs text-green-600 text-center mt-2">✓ Signed</div>';
-            fieldElement.classList.remove('border-blue-500', 'bg-blue-100');
-            fieldElement.classList.add('border-green-500', 'bg-green-100');
+            fieldElement.classList.add('signed');
+            const tag = fieldElement.querySelector('.ds-tag');
+            if (tag) tag.textContent = '✓ Signed';
             displaySignatureOnDocument(currentActiveField, userSavedSignatureData, fieldElement);
             closeSignatureModal();
         }
@@ -785,21 +938,6 @@
             });
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            for (let i = 1; i <= {{ $pdfPages }}; i++) {
-                const img = document.getElementById('pdf-image-' + i);
-                if (img) {
-                    img.onload = () => positionSignatureFields(i);
-                    // If image is already loaded (from cache)
-                    if (img.complete) positionSignatureFields(i);
-                }
-            }
-            window.addEventListener('resize', function () {
-                for (let i = 1; i <= {{ $pdfPages }}; i++) {
-                    positionSignatureFields(i);
-                }
-            });
-        });
 
         // Page navigation functions
         function scrollToPage(pageNumber) {
@@ -839,6 +977,123 @@
             
             // Continue with existing form submission logic...
         });
+
+        // Guided Signing Workflow
+        let allSignatureFields = [];
+        let signedFields = new Set();
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize signature pad
+            signaturePad = initializeSignaturePad();
+            
+            if (signaturePad) {
+                // Signature pad initialized successfully
+            } else if (useFallback) {
+                // Using fallback signature method
+            } else {
+                console.error('Failed to initialize signature pad');
+            }
+
+            // Initialize signature field positioning
+            for (let i = 1; i <= {{ $pdfPages }}; i++) {
+                const img = document.getElementById('pdf-image-' + i);
+                if (img) {
+                    img.onload = () => positionSignatureFields(i);
+                    // If image is already loaded (from cache)
+                    if (img.complete) positionSignatureFields(i);
+                }
+            }
+            window.addEventListener('resize', function () {
+                for (let i = 1; i <= {{ $pdfPages }}; i++) {
+                    positionSignatureFields(i);
+                }
+            });
+
+            // Initialize guided signing workflow
+            allSignatureFields = Array.from(document.querySelectorAll('.signature-field')).map(el => ({
+                element: el,
+                id: el.id.replace('signature-field-', ''),
+                page: parseInt(el.getAttribute('data-page'))
+            }));
+            
+            document.getElementById('total-count').textContent = allSignatureFields.length;
+            
+            // Button handlers
+            document.getElementById('start-signing').addEventListener('click', startGuidedSigning);
+            document.getElementById('next-field').addEventListener('click', goToNextUnsigned);
+            document.getElementById('finish-signing').addEventListener('click', submitAllSignatures);
+        });
+
+        function startGuidedSigning() {
+            document.getElementById('start-signing').style.display = 'none';
+            document.getElementById('next-field').style.display = 'flex';
+            goToNextUnsigned();
+        }
+
+        function goToNextUnsigned() {
+            const nextField = allSignatureFields.find(f => !signedFields.has(f.id));
+            if (!nextField) {
+                alert('All fields signed! Ready to submit.');
+                return;
+            }
+            
+            // Scroll to page
+            scrollToPage(nextField.page);
+            
+            // Highlight and open
+            setTimeout(() => {
+                nextField.element.classList.add('active-highlight');
+                setTimeout(() => nextField.element.classList.remove('active-highlight'), 3000);
+                nextField.element.click();
+            }, 300);
+        }
+
+        function markFieldAsSigned(fieldId) {
+            signedFields.add(fieldId);
+            updateProgress();
+            
+            // Update visual
+            const field = document.getElementById('signature-field-' + fieldId);
+            if (field) {
+                field.classList.add('signed');
+                const tag = field.querySelector('.ds-tag');
+                if (tag) tag.textContent = '✓ Signed';
+            }
+        }
+
+        function updateProgress() {
+            document.getElementById('signed-count').textContent = signedFields.size;
+            
+            // Show finish button when all signed
+            if (signedFields.size >= allSignatureFields.length) {
+                document.getElementById('next-field').style.display = 'none';
+                document.getElementById('finish-signing').style.display = 'flex';
+            }
+        }
+
+        function submitAllSignatures() {
+            if (signedFields.size < allSignatureFields.length) {
+                alert(`Please sign all fields.\n${signedFields.size} of ${allSignatureFields.length} signed.`);
+                return;
+            }
+            
+            // Trigger form submission
+            populateHiddenFields();
+            document.querySelector('form[action*="submitSignatures"]').submit();
+        }
+
+        // Hook into existing saveSignature
+        const originalSaveSignature = window.saveSignature;
+        window.saveSignature = function() {
+            originalSaveSignature.apply(this, arguments);
+            
+            if (window.currentActiveField) {
+                markFieldAsSigned(window.currentActiveField);
+                
+                // Auto-advance after 800ms
+                setTimeout(goToNextUnsigned, 800);
+            }
+        };
     </script>
 </body>
 </html>

@@ -97,6 +97,57 @@
         background: #e8ecff;
     }
     
+    .document-info-card {
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        background-color: #f8f9fa;
+        margin-bottom: 15px;
+    }
+    
+    .document-info {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .document-info i {
+        font-size: 24px;
+        color: #dc3545;
+    }
+    
+    .document-details h4 {
+        margin: 0 0 8px 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    .document-meta {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        font-size: 14px;
+        color: #6c757d;
+    }
+    
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .status-signature-placed {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+    
+    .upload-date {
+        font-style: italic;
+    }
+    
     .file-upload-icon {
         font-size: 48px;
         color: #667eea;
@@ -376,19 +427,36 @@
                 </h3>
                 
                 <div class="form-group">
-                    <label for="file">Upload Document <span style="color: #dc3545;">*</span></label>
-                    <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('file').click()">
-                        <div class="file-upload-icon">
-                            <i class="fas fa-cloud-upload-alt"></i>
+                    @if(isset($document) && $document)
+                        <label>Document</label>
+                        <div class="document-info-card">
+                            <div class="document-info">
+                                <i class="fas fa-file-pdf"></i>
+                                <div class="document-details">
+                                    <h4>{{ $document->title ?: $document->file_name }}</h4>
+                                    <p class="document-meta">
+                                        <span class="status-badge status-signature-placed">Signature Placed</span>
+                                        <span class="upload-date">Uploaded: {{ $document->created_at->format('M d, Y H:i') }}</span>
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                        <h4>Click to upload or drag and drop</h4>
-                        <p class="form-help-text">PDF, DOC, DOCX up to 10MB</p>
-                    </div>
-                    <input type="file" id="file" name="file" accept=".pdf,.doc,.docx" required style="display: none;">
-                    <div id="fileSelected" class="file-selected" style="display: none;">
-                        <span><i class="fas fa-check-circle"></i> <span id="fileName"></span></span>
-                        <button type="button" class="btn-remove-file" onclick="removeFile()">Remove</button>
-                    </div>
+                        <input type="hidden" name="document_id" value="{{ $document->id }}">
+                    @else
+                        <label for="file">Upload Document <span style="color: #dc3545;">*</span></label>
+                        <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('file').click()">
+                            <div class="file-upload-icon">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <h4>Click to upload or drag and drop</h4>
+                            <p class="form-help-text">PDF, DOC, DOCX up to 10MB</p>
+                        </div>
+                        <input type="file" id="file" name="file" accept=".pdf,.doc,.docx" required style="display: none;">
+                        <div id="fileSelected" class="file-selected" style="display: none;">
+                            <span><i class="fas fa-check-circle"></i> <span id="fileName"></span></span>
+                            <button type="button" class="btn-remove-file" onclick="removeFile()">Remove</button>
+                        </div>
+                    @endif
                 </div>
                 
                 <div class="form-group" style="margin-top: 20px;">

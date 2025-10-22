@@ -334,6 +334,9 @@ class DocumentController extends Controller
 
             $document = auth('admin')->user()->documents()->create([
                 'title' => $sanitizedTitle,
+                'status' => 'draft',
+                'created_by' => auth('admin')->id(),
+                'origin' => 'ad_hoc',
             ]);
 
             // Verify the uploaded file is a valid PDF
@@ -367,15 +370,34 @@ class DocumentController extends Controller
                 \Log::warning('Ghostscript normalization failed, using original PDF', ['path' => $tempFullPath]);
             }
 
-            // Add the (possibly normalized) PDF to media collection
-            \Log::info('About to add PDF to media library', ['pdfToAdd' => $pdfToAdd, 'exists' => file_exists($pdfToAdd)]);
-            $media = $document->addMedia($pdfToAdd)->toMediaCollection('documents');
-            \Log::info('Added PDF to media library', ['media_id' => $media->id ?? null, 'pdfToAdd' => $pdfToAdd, 'exists_after' => file_exists($pdfToAdd)]);
-            // If you want to keep the original file, you can use ->preserveOriginal() before toMediaCollection()
-            // $document->addMedia($pdfToAdd)->preserveOriginal()->toMediaCollection('documents');
+            // Store the file permanently and update document with file info
+            $permanentPath = 'documents/' . uniqid() . '_' . $uploadedFile->getClientOriginalName();
+            $permanentFullPath = storage_path('app/public/' . $permanentPath);
+            
+            // Ensure the documents directory exists
+            $documentsDir = storage_path('app/public/documents');
+            if (!file_exists($documentsDir)) {
+                mkdir($documentsDir, 0777, true);
+            }
+            
+            // Copy the file to permanent location
+            copy($pdfToAdd, $permanentFullPath);
+            
+            // Update document with file information
+            $document->update([
+                'file_name' => $uploadedFile->getClientOriginalName(),
+                'filetype' => $uploadedFile->getMimeType(),
+                'myfile' => $permanentPath,
+                'file_size' => $uploadedFile->getSize(),
+            ]);
+            
+            \Log::info('Document file stored successfully', [
+                'document_id' => $document->id,
+                'file_path' => $permanentPath,
+                'file_size' => $uploadedFile->getSize()
+            ]);
 
-            // Clean up temp files (after confirming addMedia)
-            \Log::info('About to delete temp files', ['tempFullPath' => $tempFullPath, 'exists' => file_exists($tempFullPath), 'normalizedPath' => $normalizedPath, 'normalized_exists' => file_exists($normalizedPath)]);
+            // Clean up temp files
             @unlink($tempFullPath);
             if (file_exists($normalizedPath)) {
                 @unlink($normalizedPath);
@@ -387,7 +409,7 @@ class DocumentController extends Controller
                 'filename' => $uploadedFile->getClientOriginalName()
             ]);
 
-            return redirect()->route('admin.documents.index')->with('success', 'Document uploaded successfully!');
+            return redirect()->route('admin.documents.edit', $document->id)->with('success', 'Document uploaded successfully! Please place signature fields.');
         } catch (\Exception $e) {
             return $this->handleError(
                 $e,
@@ -422,56 +444,132 @@ class DocumentController extends Controller
         }
 
         try {
-            $document = \App\Models\Document::findOrFail($documentId); //dd($document);
+            $document = \App\Models\Document::findOrFail($documentId);
             $url = $document->myfile;
             $pdfPath = null;
-            $s3Key = null;
+            $tmpPdfPath = null;
+            $isLocalFile = false;
+            
+            // Initialize default values
+            $pdfPages = 1;
+            $pdfWidthMM = 210;
+            $pdfHeightMM = 297;
+            $pagesDimensions = [];
 
-            // Try to extract S3 key from URL if possible
-            if ($url) {
+            // Check if URL is a full S3 URL or local path
+            if ($url && filter_var($url, FILTER_VALIDATE_URL) && strpos($url, 's3') !== false) {
+                // This is an S3 URL - extract the key
+                $s3Key = null; // Initialize here
                 $parsed = parse_url($url);
                 if (isset($parsed['path'])) {
-                    $pdfPath = ltrim(urldecode($parsed['path']), '/');
+                    $s3Key = ltrim(urldecode($parsed['path']), '/');
+                }
+                
+                if (!$s3Key || !\Storage::disk('s3')->exists($s3Key)) {
+                    \Log::error('PDF file not found in S3 for document: ' . $documentId, [
+                        'url' => $url,
+                        's3Key' => $s3Key,
+                        's3_exists' => $s3Key ? \Storage::disk('s3')->exists($s3Key) : 'no_path'
+                    ]);
+                    return redirect()->route('admin.documents.index')->with('error', 'Document file not found.');
+                }
+
+                // Download PDF from S3 to a temp file
+                $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
+                $pdfStream = \Storage::disk('s3')->get($s3Key);
+                file_put_contents($tmpPdfPath, $pdfStream);
+                \Log::info('Downloaded S3 file for document edit', ['s3Key' => $s3Key, 'tempPath' => $tmpPdfPath]);
+            } elseif ($url && file_exists(storage_path('app/public/' . $url))) {
+                // This is a local file path and file exists
+                $tmpPdfPath = storage_path('app/public/' . $url);
+                $isLocalFile = true;
+                \Log::info('Using local file for document edit', [
+                    'path' => $tmpPdfPath,
+                    'exists' => file_exists($tmpPdfPath),
+                    'readable' => is_readable($tmpPdfPath),
+                    'size' => file_exists($tmpPdfPath) ? filesize($tmpPdfPath) : 0
+                ]);
+            } else {
+                // Try to build S3 key from DB fields as fallback
+                if (!empty($document->myfile_key) && !empty($document->doc_type) && !empty($document->client_id)) {
+                    $admin = \DB::table('admins')->select('client_id')->where('id', $document->client_id)->first();
+                    if ($admin && $admin->client_id) {
+                        $s3Key = $admin->client_id . '/' . $document->doc_type . '/' . $document->myfile_key;
+                        
+                        if (\Storage::disk('s3')->exists($s3Key)) {
+                            // Download PDF from S3 to a temp file
+                            $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
+                            $pdfStream = \Storage::disk('s3')->get($s3Key);
+                            file_put_contents($tmpPdfPath, $pdfStream);
+                            \Log::info('Downloaded S3 file via fallback for document edit', ['s3Key' => $s3Key, 'tempPath' => $tmpPdfPath]);
+                        } else {
+                            \Log::error('PDF file not found in S3 fallback for document: ' . $documentId, [
+                                'url' => $url,
+                                's3Key' => $s3Key,
+                                'myfile_key' => $document->myfile_key,
+                                'doc_type' => $document->doc_type,
+                                'client_id' => $document->client_id,
+                                'local_exists' => $url ? file_exists(storage_path('app/public/' . $url)) : false
+                            ]);
+                            return redirect()->route('admin.documents.index')->with('error', 'Document file not found.');
+                        }
+                    } else {
+                        \Log::error('PDF file not found - no valid storage method for document: ' . $documentId, [
+                            'url' => $url,
+                            'myfile_key' => $document->myfile_key,
+                            'doc_type' => $document->doc_type,
+                            'client_id' => $document->client_id,
+                            'local_exists' => $url ? file_exists(storage_path('app/public/' . $url)) : false
+                        ]);
+                        return redirect()->route('admin.documents.index')->with('error', 'Document file not found.');
+                    }
+                } else {
+                    \Log::error('PDF file not found - no storage information for document: ' . $documentId, [
+                        'url' => $url,
+                        'myfile_key' => $document->myfile_key,
+                        'doc_type' => $document->doc_type,
+                        'client_id' => $document->client_id,
+                        'local_exists' => $url ? file_exists(storage_path('app/public/' . $url)) : false
+                    ]);
+                    return redirect()->route('admin.documents.index')->with('error', 'Document file not found.');
                 }
             }
 
-            // If myfile_key is set, try to build S3 key from DB fields
-            if (empty($pdfPath) && !empty($document->myfile_key) && !empty($document->doc_type) && !empty($document->client_id)) {
-                $admin = \DB::table('admins')->select('client_id')->where('id', $document->client_id)->first();
-                if ($admin && $admin->client_id) {
-                    $pdfPath = $admin->client_id . '/' . $document->doc_type . '/' . $document->myfile_key;
-                }
+            // Process PDF pages and dimensions
+            try { 
+                $pdfPages = $this->countPdfPages($tmpPdfPath);
+                if (!$pdfPages || $pdfPages < 1) {
+                   \Log::error('Failed to count PDF pages for document: ' . $documentId, [
+                       'tmpPdfPath' => $tmpPdfPath,
+                       'file_exists' => file_exists($tmpPdfPath),
+                       'file_size' => file_exists($tmpPdfPath) ? filesize($tmpPdfPath) : 'N/A',
+                       'is_readable' => is_readable($tmpPdfPath)
+                   ]);
+                   // Don't fail - use default values instead
+                   $pdfPages = 1;  
+                   $pagesDimensions = [1 => ['width' => 210, 'height' => 297, 'orientation' => 'P']];
+                   \Log::warning('Using default PDF dimensions due to counting failure');
+               } else {
+                   // Get page dimensions
+                   $pagesDimensions = $this->getPdfPageDimensions($tmpPdfPath, $pdfPages);
+
+                   // Set default dimensions from first page or use A4 defaults
+                   $pdfWidthMM = $pagesDimensions[1]['width'] ?? 210;
+                   $pdfHeightMM = $pagesDimensions[1]['height'] ?? 297;
+               }
+            } catch (\Exception $e) {
+                \Log::error('Error getting PDF pages or size: ' . $e->getMessage());
+                // Use defaults on error
+                $pdfPages = 1;
+                $pagesDimensions = [1 => ['width' => 210, 'height' => 297, 'orientation' => 'P']];
+                $pdfWidthMM = 210;
+                $pdfHeightMM = 297;
             }
-            
-            // Check if PDF file exists
-            if (!$pdfPath || ! \Storage::disk('s3')->exists($pdfPath)) {
-                \Log::error('PDF file not found for document: ' . $documentId);
-                return redirect()->route('admin.documents.index')->with('error', 'Document file not found.');
-            } 
 
-             // Download PDF from S3 to a temp file
-             $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
-             $pdfStream = \Storage::disk('s3')->get($pdfPath);
-             file_put_contents($tmpPdfPath, $pdfStream);
-
-             try { 
-                 $pdfPages = $this->countPdfPages($tmpPdfPath);
-                 if (!$pdfPages || $pdfPages < 1) {
-                    \Log::error('Failed to count PDF pages for document: ' . $documentId);
-                    return redirect()->route('admin.documents.index')->with('error', 'Failed to read PDF file.');
-                }
-                // Get page dimensions
-                 $pagesDimensions = $this->getPdfPageDimensions($tmpPdfPath, $pdfPages);
-
-                 // Set default dimensions from first page or use A4 defaults
-                $pdfWidthMM = $pagesDimensions[1]['width'] ?? 210;
-                $pdfHeightMM = $pagesDimensions[1]['height'] ?? 297;
-             } catch (\Exception $e) {
-                 \Log::error('Error getting PDF pages or size: ' . $e->getMessage());
-             }
-
-             // Clean up temp file
-             @unlink($tmpPdfPath);
+            // Clean up temp file (only if it was created from S3, not local file)
+            if ($tmpPdfPath && !$isLocalFile) {
+                @unlink($tmpPdfPath);
+            }
             // Count PDF pages using multiple methods for better compatibility
             /*$pdfPages = $this->countPdfPages($pdfPath);
             if (!$pdfPages || $pdfPages < 1) {
@@ -632,7 +730,45 @@ class DocumentController extends Controller
                 'user_id' => auth('admin')->id()
             ]);
 
-            return redirect()->route('admin.documents.index', ['id' => $document->id])->with('success', 'Signature locations added successfully!');
+            // Check if there's pending signer information from document upload
+            $pendingSigner = session('pending_document_signer');
+            if ($pendingSigner && isset($pendingSigner['email']) && isset($pendingSigner['name'])) {
+                // Send document for signature using service
+                $signatureService = app(\App\Services\SignatureService::class);
+                $signers = [
+                    ['email' => $pendingSigner['email'], 'name' => $pendingSigner['name']]
+                ];
+                
+                // Prepare email options
+                $emailOptions = [
+                    'subject' => $pendingSigner['email_subject'] ?? 'Document Signature Request from Bansal Migration',
+                    'message' => $pendingSigner['email_message'] ?? 'Please review and sign the attached document.',
+                    'template' => $pendingSigner['email_template'] ?? 'emails.signature.send',
+                ];
+                
+                // Add from_email if specified
+                if (!empty($pendingSigner['from_email'])) {
+                    $emailOptions['from_email'] = $pendingSigner['from_email'];
+                }
+                
+                $success = $signatureService->send($document, $signers, $emailOptions);
+                
+                // Clear the session data
+                session()->forget('pending_document_signer');
+                
+                if ($success) {
+                    return redirect()->route('admin.signatures.index')
+                        ->with('success', 'Signature fields placed and document sent for signature successfully!');
+                } else {
+                    return redirect()->route('admin.signatures.index')
+                        ->with('warning', 'Signature fields saved but email failed to send. Please try resending from the document details.');
+                }
+            }
+
+            // Update document status to indicate signatures have been placed
+            $document->update(['status' => 'signature_placed']);
+            
+            return redirect()->route('admin.documents.index')->with('success', 'Signature locations added successfully! Document is ready for signing.');
         } catch (\Exception $e) {
             return $this->handleError(
                 $e,
@@ -899,11 +1035,49 @@ class DocumentController extends Controller
             }
 
             $signatureFields = $document->signatureFields()->get();
-            $pdfPath = $document->getFirstMediaPath('documents');
+            
+            // Check if URL is a full S3 URL or local path
+            $url = $document->myfile;
+            $pdfPath = null;
+            
+            if ($url && filter_var($url, FILTER_VALIDATE_URL) && strpos($url, 's3') !== false) {
+                // This is an S3 URL - extract the key
+                $s3Key = null; // Initialize here
+                $parsed = parse_url($url);
+                if (isset($parsed['path'])) {
+                    $s3Key = ltrim(urldecode($parsed['path']), '/');
+                }
+                
+                if (!$s3Key || !\Storage::disk('s3')->exists($s3Key)) {
+                    \Log::error('PDF file not found in S3 for document: ' . $id, [
+                        'url' => $url,
+                        's3Key' => $s3Key,
+                        's3_exists' => $s3Key ? \Storage::disk('s3')->exists($s3Key) : 'no_path'
+                    ]);
+                    return redirect('/')->with('error', 'Document file not found.');
+                }
 
-            if (!$pdfPath || !file_exists($pdfPath)) {
-                \Log::error('PDF file not found for document: ' . $id);
-                return redirect('/')->with('error', 'Document file not found.');
+                // Download PDF from S3 to a temp file
+                $pdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
+                $pdfStream = \Storage::disk('s3')->get($s3Key);
+                file_put_contents($pdfPath, $pdfStream);
+                \Log::info('Downloaded S3 file for document sign form', ['s3Key' => $s3Key, 'tempPath' => $pdfPath]);
+            } elseif ($url && file_exists(storage_path('app/public/' . $url))) {
+                // This is a local file path and file exists
+                $pdfPath = storage_path('app/public/' . $url);
+                \Log::info('Using local file for document sign form', ['path' => $pdfPath]);
+            } else {
+                // Try to get from media library (legacy support)
+                $pdfPath = $document->getFirstMediaPath('documents');
+                
+                if (!$pdfPath || !file_exists($pdfPath)) {
+                    \Log::error('PDF file not found for document: ' . $id, [
+                        'url' => $url,
+                        'local_exists' => $url ? file_exists(storage_path('app/public/' . $url)) : false,
+                        'media_path' => $pdfPath
+                    ]);
+                    return redirect('/')->with('error', 'Document file not found.');
+                }
             }
 
             // Use the improved PDF page counting method
@@ -911,6 +1085,10 @@ class DocumentController extends Controller
 
             return view('Admin.documents.sign', compact('document', 'signer', 'signatureFields', 'pdfPages'));
         } catch (\Exception $e) {
+            // Clean up temp file if it was downloaded from S3
+            if (isset($pdfPath) && strpos($pdfPath, 'tmp_') !== false) {
+                @unlink($pdfPath);
+            }
             return $this->handleError(
                 $e,
                 'show_sign_form',
@@ -923,39 +1101,111 @@ class DocumentController extends Controller
 
     public function getPage($id, $page)
     {
+        // ADD Python PDF Service integration
+        $pdfService = app(\App\Services\PythonPDFService::class);
+        
         try {
             $document = Document::findOrFail($id);
-            //$pdfPath = $document->getFirstMediaPath('documents');
-             $url = $document->myfile;
+            $url = $document->myfile;
             $pdfPath = null;
+            $tmpPdfPath = null;
+            $isLocalFile = false;
 
-            // Try to extract S3 key from URL if possible
-            if ($url) {
+            // Check if URL is a full S3 URL or local path
+            if ($url && filter_var($url, FILTER_VALIDATE_URL) && strpos($url, 's3') !== false) {
+                // This is an S3 URL - extract the key
+                $s3Key = null; // Initialize here
                 $parsed = parse_url($url);
                 if (isset($parsed['path'])) {
-                    $pdfPath = ltrim(urldecode($parsed['path']), '/');
+                    $s3Key = ltrim(urldecode($parsed['path']), '/');
+                }
+                
+                if (!$s3Key || !\Storage::disk('s3')->exists($s3Key)) {
+                    \Log::error('PDF file not found in S3 for document: ' . $id, [
+                        'document_id' => $id,
+                        's3Key' => $s3Key,
+                        'myfile' => $url,
+                        's3_exists' => $s3Key ? \Storage::disk('s3')->exists($s3Key) : 'no_path'
+                    ]);
+                    abort(404, 'Document file not found');
+                }
+
+                // Download PDF from S3 to a temp file
+                $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
+                $pdfStream = \Storage::disk('s3')->get($s3Key);
+                file_put_contents($tmpPdfPath, $pdfStream);
+                \Log::info('Downloaded S3 file for document page', ['s3Key' => $s3Key, 'tempPath' => $tmpPdfPath]);
+            } elseif ($url && file_exists(storage_path('app/public/' . $url))) {
+                // This is a local file path and file exists
+                $tmpPdfPath = storage_path('app/public/' . $url);
+                $isLocalFile = true;
+                \Log::info('Using local file for document page', ['path' => $tmpPdfPath]);
+            } else {
+                // Try to build S3 key from DB fields as fallback
+                if (!empty($document->myfile_key) && !empty($document->doc_type) && !empty($document->client_id)) {
+                    $admin = \DB::table('admins')->select('client_id')->where('id', $document->client_id)->first();
+                    if ($admin && $admin->client_id) {
+                        $s3Key = $admin->client_id . '/' . $document->doc_type . '/' . $document->myfile_key;
+                        
+                        if (\Storage::disk('s3')->exists($s3Key)) {
+                            // Download PDF from S3 to a temp file
+                            $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
+                            $pdfStream = \Storage::disk('s3')->get($s3Key);
+                            file_put_contents($tmpPdfPath, $pdfStream);
+                            \Log::info('Downloaded S3 file via fallback for document page', ['s3Key' => $s3Key, 'tempPath' => $tmpPdfPath]);
+                        } else {
+                            \Log::error('PDF file not found in S3 fallback for document: ' . $id, [
+                                'document_id' => $id,
+                                's3Key' => $s3Key,
+                                'myfile' => $url,
+                                'myfile_key' => $document->myfile_key,
+                                'doc_type' => $document->doc_type,
+                                'client_id' => $document->client_id,
+                                'local_exists' => $url ? file_exists(storage_path('app/public/' . $url)) : false
+                            ]);
+                            abort(404, 'Document file not found');
+                        }
+                    } else {
+                        \Log::error('PDF file not found - no valid storage method for document: ' . $id, [
+                            'document_id' => $id,
+                            'myfile' => $url,
+                            'myfile_key' => $document->myfile_key,
+                            'doc_type' => $document->doc_type,
+                            'client_id' => $document->client_id,
+                            'local_exists' => $url ? file_exists(storage_path('app/public/' . $url)) : false
+                        ]);
+                        abort(404, 'Document file not found');
+                    }
+                } else {
+                    \Log::error('PDF file not found - no storage information for document: ' . $id, [
+                        'document_id' => $id,
+                        'myfile' => $url,
+                        'myfile_key' => $document->myfile_key,
+                        'doc_type' => $document->doc_type,
+                        'client_id' => $document->client_id,
+                        'local_exists' => $url ? file_exists(storage_path('app/public/' . $url)) : false
+                    ]);
+                    abort(404, 'Document file not found');
                 }
             }
 
-            // If myfile_key is set, try to build S3 key from DB fields
-            if (empty($pdfPath) && !empty($document->myfile_key) && !empty($document->doc_type) && !empty($document->client_id)) {
-                $admin = \DB::table('admins')->select('client_id')->where('id', $document->client_id)->first();
-                if ($admin && $admin->client_id) {
-                    $pdfPath = $admin->client_id . '/' . $document->doc_type . '/' . $document->myfile_key;
+            // TRY PYTHON SERVICE FIRST
+            if ($pdfService->isHealthy()) {
+                $result = $pdfService->convertPageToImage($tmpPdfPath, $page, 150);
+                
+                if ($result && ($result['success'] ?? false)) {
+                    // Clean up temp file (only if it was created from S3, not local file)
+                    if ($tmpPdfPath && !$isLocalFile) {
+                        @unlink($tmpPdfPath);
+                    }
+                    
+                    // Decode base64 and return
+                    $imageData = base64_decode(explode(',', $result['image_data'])[1]);
+                    return response($imageData)->header('Content-Type', 'image/png');
                 }
             }
 
-            if (!$pdfPath || !\Storage::disk('s3')->exists($pdfPath)) {
-                \Log::error('PDF file not found for document: ' . $id);
-                abort(404, 'Document file not found');
-            }
-
-
-            // Download PDF from S3 to a temp file
-            $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
-            $pdfStream = \Storage::disk('s3')->get($pdfPath);
-            file_put_contents($tmpPdfPath, $pdfStream);
-
+            // FALLBACK: Continue with existing PHP method
             $imagePath = storage_path('app/public/page_' . $id . '_' . $page . '.jpg');
 
             try {
@@ -964,8 +1214,10 @@ class DocumentController extends Controller
                     ->resolution(72)  // Set to 72 DPI to match PDF positioning standards (prevents scaling shifts)
                     ->save($imagePath);
 
-                // Clean up temp file
-                @unlink($tmpPdfPath);
+                // Clean up temp file (only if it was created from S3, not local file)
+                if ($tmpPdfPath && !$isLocalFile) {
+                    @unlink($tmpPdfPath);
+                }
 
                 if (!file_exists($imagePath)) {
                     throw new \Exception('Failed to generate page image');
@@ -1580,33 +1832,40 @@ class DocumentController extends Controller
             }
 
             $signatureFields = $document->signatureFields()->get();
-            //$pdfPath = $document->getFirstMediaPath('documents');
-            // Use the same S3 logic as in edit/getPage for PDF path
+            
+            // Check if file exists locally first (for newly uploaded documents)
             $url = $document->myfile;
             $pdfPath = null;
-            if ($url) {
-                $parsed = parse_url($url);
-                if (isset($parsed['path'])) {
-                    $pdfPath = ltrim(urldecode($parsed['path']), '/');
-                }
-            }
-
-            if (empty($pdfPath) && !empty($document->myfile_key) && !empty($document->doc_type) && !empty($document->client_id)) {
-                $admin = \DB::table('admins')->select('client_id')->where('id', $document->client_id)->first();
-                if ($admin && $admin->client_id) {
-                    $pdfPath = $admin->client_id . '/' . $document->doc_type . '/' . $document->myfile_key;
-                }
-            }
-
-            // Use the improved PDF page counting method
-            //$pdfPages = $this->countPdfPages($pdfPath);
             $pdfPages = 1;
-            if ($pdfPath && \Storage::disk('s3')->exists($pdfPath)) {
-                $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
-                $pdfStream = \Storage::disk('s3')->get($pdfPath);
-                file_put_contents($tmpPdfPath, $pdfStream);
-                $pdfPages = $this->countPdfPages($tmpPdfPath) ?: 1;
-                @unlink($tmpPdfPath);
+            
+            if ($url && file_exists(storage_path('app/public/' . $url))) {
+                $pdfPath = storage_path('app/public/' . $url);
+                $pdfPages = $this->countPdfPages($pdfPath) ?: 1;
+                \Log::info('Using local file for document sign', ['path' => $pdfPath, 'pages' => $pdfPages]);
+            } else {
+                // Try to extract S3 key from URL if possible
+                if ($url) {
+                    $parsed = parse_url($url);
+                    if (isset($parsed['path'])) {
+                        $pdfPath = ltrim(urldecode($parsed['path']), '/');
+                    }
+                }
+
+                if (empty($pdfPath) && !empty($document->myfile_key) && !empty($document->doc_type) && !empty($document->client_id)) {
+                    $admin = \DB::table('admins')->select('client_id')->where('id', $document->client_id)->first();
+                    if ($admin && $admin->client_id) {
+                        $pdfPath = $admin->client_id . '/' . $document->doc_type . '/' . $document->myfile_key;
+                    }
+                }
+
+                // Use the improved PDF page counting method
+                if ($pdfPath && \Storage::disk('s3')->exists($pdfPath)) {
+                    $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
+                    $pdfStream = \Storage::disk('s3')->get($pdfPath);
+                    file_put_contents($tmpPdfPath, $pdfStream);
+                    $pdfPages = $this->countPdfPages($tmpPdfPath) ?: 1;
+                    @unlink($tmpPdfPath);
+                }
             }
 
             return view('Admin.documents.sign', compact('document', 'signer', 'signatureFields', 'pdfPages'));

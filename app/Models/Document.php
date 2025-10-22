@@ -181,6 +181,7 @@ class Document extends Model
     {
         return match($this->status) {
             'draft' => 'secondary',
+            'signature_placed' => 'info',
             'sent' => 'warning', 
             'signed' => 'success',
             default => 'secondary'

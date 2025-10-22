@@ -354,7 +354,7 @@
                 <a href="{{ route('admin.signatures.export', ['format' => 'csv']) }}" class="btn btn-success">
                     <i class="fas fa-download"></i> Export CSV
                 </a>
-                <a href="{{ route('admin.signatures.create') }}" class="btn-primary-custom">
+                <a href="{{ route('admin.documents.create') }}" class="btn-primary-custom">
                     <i class="fas fa-plus"></i> Send New Document
                 </a>
             </div>
@@ -622,7 +622,7 @@
                 <i class="fas fa-inbox"></i>
                 <h3>No documents found</h3>
                 <p>Start by sending a new document for signature</p>
-                <a href="{{ route('admin.signatures.create') }}" class="btn-primary-custom" style="margin-top: 20px;">
+                <a href="{{ route('admin.documents.create') }}" class="btn-primary-custom" style="margin-top: 20px;">
                     <i class="fas fa-plus"></i> Send New Document
                 </a>
             </div>
@@ -761,8 +761,14 @@ function clearSelection() {
 }
 
 // Association Modal
-const clients = @json(\App\Models\Admin::where('role', '!=', 7)->get(['id', 'first_name', 'last_name', 'email']));
-const leads = @json(\App\Models\Lead::get(['id', 'first_name', 'last_name', 'email']));
+@php
+    $clients = \App\Models\Admin::where('role', '!=', 7)->get(['id', 'first_name', 'last_name', 'email']);
+@endphp
+const clients = @json($clients);
+@php
+    $leads = \App\Models\Lead::get(['id', 'first_name', 'last_name', 'email']);
+@endphp
+const leads = @json($leads);
 
 let currentDocId = null;
 

@@ -145,4 +145,12 @@ class Admin extends Authenticatable
     {
         return $this->hasMany(\App\Models\LeadFollowup::class, 'assigned_to');
     }
+
+    /**
+     * Get the documents created by this admin.
+     */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(\App\Models\Document::class, 'created_by');
+    }
 }

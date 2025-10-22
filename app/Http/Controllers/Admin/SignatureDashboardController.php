@@ -95,7 +95,7 @@ class SignatureDashboardController extends Controller
         return view('Admin.signatures.dashboard', compact('documents', 'counts', 'user', 'errors'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $user = Auth::guard('admin')->user();
         
@@ -112,10 +112,20 @@ class SignatureDashboardController extends Controller
             ->orderBy('email')
             ->get();
 
+        // Check if we're sending an existing document for signing
+        $document = null;
+        if ($request->has('document_id')) {
+            $document = Document::findOrFail($request->document_id);
+            // Verify the document has signatures placed
+            if ($document->status !== 'signature_placed') {
+                return redirect()->route('admin.documents.index')->with('error', 'Document must have signatures placed before sending for signing.');
+            }
+        }
+
         // Provide errors variable for the layout
         $errors = request()->session()->get('errors') ?? new \Illuminate\Support\MessageBag();
 
-        return view('Admin.signatures.create', compact('clients', 'leads', 'emailAccounts', 'user', 'errors'));
+        return view('Admin.signatures.create', compact('clients', 'leads', 'emailAccounts', 'user', 'errors', 'document'));
     }
 
     public function store(Request $request)
@@ -123,44 +133,57 @@ class SignatureDashboardController extends Controller
         // Check authorization
         $this->authorize('create', Document::class);
         
-        $request->validate([
-            'file' => 'required|file|mimes:pdf,doc,docx|max:10240',
-            'title' => 'nullable|string|max:255',
-            'signer_email' => 'required|email',
-            'signer_name' => 'required|string|min:2|max:100',
-            'document_type' => 'nullable|string|in:agreement,nda,general,contract',
-            'priority' => 'nullable|string|in:low,normal,high',
-            'due_at' => 'nullable|date|after:now',
-            'association_type' => 'nullable|string|in:client,lead',
-            'association_id' => 'nullable|integer',
-            'client_matter_id' => 'nullable|integer',
-        ]);
+        // Check if we're using an existing document
+        if ($request->has('document_id')) {
+            $request->validate([
+                'document_id' => 'required|integer|exists:documents,id',
+                'signer_email' => 'required|email',
+                'signer_name' => 'required|string|min:2|max:100',
+                'document_type' => 'nullable|string|in:agreement,nda,general,contract',
+                'priority' => 'nullable|string|in:low,normal,high',
+                'due_at' => 'nullable|date|after:now',
+                'association_type' => 'nullable|string|in:client,lead',
+                'association_id' => 'nullable|integer',
+                'client_matter_id' => 'nullable|integer',
+            ]);
+            
+            $document = Document::findOrFail($request->document_id);
+            
+            // Verify the document has signatures placed
+            if ($document->status !== 'signature_placed') {
+                return redirect()->back()->with('error', 'Document must have signatures placed before sending for signing.');
+            }
+        } else {
+            $request->validate([
+                'file' => 'required|file|mimes:pdf,doc,docx|max:10240',
+                'title' => 'nullable|string|max:255',
+                'signer_email' => 'required|email',
+                'signer_name' => 'required|string|min:2|max:100',
+                'document_type' => 'nullable|string|in:agreement,nda,general,contract',
+                'priority' => 'nullable|string|in:low,normal,high',
+                'due_at' => 'nullable|date|after:now',
+                'association_type' => 'nullable|string|in:client,lead',
+                'association_id' => 'nullable|integer',
+                'client_matter_id' => 'nullable|integer',
+            ]);
+            
+            // Handle file upload for new documents
+            $file = $request->file('file');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $filePath = $file->storeAs('documents', $fileName, 'public');
+
+            // Create document
+            $document = Document::create([
+                'file_name' => $fileName,
+                'filetype' => $file->getClientMimeType(),
+                'myfile' => $filePath,
+                'title' => $request->title ?: pathinfo($fileName, PATHINFO_FILENAME),
+                'status' => 'draft',
+                'client_id' => Auth::guard('admin')->id(),
+            ]);
+        }
 
         $user = Auth::guard('admin')->user();
-
-        // Handle file upload
-        $file = $request->file('file');
-        $fileName = time() . '_' . $file->getClientOriginalName();
-        $filePath = $file->storeAs('documents', $fileName, 'public');
-
-        // Create document
-        $document = Document::create([
-            'file_name' => $fileName,
-            'filetype' => $file->getClientMimeType(),
-            'myfile' => $filePath,
-            'file_size' => $file->getSize(),
-            'status' => 'draft',
-            'created_by' => $user->id,
-            'origin' => 'ad_hoc',
-            'title' => $request->title ?: $file->getClientOriginalName(),
-            'document_type' => $request->document_type ?: 'general',
-            'priority' => $request->priority ?: 'normal',
-            'due_at' => $request->due_at,
-            'primary_signer_email' => $request->signer_email,
-            'signer_count' => 1,
-            'last_activity_at' => now(),
-            'client_matter_id' => $request->client_matter_id,
-        ]);
 
         // Set association if provided
         if ($request->association_type && $request->association_id) {
@@ -171,32 +194,21 @@ class SignatureDashboardController extends Controller
             );
         }
 
-        // Send document for signature using service
-        $signers = [
-            ['email' => $request->signer_email, 'name' => $request->signer_name]
-        ];
-        
-        // Prepare email options
-        $emailOptions = [
-            'subject' => $request->email_subject ?: 'Document Signature Request from Bansal Migration',
-            'message' => $request->email_message ?: 'Please review and sign the attached document.',
-            'template' => $request->email_template ?: 'emails.signature.send',
-        ];
-        
-        // Add from_email if specified
-        if ($request->filled('from_email')) {
-            $emailOptions['from_email'] = $request->from_email;
-        }
-        
-        $success = $this->signatureService->send($document, $signers, $emailOptions);
+        // Store signer information in session for later use
+        session([
+            'pending_document_signer' => [
+                'email' => $request->signer_email,
+                'name' => $request->signer_name,
+                'email_subject' => $request->email_subject,
+                'email_message' => $request->email_message,
+                'email_template' => $request->email_template,
+                'from_email' => $request->from_email,
+            ]
+        ]);
 
-        if ($success) {
-            return redirect()->route('admin.signatures.index')
-                ->with('success', 'Document sent for signature successfully!');
-        } else {
-            return redirect()->route('admin.signatures.index')
-                ->with('error', 'Document created but email failed to send. Please try again.');
-        }
+        // Redirect to signature placement page
+        return redirect()->route('admin.documents.edit', $document->id)
+            ->with('success', 'Document uploaded! Now place signature fields on the document.');
     }
 
     public function show($id)

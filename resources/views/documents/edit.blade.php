@@ -230,7 +230,7 @@
                     <div class="preview-container" id="preview-container">
                         <img
                             id="preview-image"
-                            src="{{ route('documents.page', ['id' => $document->id, 'page' => 1]) }}"
+                            src="{{ route('admin.documents.page', ['id' => $document->id, 'page' => 1]) }}"
                             alt="Document Preview"
                             style="max-width: 100%; height: auto; display: block;"
                         >
@@ -257,7 +257,7 @@
                         Signature Fields
                     </h2>
                     
-                    <form method="POST" action="{{ route('documents.update', $document->id) }}" id="signature-form">
+                    <form method="POST" action="{{ route('admin.documents.update', $document->id) }}" id="signature-form">
                         @csrf
                         @method('PATCH')
                         <div id="signatures-container">

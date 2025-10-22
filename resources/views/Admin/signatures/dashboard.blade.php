@@ -563,12 +563,12 @@
                         <td>
                             @if($doc->documentable)
                                 @if($doc->documentable_type === 'App\Models\Admin')
-                                <a href="{{ route('admin.client.detail', $doc->documentable_id) }}" class="association-chip">
+                                <a href="{{ route('admin.clients.detail', $doc->documentable_id) }}" class="association-chip">
                                     <i class="fas fa-user"></i>
                                     Client: {{ $doc->documentable->first_name }} {{ $doc->documentable->last_name }}
                                 </a>
                                 @elseif($doc->documentable_type === 'App\Models\Lead')
-                                <a href="{{ route('admin.lead.detail', $doc->documentable_id) }}" class="association-chip">
+                                <a href="{{ route('admin.leads.detail', $doc->documentable_id) }}" class="association-chip">
                                     <i class="fas fa-user-tag"></i>
                                     Lead: {{ $doc->documentable->first_name }} {{ $doc->documentable->last_name }}
                                 </a>

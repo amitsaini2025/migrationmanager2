@@ -200,7 +200,7 @@
 				</button>
 			</div>
 			<div class="modal-body">
-				<form method="POST" action="{{route('clients.generateagreement')}}" name="visaagreementform11" id="visaagreementform11" autocomplete="off">
+				<form method="POST" action="{{route('admin.clients.generateagreement')}}" name="visaagreementform11" id="visaagreementform11" autocomplete="off">
 					@csrf
 					<!-- Hidden Fields for Client and Client Matter ID -->
 					<input type="hidden" name="client_id" id="visa_agreement_client_id">

@@ -87,7 +87,7 @@
                                                     {{ $signer->status_display }}
                                                 </span>
                                                 @if($signer->status === 'pending')
-                                                    <form method="POST" action="{{ route('documents.sendReminder', $selectedDocument->id) }}" class="inline">
+                                                    <form method="POST" action="{{ route('admin.documents.sendReminder', $selectedDocument->id) }}" class="inline">
                                                         @csrf
                                                         <input type="hidden" name="signer_id" value="{{ $signer->id }}">
                                                         <button type="submit"
@@ -134,7 +134,7 @@
                                 else
                                 { //visa and personal document
                                 ?>
-                                    <form method="POST" action="{{ route('documents.sendSigningLink', $selectedDocument->id) }}" class="w-full sm:w-auto">
+                                    <form method="POST" action="{{ route('admin.documents.sendSigningLink', $selectedDocument->id) }}" class="w-full sm:w-auto">
                                         @csrf
                                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                             <div>
@@ -174,7 +174,7 @@
                 $client_matter_info_arr = \App\Models\ClientMatter::select('sel_matter_id')->where('id',$selectedDocument->client_matter_id)->first();
                 ?>
                 <div class="modal-body">
-                    <form method="POST" action="{{ route('documents.sendSigningLink', $selectedDocument->id) }}" class="w-full sm:w-auto" enctype="multipart/form-data">
+                    <form method="POST" action="{{ route('admin.documents.sendSigningLink', $selectedDocument->id) }}" class="w-full sm:w-auto" enctype="multipart/form-data">
                         @csrf
                         <input type="hidden" name="client_id" id="mail_client_id" value="{{$selectedDocument->client_id}}">
                         <input type="hidden" name="client_matter_id" id="mail_client_matter_id" value="{{$selectedDocument->client_matter_id}}">

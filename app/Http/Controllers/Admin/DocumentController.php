@@ -1609,7 +1609,7 @@ class DocumentController extends Controller
                 ]);
 
                 // Redirect to thank you page with document ID
-                return redirect()->route('documents.thankyou', ['id' => $document->id]);
+                return redirect()->route('admin.documents.thankyou', ['id' => $document->id]);
             }
 
             \Log::warning("Invalid signing attempt", [
@@ -1687,14 +1687,14 @@ class DocumentController extends Controller
                         // Show a view that triggers the download and then redirects to thank you
                         return view('Admin.documents.download_and_thankyou', [
                             'downloadUrl' => $tempUrl,
-                            'thankyouUrl' => route('documents.thankyou')
+                            'thankyouUrl' => route('admin.documents.thankyou', ['id' => $id])
                         ]);
                     }
                 }
                 // Fallback: direct download if S3 key not found or file missing
                 return view('Admin.documents.download_and_thankyou', [
                     'downloadUrl' => $signedDocUrl,
-                    'thankyouUrl' => route('documents.thankyou')
+                    'thankyouUrl' => route('admin.documents.thankyou', ['id' => $id])
                 ]);
             }
             return redirect()->back()->with('error', 'Signed document not found.');

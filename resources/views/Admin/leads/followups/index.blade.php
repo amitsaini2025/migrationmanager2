@@ -140,7 +140,7 @@
                     @forelse($followups as $followup)
                         <tr>
                             <td>
-                                <a href="{{ route('admin.lead.edit', $followup->lead_id) }}">
+                                <a href="{{ route('admin.leads.edit', $followup->lead_id) }}">
                                     {{ $followup->lead->first_name }} {{ $followup->lead->last_name }}
                                 </a>
                                 <div style="font-size: 12px; color: #6c757d;">

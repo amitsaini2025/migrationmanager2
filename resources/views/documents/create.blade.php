@@ -33,7 +33,7 @@
             @endif
 
             <!-- Upload Form -->
-            <form method="POST" action="{{ route('documents.store') }}" enctype="multipart/form-data">
+            <form method="POST" action="{{ route('admin.documents.store') }}" enctype="multipart/form-data">
                 @csrf
                 <div class="mb-4">
                     <label for="title" class="block text-sm font-medium text-gray-700 dark:text-gray-300">

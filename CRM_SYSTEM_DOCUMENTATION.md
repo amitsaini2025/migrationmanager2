@@ -221,7 +221,7 @@ $appointments = $appointmentService->getAppointments([
 
 #### Key Controllers
 - `App\Http\Controllers\Admin\DocumentController`
-- `App\Http\Controllers\DocumentController`
+- `App\Http\Controllers\PublicDocumentController`
 
 #### Key Features
 - **File Upload**: Multiple file type support

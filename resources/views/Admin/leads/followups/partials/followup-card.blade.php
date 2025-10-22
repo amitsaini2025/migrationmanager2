@@ -3,7 +3,7 @@
     <div class="followup-header">
         <div class="lead-info">
             <div class="lead-name">
-                <a href="{{ route('admin.lead.edit', $followup->lead_id) }}" style="color: inherit; text-decoration: none;">
+                <a href="{{ route('admin.leads.edit', $followup->lead_id) }}" style="color: inherit; text-decoration: none;">
                     {{ $followup->lead->first_name }} {{ $followup->lead->last_name }}
                 </a>
             </div>

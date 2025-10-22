@@ -208,18 +208,18 @@ Route::get('/admin/clients/test-bidirectional', [ClientPersonalDetailsController
 Route::post('/admin/clients/save-relationship', [ClientPersonalDetailsController::class, 'saveRelationship'])->name('admin.clients.saveRelationship');
 
 /*---------- Client Agreements & Forms ----------*/
-Route::post('/clients/generateagreement', 'Admin\ClientsController@generateagreement')->name('clients.generateagreement');
+Route::post('/clients/generateagreement', 'Admin\ClientsController@generateagreement')->name('admin.clients.generateagreement');
 Route::post('/clients/getMigrationAgentDetail', 'Admin\ClientsController@getMigrationAgentDetail')->name('admin.clients.getMigrationAgentDetail');
 Route::post('/clients/getVisaAggreementMigrationAgentDetail', 'Admin\ClientsController@getVisaAggreementMigrationAgentDetail')->name('admin.clients.getVisaAggreementMigrationAgentDetail');
 Route::post('/clients/getCostAssignmentMigrationAgentDetail', 'Admin\ClientsController@getCostAssignmentMigrationAgentDetail')->name('admin.clients.getCostAssignmentMigrationAgentDetail');
-Route::post('/clients/savecostassignment', 'Admin\ClientsController@savecostassignment')->name('clients.savecostassignment');
+Route::post('/clients/savecostassignment', 'Admin\ClientsController@savecostassignment')->name('admin.clients.savecostassignment');
 Route::post('/clients/check-cost-assignment', 'Admin\ClientsController@checkCostAssignment');
 
 // Lead cost assignment
-Route::post('/clients/savecostassignmentlead', 'Admin\ClientsController@savecostassignmentlead')->name('clients.savecostassignmentlead');
+Route::post('/clients/savecostassignmentlead', 'Admin\ClientsController@savecostassignmentlead')->name('admin.clients.savecostassignmentlead');
 Route::post('/clients/getCostAssignmentMigrationAgentDetailLead', 'Admin\ClientsController@getCostAssignmentMigrationAgentDetailLead')->name('clients.getCostAssignmentMigrationAgentDetailLead');
 
-Route::post('/clients/{admin}/upload-agreement', 'Admin\ClientsController@uploadAgreement')->name('clients.uploadAgreement');
+Route::post('/clients/{admin}/upload-agreement', 'Admin\ClientsController@uploadAgreement')->name('admin.clients.uploadAgreement');
 
 // Form 956
 Route::post('/admin/forms', 'Admin\Form956Controller@store')->name('forms.store');

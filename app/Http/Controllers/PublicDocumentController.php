@@ -84,32 +84,56 @@ class PublicDocumentController extends Controller
 
             $signatureFields = $document->signatureFields()->get();
             
-            // Get PDF path from S3
+            // Get PDF path - handle both S3 and local files
             $url = $document->myfile;
             $pdfPath = null;
+            $tmpPdfPath = null;
+            $isLocalFile = false;
             
-            if ($url) {
+            // Check if URL is a full S3 URL or local path
+            if ($url && filter_var($url, FILTER_VALIDATE_URL) && strpos($url, 's3') !== false) {
+                // This is an S3 URL - extract the key
                 $parsed = parse_url($url);
                 if (isset($parsed['path'])) {
                     $pdfPath = ltrim(urldecode($parsed['path']), '/');
                 }
-            }
-
-            if (empty($pdfPath) && !empty($document->myfile_key) && !empty($document->doc_type) && !empty($document->client_id)) {
-                $admin = \DB::table('admins')->select('client_id')->where('id', $document->client_id)->first();
-                if ($admin && $admin->client_id) {
-                    $pdfPath = $admin->client_id . '/' . $document->doc_type . '/' . $document->myfile_key;
+                
+                if ($pdfPath && Storage::disk('s3')->exists($pdfPath)) {
+                    // Download PDF from S3 to a temp file
+                    $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
+                    $pdfStream = Storage::disk('s3')->get($pdfPath);
+                    file_put_contents($tmpPdfPath, $pdfStream);
+                }
+            } elseif ($url && file_exists(storage_path('app/public/' . $url))) {
+                // This is a local file path and file exists
+                $tmpPdfPath = storage_path('app/public/' . $url);
+                $isLocalFile = true;
+                Log::info('Using local file for document signing page', ['path' => $tmpPdfPath]);
+            } else {
+                // Try to build S3 key from DB fields as fallback
+                if (!empty($document->myfile_key) && !empty($document->doc_type) && !empty($document->client_id)) {
+                    $admin = \DB::table('admins')->select('client_id')->where('id', $document->client_id)->first();
+                    if ($admin && $admin->client_id) {
+                        $pdfPath = $admin->client_id . '/' . $document->doc_type . '/' . $document->myfile_key;
+                        
+                        if (Storage::disk('s3')->exists($pdfPath)) {
+                            // Download PDF from S3 to a temp file
+                            $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
+                            $pdfStream = Storage::disk('s3')->get($pdfPath);
+                            file_put_contents($tmpPdfPath, $pdfStream);
+                        }
+                    }
                 }
             }
 
             // Count PDF pages
             $pdfPages = 1;
-            if ($pdfPath && Storage::disk('s3')->exists($pdfPath)) {
-                $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
-                $pdfStream = Storage::disk('s3')->get($pdfPath);
-                file_put_contents($tmpPdfPath, $pdfStream);
+            if ($tmpPdfPath && file_exists($tmpPdfPath)) {
                 $pdfPages = $this->countPdfPages($tmpPdfPath) ?: 1;
-                @unlink($tmpPdfPath);
+                // Only delete temp files, not local files
+                if (!$isLocalFile && strpos($tmpPdfPath, 'tmp_') !== false) {
+                    @unlink($tmpPdfPath);
+                }
             }
 
             return view('documents.sign', compact('document', 'signer', 'signatureFields', 'pdfPages'));

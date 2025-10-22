@@ -281,7 +281,7 @@
 				</button>
 			</div>
 			<div class="modal-body">
-				<form method="POST" action="{{route('clients.savecostassignment')}}" name="costAssignmentform" id="costAssignmentform" autocomplete="off">
+				<form method="POST" action="{{route('admin.clients.savecostassignment')}}" name="costAssignmentform" id="costAssignmentform" autocomplete="off">
 					@csrf
 					<!-- Hidden Fields for Client and Client Matter ID -->
 					<input type="hidden" name="client_id" id="cost_assignment_client_id">
@@ -618,7 +618,7 @@
 				</button>
 			</div>
 			<div class="modal-body">
-				<form method="POST" action="{{route('clients.savecostassignmentlead')}}" name="costAssignmentformlead" id="costAssignmentformlead" autocomplete="off">
+				<form method="POST" action="{{route('admin.clients.savecostassignmentlead')}}" name="costAssignmentformlead" id="costAssignmentformlead" autocomplete="off">
 					@csrf
 					<!-- Hidden Fields for Client and Client Matter ID -->
 					<input type="hidden" name="client_id" id="cost_assignment_lead_id">

@@ -102,7 +102,7 @@ class DocumentVisibilityTest extends TestCase
         $otherDocument = Document::factory()->create(['created_by' => $otherUser->id]);
 
         $response = $this->actingAs($user, 'admin')
-            ->get(route('admin.signatures.index'));
+            ->get(route('signatures.index'));
 
         $response->assertStatus(200);
         $response->assertSee($myDocument->title ?? $myDocument->file_name);
@@ -122,7 +122,7 @@ class DocumentVisibilityTest extends TestCase
         ]);
 
         $response = $this->actingAs($user, 'admin')
-            ->get(route('admin.signatures.show', $document->id));
+            ->get(route('signatures.show', $document->id));
 
         $response->assertStatus(403); // Forbidden
     }
@@ -141,7 +141,7 @@ class DocumentVisibilityTest extends TestCase
         ]);
 
         $response = $this->actingAs($user, 'admin')
-            ->get(route('admin.signatures.show', $document->id));
+            ->get(route('signatures.show', $document->id));
 
         $response->assertStatus(200);
         $response->assertSee($document->display_title);
@@ -157,7 +157,7 @@ class DocumentVisibilityTest extends TestCase
         $adminDoc = Document::factory()->create(['created_by' => $admin->id]);
 
         $response = $this->actingAs($admin, 'admin')
-            ->get(route('admin.signatures.index', ['scope' => 'organization']));
+            ->get(route('signatures.index', ['scope' => 'organization']));
 
         $response->assertStatus(200);
         $response->assertSee($userDoc->display_title);
@@ -174,7 +174,7 @@ class DocumentVisibilityTest extends TestCase
         $otherDoc = Document::factory()->create(['created_by' => $otherUser->id]);
 
         $response = $this->actingAs($user, 'admin')
-            ->get(route('admin.signatures.index', ['scope' => 'organization']));
+            ->get(route('signatures.index', ['scope' => 'organization']));
 
         $response->assertStatus(200);
         $response->assertSee($myDoc->display_title);

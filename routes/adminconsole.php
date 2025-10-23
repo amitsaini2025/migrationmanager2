@@ -184,7 +184,7 @@ Route::prefix('adminconsole')->name('adminconsole.')->middleware(['auth:admin'])
         Route::put('/offices/{id}', [BranchesController::class, 'update'])->name('offices.update');
         
         // Client Email List route
-        Route::get('/clientsemaillist', [\App\Http\Controllers\Admin\ClientsController::class, 'clientsemaillist'])->name('clientsemaillist');
+        Route::get('/clientsemaillist', [\App\Http\Controllers\CRM\ClientsController::class, 'clientsemaillist'])->name('clientsemaillist');
         
     });
     

@@ -1,17 +1,23 @@
 <?php
 
-use App\Http\Controllers\Admin\ClientsController;
-use App\Http\Controllers\Admin\ClientEoiRoiController;
+use App\Http\Controllers\CRM\ClientsController;
+use App\Http\Controllers\CRM\ClientEoiRoiController;
 use App\Http\Controllers\AdminConsole\AnzscoOccupationController;
-use App\Http\Controllers\Admin\Clients\ClientNotesController;
-use App\Http\Controllers\Admin\ClientPersonalDetailsController;
-use App\Http\Controllers\Admin\PhoneVerificationController;
-use App\Http\Controllers\Admin\EmailVerificationController;
-use App\Http\Controllers\Admin\Leads\LeadController;
-use App\Http\Controllers\Admin\Leads\LeadAssignmentController;
-use App\Http\Controllers\Admin\Leads\LeadConversionController;
-use App\Http\Controllers\Admin\Leads\LeadFollowupController;
-use App\Http\Controllers\Admin\Leads\LeadAnalyticsController;
+use App\Http\Controllers\CRM\Clients\ClientNotesController;
+use App\Http\Controllers\CRM\ClientPersonalDetailsController;
+use App\Http\Controllers\CRM\PhoneVerificationController;
+use App\Http\Controllers\CRM\EmailVerificationController;
+use App\Http\Controllers\CRM\Leads\LeadController;
+use App\Http\Controllers\CRM\Leads\LeadAssignmentController;
+use App\Http\Controllers\CRM\Leads\LeadConversionController;
+use App\Http\Controllers\CRM\Leads\LeadFollowupController;
+use App\Http\Controllers\CRM\Leads\LeadAnalyticsController;
+use App\Http\Controllers\CRM\DashboardController;
+use App\Http\Controllers\CRM\CRMUtilityController;
+use App\Http\Controllers\CRM\AssigneeController;
+use App\Http\Controllers\CRM\EmailTemplateController;
+use App\Http\Controllers\CRM\AuditLogController;
+use App\Http\Controllers\Auth\AdminLoginController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,9 +34,9 @@ use App\Http\Controllers\Admin\Leads\LeadAnalyticsController;
 | SECTION: Root & General Routes
 |--------------------------------------------------*/
 
-// Root route - redirect to admin login
+// Root route - redirect to CRM login
 Route::get('/', function() {
-    return redirect()->route('admin.login');
+    return redirect()->route('crm.login');
 });
 
 // Cache clearing route - protected with authentication
@@ -48,8 +54,8 @@ Route::get('/clear-cache', function() {
 /*--------------------------------------------------
 | SECTION: Exception Handling
 |--------------------------------------------------*/
-Route::get('/exception', 'ExceptionController@index')->name('exception.index');
-Route::post('/exception', 'ExceptionController@index')->name('exception.store');
+Route::get('/exception', [\App\Http\Controllers\ExceptionController::class, 'index'])->name('exception.index');
+Route::post('/exception', [\App\Http\Controllers\ExceptionController::class, 'index'])->name('exception.store');
 
 /*--------------------------------------------------
 | SECTION: Authentication Routes
@@ -67,58 +73,64 @@ include_once 'emailUser.php';
 require __DIR__ . '/adminconsole.php';
 
 /*--------------------------------------------------
-| SECTION: Admin Panel Routes
+| SECTION: Authentication Routes
 |--------------------------------------------------*/
-Route::prefix('admin')->group(function() {
+// CRM authentication routes (no /admin prefix)
+Route::get('/login', [AdminLoginController::class, 'showLoginForm'])->name('crm.login');
+Route::post('/login', [AdminLoginController::class, 'login'])->name('crm.login.post');
+Route::post('/logout', [AdminLoginController::class, 'logout'])->name('crm.logout');
+Route::get('/logout', function() {
+    return redirect()->route('crm.login');
+})->name('crm.logout.get');
 
-    /*---------- Login and Logout ----------*/
-    Route::get('/', 'Auth\AdminLoginController@showLoginForm')->name('admin.login');
-    Route::get('/login', 'Auth\AdminLoginController@showLoginForm');
-    Route::post('/login', 'Auth\AdminLoginController@login')->name('admin.login.post');
-    Route::post('/logout', 'Auth\AdminLoginController@logout')->name('admin.logout');
+/*--------------------------------------------------
+| SECTION: CRM Application Routes (Protected)
+|--------------------------------------------------*/
+// Main CRM routes at root level with auth:admin middleware
+Route::middleware(['auth:admin'])->group(function() {
 
 	/*---------- Dashboard Routes ----------*/
-    Route::get('/dashboard', 'Admin\DashboardController@index')->name('admin.dashboard');
-    Route::post('/dashboard/column-preferences', 'Admin\DashboardController@saveColumnPreferences')->name('admin.dashboard.column-preferences');
-    Route::post('/dashboard/update-stage', 'Admin\DashboardController@updateStage')->name('admin.dashboard.update-stage');
-    Route::post('/dashboard/extend-deadline', 'Admin\DashboardController@extendDeadlineDate')->name('admin.dashboard.extend-deadline');
-    Route::post('/dashboard/update-task-completed', 'Admin\DashboardController@updateTaskCompleted')->name('admin.dashboard.update-task-completed');
-    Route::get('/dashboard/fetch-notifications', 'Admin\AdminController@fetchnotification')->name('admin.dashboard.fetch-notifications');
-    Route::get('/dashboard/fetch-office-visit-notifications', 'Admin\AdminController@fetchOfficeVisitNotifications')->name('admin.dashboard.fetch-office-visit-notifications');
-    Route::post('/dashboard/mark-notification-seen', 'Admin\AdminController@markNotificationSeen')->name('admin.dashboard.mark-notification-seen');
-    Route::get('/dashboard/fetch-visa-expiry-messages', 'Admin\AdminController@fetchvisaexpirymessages')->name('admin.dashboard.fetch-visa-expiry-messages');
-    Route::get('/dashboard/fetch-in-person-waiting-count', 'Admin\AdminController@fetchInPersonWaitingCount')->name('admin.dashboard.fetch-in-person-waiting-count');
-    Route::get('/dashboard/fetch-total-activity-count', 'Admin\AdminController@fetchTotalActivityCount')->name('admin.dashboard.fetch-total-activity-count');
-    Route::post('/dashboard/check-checkin-status', 'Admin\DashboardController@checkCheckinStatus')->name('admin.dashboard.check-checkin-status');
-    Route::post('/dashboard/update-checkin-status', 'Admin\DashboardController@updateCheckinStatus')->name('admin.dashboard.update-checkin-status');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('/dashboard/column-preferences', [DashboardController::class, 'saveColumnPreferences'])->name('dashboard.column-preferences');
+    Route::post('/dashboard/update-stage', [DashboardController::class, 'updateStage'])->name('dashboard.update-stage');
+    Route::post('/dashboard/extend-deadline', [DashboardController::class, 'extendDeadlineDate'])->name('dashboard.extend-deadline');
+    Route::post('/dashboard/update-task-completed', [DashboardController::class, 'updateTaskCompleted'])->name('dashboard.update-task-completed');
+    Route::get('/dashboard/fetch-notifications', [CRMUtilityController::class, 'fetchnotification'])->name('dashboard.fetch-notifications');
+    Route::get('/dashboard/fetch-office-visit-notifications', [CRMUtilityController::class, 'fetchOfficeVisitNotifications'])->name('dashboard.fetch-office-visit-notifications');
+    Route::post('/dashboard/mark-notification-seen', [CRMUtilityController::class, 'markNotificationSeen'])->name('dashboard.mark-notification-seen');
+    Route::get('/dashboard/fetch-visa-expiry-messages', [CRMUtilityController::class, 'fetchvisaexpirymessages'])->name('dashboard.fetch-visa-expiry-messages');
+    Route::get('/dashboard/fetch-in-person-waiting-count', [CRMUtilityController::class, 'fetchInPersonWaitingCount'])->name('dashboard.fetch-in-person-waiting-count');
+    Route::get('/dashboard/fetch-total-activity-count', [CRMUtilityController::class, 'fetchTotalActivityCount'])->name('dashboard.fetch-total-activity-count');
+    Route::post('/dashboard/check-checkin-status', [DashboardController::class, 'checkCheckinStatus'])->name('dashboard.check-checkin-status');
+    Route::post('/dashboard/update-checkin-status', [DashboardController::class, 'updateCheckinStatus'])->name('dashboard.update-checkin-status');
 
 	/*---------- General Admin Routes ----------*/
-    Route::get('/my_profile', 'Admin\AdminController@myProfile')->name('admin.my_profile');
-    Route::post('/my_profile', 'Admin\AdminController@myProfile')->name('admin.my_profile.update');
-    Route::get('/change_password', 'Admin\AdminController@change_password')->name('admin.change_password');
-    Route::post('/change_password', 'Admin\AdminController@change_password')->name('admin.change_password.update');
-    Route::post('/update_action', 'Admin\AdminController@updateAction');
-    Route::post('/approved_action', 'Admin\AdminController@approveAction');
-    Route::post('/process_action', 'Admin\AdminController@processAction');
-    Route::post('/archive_action', 'Admin\AdminController@archiveAction');
-    Route::post('/declined_action', 'Admin\AdminController@declinedAction');
-    Route::post('/delete_action', 'Admin\AdminController@deleteAction');
-    Route::post('/move_action', 'Admin\AdminController@moveAction');
+    Route::get('/my_profile', [CRMUtilityController::class, 'myProfile'])->name('my_profile');
+    Route::post('/my_profile', [CRMUtilityController::class, 'myProfile'])->name('my_profile.update');
+    Route::get('/change_password', [CRMUtilityController::class, 'change_password'])->name('change_password');
+    Route::post('/change_password', [CRMUtilityController::class, 'change_password'])->name('change_password.update');
+    Route::post('/update_action', [CRMUtilityController::class, 'updateAction']);
+    Route::post('/approved_action', [CRMUtilityController::class, 'approveAction']);
+    Route::post('/process_action', [CRMUtilityController::class, 'processAction']);
+    Route::post('/archive_action', [CRMUtilityController::class, 'archiveAction']);
+    Route::post('/declined_action', [CRMUtilityController::class, 'declinedAction']);
+    Route::post('/delete_action', [CRMUtilityController::class, 'deleteAction']);
+    Route::post('/move_action', [CRMUtilityController::class, 'moveAction']);
 
-    Route::get('/appointments-education', 'Admin\AdminController@appointmentsEducation')->name('appointments-education');
-    Route::get('/appointments-jrp', 'Admin\AdminController@appointmentsJrp')->name('appointments-jrp');
-    Route::get('/appointments-tourist', 'Admin\AdminController@appointmentsTourist')->name('appointments-tourist');
-    Route::get('/appointments-others', 'Admin\AdminController@appointmentsOthers')->name('appointments-others');
+    Route::get('/appointments-education', [CRMUtilityController::class, 'appointmentsEducation'])->name('appointments-education');
+    Route::get('/appointments-jrp', [CRMUtilityController::class, 'appointmentsJrp'])->name('appointments-jrp');
+    Route::get('/appointments-tourist', [CRMUtilityController::class, 'appointmentsTourist'])->name('appointments-tourist');
+    Route::get('/appointments-others', [CRMUtilityController::class, 'appointmentsOthers'])->name('appointments-others');
 
-    Route::post('/add_ckeditior_image', 'Admin\AdminController@addCkeditiorImage')->name('add_ckeditior_image');
-    Route::post('/get_chapters', 'Admin\AdminController@getChapters')->name('admin.get_chapters');
-    Route::post('/get_states', 'Admin\AdminController@getStates');
-    Route::get('/settings/taxes/returnsetting', 'Admin\AdminController@returnsetting')->name('admin.returnsetting');
-    Route::post('/settings/taxes/savereturnsetting', 'Admin\AdminController@returnsetting')->name('admin.savereturnsetting');
-    Route::get('/getsubcategories', 'Admin\AdminController@getsubcategories');
-    Route::get('/getassigneeajax', 'Admin\AdminController@getassigneeajax');
-    Route::get('/getpartnerajax', 'Admin\AdminController@getpartnerajax');
-    Route::get('/checkclientexist', 'Admin\AdminController@checkclientexist');
+    Route::post('/add_ckeditior_image', [CRMUtilityController::class, 'addCkeditiorImage'])->name('add_ckeditior_image');
+    Route::post('/get_chapters', [CRMUtilityController::class, 'getChapters'])->name('get_chapters');
+    Route::post('/get_states', [CRMUtilityController::class, 'getStates']);
+    Route::get('/settings/taxes/returnsetting', [CRMUtilityController::class, 'returnsetting'])->name('returnsetting');
+    Route::post('/settings/taxes/savereturnsetting', [CRMUtilityController::class, 'returnsetting'])->name('savereturnsetting');
+    Route::get('/getsubcategories', [CRMUtilityController::class, 'getsubcategories']);
+    Route::get('/getassigneeajax', [CRMUtilityController::class, 'getassigneeajax']);
+    Route::get('/getpartnerajax', [CRMUtilityController::class, 'getpartnerajax']);
+    Route::get('/checkclientexist', [CRMUtilityController::class, 'checkclientexist']);
 
 	/*---------- CRM & User Management Routes ----------*/
     // All user management routes moved to routes/adminconsole.php
@@ -127,7 +139,7 @@ Route::prefix('admin')->group(function() {
 
     /*---------- Leads Management (Modern Laravel Syntax) ----------*/
     // Lead CRUD operations
-    Route::prefix('leads')->name('admin.leads.')->group(function () {
+    Route::prefix('leads')->name('leads.')->group(function () {
         // List & Detail
         Route::get('/', [LeadController::class, 'index'])->name('index');
         Route::get('/detail/{id}', [LeadController::class, 'detail'])->name('detail');
@@ -178,18 +190,18 @@ Route::prefix('admin')->group(function() {
     });
     
     // Global route (outside leads prefix) - kept for backward compatibility
-    Route::get('/get-notedetail', [LeadController::class, 'getnotedetail'])->name('admin.get-notedetail');
+    Route::get('/get-notedetail', [LeadController::class, 'getnotedetail'])->name('get-notedetail');
 
 	/*---------- Email Templates ----------*/
-    Route::get('/email_templates', 'Admin\EmailTemplateController@index')->name('admin.email.index');
-    Route::get('/email_templates/create', 'Admin\EmailTemplateController@create')->name('admin.email.create');
-    Route::post('/email_templates/store', 'Admin\EmailTemplateController@store')->name('admin.email.store');
-    Route::get('/edit_email_template/{id}', 'Admin\EmailTemplateController@editEmailTemplate')->name('admin.edit_email_template');
-    Route::post('/edit_email_template', 'Admin\EmailTemplateController@editEmailTemplate')->name('admin.edit_email_template.update');
+    Route::get('/email_templates', [EmailTemplateController::class, 'index'])->name('email.index');
+    Route::get('/email_templates/create', [EmailTemplateController::class, 'create'])->name('email.create');
+    Route::post('/email_templates/store', [EmailTemplateController::class, 'store'])->name('email.store');
+    Route::get('/edit_email_template/{id}', [EmailTemplateController::class, 'editEmailTemplate'])->name('edit_email_template');
+    Route::post('/edit_email_template', [EmailTemplateController::class, 'editEmailTemplate'])->name('edit_email_template.update');
 
 	/*---------- API Settings ----------*/
-    Route::get('/api-key', 'Admin\AdminController@editapi')->name('admin.edit_api');
-    Route::post('/api-key', 'Admin\AdminController@editapi')->name('admin.edit_api.update');
+    Route::get('/api-key', [CRMUtilityController::class, 'editapi'])->name('api');
+    Route::post('/api-key', [CRMUtilityController::class, 'editapi'])->name('api.update');
 
 	/*--------------------------------------------------
 	| SECTION: Client Management Routes
@@ -205,56 +217,56 @@ Route::prefix('admin')->group(function() {
 	require __DIR__ . '/applications.php';
 
 	/*---------- Audit Logs ----------*/
-	Route::get('/audit-logs', 'Admin\AuditLogController@index')->name('admin.auditlogs.index');
+	Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('auditlogs.index');
 
 	/*---------- Notifications ----------*/
-	Route::get('/fetch-notification', 'Admin\AdminController@fetchnotification');
-	Route::get('/fetch-messages', 'Admin\AdminController@fetchmessages');
-	Route::get('/fetch-office-visit-notifications', 'Admin\AdminController@fetchOfficeVisitNotifications');
-	Route::post('/mark-notification-seen', 'Admin\AdminController@markNotificationSeen');
-	Route::get('/check-checkin-status', 'Admin\AdminController@checkCheckinStatus');
-	Route::post('/update-checkin-status', 'Admin\AdminController@updateCheckinStatus');
-	Route::get('/all-notifications', 'Admin\AdminController@allnotification');
-	Route::get('/fetch-InPersonWaitingCount', 'Admin\AdminController@fetchInPersonWaitingCount');
-	Route::get('/fetch-TotalActivityCount', 'Admin\AdminController@fetchTotalActivityCount');
+	Route::get('/fetch-notification', [CRMUtilityController::class, 'fetchnotification']);
+	Route::get('/fetch-messages', [CRMUtilityController::class, 'fetchmessages']);
+	Route::get('/fetch-office-visit-notifications', [CRMUtilityController::class, 'fetchOfficeVisitNotifications']);
+	Route::post('/mark-notification-seen', [CRMUtilityController::class, 'markNotificationSeen']);
+	Route::get('/check-checkin-status', [CRMUtilityController::class, 'checkCheckinStatus']);
+	Route::post('/update-checkin-status', [CRMUtilityController::class, 'updateCheckinStatus']);
+	Route::get('/all-notifications', [CRMUtilityController::class, 'allnotification']);
+	Route::get('/fetch-InPersonWaitingCount', [CRMUtilityController::class, 'fetchInPersonWaitingCount']);
+	Route::get('/fetch-TotalActivityCount', [CRMUtilityController::class, 'fetchTotalActivityCount']);
 
 	/*---------- Assignee Module ----------*/
-	Route::resource('/assignee', Admin\AssigneeController::class);
-        Route::get('/assignee-completed', 'Admin\AssigneeController@completed'); //completed list only
+	Route::resource('/assignee', AssigneeController::class);
+        Route::get('/assignee-completed', [AssigneeController::class, 'completed']); //completed list only
 
-        Route::post('/update-task-completed', 'Admin\AssigneeController@updatetaskcompleted'); //update task to be completed
-        Route::post('/update-task-not-completed', 'Admin\AssigneeController@updatetasknotcompleted'); //update task to be not completed
+        Route::post('/update-task-completed', [AssigneeController::class, 'updatetaskcompleted']); //update task to be completed
+        Route::post('/update-task-not-completed', [AssigneeController::class, 'updatetasknotcompleted']); //update task to be not completed
 
-        Route::get('/assigned_by_me', 'Admin\AssigneeController@assigned_by_me')->name('assignee.assigned_by_me'); //assigned by me
-        Route::get('/assigned_to_me', 'Admin\AssigneeController@assigned_to_me')->name('assignee.assigned_to_me'); //assigned to me
+        Route::get('/assigned_by_me', [AssigneeController::class, 'assigned_by_me'])->name('assignee.assigned_by_me'); //assigned by me
+        Route::get('/assigned_to_me', [AssigneeController::class, 'assigned_to_me'])->name('assignee.assigned_to_me'); //assigned to me
 
-        Route::delete('/destroy_by_me/{note_id}', 'Admin\AssigneeController@destroy_by_me')->name('assignee.destroy_by_me'); //assigned by me
-        Route::delete('/destroy_to_me/{note_id}', 'Admin\AssigneeController@destroy_to_me')->name('assignee.destroy_to_me'); //assigned to me
-        Route::get('/action_completed', 'Admin\AssigneeController@action_completed')->name('assignee.action_completed'); //action completed
+        Route::delete('/destroy_by_me/{note_id}', [AssigneeController::class, 'destroy_by_me'])->name('assignee.destroy_by_me'); //assigned by me
+        Route::delete('/destroy_to_me/{note_id}', [AssigneeController::class, 'destroy_to_me'])->name('assignee.destroy_to_me'); //assigned to me
+        Route::get('/action_completed', [AssigneeController::class, 'action_completed'])->name('assignee.action_completed'); //action completed
 
 
-        Route::delete('/destroy_activity/{note_id}', 'Admin\AssigneeController@destroy_activity')->name('assignee.destroy_activity'); //delete activity
-        Route::delete('/destroy_complete_activity/{note_id}', 'Admin\AssigneeController@destroy_complete_activity')->name('assignee.destroy_complete_activity'); //delete completed activity
+        Route::delete('/destroy_activity/{note_id}', [AssigneeController::class, 'destroy_activity'])->name('assignee.destroy_activity'); //delete activity
+        Route::delete('/destroy_complete_activity/{note_id}', [AssigneeController::class, 'destroy_complete_activity'])->name('assignee.destroy_complete_activity'); //delete completed activity
 
 	/*---------- Task Management ----------*/
 	// Task routes for email and contact uniqueness
-        Route::post('/is_email_unique', 'Admin\Leads\LeadController@is_email_unique');
-        Route::post('/is_contactno_unique', 'Admin\Leads\LeadController@is_contactno_unique');
+        Route::post('/is_email_unique', [LeadController::class, 'is_email_unique']);
+        Route::post('/is_contactno_unique', [LeadController::class, 'is_contactno_unique']);
 
 	// Activity management
-        Route::post('/extenddeadlinedate', 'Admin\AdminController@extenddeadlinedate');
-        Route::post('/update-stage', 'Admin\AdminController@updateStage');
+        Route::post('/extenddeadlinedate', [CRMUtilityController::class, 'extenddeadlinedate']);
+        Route::post('/update-stage', [CRMUtilityController::class, 'updateStage']);
 
 	// Get assigne list
-	Route::post('/get_assignee_list', 'Admin\AssigneeController@get_assignee_list');
+	Route::post('/get_assignee_list', [AssigneeController::class, 'get_assignee_list']);
 
 	// Update task
-        Route::post('/update-task', 'Admin\AssigneeController@updateTask');
-        Route::get('/action/counts','Admin\AssigneeController@getActionCounts' )->name('action.counts');
+        Route::post('/update-task', [AssigneeController::class, 'updateTask']);
+        Route::get('/action/counts', [AssigneeController::class, 'getActionCounts'])->name('action.counts');
 
 	// For datatable - Action list routes
-	Route::get('/action', 'Admin\AssigneeController@action')->name('assignee.action');
-	Route::get('/action/list','Admin\AssigneeController@getAction')->name('action.list');
+	Route::get('/action', [AssigneeController::class, 'action'])->name('assignee.action');
+	Route::get('/action/list', [AssigneeController::class, 'getAction'])->name('action.list');
 
 	/*---------- End of Admin Routes ----------*/
 

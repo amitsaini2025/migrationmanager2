@@ -1,4 +1,4 @@
-@extends('layouts.admin_client_detail')
+@extends('layouts.crm_client_detail')
 @section('title', 'E-Signature Management')
 
 @section('styles')
@@ -223,13 +223,13 @@
 			</div>
 			<div class="row">
 				<div class="col-3 col-md-3 col-lg-3">
-		        	@include('../Elements/Admin/setting')
+		        	@include('../Elements/CRM/setting')
 		        </div>       
 				<div class="col-9 col-md-9 col-lg-9">
 					<div class="analytics-dashboard">
 						<!-- Navigation -->
 						<div class="nav-analytics">
-							<a href="{{ route('admin.signatures.index') }}">← Back to Dashboard</a>
+							<a href="{{ route('signatures.index') }}">← Back to Dashboard</a>
 						</div>
 
 						<!-- Header with Date Filter -->
@@ -388,7 +388,7 @@
 									@foreach($overdueDocuments as $doc)
 									<tr>
 										<td>
-											<a href="{{ route('admin.signatures.show', $doc['id']) }}">
+											<a href="{{ route('signatures.show', $doc['id']) }}">
 												{{ $doc['title'] }}
 											</a>
 										</td>
@@ -399,7 +399,7 @@
 										</td>
 										<td>{{ $doc['reminder_count'] }}/3</td>
 										<td>
-											<a href="{{ route('admin.signatures.show', $doc['id']) }}" class="btn btn-sm btn-primary">
+											<a href="{{ route('signatures.show', $doc['id']) }}" class="btn btn-sm btn-primary">
 												View
 											</a>
 										</td>

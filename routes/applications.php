@@ -1,10 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\ApplicationsController;
-use App\Http\Controllers\Admin\OfficeVisitController;
-use App\Http\Controllers\Admin\AppointmentsController;
-use App\Http\Controllers\Admin\BookingAppointmentsController;
+use App\Http\Controllers\CRM\ApplicationsController;
+use App\Http\Controllers\CRM\OfficeVisitController;
+use App\Http\Controllers\CRM\AppointmentsController;
+use App\Http\Controllers\CRM\BookingAppointmentsController;
 use App\Http\Controllers\HomeController;
 
 /*
@@ -15,16 +15,16 @@ use App\Http\Controllers\HomeController;
 | All routes for visa application management, office visit tracking,
 | and appointment scheduling functionality.
 |
-| Prefix: /admin (inherited from web.php)
+| Prefix: None (routes at root level)
 | Middleware: auth:admin (inherited from web.php)
 |
 */
 
 /*---------- Applications Management ----------*/
-Route::get('/applications', [ApplicationsController::class, 'index'])->name('admin.applications.index');
-Route::get('/applications/create', [ApplicationsController::class, 'create'])->name('admin.applications.create');
-Route::get('/applications/detail/{id}', [ApplicationsController::class, 'detail'])->name('admin.applications.detail');
-Route::post('/applications-import', [ApplicationsController::class, 'import'])->name('admin.applications.import');
+Route::get('/applications', [ApplicationsController::class, 'index'])->name('applications.index');
+Route::get('/applications/create', [ApplicationsController::class, 'create'])->name('applications.create');
+Route::get('/applications/detail/{id}', [ApplicationsController::class, 'detail'])->name('applications.detail');
+Route::post('/applications-import', [ApplicationsController::class, 'import'])->name('applications.import');
 
 /*---------- Application Operations ----------*/
 Route::get('/getapplicationdetail', [ApplicationsController::class, 'getapplicationdetail']);
@@ -67,7 +67,7 @@ Route::get('/deleteapplicationdocs', [ApplicationsController::class, 'deleteappl
 Route::get('/application/publishdoc', [ApplicationsController::class, 'publishdoc']);
 
 /*---------- Migration Index ----------*/
-Route::get('/migration', [ApplicationsController::class, 'migrationindex'])->name('admin.migration.index');
+Route::get('/migration', [ApplicationsController::class, 'migrationindex'])->name('migration.index');
 
 /*
 |--------------------------------------------------------------------------
@@ -75,12 +75,12 @@ Route::get('/migration', [ApplicationsController::class, 'migrationindex'])->nam
 |--------------------------------------------------------------------------
 */
 
-Route::get('/office-visits', [OfficeVisitController::class, 'index'])->name('admin.officevisits.index');
-Route::get('/office-visits/waiting', [OfficeVisitController::class, 'waiting'])->name('admin.officevisits.waiting');
-Route::get('/office-visits/attending', [OfficeVisitController::class, 'attending'])->name('admin.officevisits.attending');
-Route::get('/office-visits/completed', [OfficeVisitController::class, 'completed'])->name('admin.officevisits.completed');
-Route::get('/office-visits/archived', [OfficeVisitController::class, 'archived'])->name('admin.officevisits.archived');
-Route::get('/office-visits/create', [OfficeVisitController::class, 'create'])->name('admin.officevisits.create');
+Route::get('/office-visits', [OfficeVisitController::class, 'index'])->name('officevisits.index');
+Route::get('/office-visits/waiting', [OfficeVisitController::class, 'waiting'])->name('officevisits.waiting');
+Route::get('/office-visits/attending', [OfficeVisitController::class, 'attending'])->name('officevisits.attending');
+Route::get('/office-visits/completed', [OfficeVisitController::class, 'completed'])->name('officevisits.completed');
+Route::get('/office-visits/archived', [OfficeVisitController::class, 'archived'])->name('officevisits.archived');
+Route::get('/office-visits/create', [OfficeVisitController::class, 'create'])->name('officevisits.create');
 
 /*---------- Office Visit Operations ----------*/
 Route::post('/checkin', [OfficeVisitController::class, 'checkin']);

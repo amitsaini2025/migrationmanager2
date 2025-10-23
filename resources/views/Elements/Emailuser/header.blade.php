@@ -94,13 +94,13 @@
 			</a>
             <div class="dropdown-menu dropdown-menu-right pullDown">
 				<div class="dropdown-title">{{str_limit(Auth::user()->first_name.' '.Auth::user()->last_name, 150, '...')}}</div>
-				<a href="{{route('admin.my_profile')}}" class="dropdown-item has-icon">
+				<a href="{{route('my_profile')}}" class="dropdown-item has-icon">
 					<i class="far fa-user"></i> Profile
 				</a>
 
 				<div class="dropdown-divider"></div>
-				<a href="{{route('email_users.logout')}}" class="dropdown-item has-icon text-danger" onclick="event.preventDefault(); document.getElementById('logout-form').submit();"> <i class="fas fa-sign-out-alt"></i> Logout</a>
-				<form action="{{ url('email_users/logout') }}" method="post" name="admin_login" id="logout-form">
+				<a href="javascript:void(0)" class="dropdown-item has-icon text-danger" onclick="event.preventDefault(); document.getElementById('email-header-logout-form').submit();"> <i class="fas fa-sign-out-alt"></i> Logout</a>
+				<form action="{{ url('email_users/logout') }}" method="post" name="admin_login" id="email-header-logout-form">
 					@csrf
 					<input type="hidden" name="id" value="{{Auth::user()->id}}">
 				</form>

@@ -15,11 +15,11 @@ A complete EOI/ROI workflow management system inside the client detail area that
 
 **Backend:**
 - `app/Services/PointsService.php` - Points calculation engine
-- `app/Http/Controllers/Admin/ClientEoiRoiController.php` - API endpoints
+- `app/Http/Controllers/CRM/ClientEoiRoiController.php` - API endpoints
 - `app/Models/ClientEoiReference.php` - EOI data model
 
 **Frontend:**
-- `resources/views/Admin/clients/tabs/eoi_roi.blade.php` - UI
+- `resources/views/crm/clients/tabs/eoi_roi.blade.php` - UI
 - `public/js/clients/eoi-roi.js` - AJAX interactions
 
 **Routes:** 6 new routes in `routes/web.php`

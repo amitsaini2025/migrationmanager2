@@ -87,7 +87,7 @@
                                                     {{ $signer->status_display }}
                                                 </span>
                                                 @if($signer->status === 'pending')
-                                                    <form method="POST" action="{{ route('admin.documents.sendReminder', $selectedDocument->id) }}" class="inline">
+                                                    <form method="POST" action="{{ route('documents.sendReminder', $selectedDocument->id) }}" class="inline">
                                                         @csrf
                                                         <input type="hidden" name="signer_id" value="{{ $signer->id }}">
                                                         <button type="submit"
@@ -134,7 +134,7 @@
                                 else
                                 { //visa and personal document
                                 ?>
-                                    <form method="POST" action="{{ route('admin.documents.sendSigningLink', $selectedDocument->id) }}" class="w-full sm:w-auto">
+                                    <form method="POST" action="{{ route('documents.sendSigningLink', $selectedDocument->id) }}" class="w-full sm:w-auto">
                                         @csrf
                                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                             <div>
@@ -148,7 +148,7 @@
                                     </form>
                                 <?php
                                 }?>
-                                <a href="{{ route('admin.documents.edit', $selectedDocument->id) }}" class="w-full sm:w-auto px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 font-medium rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 text-center">Edit Signatures</a>
+                                <a href="{{ route('documents.edit', $selectedDocument->id) }}" class="w-full sm:w-auto px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 font-medium rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 text-center">Edit Signatures</a>
                             </div>
                         @endif
                     </div>
@@ -174,7 +174,7 @@
                 $client_matter_info_arr = \App\Models\ClientMatter::select('sel_matter_id')->where('id',$selectedDocument->client_matter_id)->first();
                 ?>
                 <div class="modal-body">
-                    <form method="POST" action="{{ route('admin.documents.sendSigningLink', $selectedDocument->id) }}" class="w-full sm:w-auto" enctype="multipart/form-data">
+                    <form method="POST" action="{{ route('documents.sendSigningLink', $selectedDocument->id) }}" class="w-full sm:w-auto" enctype="multipart/form-data">
                         @csrf
                         <input type="hidden" name="client_id" id="mail_client_id" value="{{$selectedDocument->client_id}}">
                         <input type="hidden" name="client_matter_id" id="mail_client_matter_id" value="{{$selectedDocument->client_matter_id}}">
@@ -203,21 +203,7 @@
                         $fetchedData = \App\Models\Admin::where('id',$selectedDocument->client_id )->first();
                         ?>
                         <div class="row">
-                            <div class="col-12 col-md-6 col-lg-6">
-                                <div class="form-group">
-                                    <label for="email_from">From <span class="span_req">*</span></label>
-                                    <select class="form-control" name="email_from" required>
-                                        <option value="">Select From</option>
-                                        <?php
-                                        $emails = \App\Models\Email::select('email')->where('status', 1)->get();
-                                        foreach($emails as $nemail){
-                                        ?>
-                                            <option value="<?php echo $nemail->email; ?>"><?php echo $nemail->email; ?></option>
-                                        <?php
-                                        }?>
-                                    </select>
-                                </div>
-                            </div>
+                            <input type="hidden" name="email_from" value="info@bansalimmigration.com.au">
 
                             <div class="col-12 col-md-6 col-lg-6">
                                 <div class="form-group">

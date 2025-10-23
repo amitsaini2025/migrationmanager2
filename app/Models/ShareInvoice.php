@@ -14,6 +14,6 @@ class ShareInvoice extends Authenticatable
 	
 	public function company()
     {
-        return $this->belongsTo('App\\Models\\\Models\\Admin','user_id','id');
+        return $this->belongsTo('App\\Models\\Admin','user_id','id');
     }
 }

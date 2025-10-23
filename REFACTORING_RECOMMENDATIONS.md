@@ -13,13 +13,13 @@ Based on deep analysis of the codebase, here are the recommended refactorings pr
 
 ### 2. **Controller Separation - ClientNotesController** ✅
 - **Completed:** October 12, 2025  
-- **Location:** `app/Http/Controllers/Admin/Clients/ClientNotesController.php`
+- **Location:** `app/Http/Controllers/CRM/Clients/ClientNotesController.php`
 - **Impact:** Separated notes management from monolithic ClientsController
 - **Status:** Moved to new `Admin/Clients/` subdirectory structure
 
 ### 3. **Controller Separation - ClientDocumentsController** ✅
 - **Completed:** October 12, 2025
-- **Location:** `app/Http/Controllers/Admin/Clients/ClientDocumentsController.php`  
+- **Location:** `app/Http/Controllers/CRM/Clients/ClientDocumentsController.php`  
 - **Impact:** Separated document handling from monolithic ClientsController
 - **Lines:** 1,246 lines (document handling is complex!)
 - **Status:** Moved to new `Admin/Clients/` subdirectory structure
@@ -27,8 +27,8 @@ Based on deep analysis of the codebase, here are the recommended refactorings pr
 ### 4. **Document Download & Preview Fixes** ✅
 - **Completed:** October 12, 2025
 - **Files Modified:**
-  - `resources/views/Admin/clients/tabs/personal_documents.blade.php`
-  - `resources/views/Admin/clients/tabs/visa_documents.blade.php`
+  - `resources/views/crm/clients/tabs/personal_documents.blade.php`
+  - `resources/views/crm/clients/tabs/visa_documents.blade.php`
 - **Impact:** Fixed right-click context menu download/preview for legacy documents
 - **Details:** See `DOCUMENT_DOWNLOAD_PREVIEW_FIX_COMPLETE.md`
 
@@ -59,7 +59,7 @@ Based on deep analysis of the codebase, here are the recommended refactorings pr
 ## 🔴 **HIGH PRIORITY**
 
 ### 1. **ClientsController.php** (13,081 lines!)
-**Location:** `app/Http/Controllers/Admin/ClientsController.php`
+**Location:** `app/Http/Controllers/CRM/ClientsController.php`
 
 **Problem:** Massive monolithic controller - one of the largest files in the codebase
 
@@ -93,7 +93,7 @@ Recommended Structure:
 ---
 
 ### 2. **detail.blade.php** (1,226 lines + 9 modals)
-**Location:** `resources/views/Admin/clients/detail.blade.php`
+**Location:** `resources/views/crm/clients/detail.blade.php`
 
 **Problem:** Contains 9 additional modals that should be extracted
 
@@ -136,7 +136,7 @@ modals/
 ---
 
 ### 3. **client_detail_info.blade.php** (3,579 lines!)
-**Location:** `resources/views/Admin/clients/client_detail_info.blade.php`
+**Location:** `resources/views/crm/clients/client_detail_info.blade.php`
 
 **Problem:** Extremely large form file - likely contains massive form sections
 
@@ -172,7 +172,7 @@ Recommended:
 ## 🟡 **MEDIUM PRIORITY**
 
 ### 4. **create.blade.php** (1,356 lines)
-**Location:** `resources/views/Admin/clients/create.blade.php`
+**Location:** `resources/views/crm/clients/create.blade.php`
 
 **Problem:** Large client creation form
 
@@ -183,7 +183,7 @@ Recommended:
 ---
 
 ### 5. **edit.blade.php** (1,329 lines)
-**Location:** `resources/views/Admin/clients/edit.blade.php`
+**Location:** `resources/views/crm/clients/edit.blade.php`
 
 **Problem:** Large client edit form (has 1 modal for OTP verification)
 
@@ -196,7 +196,7 @@ Recommended:
 ---
 
 ### 6. **ClientPersonalDetailsController.php** (2,179 lines)
-**Location:** `app/Http/Controllers/Admin/ClientPersonalDetailsController.php`
+**Location:** `app/Http/Controllers/CRM/ClientPersonalDetailsController.php`
 
 **Problem:** Still quite large
 

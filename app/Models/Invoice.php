@@ -25,22 +25,22 @@ class Invoice extends Authenticatable
  
 	public function user()
     {
-        return $this->belongsTo('App\\Models\\\Models\\Admin','user_id','id');
+        return $this->belongsTo('App\\Models\\Admin','user_id','id');
     }
 	
 	public function company()
     {
-        return $this->belongsTo('App\\Models\\\Models\\Admin','user_id','id');
+        return $this->belongsTo('App\\Models\\Admin','user_id','id');
     }
 	
 	public function staff()
     {
-        return $this->belongsTo('App\\Models\\\Models\\Admin','seller_id','id');
+        return $this->belongsTo('App\\Models\\Admin','seller_id','id');
     }
 	
 	public function customer()
     {
-        return $this->belongsTo('App\\Models\\\Models\\Admin','client_id','id');
+        return $this->belongsTo('App\\Models\\Admin','client_id','id');
     }
 	public function invoicedetail() 
     {

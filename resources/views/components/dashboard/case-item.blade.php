@@ -38,12 +38,12 @@
     <div class="case-details">
         <span class="client-name">
             {{ $client->first_name ?: config('constants.empty') }} {{ $client->last_name ?: config('constants.empty') }}
-            (<a href="{{ route('admin.clients.detail', [base64_encode(convert_uuencode($client->id)), $case->client_unique_matter_no]) }}">
+            (<a href="{{ route('clients.detail', [base64_encode(convert_uuencode($client->id)), $case->client_unique_matter_no]) }}">
                 {{ $client->client_id ?: config('constants.empty') }}
             </a>)
         </span>
         <span class="case-info">
-            <a href="{{ route('admin.clients.detail', [base64_encode(convert_uuencode($client->id)), $case->client_unique_matter_no]) }}">
+            <a href="{{ route('clients.detail', [base64_encode(convert_uuencode($client->id)), $case->client_unique_matter_no]) }}">
                 {{ $matter_name }} ({{ $case->client_unique_matter_no }})
             </a>
             <span style="display: inline-block;" class="stalled-days {{ $daysStalledClass }}">

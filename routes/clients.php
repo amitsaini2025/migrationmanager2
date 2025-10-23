@@ -1,13 +1,13 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\ClientsController;
-use App\Http\Controllers\Admin\ClientEoiRoiController;
-use App\Http\Controllers\Admin\Clients\ClientNotesController;
-use App\Http\Controllers\Admin\Clients\ClientDocumentsController;
-use App\Http\Controllers\Admin\ClientPersonalDetailsController;
-use App\Http\Controllers\Admin\PhoneVerificationController;
-use App\Http\Controllers\Admin\EmailVerificationController;
+use App\Http\Controllers\CRM\ClientsController;
+use App\Http\Controllers\CRM\ClientEoiRoiController;
+use App\Http\Controllers\CRM\Clients\ClientNotesController;
+use App\Http\Controllers\CRM\Clients\ClientDocumentsController;
+use App\Http\Controllers\CRM\ClientPersonalDetailsController;
+use App\Http\Controllers\CRM\PhoneVerificationController;
+use App\Http\Controllers\CRM\EmailVerificationController;
 use App\Http\Controllers\AdminConsole\AnzscoOccupationController;
 
 /*
@@ -18,20 +18,20 @@ use App\Http\Controllers\AdminConsole\AnzscoOccupationController;
 | All routes for client CRUD operations, documents, verification, invoices,
 | EOI/ROI management, notes, agreements, and related functionality.
 |
-| Prefix: /admin (inherited from web.php)
+| Prefix: None (routes at root level)
 | Middleware: auth:admin (inherited from web.php)
 |
 */
 
 /*---------- Client CRUD Operations ----------*/
-Route::get('/clients', [ClientsController::class, 'index'])->name('admin.clients.index');
-Route::get('/clientsmatterslist', [ClientsController::class, 'clientsmatterslist'])->name('admin.clients.clientsmatterslist');
-Route::get('/clientsemaillist', [ClientsController::class, 'clientsemaillist'])->name('admin.clients.clientsemaillist');
-Route::post('/clients/store', [ClientsController::class, 'store'])->name('admin.clients.store');
-Route::get('/clients/edit/{id}', [ClientsController::class, 'edit'])->name('admin.clients.edit');
-Route::post('/clients/edit', [ClientsController::class, 'edit'])->name('admin.clients.update');
-Route::post('/clients/save-section', [ClientPersonalDetailsController::class, 'saveSection'])->name('admin.clients.saveSection');
-Route::get('/clients/partner-eoi-data/{partnerId}', [ClientPersonalDetailsController::class, 'getPartnerEoiData'])->name('admin.clients.partnerEoiData');
+Route::get('/clients', [ClientsController::class, 'index'])->name('clients.index');
+Route::get('/clientsmatterslist', [ClientsController::class, 'clientsmatterslist'])->name('clients.clientsmatterslist');
+Route::get('/clientsemaillist', [ClientsController::class, 'clientsemaillist'])->name('clients.clientsemaillist');
+Route::post('/clients/store', [ClientsController::class, 'store'])->name('clients.store');
+Route::get('/clients/edit/{id}', [ClientsController::class, 'edit'])->name('clients.edit');
+Route::post('/clients/edit', [ClientsController::class, 'edit'])->name('clients.update');
+Route::post('/clients/save-section', [ClientPersonalDetailsController::class, 'saveSection'])->name('clients.saveSection');
+Route::get('/clients/partner-eoi-data/{partnerId}', [ClientPersonalDetailsController::class, 'getPartnerEoiData'])->name('clients.partnerEoiData');
 
 /*---------- Phone & Email Verification ----------*/
 Route::prefix('clients/phone')->name('clients.phone.')->group(function () {
@@ -53,91 +53,91 @@ Route::post('/clients/followup/retagfollowup', [ClientsController::class, 'retag
 Route::get('/clients/changetype/{id}/{type}', [ClientsController::class, 'changetype']);
 Route::get('/document/download/pdf/{id}', [ClientsController::class, 'downloadpdf']);
 Route::get('/clients/removetag', [ClientsController::class, 'removetag']);
-Route::get('/clients/detail/{client_id}/{client_unique_matter_ref_no?}/{tab?}', [ClientsController::class, 'detail'])->name('admin.clients.detail');
+Route::get('/clients/detail/{client_id}/{client_unique_matter_ref_no?}/{tab?}', [ClientsController::class, 'detail'])->name('clients.detail');
 
 /*---------- Client Communication ----------*/
-Route::get('/clients/get-recipients', [ClientsController::class, 'getrecipients'])->name('admin.clients.getrecipients');
-Route::get('/clients/get-onlyclientrecipients', [ClientsController::class, 'getonlyclientrecipients'])->name('admin.clients.getonlyclientrecipients');
-Route::get('/clients/get-allclients', [ClientsController::class, 'getallclients'])->name('admin.clients.getallclients');
+Route::get('/clients/get-recipients', [ClientsController::class, 'getrecipients'])->name('clients.getrecipients');
+Route::get('/clients/get-onlyclientrecipients', [ClientsController::class, 'getonlyclientrecipients'])->name('clients.getonlyclientrecipients');
+Route::get('/clients/get-allclients', [ClientsController::class, 'getallclients'])->name('clients.getallclients');
 Route::get('/clients/change_assignee', [ClientsController::class, 'change_assignee']);
-Route::get('/get-templates', 'Admin\AdminController@gettemplates')->name('admin.clients.gettemplates');
-Route::post('/sendmail', 'Admin\AdminController@sendmail')->name('admin.clients.sendmail');
+Route::get('/get-templates', 'CRM\CRMUtilityController@gettemplates')->name('clients.gettemplates');
+Route::post('/sendmail', 'CRM\CRMUtilityController@sendmail')->name('clients.sendmail');
 
-Route::post('/upload-mail', 'Admin\ClientsController@uploadmail');
-Route::post('/upload-fetch-mail', 'Admin\ClientsController@uploadfetchmail'); //upload inbox email
-Route::post('/upload-sent-fetch-mail', 'Admin\ClientsController@uploadsentfetchmail'); //upload sent email
+Route::post('/upload-mail', 'CRM\ClientsController@uploadmail');
+Route::post('/upload-fetch-mail', 'CRM\ClientsController@uploadfetchmail'); //upload inbox email
+Route::post('/upload-sent-fetch-mail', 'CRM\ClientsController@uploadsentfetchmail'); //upload sent email
 
-Route::post('/reassiginboxemail', 'Admin\ClientsController@reassiginboxemail')->name('admin.clients.reassiginboxemail');
-Route::post('/reassigsentemail', 'Admin\ClientsController@reassigsentemail')->name('admin.clients.reassigsentemail');
-Route::post('/listAllMattersWRTSelClient', 'Admin\ClientsController@listAllMattersWRTSelClient')->name('admin.clients.listAllMattersWRTSelClient');
-Route::post('/updatemailreadbit', 'Admin\ClientsController@updatemailreadbit')->name('admin.clients.updatemailreadbit');
+Route::post('/reassiginboxemail', 'CRM\ClientsController@reassiginboxemail')->name('clients.reassiginboxemail');
+Route::post('/reassigsentemail', 'CRM\ClientsController@reassigsentemail')->name('clients.reassigsentemail');
+Route::post('/listAllMattersWRTSelClient', 'CRM\ClientsController@listAllMattersWRTSelClient')->name('clients.listAllMattersWRTSelClient');
+Route::post('/updatemailreadbit', 'CRM\ClientsController@updatemailreadbit')->name('clients.updatemailreadbit');
 
-Route::post('/clients/filter-emails', 'Admin\ClientsController@filterEmails')->name('admin.clients.filter.emails');
-Route::post('/clients/filter-sentemails', 'Admin\ClientsController@filterSentEmails')->name('admin.clients.filter.sentmails');
-Route::post('/mail/enhance', 'Admin\ClientsController@enhanceMessage')->name('admin.mail.enhance');
+Route::post('/clients/filter-emails', 'CRM\ClientsController@filterEmails')->name('clients.filter.emails');
+Route::post('/clients/filter-sentemails', 'CRM\ClientsController@filterSentEmails')->name('clients.filter.sentmails');
+Route::post('/mail/enhance', 'CRM\ClientsController@enhanceMessage')->name('mail.enhance');
 
 /*---------- Client Notes ----------*/
-Route::post('/create-note', [ClientNotesController::class, 'createnote'])->name('admin.clients.createnote');
-Route::post('/update-note-datetime', [ClientNotesController::class, 'updateNoteDatetime'])->name('admin.clients.updateNoteDatetime');
-Route::get('/getnotedetail', [ClientNotesController::class, 'getnotedetail'])->name('admin.clients.getnotedetail');
-Route::get('/deletenote', [ClientNotesController::class, 'deletenote'])->name('admin.clients.deletenote');
+Route::post('/create-note', [ClientNotesController::class, 'createnote'])->name('clients.createnote');
+Route::post('/update-note-datetime', [ClientNotesController::class, 'updateNoteDatetime'])->name('clients.updateNoteDatetime');
+Route::get('/getnotedetail', [ClientNotesController::class, 'getnotedetail'])->name('clients.getnotedetail');
+Route::get('/deletenote', [ClientNotesController::class, 'deletenote'])->name('clients.deletenote');
 Route::get('/viewnotedetail', [ClientNotesController::class, 'viewnotedetail']);
 Route::get('/viewapplicationnote', [ClientNotesController::class, 'viewapplicationnote']);
 Route::post('/saveprevvisa', [ClientNotesController::class, 'saveprevvisa']);
 Route::post('/saveonlineprimaryform', [ClientNotesController::class, 'saveonlineform']);
 Route::post('/saveonlinesecform', [ClientNotesController::class, 'saveonlineform']);
 Route::post('/saveonlinechildform', [ClientNotesController::class, 'saveonlineform']);
-Route::get('/get-notes', [ClientNotesController::class, 'getnotes'])->name('admin.clients.getnotes');
+Route::get('/get-notes', [ClientNotesController::class, 'getnotes'])->name('clients.getnotes');
 Route::get('/pinnote', [ClientNotesController::class, 'pinnote']);
 
-Route::post('/convert-activity-to-note', 'Admin\ClientsController@convertActivityToNote')->name('admin.clients.convertActivityToNote');
+Route::post('/convert-activity-to-note', 'CRM\ClientsController@convertActivityToNote')->name('clients.convertActivityToNote');
 
 /*---------- Client Status & Archive ----------*/
-Route::get('/archived', 'Admin\ClientsController@archived')->name('admin.clients.archived');
-Route::get('/change-client-status', 'Admin\ClientsController@updateclientstatus')->name('admin.clients.updateclientstatus');
-Route::get('/get-activities', 'Admin\ClientsController@activities')->name('admin.clients.activities');
-Route::get('/deletecostagreement', [ClientsController::class, 'deletecostagreement'])->name('admin.clients.deletecostagreement');
-Route::get('/deleteactivitylog', [ClientsController::class, 'deleteactivitylog'])->name('admin.clients.deleteactivitylog');
-Route::post('/not-picked-call', [ClientsController::class, 'notpickedcall'])->name('admin.clients.notpickedcall');
-Route::get('/pinactivitylog', 'Admin\ClientsController@pinactivitylog');
+Route::get('/archived', 'CRM\ClientsController@archived')->name('clients.archived');
+Route::get('/change-client-status', 'CRM\ClientsController@updateclientstatus')->name('clients.updateclientstatus');
+Route::get('/get-activities', 'CRM\ClientsController@activities')->name('clients.activities');
+Route::get('/deletecostagreement', [ClientsController::class, 'deletecostagreement'])->name('clients.deletecostagreement');
+Route::get('/deleteactivitylog', [ClientsController::class, 'deleteactivitylog'])->name('clients.deleteactivitylog');
+Route::post('/not-picked-call', [ClientsController::class, 'notpickedcall'])->name('clients.notpickedcall');
+Route::get('/pinactivitylog', 'CRM\ClientsController@pinactivitylog');
 
 /*---------- Client Services ----------*/
-Route::post('/interested-service', 'Admin\ClientsController@interestedService');
-Route::post('/edit-interested-service', 'Admin\ClientsController@editinterestedService');
-Route::get('/get-services', 'Admin\ClientsController@getServices');
-Route::post('/servicesavefee', 'Admin\ClientsController@servicesavefee');
-Route::get('/getintrestedservice', 'Admin\ClientsController@getintrestedservice');
-Route::get('/getintrestedserviceedit', 'Admin\ClientsController@getintrestedserviceedit');
+Route::post('/interested-service', 'CRM\ClientsController@interestedService');
+Route::post('/edit-interested-service', 'CRM\ClientsController@editinterestedService');
+Route::get('/get-services', 'CRM\ClientsController@getServices');
+Route::post('/servicesavefee', 'CRM\ClientsController@servicesavefee');
+Route::get('/getintrestedservice', 'CRM\ClientsController@getintrestedservice');
+Route::get('/getintrestedserviceedit', 'CRM\ClientsController@getintrestedserviceedit');
 
-Route::get('/get-application-lists', 'Admin\ClientsController@getapplicationlists')->name('admin.clients.getapplicationlists');
-Route::post('/saveapplication', 'Admin\ClientsController@saveapplication')->name('admin.clients.saveapplication');
-Route::get('/convertapplication', 'Admin\ClientsController@convertapplication')->name('admin.clients.convertapplication');
-Route::get('/deleteservices', 'Admin\ClientsController@deleteservices')->name('admin.clients.deleteservices');
-Route::post('/savetoapplication', 'Admin\ClientsController@savetoapplication');
+Route::get('/get-application-lists', 'CRM\ClientsController@getapplicationlists')->name('clients.getapplicationlists');
+Route::post('/saveapplication', 'CRM\ClientsController@saveapplication')->name('clients.saveapplication');
+Route::get('/convertapplication', 'CRM\ClientsController@convertapplication')->name('clients.convertapplication');
+Route::get('/deleteservices', 'CRM\ClientsController@deleteservices')->name('clients.deleteservices');
+Route::post('/savetoapplication', 'CRM\ClientsController@savetoapplication');
 
-Route::post('/client/createservicetaken', 'Admin\ClientsController@createservicetaken');
-Route::post('/client/removeservicetaken', 'Admin\ClientsController@removeservicetaken');
-Route::post('/client/getservicetaken', 'Admin\ClientsController@getservicetaken');
+Route::post('/client/createservicetaken', 'CRM\ClientsController@createservicetaken');
+Route::post('/client/removeservicetaken', 'CRM\ClientsController@removeservicetaken');
+Route::post('/client/getservicetaken', 'CRM\ClientsController@getservicetaken');
 
 /*---------- Client Documents Management ----------*/
-Route::post('/documents/add-edu-checklist', [ClientDocumentsController::class, 'addedudocchecklist'])->name('admin.clients.documents.addedudocchecklist');
-Route::post('/documents/upload-edu-document', [ClientDocumentsController::class, 'uploadedudocument'])->name('admin.clients.documents.uploadedudocument');
-Route::post('/documents/add-visa-checklist', [ClientDocumentsController::class, 'addvisadocchecklist'])->name('admin.clients.documents.addvisadocchecklist');
-Route::post('/documents/upload-visa-document', [ClientDocumentsController::class, 'uploadvisadocument'])->name('admin.clients.documents.uploadvisadocument');
-Route::post('/documents/rename', [ClientDocumentsController::class, 'renamedoc'])->name('admin.clients.documents.renamedoc');
-Route::get('/documents/delete', [ClientDocumentsController::class, 'deletedocs'])->name('admin.clients.documents.deletedocs');
-Route::get('/documents/get-visa-checklist', [ClientDocumentsController::class, 'getvisachecklist'])->name('admin.clients.documents.getvisachecklist');
-Route::post('/documents/not-used', [ClientDocumentsController::class, 'notuseddoc'])->name('admin.clients.documents.notuseddoc');
-Route::post('/documents/rename-checklist', [ClientDocumentsController::class, 'renamechecklistdoc'])->name('admin.clients.documents.renamechecklistdoc');
-Route::post('/documents/back-to-doc', [ClientDocumentsController::class, 'backtodoc'])->name('admin.clients.documents.backtodoc');
-Route::post('/documents/download', [ClientDocumentsController::class, 'download_document'])->name('admin.clients.documents.download');
-Route::post('/documents/add-personal-category', [ClientDocumentsController::class, 'addPersonalDocCategory'])->name('admin.clients.documents.addPersonalDocCategory');
-Route::post('/documents/update-personal-category', [ClientDocumentsController::class, 'updatePersonalDocCategory'])->name('admin.clients.documents.updatePersonalDocCategory');
-Route::post('/documents/add-visa-category', [ClientDocumentsController::class, 'addVisaDocCategory'])->name('admin.clients.documents.addVisaDocCategory');
-Route::post('/documents/update-visa-category', [ClientDocumentsController::class, 'updateVisaDocCategory'])->name('admin.clients.documents.updateVisaDocCategory');
+Route::post('/documents/add-edu-checklist', [ClientDocumentsController::class, 'addedudocchecklist'])->name('clients.documents.addedudocchecklist');
+Route::post('/documents/upload-edu-document', [ClientDocumentsController::class, 'uploadedudocument'])->name('clients.documents.uploadedudocument');
+Route::post('/documents/add-visa-checklist', [ClientDocumentsController::class, 'addvisadocchecklist'])->name('clients.documents.addvisadocchecklist');
+Route::post('/documents/upload-visa-document', [ClientDocumentsController::class, 'uploadvisadocument'])->name('clients.documents.uploadvisadocument');
+Route::post('/documents/rename', [ClientDocumentsController::class, 'renamedoc'])->name('clients.documents.renamedoc');
+Route::get('/documents/delete', [ClientDocumentsController::class, 'deletedocs'])->name('clients.documents.deletedocs');
+Route::get('/documents/get-visa-checklist', [ClientDocumentsController::class, 'getvisachecklist'])->name('clients.documents.getvisachecklist');
+Route::post('/documents/not-used', [ClientDocumentsController::class, 'notuseddoc'])->name('clients.documents.notuseddoc');
+Route::post('/documents/rename-checklist', [ClientDocumentsController::class, 'renamechecklistdoc'])->name('clients.documents.renamechecklistdoc');
+Route::post('/documents/back-to-doc', [ClientDocumentsController::class, 'backtodoc'])->name('clients.documents.backtodoc');
+Route::post('/documents/download', [ClientDocumentsController::class, 'download_document'])->name('clients.documents.download');
+Route::post('/documents/add-personal-category', [ClientDocumentsController::class, 'addPersonalDocCategory'])->name('clients.documents.addPersonalDocCategory');
+Route::post('/documents/update-personal-category', [ClientDocumentsController::class, 'updatePersonalDocCategory'])->name('clients.documents.updatePersonalDocCategory');
+Route::post('/documents/add-visa-category', [ClientDocumentsController::class, 'addVisaDocCategory'])->name('clients.documents.addVisaDocCategory');
+Route::post('/documents/update-visa-category', [ClientDocumentsController::class, 'updateVisaDocCategory'])->name('clients.documents.updateVisaDocCategory');
 
 /*---------- Client EOI/ROI Management ----------*/
-Route::prefix('clients/{admin}/eoi-roi')->name('admin.clients.eoi-roi.')->group(function () {
+Route::prefix('clients/{admin}/eoi-roi')->name('clients.eoi-roi.')->group(function () {
     Route::get('/', [ClientEoiRoiController::class, 'index'])->name('index');
     Route::get('/calculate-points', [ClientEoiRoiController::class, 'calculatePoints'])->name('calculatePoints');
     Route::post('/', [ClientEoiRoiController::class, 'upsert'])->name('upsert');
@@ -147,125 +147,125 @@ Route::prefix('clients/{admin}/eoi-roi')->name('admin.clients.eoi-roi.')->group(
 });
 
 /*---------- Client Invoices & Receipts ----------*/
-Route::get('/clients/saveaccountreport/{id}', 'Admin\ClientsController@saveaccountreport')->name('admin.clients.saveaccountreport');
-Route::post('/clients/saveaccountreport', 'Admin\ClientsController@saveaccountreport')->name('admin.clients.saveaccountreport.update');
+Route::get('/clients/saveaccountreport/{id}', 'CRM\ClientsController@saveaccountreport')->name('clients.saveaccountreport');
+Route::post('/clients/saveaccountreport', 'CRM\ClientsController@saveaccountreport')->name('clients.saveaccountreport.update');
 
-Route::get('/clients/saveinvoicereport/{id}', 'Admin\ClientsController@saveinvoicereport')->name('admin.clients.saveinvoicereport');
-Route::post('/clients/saveinvoicereport', 'Admin\ClientsController@saveinvoicereport')->name('admin.clients.saveinvoicereport.update');
+Route::get('/clients/saveinvoicereport/{id}', 'CRM\ClientsController@saveinvoicereport')->name('clients.saveinvoicereport');
+Route::post('/clients/saveinvoicereport', 'CRM\ClientsController@saveinvoicereport')->name('clients.saveinvoicereport.update');
 
-Route::get('/clients/saveadjustinvoicereport/{id}', 'Admin\ClientsController@saveadjustinvoicereport')->name('admin.clients.saveadjustinvoicereport');
-Route::post('/clients/saveadjustinvoicereport', 'Admin\ClientsController@saveadjustinvoicereport')->name('admin.clients.saveadjustinvoicereport.update');
+Route::get('/clients/saveadjustinvoicereport/{id}', 'CRM\ClientsController@saveadjustinvoicereport')->name('clients.saveadjustinvoicereport');
+Route::post('/clients/saveadjustinvoicereport', 'CRM\ClientsController@saveadjustinvoicereport')->name('clients.saveadjustinvoicereport.update');
 
-Route::get('/clients/saveofficereport/{id}', 'Admin\ClientsController@saveofficereport')->name('admin.clients.saveofficereport');
-Route::post('/clients/saveofficereport', 'Admin\ClientsController@saveofficereport')->name('admin.clients.saveofficereport.update');
+Route::get('/clients/saveofficereport/{id}', 'CRM\ClientsController@saveofficereport')->name('clients.saveofficereport');
+Route::post('/clients/saveofficereport', 'CRM\ClientsController@saveofficereport')->name('clients.saveofficereport.update');
 
-Route::get('/clients/savejournalreport/{id}', 'Admin\ClientsController@savejournalreport')->name('admin.clients.savejournalreport');
-Route::post('/clients/savejournalreport', 'Admin\ClientsController@savejournalreport')->name('admin.clients.savejournalreport.update');
+Route::get('/clients/savejournalreport/{id}', 'CRM\ClientsController@savejournalreport')->name('clients.savejournalreport');
+Route::post('/clients/savejournalreport', 'CRM\ClientsController@savejournalreport')->name('clients.savejournalreport.update');
 
-Route::post('/clients/isAnyInvoiceNoExistInDB', 'Admin\ClientsController@isAnyInvoiceNoExistInDB')->name('admin.clients.isAnyInvoiceNoExistInDB');
-Route::post('/clients/listOfInvoice', 'Admin\ClientsController@listOfInvoice')->name('admin.clients.listOfInvoice');
-Route::post('/clients/getTopReceiptValInDB', 'Admin\ClientsController@getTopReceiptValInDB')->name('admin.clients.getTopReceiptValInDB');
-Route::post('/clients/getInfoByReceiptId', 'Admin\ClientsController@getInfoByReceiptId')->name('admin.clients.getInfoByReceiptId');
-Route::get('/clients/genInvoice/{id}', 'Admin\ClientsController@genInvoice');
-Route::post('/clients/sendToHubdoc/{id}', 'Admin\ClientsController@sendToHubdoc')->name('admin.clients.sendToHubdoc');
-Route::get('/clients/checkHubdocStatus/{id}', 'Admin\ClientsController@checkHubdocStatus')->name('admin.clients.checkHubdocStatus');
-Route::get('/clients/printPreview/{id}', 'Admin\ClientsController@printPreview');
-Route::post('/clients/getTopInvoiceNoFromDB', 'Admin\ClientsController@getTopInvoiceNoFromDB')->name('admin.clients.getTopInvoiceNoFromDB');
-Route::post('/clients/clientLedgerBalanceAmount', 'Admin\ClientsController@clientLedgerBalanceAmount')->name('admin.clients.clientLedgerBalanceAmount');
+Route::post('/clients/isAnyInvoiceNoExistInDB', 'CRM\ClientsController@isAnyInvoiceNoExistInDB')->name('clients.isAnyInvoiceNoExistInDB');
+Route::post('/clients/listOfInvoice', 'CRM\ClientsController@listOfInvoice')->name('clients.listOfInvoice');
+Route::post('/clients/getTopReceiptValInDB', 'CRM\ClientsController@getTopReceiptValInDB')->name('clients.getTopReceiptValInDB');
+Route::post('/clients/getInfoByReceiptId', 'CRM\ClientsController@getInfoByReceiptId')->name('clients.getInfoByReceiptId');
+Route::get('/clients/genInvoice/{id}', 'CRM\ClientsController@genInvoice');
+Route::post('/clients/sendToHubdoc/{id}', 'CRM\ClientsController@sendToHubdoc')->name('clients.sendToHubdoc');
+Route::get('/clients/checkHubdocStatus/{id}', 'CRM\ClientsController@checkHubdocStatus')->name('clients.checkHubdocStatus');
+Route::get('/clients/printPreview/{id}', 'CRM\ClientsController@printPreview');
+Route::post('/clients/getTopInvoiceNoFromDB', 'CRM\ClientsController@getTopInvoiceNoFromDB')->name('clients.getTopInvoiceNoFromDB');
+Route::post('/clients/clientLedgerBalanceAmount', 'CRM\ClientsController@clientLedgerBalanceAmount')->name('clients.clientLedgerBalanceAmount');
 
-Route::get('/clients/invoicelist', 'Admin\ClientsController@invoicelist')->name('admin.clients.invoicelist');
-Route::post('/void_invoice','Admin\ClientsController@void_invoice')->name('client.void_invoice');
-Route::get('/clients/clientreceiptlist', 'Admin\ClientsController@clientreceiptlist')->name('admin.clients.clientreceiptlist');
-Route::get('/clients/officereceiptlist', 'Admin\ClientsController@officereceiptlist')->name('admin.clients.officereceiptlist');
-Route::get('/clients/journalreceiptlist', 'Admin\ClientsController@journalreceiptlist')->name('admin.clients.journalreceiptlist');
-Route::post('/validate_receipt','Admin\ClientsController@validate_receipt')->name('client.validate_receipt');
-Route::post('/delete_receipt','Admin\ClientsController@delete_receipt');
+Route::get('/clients/invoicelist', 'CRM\ClientsController@invoicelist')->name('clients.invoicelist');
+Route::post('/void_invoice','CRM\ClientsController@void_invoice')->name('client.void_invoice');
+Route::get('/clients/clientreceiptlist', 'CRM\ClientsController@clientreceiptlist')->name('clients.clientreceiptlist');
+Route::get('/clients/officereceiptlist', 'CRM\ClientsController@officereceiptlist')->name('clients.officereceiptlist');
+Route::get('/clients/journalreceiptlist', 'CRM\ClientsController@journalreceiptlist')->name('clients.journalreceiptlist');
+Route::post('/validate_receipt','CRM\ClientsController@validate_receipt')->name('client.validate_receipt');
+Route::post('/delete_receipt','CRM\ClientsController@delete_receipt');
 
-Route::get('/clients/genClientFundLedgerInvoice/{id}', 'Admin\ClientsController@genClientFundLedgerInvoice');
-Route::get('/clients/genofficereceiptInvoice/{id}', 'Admin\ClientsController@genofficereceiptInvoice');
-Route::post('/update-client-funds-ledger', 'Admin\ClientsController@updateClientFundsLedger')->name('admin.clients.update-client-funds-ledger');
-Route::post('/clients/invoiceamount', 'Admin\ClientsController@getInvoiceAmount')->name('admin.clients.invoiceamount');
+Route::get('/clients/genClientFundLedgerInvoice/{id}', 'CRM\ClientsController@genClientFundLedgerInvoice');
+Route::get('/clients/genofficereceiptInvoice/{id}', 'CRM\ClientsController@genofficereceiptInvoice');
+Route::post('/update-client-funds-ledger', 'CRM\ClientsController@updateClientFundsLedger')->name('clients.update-client-funds-ledger');
+Route::post('/clients/invoiceamount', 'CRM\ClientsController@getInvoiceAmount')->name('clients.invoiceamount');
 
 /*---------- Client Personal Details & Address ----------*/
-Route::post('/clients/update-address', [ClientPersonalDetailsController::class, 'updateAddress'])->name('admin.clients.updateAddress');
-Route::post('/clients/search-address-full', [ClientPersonalDetailsController::class, 'searchAddressFull'])->name('admin.clients.searchAddressFull');
-Route::post('/clients/get-place-details', [ClientPersonalDetailsController::class, 'getPlaceDetails'])->name('admin.clients.getPlaceDetails');
-Route::post('/address_auto_populate', 'Admin\ClientsController@address_auto_populate');
+Route::post('/clients/update-address', [ClientPersonalDetailsController::class, 'updateAddress'])->name('clients.updateAddress');
+Route::post('/clients/search-address-full', [ClientPersonalDetailsController::class, 'searchAddressFull'])->name('clients.searchAddressFull');
+Route::post('/clients/get-place-details', [ClientPersonalDetailsController::class, 'getPlaceDetails'])->name('clients.getPlaceDetails');
+Route::post('/address_auto_populate', 'CRM\ClientsController@address_auto_populate');
 
 Route::post('/clients/fetchClientContactNo', [ClientPersonalDetailsController::class, 'fetchClientContactNo']);
-Route::post('/clients/clientdetailsinfo/{id}', [ClientPersonalDetailsController::class, 'clientdetailsinfo'])->name('admin.clients.clientdetailsinfo');
-Route::post('/clients/clientdetailsinfo', [ClientPersonalDetailsController::class, 'clientdetailsinfo'])->name('admin.clients.clientdetailsinfo.update');
+Route::post('/clients/clientdetailsinfo/{id}', [ClientPersonalDetailsController::class, 'clientdetailsinfo'])->name('clients.clientdetailsinfo');
+Route::post('/clients/clientdetailsinfo', [ClientPersonalDetailsController::class, 'clientdetailsinfo'])->name('clients.clientdetailsinfo.update');
 
-Route::get('/admin/get-visa-types', [ClientPersonalDetailsController::class, 'getVisaTypes'])->name('admin.getVisaTypes');
-Route::get('/admin/get-countries', [ClientPersonalDetailsController::class, 'getCountries'])->name('admin.getCountries');
-Route::post('/updateOccupation', [ClientPersonalDetailsController::class, 'updateOccupation'])->name('admin.clients.updateOccupation');
-Route::post('/leads/updateOccupation', [ClientPersonalDetailsController::class, 'updateOccupation'])->name('admin.leads.updateOccupation');
+Route::get('/get-visa-types', [ClientPersonalDetailsController::class, 'getVisaTypes'])->name('getVisaTypes');
+Route::get('/get-countries', [ClientPersonalDetailsController::class, 'getCountries'])->name('getCountries');
+Route::post('/updateOccupation', [ClientPersonalDetailsController::class, 'updateOccupation'])->name('clients.updateOccupation');
+Route::post('/leads/updateOccupation', [ClientPersonalDetailsController::class, 'updateOccupation'])->name('leads.updateOccupation');
 
 /*---------- Client Relationships ----------*/
-Route::post('/admin/clients/search-partner', [ClientPersonalDetailsController::class, 'searchPartner'])->name('admin.clients.searchPartner');
-Route::get('/admin/clients/search-partner-test', [ClientPersonalDetailsController::class, 'searchPartnerTest'])->name('admin.clients.searchPartnerTest');
-Route::get('/admin/clients/test-bidirectional', [ClientPersonalDetailsController::class, 'testBidirectionalRemoval'])->name('admin.clients.testBidirectional');
-Route::post('/admin/clients/save-relationship', [ClientPersonalDetailsController::class, 'saveRelationship'])->name('admin.clients.saveRelationship');
+Route::post('/clients/search-partner', [ClientPersonalDetailsController::class, 'searchPartner'])->name('clients.searchPartner');
+Route::get('/clients/search-partner-test', [ClientPersonalDetailsController::class, 'searchPartnerTest'])->name('clients.searchPartnerTest');
+Route::get('/clients/test-bidirectional', [ClientPersonalDetailsController::class, 'testBidirectionalRemoval'])->name('clients.testBidirectional');
+Route::post('/clients/save-relationship', [ClientPersonalDetailsController::class, 'saveRelationship'])->name('clients.saveRelationship');
 
 /*---------- Client Agreements & Forms ----------*/
-Route::post('/clients/generateagreement', 'Admin\ClientsController@generateagreement')->name('admin.clients.generateagreement');
-Route::post('/clients/getMigrationAgentDetail', 'Admin\ClientsController@getMigrationAgentDetail')->name('admin.clients.getMigrationAgentDetail');
-Route::post('/clients/getVisaAggreementMigrationAgentDetail', 'Admin\ClientsController@getVisaAggreementMigrationAgentDetail')->name('admin.clients.getVisaAggreementMigrationAgentDetail');
-Route::post('/clients/getCostAssignmentMigrationAgentDetail', 'Admin\ClientsController@getCostAssignmentMigrationAgentDetail')->name('admin.clients.getCostAssignmentMigrationAgentDetail');
-Route::post('/clients/savecostassignment', 'Admin\ClientsController@savecostassignment')->name('admin.clients.savecostassignment');
-Route::post('/clients/check-cost-assignment', 'Admin\ClientsController@checkCostAssignment');
+Route::post('/clients/generateagreement', 'CRM\ClientsController@generateagreement')->name('clients.generateagreement');
+Route::post('/clients/getMigrationAgentDetail', 'CRM\ClientsController@getMigrationAgentDetail')->name('clients.getMigrationAgentDetail');
+Route::post('/clients/getVisaAggreementMigrationAgentDetail', 'CRM\ClientsController@getVisaAggreementMigrationAgentDetail')->name('clients.getVisaAggreementMigrationAgentDetail');
+Route::post('/clients/getCostAssignmentMigrationAgentDetail', 'CRM\ClientsController@getCostAssignmentMigrationAgentDetail')->name('clients.getCostAssignmentMigrationAgentDetail');
+Route::post('/clients/savecostassignment', 'CRM\ClientsController@savecostassignment')->name('clients.savecostassignment');
+Route::post('/clients/check-cost-assignment', 'CRM\ClientsController@checkCostAssignment');
 
 // Lead cost assignment
-Route::post('/clients/savecostassignmentlead', 'Admin\ClientsController@savecostassignmentlead')->name('admin.clients.savecostassignmentlead');
-Route::post('/clients/getCostAssignmentMigrationAgentDetailLead', 'Admin\ClientsController@getCostAssignmentMigrationAgentDetailLead')->name('clients.getCostAssignmentMigrationAgentDetailLead');
+Route::post('/clients/savecostassignmentlead', 'CRM\ClientsController@savecostassignmentlead')->name('clients.savecostassignmentlead');
+Route::post('/clients/getCostAssignmentMigrationAgentDetailLead', 'CRM\ClientsController@getCostAssignmentMigrationAgentDetailLead')->name('clients.getCostAssignmentMigrationAgentDetailLead');
 
-Route::post('/clients/{admin}/upload-agreement', 'Admin\ClientsController@uploadAgreement')->name('admin.clients.uploadAgreement');
+Route::post('/clients/{admin}/upload-agreement', 'CRM\ClientsController@uploadAgreement')->name('clients.uploadAgreement');
 
 // Form 956
-Route::post('/admin/forms', 'Admin\Form956Controller@store')->name('forms.store');
-Route::get('/admin/forms/{form}', 'Admin\Form956Controller@show')->name('forms.show');
-Route::get('/forms/{form}/preview', 'Admin\Form956Controller@previewPdf')->name('forms.preview');
-Route::get('/forms/{form}/pdf', 'Admin\Form956Controller@generatePdf')->name('forms.pdf');
+Route::post('/forms', 'CRM\Form956Controller@store')->name('forms.store');
+Route::get('/forms/{form}', 'CRM\Form956Controller@show')->name('forms.show');
+Route::get('/forms/{form}/preview', 'CRM\Form956Controller@previewPdf')->name('forms.preview');
+Route::get('/forms/{form}/pdf', 'CRM\Form956Controller@generatePdf')->name('forms.pdf');
 
 /*---------- Client Matter Management ----------*/
-Route::get('/get-matter-templates', 'Admin\AdminController@getmattertemplates')->name('admin.clients.getmattertemplates');
-Route::get('/get-client-matters/{clientId}', 'Admin\ClientsController@getClientMatters')->name('admin.clients.getClientMatters');
+Route::get('/get-matter-templates', 'CRM\CRMUtilityController@getmattertemplates')->name('clients.getmattertemplates');
+Route::get('/get-client-matters/{clientId}', 'CRM\ClientsController@getClientMatters')->name('clients.getClientMatters');
 Route::post('/clients/fetchClientMatterAssignee', [ClientPersonalDetailsController::class, 'fetchClientMatterAssignee']);
 Route::post('/clients/updateClientMatterAssignee', [ClientPersonalDetailsController::class, 'updateClientMatterAssignee']);
 
 //matter checklist
-Route::get('/upload-checklists', 'Admin\UploadChecklistController@index')->name('admin.upload_checklists.index');
-Route::get('/upload-checklists/matter/{matterId}', 'Admin\UploadChecklistController@showByMatter')->name('admin.upload_checklists.matter');
-Route::post('/upload-checklists/store', 'Admin\UploadChecklistController@store')->name('admin.upload_checklistsupload');
+Route::get('/upload-checklists', 'CRM\UploadChecklistController@index')->name('upload_checklists.index');
+Route::get('/upload-checklists/matter/{matterId}', 'CRM\UploadChecklistController@showByMatter')->name('upload_checklists.matter');
+Route::post('/upload-checklists/store', 'CRM\UploadChecklistController@store')->name('upload_checklistsupload');
 
 /*---------- Client Sessions & Follow-ups ----------*/
-Route::post('/clients/personalfollowup/store', 'Admin\ClientsController@personalfollowup');
-Route::post('/clients/updatefollowup/store', 'Admin\ClientsController@updatefollowup');
-Route::post('/clients/reassignfollowup/store', 'Admin\ClientsController@reassignfollowupstore');
-Route::post('/clients/update-session-completed', 'Admin\ClientsController@updatesessioncompleted')->name('admin.clients.updatesessioncompleted');
-Route::post('/clients/getAllUser', 'Admin\ClientsController@getAllUser')->name('admin.clients.getAllUser');
+Route::post('/clients/personalfollowup/store', 'CRM\ClientsController@personalfollowup');
+Route::post('/clients/updatefollowup/store', 'CRM\ClientsController@updatefollowup');
+Route::post('/clients/reassignfollowup/store', 'CRM\ClientsController@reassignfollowupstore');
+Route::post('/clients/update-session-completed', 'CRM\ClientsController@updatesessioncompleted')->name('clients.updatesessioncompleted');
+Route::post('/clients/getAllUser', 'CRM\ClientsController@getAllUser')->name('clients.getAllUser');
 
 /*---------- Client Portal ----------*/
-Route::post('/clients/toggle-client-portal', 'Admin\ClientPortalController@toggleClientPortal')->name('admin.clients.toggleClientPortal');
+Route::post('/clients/toggle-client-portal', 'CRM\ClientPortalController@toggleClientPortal')->name('clients.toggleClientPortal');
 
 /*---------- ANZSCO Occupation Search ----------*/
-Route::get('/anzsco/search', [AnzscoOccupationController::class, 'search'])->name('admin.anzsco.search');
+Route::get('/anzsco/search', [AnzscoOccupationController::class, 'search'])->name('anzsco.search');
 
 /*---------- Client Validation & Utilities ----------*/
-Route::post('/check-email', 'Admin\ClientsController@checkEmail')->name('check.email');
-Route::post('/check.phone', 'Admin\ClientsController@checkContact')->name('check.phone');
-Route::post('/save_tag', 'Admin\ClientsController@save_tag');
-Route::post('/save-references', 'Admin\ClientsController@savereferences')->name('references.store');
-Route::post('/check-star-client', 'Admin\ClientsController@checkStarClient')->name('check.star.client');
-Route::post('/merge_records','Admin\ClientsController@merge_records')->name('client.merge_records');
+Route::post('/check-email', 'CRM\ClientsController@checkEmail')->name('check.email');
+Route::post('/check.phone', 'CRM\ClientsController@checkContact')->name('check.phone');
+Route::post('/save_tag', 'CRM\ClientsController@save_tag');
+Route::post('/save-references', 'CRM\ClientsController@savereferences')->name('references.store');
+Route::post('/check-star-client', 'CRM\ClientsController@checkStarClient')->name('check.star.client');
+Route::post('/merge_records','CRM\ClientsController@merge_records')->name('client.merge_records');
 
 /*---------- Webhook Integration ----------*/
-Route::post('/send-webhook', 'Admin\ClientsController@sendToWebhook')->name('admin.send-webhook');
+Route::post('/send-webhook', 'CRM\ClientsController@sendToWebhook')->name('send-webhook');
 
 /*---------- Visa Expiry Messages ----------*/
-Route::get('/fetch-visa_expiry_messages', 'Admin\AdminController@fetchvisaexpirymessages');
+Route::get('/fetch-visa_expiry_messages', 'CRM\CRMUtilityController@fetchvisaexpirymessages');
 
 /*---------- Public Email Verification (No Auth Required) ----------*/
 // This route is outside admin middleware for public access
-Route::get('/verify-email/{token}', [EmailVerificationController::class, 'verifyEmail'])->name('admin.clients.email.verify');
+Route::get('/verify-email/{token}', [EmailVerificationController::class, 'verifyEmail'])->name('clients.email.verify');
 

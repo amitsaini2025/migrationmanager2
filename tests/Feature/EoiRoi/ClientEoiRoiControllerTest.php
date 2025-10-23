@@ -41,7 +41,7 @@ class ClientEoiRoiControllerTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->admin, 'admin')
-            ->getJson("/admin/clients/{$this->client->id}/eoi-roi");
+            ->getJson("/clients/{$this->client->id}/eoi-roi");
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -69,7 +69,7 @@ class ClientEoiRoiControllerTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->admin, 'admin')
-            ->getJson("/admin/clients/{$this->client->id}/eoi-roi/{$eoi->id}");
+            ->getJson("/clients/{$this->client->id}/eoi-roi/{$eoi->id}");
 
         $response->assertStatus(200)
             ->assertJson([
@@ -99,7 +99,7 @@ class ClientEoiRoiControllerTest extends TestCase
         ];
 
         $response = $this->actingAs($this->admin, 'admin')
-            ->postJson("/admin/clients/{$this->client->id}/eoi-roi", $eoiData);
+            ->postJson("/clients/{$this->client->id}/eoi-roi", $eoiData);
 
         $response->assertStatus(200)
             ->assertJson([
@@ -131,7 +131,7 @@ class ClientEoiRoiControllerTest extends TestCase
         ];
 
         $response = $this->actingAs($this->admin, 'admin')
-            ->postJson("/admin/clients/{$this->client->id}/eoi-roi", $updateData);
+            ->postJson("/clients/{$this->client->id}/eoi-roi", $updateData);
 
         $response->assertStatus(200)
             ->assertJson([
@@ -153,7 +153,7 @@ class ClientEoiRoiControllerTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->admin, 'admin')
-            ->deleteJson("/admin/clients/{$this->client->id}/eoi-roi/{$eoi->id}");
+            ->deleteJson("/clients/{$this->client->id}/eoi-roi/{$eoi->id}");
 
         $response->assertStatus(200)
             ->assertJson([
@@ -169,7 +169,7 @@ class ClientEoiRoiControllerTest extends TestCase
     public function it_validates_required_fields_when_creating_eoi()
     {
         $response = $this->actingAs($this->admin, 'admin')
-            ->postJson("/admin/clients/{$this->client->id}/eoi-roi", []);
+            ->postJson("/clients/{$this->client->id}/eoi-roi", []);
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['eoi_number', 'eoi_subclasses', 'eoi_states']);
@@ -185,7 +185,7 @@ class ClientEoiRoiControllerTest extends TestCase
         ];
 
         $response = $this->actingAs($this->admin, 'admin')
-            ->postJson("/admin/clients/{$this->client->id}/eoi-roi", $eoiData);
+            ->postJson("/clients/{$this->client->id}/eoi-roi", $eoiData);
 
         $response->assertStatus(422);
     }
@@ -200,7 +200,7 @@ class ClientEoiRoiControllerTest extends TestCase
         ];
 
         $response = $this->actingAs($this->admin, 'admin')
-            ->postJson("/admin/clients/{$this->client->id}/eoi-roi", $eoiData);
+            ->postJson("/clients/{$this->client->id}/eoi-roi", $eoiData);
 
         $response->assertStatus(422);
     }
@@ -209,7 +209,7 @@ class ClientEoiRoiControllerTest extends TestCase
     public function it_can_calculate_points_for_a_client()
     {
         $response = $this->actingAs($this->admin, 'admin')
-            ->getJson("/admin/clients/{$this->client->id}/eoi-roi/calculate-points?subclass=190");
+            ->getJson("/clients/{$this->client->id}/eoi-roi/calculate-points?subclass=190");
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -233,7 +233,7 @@ class ClientEoiRoiControllerTest extends TestCase
     /** @test */
     public function it_requires_authentication_to_access_eoi_endpoints()
     {
-        $response = $this->getJson("/admin/clients/{$this->client->id}/eoi-roi");
+        $response = $this->getJson("/clients/{$this->client->id}/eoi-roi");
 
         $response->assertStatus(401);
     }
@@ -248,7 +248,7 @@ class ClientEoiRoiControllerTest extends TestCase
         ];
 
         $response = $this->actingAs($this->admin, 'admin')
-            ->postJson("/admin/clients/{$this->client->id}/eoi-roi", $eoiData);
+            ->postJson("/clients/{$this->client->id}/eoi-roi", $eoiData);
 
         $response->assertStatus(200);
 
@@ -268,7 +268,7 @@ class ClientEoiRoiControllerTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->admin, 'admin')
-            ->getJson("/admin/clients/{$this->client->id}/eoi-roi/{$eoi->id}");
+            ->getJson("/clients/{$this->client->id}/eoi-roi/{$eoi->id}");
 
         $response->assertStatus(404);
     }
@@ -284,7 +284,7 @@ class ClientEoiRoiControllerTest extends TestCase
         ];
 
         $response = $this->actingAs($this->admin, 'admin')
-            ->postJson("/admin/clients/{$this->client->id}/eoi-roi", $eoiData);
+            ->postJson("/clients/{$this->client->id}/eoi-roi", $eoiData);
 
         $response->assertStatus(200);
 

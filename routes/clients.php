@@ -137,7 +137,7 @@ Route::post('/documents/add-visa-category', [ClientDocumentsController::class, '
 Route::post('/documents/update-visa-category', [ClientDocumentsController::class, 'updateVisaDocCategory'])->name('clients.documents.updateVisaDocCategory');
 
 /*---------- Client EOI/ROI Management ----------*/
-Route::prefix('clients/{admin}/eoi-roi')->name('clients.eoi-roi.')->group(function () {
+Route::prefix('clients/{client}/eoi-roi')->name('clients.eoi-roi.')->group(function () {
     Route::get('/', [ClientEoiRoiController::class, 'index'])->name('index');
     Route::get('/calculate-points', [ClientEoiRoiController::class, 'calculatePoints'])->name('calculatePoints');
     Route::post('/', [ClientEoiRoiController::class, 'upsert'])->name('upsert');

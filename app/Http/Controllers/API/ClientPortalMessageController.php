@@ -190,7 +190,7 @@ class ClientPortalMessageController extends Controller
                             'sender_id' => $clientId,
                             'receiver_id' => $recipientId,
                             'module_id' => $clientMatterId,
-                            'url' => '/admin/messages',
+                            'url' => '/messages',
                             'notification_type' => 'message',
                             'message' => $notificationMessage,
                             'created_at' => now(),

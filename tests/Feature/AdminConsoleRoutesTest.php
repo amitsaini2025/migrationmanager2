@@ -118,7 +118,7 @@ class AdminConsoleRoutesTest extends TestCase
     public function unauthenticated_user_cannot_access_adminconsole_routes()
     {
         $this->get('/adminconsole/features/matter')
-             ->assertRedirect('/admin/login');
+             ->assertRedirect('/login');
     }
 
     /** @test */
@@ -136,10 +136,10 @@ class AdminConsoleRoutesTest extends TestCase
     }
 
     /** @test */
-    public function old_admin_routes_still_work_for_backward_compatibility()
+    public function adminconsole_routes_work_correctly()
     {
         $this->actingAs($this->admin, 'admin')
-             ->get('/admin/matter')
+             ->get('/adminconsole/features/matter')
              ->assertStatus(200);
     }
 
@@ -170,7 +170,7 @@ class AdminConsoleRoutesTest extends TestCase
     {
         // Test that routes are protected by auth and admin middleware
         $this->get('/adminconsole/features/matter')
-             ->assertRedirect('/admin/login');
+             ->assertRedirect('/login');
     }
 
     /** @test */

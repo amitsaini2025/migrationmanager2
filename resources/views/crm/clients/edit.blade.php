@@ -79,8 +79,8 @@
             <script>
                 // Configuration object for edit-client.js
                 window.editClientConfig = {
-                    visaTypesRoute: '{{ route("admin.getVisaTypes") }}',
-                    countriesRoute: '{{ route("admin.getCountries") }}',
+                    visaTypesRoute: '{{ route("getVisaTypes") }}',
+                    countriesRoute: '{{ route("getCountries") }}',
                     searchPartnerRoute: '{{ route("clients.searchPartner") }}',
                     csrfToken: '{{ csrf_token() }}'
                 };

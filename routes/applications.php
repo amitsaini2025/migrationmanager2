@@ -15,7 +15,7 @@ use App\Http\Controllers\HomeController;
 | All routes for visa application management, office visit tracking,
 | and appointment scheduling functionality.
 |
-| Prefix: /admin (inherited from web.php)
+| Prefix: None (routes at root level)
 | Middleware: auth:admin (inherited from web.php)
 |
 */

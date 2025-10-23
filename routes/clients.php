@@ -18,7 +18,7 @@ use App\Http\Controllers\AdminConsole\AnzscoOccupationController;
 | All routes for client CRUD operations, documents, verification, invoices,
 | EOI/ROI management, notes, agreements, and related functionality.
 |
-| Prefix: /admin (inherited from web.php)
+| Prefix: None (routes at root level)
 | Middleware: auth:admin (inherited from web.php)
 |
 */
@@ -74,7 +74,7 @@ Route::post('/updatemailreadbit', 'CRM\ClientsController@updatemailreadbit')->na
 
 Route::post('/clients/filter-emails', 'CRM\ClientsController@filterEmails')->name('clients.filter.emails');
 Route::post('/clients/filter-sentemails', 'CRM\ClientsController@filterSentEmails')->name('clients.filter.sentmails');
-Route::post('/mail/enhance', 'CRM\ClientsController@enhanceMessage')->name('admin.mail.enhance');
+Route::post('/mail/enhance', 'CRM\ClientsController@enhanceMessage')->name('mail.enhance');
 
 /*---------- Client Notes ----------*/
 Route::post('/create-note', [ClientNotesController::class, 'createnote'])->name('clients.createnote');
@@ -196,16 +196,16 @@ Route::post('/clients/fetchClientContactNo', [ClientPersonalDetailsController::c
 Route::post('/clients/clientdetailsinfo/{id}', [ClientPersonalDetailsController::class, 'clientdetailsinfo'])->name('clients.clientdetailsinfo');
 Route::post('/clients/clientdetailsinfo', [ClientPersonalDetailsController::class, 'clientdetailsinfo'])->name('clients.clientdetailsinfo.update');
 
-Route::get('/admin/get-visa-types', [ClientPersonalDetailsController::class, 'getVisaTypes'])->name('admin.getVisaTypes');
-Route::get('/admin/get-countries', [ClientPersonalDetailsController::class, 'getCountries'])->name('admin.getCountries');
+Route::get('/get-visa-types', [ClientPersonalDetailsController::class, 'getVisaTypes'])->name('getVisaTypes');
+Route::get('/get-countries', [ClientPersonalDetailsController::class, 'getCountries'])->name('getCountries');
 Route::post('/updateOccupation', [ClientPersonalDetailsController::class, 'updateOccupation'])->name('clients.updateOccupation');
-Route::post('/leads/updateOccupation', [ClientPersonalDetailsController::class, 'updateOccupation'])->name('admin.leads.updateOccupation');
+Route::post('/leads/updateOccupation', [ClientPersonalDetailsController::class, 'updateOccupation'])->name('leads.updateOccupation');
 
 /*---------- Client Relationships ----------*/
-Route::post('/admin/clients/search-partner', [ClientPersonalDetailsController::class, 'searchPartner'])->name('clients.searchPartner');
-Route::get('/admin/clients/search-partner-test', [ClientPersonalDetailsController::class, 'searchPartnerTest'])->name('clients.searchPartnerTest');
-Route::get('/admin/clients/test-bidirectional', [ClientPersonalDetailsController::class, 'testBidirectionalRemoval'])->name('clients.testBidirectional');
-Route::post('/admin/clients/save-relationship', [ClientPersonalDetailsController::class, 'saveRelationship'])->name('clients.saveRelationship');
+Route::post('/clients/search-partner', [ClientPersonalDetailsController::class, 'searchPartner'])->name('clients.searchPartner');
+Route::get('/clients/search-partner-test', [ClientPersonalDetailsController::class, 'searchPartnerTest'])->name('clients.searchPartnerTest');
+Route::get('/clients/test-bidirectional', [ClientPersonalDetailsController::class, 'testBidirectionalRemoval'])->name('clients.testBidirectional');
+Route::post('/clients/save-relationship', [ClientPersonalDetailsController::class, 'saveRelationship'])->name('clients.saveRelationship');
 
 /*---------- Client Agreements & Forms ----------*/
 Route::post('/clients/generateagreement', 'CRM\ClientsController@generateagreement')->name('clients.generateagreement');
@@ -222,8 +222,8 @@ Route::post('/clients/getCostAssignmentMigrationAgentDetailLead', 'CRM\ClientsCo
 Route::post('/clients/{admin}/upload-agreement', 'CRM\ClientsController@uploadAgreement')->name('clients.uploadAgreement');
 
 // Form 956
-Route::post('/admin/forms', 'CRM\Form956Controller@store')->name('forms.store');
-Route::get('/admin/forms/{form}', 'CRM\Form956Controller@show')->name('forms.show');
+Route::post('/forms', 'CRM\Form956Controller@store')->name('forms.store');
+Route::get('/forms/{form}', 'CRM\Form956Controller@show')->name('forms.show');
 Route::get('/forms/{form}/preview', 'CRM\Form956Controller@previewPdf')->name('forms.preview');
 Route::get('/forms/{form}/pdf', 'CRM\Form956Controller@generatePdf')->name('forms.pdf');
 

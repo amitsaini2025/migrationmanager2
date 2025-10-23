@@ -795,7 +795,7 @@
 
             try {
                 const response = await $.ajax({
-                    url: '{{ route("admin.getVisaTypes") }}',
+                    url: '{{ route("getVisaTypes") }}',
                     method: 'GET',
                     dataType: 'json',
                 });
@@ -1071,7 +1071,7 @@
 
             try {
                 const response = await $.ajax({
-                    url: '{{ route("admin.getCountries") }}',
+                    url: '{{ route("getCountries") }}',
                     method: 'GET',
                     dataType: 'json',
                 });

@@ -19,7 +19,7 @@ use App\Http\Controllers\CRM\SignatureDashboardController;
 | 6. Admin views completed document in admin panel
 |
 | ROUTE ORGANIZATION:
-| - Admin routes: /admin/documents/* (auth:admin required)
+| - Admin routes: /documents/* and /signatures/* (auth:admin required)
 | - Public routes: /sign/* and /documents/* (token-based validation)
 |
 */
@@ -28,12 +28,12 @@ use App\Http\Controllers\CRM\SignatureDashboardController;
 |--------------------------------------------------------------------------
 | ADMIN DOCUMENT MANAGEMENT ROUTES
 |--------------------------------------------------------------------------
-| Prefix: /admin
+| Prefix: None (routes at root level)
 | Middleware: auth:admin
-| Route Names: admin.documents.*
+| Route Names: documents.* and signatures.*
 */
 
-Route::prefix('admin')->middleware('auth:admin')->group(function () {
+Route::middleware('auth:admin')->group(function () {
 
 /*---------- Document CRUD Operations ----------*/
 Route::get('/documents/create', [AdminDocumentController::class, 'create'])

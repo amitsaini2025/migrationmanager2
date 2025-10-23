@@ -711,7 +711,7 @@ function openAttachModal(docId, docTitle) {
         entityTypeEl.value = '';
         entitySelectGroupEl.style.display = 'none';
         attachEntityIdEl.innerHTML = '<option value="">-- Select --</option>';
-        attachFormEl.action = '{{ url("/admin/signatures") }}/' + docId + '/associate';
+        attachFormEl.action = '{{ url("/signatures") }}/' + docId + '/associate';
         
         // Show modal
         if (typeof $ !== 'undefined' && $.fn.modal) {

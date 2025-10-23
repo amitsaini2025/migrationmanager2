@@ -88,7 +88,7 @@ TO:   app/Http/Controllers/CRM/
 
 # Subfolder structure preserved:
 ├── CRM/
-│   ├── AdminController.php
+│   ├── CRMUtilityController.php (formerly AdminController.php)
 │   ├── DashboardController.php
 │   ├── ClientsController.php
 │   ├── ApplicationsController.php
@@ -797,7 +797,149 @@ If issues arise after this refactoring:
 
 ---
 
+## 📝 Post-Refactoring Updates
+
+### Controller Naming Clarification (October 23, 2025)
+
+After the initial Admin → CRM refactoring, one confusing controller name remained: `CRM\AdminController`. This controller was renamed for better semantic clarity.
+
+#### What Changed
+
+**File Renamed:**
+```bash
+FROM: app/Http/Controllers/CRM/AdminController.php
+TO:   app/Http/Controllers/CRM/CRMUtilityController.php
+```
+
+**Class Renamed:**
+```php
+// OLD
+class AdminController extends Controller
+
+// NEW
+class CRMUtilityController extends Controller
+```
+
+#### Why This Change Was Needed
+
+The `AdminController` name was misleading because:
+1. **Semantic Confusion:** It suggested "admin panel" functionality, but it contained general utility functions
+2. **Namespace Mismatch:** Located in `CRM\` namespace but named `AdminController`
+3. **Unclear Purpose:** The name didn't describe what the controller actually does
+
+#### What CRMUtilityController Contains
+
+This controller provides utility and helper functions for the CRM system:
+
+**Profile & Authentication:**
+- User profile management (`myProfile`)
+- Password changes (`change_password`)
+- API key management (`editapi`)
+- GST/tax settings (`returnsetting`)
+
+**Notifications:**
+- Fetch notifications (`fetchnotification`, `fetchmessages`)
+- Office visit notifications (`fetchOfficeVisitNotifications`)
+- Mark notifications as seen (`markNotificationSeen`)
+- Activity counts (`fetchTotalActivityCount`, `fetchInPersonWaitingCount`)
+
+**AJAX Utility Actions:**
+- Generic record updates (`updateAction`)
+- Approve/decline actions (`approveAction`, `declinedAction`)
+- Archive/process actions (`archiveAction`, `processAction`)
+- Delete records (`deleteAction`)
+- Move records (`moveAction`)
+
+**Helper Functions:**
+- Get states by country (`getStates`)
+- Get email templates (`gettemplates`, `getmattertemplates`)
+- Send emails (`sendmail`)
+- Get assignees (`getassigneeajax`)
+- Check client existence (`checkclientexist`)
+- Get subcategories (`getsubcategories`)
+- Visa expiry messages (`fetchvisaexpirymessages`)
+
+#### Files Updated
+
+1. **Controller File:**
+   - Renamed: `app/Http/Controllers/CRM/AdminController.php` → `CRMUtilityController.php`
+   - Class name updated: `AdminController` → `CRMUtilityController`
+
+2. **Route Files:**
+   - `routes/web.php` - Updated 43 route references
+   - `routes/clients.php` - Updated 4 route references
+   - All `use` statements updated
+
+3. **Caches Cleared:**
+   - Route cache: `php artisan route:clear`
+   - Config cache: `php artisan config:clear`
+   - View cache: `php artisan view:clear`
+
+#### Route Examples
+
+```php
+// OLD
+use App\Http\Controllers\CRM\AdminController;
+
+Route::get('/my_profile', [AdminController::class, 'myProfile'])->name('my_profile');
+Route::post('/sendmail', 'CRM\AdminController@sendmail')->name('clients.sendmail');
+
+// NEW
+use App\Http\Controllers\CRM\CRMUtilityController;
+
+Route::get('/my_profile', [CRMUtilityController::class, 'myProfile'])->name('my_profile');
+Route::post('/sendmail', 'CRM\CRMUtilityController@sendmail')->name('clients.sendmail');
+```
+
+#### Why Keep It in the CRM Folder?
+
+The controller remains in `app/Http/Controllers/CRM/` because:
+- ✅ Uses `auth:admin` middleware (CRM staff authentication)
+- ✅ All methods serve CRM features exclusively
+- ✅ Operates on CRM data (leads, clients, applications)
+- ✅ Not used by AdminConsole, API, or other areas
+- ✅ Maintains consistency with the refactoring goals
+
+#### Controllers That Were NOT Renamed
+
+These controllers intentionally keep "Admin" in their names:
+
+1. **`Auth\AdminLoginController`** ✅
+   - Handles CRM staff/admin authentication
+   - "Admin" refers to user type, not admin console
+   - Preserved as documented in original refactoring
+
+2. **`Auth\AdminEmailController`** ✅
+   - Handles email user system authentication
+   - Separate authentication system for email management
+   - Unrelated to main CRM
+
+3. **`AdminConsole\*` Controllers** ✅
+   - True system administration controllers
+   - Located at `/adminconsole` routes
+   - Completely separate from CRM functions
+
+#### Verification
+
+```bash
+# Check for remaining AdminController references (excluding Auth and AdminConsole)
+grep -r "AdminController" app/Http/Controllers/CRM/
+# Should return: No matches (except in documentation comments)
+
+# Verify routes are registered correctly
+php artisan route:list | grep CRMUtility
+# Should show all CRMUtilityController routes
+
+# Check controller exists and is loadable
+php artisan route:list | grep my_profile
+# Should show: GET /my_profile -> CRM\CRMUtilityController@myProfile
+```
+
+---
+
 **End of Documentation**
 
 *This refactoring was completed using automated PowerShell scripts to ensure consistency and reduce human error. All changes are reversible via Git.*
+
+*Last Updated: October 23, 2025 - Added CRMUtilityController renaming documentation*
 

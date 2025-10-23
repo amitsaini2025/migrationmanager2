@@ -314,7 +314,7 @@ Similar to above but uses `MultipleattachmentEmailManager` for multiple file att
 
 **Location**: Client detail page → Compose Email modal
 **Route**: `POST /admin/sendmail`
-**Controller**: `App\Http\Controllers\Admin\AdminController@sendmail`
+**Controller**: `App\Http\Controllers\CRM\CRMUtilityController@sendmail`
 **View**: `resources/views/crm/clients/detail.blade.php` (line 469)
 
 #### Workflow:
@@ -334,7 +334,7 @@ Similar to above but uses `MultipleattachmentEmailManager` for multiple file att
 7. **Template Selection**: Optional CRM email template
 8. **Compose & Send**
 
-#### Backend Process (`AdminController@sendmail`):
+#### Backend Process (`CRMUtilityController@sendmail`):
 
 ```php
 public function sendmail(Request $request) {
@@ -1121,7 +1121,7 @@ The system supports custom SMTP settings in the database, so other providers (Gm
 
 ### 13.1 mail_reports Table
 
-Every email sent through the `AdminController@sendmail` method is logged:
+Every email sent through the `CRMUtilityController@sendmail` method is logged:
 
 ```php
 $obj = new \App\Models\MailReport;
@@ -1447,7 +1447,7 @@ Mail::send($view, $data, function($message) use ($to, $subject) {
 
 ### Controllers
 - `app/Http/Controllers/Controller.php` - Base email methods
-- `app/Http/Controllers/CRM/AdminController.php` - Client email sending
+- `app/Http/Controllers/CRM/CRMUtilityController.php` - Client email sending
 - `app/Http/Controllers/CRM/SignatureDashboardController.php` - Signature emails
 - `app/Http/Controllers/AdminConsole/EmailController.php` - SMTP account management
 - `app/Http/Controllers/CRM/ClientPortalController.php` - Portal emails

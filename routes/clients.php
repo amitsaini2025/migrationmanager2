@@ -60,8 +60,8 @@ Route::get('/clients/get-recipients', [ClientsController::class, 'getrecipients'
 Route::get('/clients/get-onlyclientrecipients', [ClientsController::class, 'getonlyclientrecipients'])->name('clients.getonlyclientrecipients');
 Route::get('/clients/get-allclients', [ClientsController::class, 'getallclients'])->name('clients.getallclients');
 Route::get('/clients/change_assignee', [ClientsController::class, 'change_assignee']);
-Route::get('/get-templates', 'CRM\AdminController@gettemplates')->name('clients.gettemplates');
-Route::post('/sendmail', 'CRM\AdminController@sendmail')->name('clients.sendmail');
+Route::get('/get-templates', 'CRM\CRMUtilityController@gettemplates')->name('clients.gettemplates');
+Route::post('/sendmail', 'CRM\CRMUtilityController@sendmail')->name('clients.sendmail');
 
 Route::post('/upload-mail', 'CRM\ClientsController@uploadmail');
 Route::post('/upload-fetch-mail', 'CRM\ClientsController@uploadfetchmail'); //upload inbox email
@@ -228,7 +228,7 @@ Route::get('/forms/{form}/preview', 'CRM\Form956Controller@previewPdf')->name('f
 Route::get('/forms/{form}/pdf', 'CRM\Form956Controller@generatePdf')->name('forms.pdf');
 
 /*---------- Client Matter Management ----------*/
-Route::get('/get-matter-templates', 'CRM\AdminController@getmattertemplates')->name('clients.getmattertemplates');
+Route::get('/get-matter-templates', 'CRM\CRMUtilityController@getmattertemplates')->name('clients.getmattertemplates');
 Route::get('/get-client-matters/{clientId}', 'CRM\ClientsController@getClientMatters')->name('clients.getClientMatters');
 Route::post('/clients/fetchClientMatterAssignee', [ClientPersonalDetailsController::class, 'fetchClientMatterAssignee']);
 Route::post('/clients/updateClientMatterAssignee', [ClientPersonalDetailsController::class, 'updateClientMatterAssignee']);
@@ -263,7 +263,7 @@ Route::post('/merge_records','CRM\ClientsController@merge_records')->name('clien
 Route::post('/send-webhook', 'CRM\ClientsController@sendToWebhook')->name('send-webhook');
 
 /*---------- Visa Expiry Messages ----------*/
-Route::get('/fetch-visa_expiry_messages', 'CRM\AdminController@fetchvisaexpirymessages');
+Route::get('/fetch-visa_expiry_messages', 'CRM\CRMUtilityController@fetchvisaexpirymessages');
 
 /*---------- Public Email Verification (No Auth Required) ----------*/
 // This route is outside admin middleware for public access

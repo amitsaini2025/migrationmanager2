@@ -3,9 +3,6 @@
 
 @section('content')
 <meta name="csrf-token" content="{{ csrf_token() }}">
-{{-- Datepicker CSS already loaded in parent layout admin_client_detail.blade.php --}}
-{{-- <link rel="stylesheet" href="{{URL::asset('css/bootstrap-datepicker.min.css')}}"> --}}
-{{-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.min.css"> --}} {{-- ❌ REMOVED: Not used, causes conflicts --}}
 <link rel="stylesheet" href="{{ URL::asset('css/client-detail.css') }}">
 
 <?php
@@ -457,9 +454,9 @@ use App\Http\Controllers\Controller;
     </aside>
 </div>
 
-@include('Admin/clients/modals/appointment')
-@include('Admin/clients/addclientmodal')
-@include('Admin/clients/editclientmodal')
+@include('crm.clients.modals.appointment')
+@include('crm.clients.addclientmodal')
+@include('crm.clients.editclientmodal')
 
 
 
@@ -527,18 +524,6 @@ use App\Http\Controllers\Controller;
 								@endif
 							</div>
 						</div>
-
-						<!--<div class="col-12 col-md-6 col-lg-6">
-							<div class="form-group">
-								<label for="template">Templates </label>
-								<select data-valid="" class="form-control select2 selecttemplate" name="template">
-									<option value="">Select</option>
-									{{--@foreach(\App\Models\CrmEmailTemplate::all() as $list)--}}
-										<option value="{{--$list->id--}}">{{--$list->name--}}</option>
-									{{--@endforeach--}}
-								</select>
-                            </div>
-						</div>-->
 
                         <div class="col-12 col-md-6 col-lg-6">
 							<div class="form-group">
@@ -860,10 +845,6 @@ use App\Http\Controllers\Controller;
 	</div>
 </div>
 
- 
-    
- 
-
 <div class="modal fade custom_modal" id="application_ownership" tabindex="-1" role="dialog" aria-labelledby="applicationModalLabel" aria-hidden="true">
 	<div class="modal-dialog">
 		<div class="modal-content">
@@ -1025,16 +1006,6 @@ use App\Http\Controllers\Controller;
 	</div>
 </div>
 
-
- 
-    
- 
-
- 
-    
- 
-
-
 <div class="modal fade custom_modal" id="serviceTaken" tabindex="-1" role="dialog" aria-labelledby="create_interestModalLabel" aria-hidden="true">
 	<div class="modal-dialog modal-lg">
 		<div class="modal-content">
@@ -1129,7 +1100,7 @@ use App\Http\Controllers\Controller;
 					<span aria-hidden="true">&times;</span>
 				  </button>
 			</div>
-			<form method="POST" action="{{ url('/admin/reassiginboxemail') }}" name="inbox-email-reassign-to-client-matter" autocomplete="off" enctype="multipart/form-data" id="inbox-email-reassign-to-client-matter">
+			<form method="POST" action="{{ url('/reassiginboxemail') }}" name="inbox-email-reassign-to-client-matter" autocomplete="off" enctype="multipart/form-data" id="inbox-email-reassign-to-client-matter">
 			@csrf
 			<div class="modal-body">
 				<div class="form-group row">
@@ -1173,7 +1144,7 @@ use App\Http\Controllers\Controller;
 					<span aria-hidden="true">&times;</span>
 				  </button>
 			</div>
-			<form method="POST" action="{{ url('/admin/reassigsentemail') }}" name="sent-email-reassign-to-client-matter" autocomplete="off" enctype="multipart/form-data" id="sent-email-reassign-to-client-matter">
+			<form method="POST" action="{{ url('/reassigsentemail') }}" name="sent-email-reassign-to-client-matter" autocomplete="off" enctype="multipart/form-data" id="sent-email-reassign-to-client-matter">
 			@csrf
 			<div class="modal-body">
 				<div class="form-group row">

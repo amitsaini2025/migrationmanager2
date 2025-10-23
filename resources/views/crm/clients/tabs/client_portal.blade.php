@@ -490,7 +490,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loading state
         toggleElement.disabled = true;
         
-        fetch('{{ route("crm.clients.toggleClientPortal") }}', {
+        fetch('{{ route("clients.toggleClientPortal") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -572,7 +572,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.disabled = true;
 
                 // Toggle off and on to trigger password reset
-                fetch('{{ route("crm.clients.toggleClientPortal") }}', {
+                fetch('{{ route("clients.toggleClientPortal") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -587,7 +587,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(data => {
                     if (data.success) {
                         // Now turn it back on with new password
-                        return fetch('{{ route("crm.clients.toggleClientPortal") }}', {
+                        return fetch('{{ route("clients.toggleClientPortal") }}', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',

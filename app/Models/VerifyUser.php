@@ -16,6 +16,6 @@ class VerifyUser extends Authenticatable
 	
 	public function user()
     {
-        return $this->belongsTo('App\\Models\\\Models\\Admin', 'user_id');
+        return $this->belongsTo('App\\Models\\Admin', 'user_id');
     }
 }

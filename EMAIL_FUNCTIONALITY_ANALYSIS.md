@@ -1,4 +1,4 @@
-# Email Functionality Analysis - SMTP Configuration & Usage Across CRM
+# Email Functionality Analysis - SMTP Configuration & Usage Across CRMcjhashch
 
 ## Overview
 This document provides a comprehensive analysis of how **SMTP email sending** is implemented across different sections of the Migration Manager CRM. It covers configuration, email address management, and the various workflows where emails are sent to clients, leads, and other stakeholders.

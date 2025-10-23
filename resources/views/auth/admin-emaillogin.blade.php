@@ -1,4 +1,4 @@
-@extends('layouts.admin-login')
+@extends('layouts.crm-login')
 @section('title', 'Email Manager Login')
 @section('content')
 <section class="section">

@@ -27,13 +27,13 @@
 
 <tr>
     <td class="col-matter" style="white-space: initial;">
-        <a href="{{ route('admin.clients.detail', [base64_encode(convert_uuencode($matter->client_id)), $matter->client_unique_matter_no]) }}">
+        <a href="{{ route('clients.detail', [base64_encode(convert_uuencode($matter->client_id)), $matter->client_unique_matter_no]) }}">
             {{ $matter_name }} ({{ $matter->client_unique_matter_no }})
         </a>
         <span class="totalEmailCntToClientMatter">{{ $total_email_assign_cnt }}</span>
     </td>
     <td class="col-client_id">
-        <a href="{{ route('admin.clients.detail', base64_encode(convert_uuencode($matter->client_id))) }}">
+        <a href="{{ route('clients.detail', base64_encode(convert_uuencode($matter->client_id))) }}">
             {{ $client->client_id ?: config('constants.empty') }}
         </a>
     </td>

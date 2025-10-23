@@ -14,7 +14,7 @@
     <div class="task-details">
         <span class="client-name">
             {{ $client->first_name ?: config('constants.empty') }} {{ $client->last_name ?: config('constants.empty') }}
-            (<a href="{{ route('admin.clients.detail', base64_encode(convert_uuencode($client->id))) }}">
+            (<a href="{{ route('clients.detail', base64_encode(convert_uuencode($client->id))) }}">
                 {{ $client->client_id ?: config('constants.empty') }}
             </a>)
         </span>

@@ -32,7 +32,7 @@ class EmailController extends Controller
 
     public function showForm()
     {
-        return view('Admin.clients.upload_email');
+        return view('crm.clients.upload_email');
     }
 
     public function handleForm(Request $request)
@@ -47,7 +47,7 @@ class EmailController extends Controller
         // Parse Email
         $emailData = $this->parseEmail(storage_path('app/public/' . $emailPath));
 
-        return view('Admin.clients.email_details', compact('emailData'));
+        return view('crm.clients.email_details', compact('emailData'));
     }
 
     private function parseEmail($filePath)

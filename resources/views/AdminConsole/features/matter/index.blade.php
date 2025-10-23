@@ -1,4 +1,4 @@
-@extends('layouts.admin_client_detail')
+@extends('layouts.crm_client_detail')
 @section('title', 'Matter')
 
 @section('content')
@@ -236,7 +236,7 @@
 													<a class="dropdown-item has-icon" href="{{route('adminconsole.features.matteremailtemplate.create', @$list->id)}}"><i class="far fa-edit"></i> Create First Email</a>
 													@endif
 
-													<a class="dropdown-item has-icon" href="{{route('admin.upload_checklists.matter', @$list->id)}}"><i class="fas fa-list"></i> Matter Checklist</a>
+													<a class="dropdown-item has-icon" href="{{route('upload_checklists.matter', @$list->id)}}"><i class="fas fa-list"></i> Matter Checklist</a>
 													<a class="dropdown-item has-icon" href="{{route('adminconsole.features.matterotheremailtemplate.index', @$list->id)}}"><i class="fas fa-envelope"></i> Email Templates</a>
 												</div>
 											</div>

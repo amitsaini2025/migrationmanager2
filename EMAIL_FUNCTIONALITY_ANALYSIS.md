@@ -315,7 +315,7 @@ Similar to above but uses `MultipleattachmentEmailManager` for multiple file att
 **Location**: Client detail page → Compose Email modal
 **Route**: `POST /admin/sendmail`
 **Controller**: `App\Http\Controllers\Admin\AdminController@sendmail`
-**View**: `resources/views/Admin/clients/detail.blade.php` (line 469)
+**View**: `resources/views/crm/clients/detail.blade.php` (line 469)
 
 #### Workflow:
 
@@ -1447,11 +1447,11 @@ Mail::send($view, $data, function($message) use ($to, $subject) {
 
 ### Controllers
 - `app/Http/Controllers/Controller.php` - Base email methods
-- `app/Http/Controllers/Admin/AdminController.php` - Client email sending
-- `app/Http/Controllers/Admin/SignatureDashboardController.php` - Signature emails
+- `app/Http/Controllers/CRM/AdminController.php` - Client email sending
+- `app/Http/Controllers/CRM/SignatureDashboardController.php` - Signature emails
 - `app/Http/Controllers/AdminConsole/EmailController.php` - SMTP account management
-- `app/Http/Controllers/Admin/ClientPortalController.php` - Portal emails
-- `app/Http/Controllers/Admin/AppointmentsController.php` - Appointment emails
+- `app/Http/Controllers/CRM/ClientPortalController.php` - Portal emails
+- `app/Http/Controllers/CRM/AppointmentsController.php` - Appointment emails
 
 ### Mailables
 - `app/Mail/CommonMail.php` - General purpose
@@ -1463,7 +1463,7 @@ Mail::send($view, $data, function($message) use ($to, $subject) {
 
 ### Views
 - `resources/views/emails/` - Email templates
-- `resources/views/Admin/clients/detail.blade.php` - Client email modal
+- `resources/views/crm/clients/detail.blade.php` - Client email modal
 
 ### Routes
 - `routes/clients.php` - Client email routes

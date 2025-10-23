@@ -47,7 +47,7 @@ class UserroleController extends Controller
 		
 		return view('AdminConsole.system.roles.index',compact(['lists', 'totalData']));	
 
-		//return view('Admin.usertype.index');	
+		//return view('crm.usertype.index');	
 	}
 	
 	public function create(Request $request) 

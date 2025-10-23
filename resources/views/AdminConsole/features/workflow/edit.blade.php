@@ -1,4 +1,4 @@
-@extends('layouts.admin_client_detail')
+@extends('layouts.crm_client_detail')
 @section('title', 'Edit Workflow Stage')
 
 @section('content')

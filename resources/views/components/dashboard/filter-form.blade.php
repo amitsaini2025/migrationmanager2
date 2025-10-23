@@ -1,7 +1,7 @@
 @props(['filters', 'workflowStages'])
 
 <div class="filter-controls">
-    <form id="filterForm" method="GET" action="{{ route('admin.dashboard') }}">
+    <form id="filterForm" method="GET" action="{{ route('dashboard') }}">
         <div class="search-box">
             <input type="text" 
                    name="client_name" 
@@ -25,7 +25,7 @@
         </button>
 
         @if(isset($filters['client_name']) || isset($filters['client_stage']))
-            <a href="{{ route('admin.dashboard') }}" class="clear-filters" onclick="clearFiltersAndReset()">
+            <a href="{{ route('dashboard') }}" class="clear-filters" onclick="clearFiltersAndReset()">
                 <i class="fas fa-times"></i> Clear Filters
             </a>
         @endif

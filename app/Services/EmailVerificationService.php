@@ -66,7 +66,7 @@ class EmailVerificationService
         ]);
 
         // Generate verification URL
-        $verificationUrl = route('admin.clients.email.verify', ['token' => $token]);
+        $verificationUrl = route('clients.email.verify', ['token' => $token]);
 
         // Send email
         try {

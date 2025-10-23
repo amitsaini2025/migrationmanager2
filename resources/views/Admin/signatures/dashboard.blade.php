@@ -348,12 +348,6 @@
                 <p style="color: #6c757d;">Manage and track document signatures</p>
             </div>
             <div style="display: flex; gap: 10px;">
-                <a href="{{ route('admin.signatures.analytics') }}" class="btn btn-info">
-                    <i class="fas fa-chart-line"></i> Analytics
-                </a>
-                <a href="{{ route('admin.signatures.export', ['format' => 'csv']) }}" class="btn btn-success">
-                    <i class="fas fa-download"></i> Export CSV
-                </a>
                 <a href="{{ route('admin.documents.create') }}" class="btn-primary-custom">
                     <i class="fas fa-plus"></i> Send New Document
                 </a>

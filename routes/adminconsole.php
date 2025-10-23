@@ -19,6 +19,7 @@ use App\Http\Controllers\AdminConsole\Sms\SmsController;
 use App\Http\Controllers\AdminConsole\Sms\SmsSendController;
 use App\Http\Controllers\AdminConsole\Sms\SmsTemplateController;
 use App\Http\Controllers\AdminConsole\Sms\SmsWebhookController;
+use App\Http\Controllers\AdminConsole\ESignatureController;
 
 /*
 |--------------------------------------------------------------------------
@@ -130,6 +131,12 @@ Route::prefix('adminconsole')->name('adminconsole.')->middleware(['auth:admin'])
             // SMS Templates
             Route::resource('templates', SmsTemplateController::class);
             Route::get('/templates-active', [SmsTemplateController::class, 'active'])->name('templates.active');
+        });
+        
+        // E-Signature Management routes
+        Route::prefix('esignature')->name('esignature.')->group(function() {
+            Route::get('/', [ESignatureController::class, 'index'])->name('index');
+            Route::get('/export', [ESignatureController::class, 'exportAudit'])->name('export');
         });
         
     });

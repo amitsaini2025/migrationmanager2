@@ -76,6 +76,15 @@
 			<?php
 			}
 			?>
+
+			<?php
+			// E-Signature Management menu - Available for all admin users
+			$esignatureclasstype = '';
+			if(str_starts_with(Route::currentRouteName() ?? '', 'adminconsole.features.esignature.')){
+				$esignatureclasstype = 'active';
+			}
+			?>
+			<li class="{{$esignatureclasstype}}"><a class="nav-link" href="{{route('adminconsole.features.esignature.index')}}">E-Signature</a></li>
 			
 		</ul>
 </div>

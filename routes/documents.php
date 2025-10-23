@@ -101,8 +101,6 @@ Route::get('/doc-to-pdf/debug', 'Admin\DocToPdfController@debugConfig')->name('a
 /*---------- Signature Dashboard Routes ----------*/
 Route::prefix('signatures')->group(function () {
     Route::get('/', [SignatureDashboardController::class, 'index'])->name('admin.signatures.index');
-    Route::get('/analytics', [SignatureDashboardController::class, 'analytics'])->name('admin.signatures.analytics');
-    Route::get('/export', [SignatureDashboardController::class, 'exportAudit'])->name('admin.signatures.export');
     Route::get('/create', [SignatureDashboardController::class, 'create'])->name('admin.signatures.create');
     Route::post('/', [SignatureDashboardController::class, 'store'])->name('admin.signatures.store');
     Route::post('/suggest-association', [SignatureDashboardController::class, 'suggestAssociation'])->name('admin.signatures.suggest-association');

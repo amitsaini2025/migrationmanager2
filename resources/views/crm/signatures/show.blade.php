@@ -1526,7 +1526,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Set the form action and add hidden fields
-            this.action = '{{ route("crm.signatures.associate", $document->id) }}';
+            this.action = '{{ route("signatures.associate", $document->id) }}';
             
             // Add hidden fields for the match
             const entityIdInput = document.createElement('input');
@@ -1597,7 +1597,7 @@ function openAddSignerModal() {
     document.getElementById('submitBtn').style.display = 'none';
     
     // Set form action
-    document.getElementById('addSignerForm').action = '{{ route("crm.signatures.store") }}';
+    document.getElementById('addSignerForm').action = '{{ route("signatures.store") }}';
     
     // Add hidden document_id field
     let existingInput = document.getElementById('modal_document_id');

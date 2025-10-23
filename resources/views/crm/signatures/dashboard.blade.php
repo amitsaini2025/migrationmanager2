@@ -816,7 +816,7 @@ function bulkArchive() {
     
     if (confirm(`Archive ${ids.length} document(s)?`)) {
         const form = document.getElementById('bulk-action-form');
-        form.action = '{{ route("crm.signatures.bulk-archive") }}';
+        form.action = '{{ route("signatures.bulk-archive") }}';
         document.getElementById('bulk-ids').value = JSON.stringify(ids);
         form.submit();
     }
@@ -828,7 +828,7 @@ function bulkResend() {
     
     if (confirm(`Send reminders for ${ids.length} document(s)?`)) {
         const form = document.getElementById('bulk-action-form');
-        form.action = '{{ route("crm.signatures.bulk-resend") }}';
+        form.action = '{{ route("signatures.bulk-resend") }}';
         document.getElementById('bulk-ids').value = JSON.stringify(ids);
         form.submit();
     }
@@ -841,7 +841,7 @@ function bulkVoid() {
     const reason = prompt('Reason for voiding (optional):');
     if (reason !== null) {
         const form = document.getElementById('bulk-action-form');
-        form.action = '{{ route("crm.signatures.bulk-void") }}';
+        form.action = '{{ route("signatures.bulk-void") }}';
         document.getElementById('bulk-ids').value = JSON.stringify(ids);
         document.getElementById('bulk-reason').value = reason;
         form.submit();

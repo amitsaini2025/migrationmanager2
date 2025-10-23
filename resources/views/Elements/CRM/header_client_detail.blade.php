@@ -11,11 +11,11 @@
                 <div class="icon-dropdown-menu">
                     <a class="dropdown-item" href="{{ route('appointments.index') }}"><i class="far fa-calendar-alt mr-2"></i> Listings</a>
                     <div class="dropdown-divider"></div>
-                    <a class="dropdown-item" href="{{URL::to('/admin/appointments-others')}}"><i class="far fa-calendar-check mr-2"></i> Arun Calendar</a>
-                    <a class="dropdown-item" href="{{URL::to('/admin/appointments-jrp')}}"><i class="far fa-calendar mr-2"></i> Tr Calendar</a>
-                    <a class="dropdown-item" href="{{URL::to('/admin/appointments-education')}}"><i class="fas fa-graduation-cap mr-2"></i> Education</a>
-                    <a class="dropdown-item" href="{{URL::to('/admin/appointments-tourist')}}"><i class="fas fa-plane mr-2"></i> Tourist Visa</a>
-                    <a class="dropdown-item" href="{{URL::to('/admin/appointments-adelaide')}}"><i class="fas fa-city mr-2"></i> Adelaide</a>
+                    <a class="dropdown-item" href="{{route('appointments-others')}}"><i class="far fa-calendar-check mr-2"></i> Arun Calendar</a>
+                    <a class="dropdown-item" href="{{route('appointments-jrp')}}"><i class="far fa-calendar mr-2"></i> Tr Calendar</a>
+                    <a class="dropdown-item" href="{{route('appointments-education')}}"><i class="fas fa-graduation-cap mr-2"></i> Education</a>
+                    <a class="dropdown-item" href="{{route('appointments-tourist')}}"><i class="fas fa-plane mr-2"></i> Tourist Visa</a>
+                    <a class="dropdown-item" href="{{route('appointments-adelaide')}}"><i class="fas fa-city mr-2"></i> Adelaide</a>
                     @if(Auth::user() && (Auth::user()->role == 1 || Auth::user()->role == 12))
                     @endif
                 </div>

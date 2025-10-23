@@ -1467,7 +1467,7 @@
             $('.js-data-example-ajaxccsearch').select2({
                 closeOnSelect: true,
                 ajax: {
-                    url: '{{URL::to('/admin/clients/get-allclients')}}',
+                    url: '{{route('clients.getallclients')}}',
                     dataType: 'json',
                     processResults: function (data) {
                         // Transforms the top-level key of the response object from 'items' to 'results'
@@ -1524,12 +1524,12 @@
                 var v = $(this).val(); 
                 var s = v.split('/');
                 if(s[1] == 'Matter' && s[2] != ''){
-                    window.location = '{{URL::to('/admin/clients/detail/')}}/'+s[0]+'/'+s[2]; // redirect
+                    window.location = '{{route('clients.detail', '')}}/'+s[0]+'/'+s[2]; // redirect
                 } else {
                     if(s[1] == 'Client'){
-                        window.location = '{{URL::to('/admin/clients/detail/')}}/'+s[0]; // redirect
+                        window.location = '{{route('clients.detail', '')}}/'+s[0]; // redirect
                     }  else{
-                        window.location = '{{URL::to('/admin/leads/history/')}}/'+s[0]; // redirect
+                        window.location = '{{route('history', '')}}/'+s[0]; // redirect
                     }
                 }
                 return false;
@@ -2048,7 +2048,7 @@
                 closeOnSelect: false,
                 dropdownParent: $('#checkinmodal'),
                 ajax: {
-                    url: '{{URL::to('/admin/clients/get-recipients')}}',
+                    url: '{{route('clients.getrecipients')}}',
                     dataType: 'json',
                     processResults: function (data) {
                         // Transforms the top-level key of the response object from 'items' to 'results'
@@ -2112,7 +2112,7 @@
 
         /*function load_unseen_notification(view = '')  {
             $.ajax({
-                url:"{{URL::to('/admin/fetch-notification')}}",
+                url:"{{url('/fetch-notification')}}",
                 method:"GET",
                 dataType:"json",
                 success:function(data) {
@@ -2128,7 +2128,7 @@
             load_unseen_notification();
             var playing = false;
             $.ajax({
-                url:"{{URL::to('/admin/fetch-messages')}}",
+                url:"{{url('/fetch-messages')}}",
                 method:"GET",
                 success:function(data) {
                     if(data != 0){
@@ -2158,7 +2158,7 @@
 
         /*function load_InPersonWaitingCount(view = '') {
             $.ajax({
-                url:"{{URL::to('/admin/fetch-InPersonWaitingCount')}}",
+                url:"{{url('/fetch-InPersonWaitingCount')}}",
                 method:"GET",
                 dataType:"json",
                 success:function(data) {
@@ -2172,7 +2172,7 @@
 
         /*function load_TotalActivityCount(view = '') {
             $.ajax({
-                url:"{{URL::to('/admin/fetch-TotalActivityCount')}}",
+                url:"{{url('/fetch-TotalActivityCount')}}",
                 method:"GET",
                 dataType:"json",
                 success:function(data) {
@@ -2194,7 +2194,7 @@
         // Teams-like notification functionality
         function loadOfficeVisitNotifications() {
             $.ajax({
-                url: "{{URL::to('/admin/fetch-office-visit-notifications')}}",
+                url: "{{url('/fetch-office-visit-notifications')}}",
                 method: "GET",
                 dataType: "json",
                 success: function(data) {
@@ -2266,7 +2266,7 @@
             // Check database status every 5 seconds to see if task is no longer waiting
             var statusCheckInterval = setInterval(function() {
                 $.ajax({
-                    url: "{{URL::to('/admin/check-checkin-status')}}",
+                    url: "{{url('/check-checkin-status')}}",
                     method: "GET",
                     data: { checkin_id: notification.checkin_id },
                     success: function(response) {
@@ -2290,7 +2290,7 @@
                 
                 // Mark notification as seen
                 $.ajax({
-                    url: "{{URL::to('/admin/mark-notification-seen')}}",
+                    url: "{{url('/mark-notification-seen')}}",
                     method: "POST",
                     data: {
                         notification_id: notificationId,
@@ -2313,7 +2313,7 @@
             }
             
             $.ajax({
-                url: "{{URL::to('/admin/update-checkin-status')}}",
+                    url: "{{url('/update-checkin-status')}}",
                 method: "POST",
                 data: {
                     checkin_id: checkinId,
@@ -2444,7 +2444,7 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form method="post" name="checkinmodalsave" id="checkinmodalsave" action="{{URL::to('/admin/checkin')}}" autocomplete="off" enctype="multipart/form-data">
+                    <form method="post" name="checkinmodalsave" id="checkinmodalsave" action="{{url('/checkin')}}" autocomplete="off" enctype="multipart/form-data">
                         @csrf
                         <div class="row">
                             <div class="col-12 col-md-6 col-lg-6">

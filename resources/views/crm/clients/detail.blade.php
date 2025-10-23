@@ -45,7 +45,7 @@ use App\Http\Controllers\Controller;
                 </h3>
                 <p class="client-name">
                     {{$fetchedData->first_name}} {{$fetchedData->last_name}} 
-                    <a href="{{URL::to('/admin/clients/edit/'.base64_encode(convert_uuencode(@$fetchedData->id)))}}" title="Edit" class="client-name-edit">
+                    <a href="{{route('clients.edit', base64_encode(convert_uuencode(@$fetchedData->id)))}}" title="Edit" class="client-name-edit">
                         <i class="fa fa-edit"></i>
                     </a>
                 </p>
@@ -473,7 +473,7 @@ use App\Http\Controllers\Controller;
 				</button>
 			</div>
 			<div class="modal-body">
-				<form method="post" name="sendmail" action="{{URL::to('/admin/sendmail')}}" autocomplete="off" enctype="multipart/form-data">
+				<form method="post" name="sendmail" action="{{route('clients.sendmail')}}" autocomplete="off" enctype="multipart/form-data">
 				@csrf
                     <input type="hidden" name="client_id" value="{{$fetchedData->id}}">
                     <input type="hidden" name="mail_type" value="1">
@@ -619,7 +619,7 @@ use App\Http\Controllers\Controller;
 				</button>
 			</div>
 			<div class="modal-body">
-				<form method="post" name="sendmsg" id="sendmsg" action="{{URL::to('/admin/sendmsg')}}" autocomplete="off" enctype="multipart/form-data">
+				<form method="post" name="sendmsg" id="sendmsg" action="{{route('clients.sendmail')}}" autocomplete="off" enctype="multipart/form-data">
 				    @csrf
                     <input type="hidden" name="client_id" id="sendmsg_client_id" value="">
                     <input type="hidden" name="vtype" value="client">
@@ -855,7 +855,7 @@ use App\Http\Controllers\Controller;
 				</button>
 			</div>
 			<div class="modal-body">
-				<form method="post" action="{{URL::to('/admin/application/application_ownership')}}" name="xapplication_ownership" id="xapplication_ownership" autocomplete="off" enctype="multipart/form-data">
+				<form method="post" action="{{url('/application/application_ownership')}}" name="xapplication_ownership" id="xapplication_ownership" autocomplete="off" enctype="multipart/form-data">
 				@csrf
 				<input type="hidden" name="mapp_id" id="mapp_id" value="">
 					<div class="row">
@@ -890,7 +890,7 @@ use App\Http\Controllers\Controller;
 				</button>
 			</div>
 			<div class="modal-body">
-				<form method="post" action="{{URL::to('/admin/application/spagent_application')}}" name="spagent_application" id="spagent_application" autocomplete="off" enctype="multipart/form-data">
+				<form method="post" action="{{url('/application/spagent_application')}}" name="spagent_application" id="spagent_application" autocomplete="off" enctype="multipart/form-data">
 				@csrf
 				<input type="hidden" name="siapp_id" id="siapp_id" value="">
 					<div class="row">
@@ -931,7 +931,7 @@ use App\Http\Controllers\Controller;
 				</button>
 			</div>
 			<div class="modal-body">
-				<form method="post" action="{{URL::to('/admin/application/sbagent_application')}}" name="sbagent_application" id="sbagent_application" autocomplete="off" enctype="multipart/form-data">
+				<form method="post" action="{{url('/application/sbagent_application')}}" name="sbagent_application" id="sbagent_application" autocomplete="off" enctype="multipart/form-data">
 				@csrf
 				<input type="hidden" name="sbapp_id" id="sbapp_id" value="">
 					<div class="row">
@@ -972,7 +972,7 @@ use App\Http\Controllers\Controller;
 				</button>
 			</div>
 			<div class="modal-body">
-				<form method="post" action="{{URL::to('/admin/save_tag')}}" name="stags_application" id="stags_application" autocomplete="off" enctype="multipart/form-data">
+                <form method="post" action="{{url('/save_tag')}}" name="stags_application" id="stags_application" autocomplete="off" enctype="multipart/form-data">
 				@csrf
 				<input type="hidden" name="client_id" id="client_id" value="">
 					<div class="row">
@@ -1017,7 +1017,7 @@ use App\Http\Controllers\Controller;
 				</button>
 			</div>
 			<div class="modal-body">
-                <form method="post" action="{{URL::to('/admin/client/createservicetaken')}}" name="createservicetaken" id="createservicetaken" autocomplete="off" enctype="multipart/form-data">
+                <form method="post" action="{{url('/client/createservicetaken')}}" name="createservicetaken" id="createservicetaken" autocomplete="off" enctype="multipart/form-data">
 				@csrf
                     <input id="logged_client_id" name="logged_client_id"  type="hidden" value="<?php echo $fetchedData->id;?>">
 					<div class="row">

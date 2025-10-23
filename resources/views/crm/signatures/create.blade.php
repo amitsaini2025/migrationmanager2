@@ -1057,7 +1057,7 @@ function previewEmail() {
     `;
     
     // Fetch preview
-    fetch('{{ route("crm.signatures.preview-email") }}', {
+    fetch('{{ route("signatures.preview-email") }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

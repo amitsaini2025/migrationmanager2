@@ -1522,7 +1522,7 @@
 
                                 if (postcode.length > 3) {
                                     $.ajax({
-                                        url: '{{ route("crm.clients.updateAddress") }}',
+                                        url: '{{ route("clients.updateAddress") }}',
                                         method: 'POST',
                                         data: { postcode: postcode },
                                         success: function(response) {
@@ -2814,7 +2814,7 @@
 
                                             if (occupation.length > 2) {
                                                 $.ajax({
-                                                    url: '{{ route("crm.clients.updateOccupation") }}',
+                                                    url: '{{ route("clients.updateOccupation") }}',
                                                     method: 'POST',
                                                     data: { occupation: occupation },
                                                     success: function(response) {

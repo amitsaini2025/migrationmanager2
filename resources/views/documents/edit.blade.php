@@ -354,7 +354,7 @@
             
             // Update preview image with proper route parameters
             const documentId = {{ $document->id }};
-            const baseUrl = '{{ route("crm.documents.page", ["id" => $document->id, "page" => 1]) }}';
+            const baseUrl = '{{ route("documents.page", ["id" => $document->id, "page" => 1]) }}';
             const newUrl = baseUrl.replace('/page/1', `/page/${pageNumber}`);
             const img = document.getElementById('preview-image');
             img.src = newUrl;

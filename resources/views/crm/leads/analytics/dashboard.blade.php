@@ -493,7 +493,7 @@ function exportReport() {
 function filterAgents(filter) {
     // Implement client-side filtering or reload with filter param
     // TODO: Add filter implementation
-    window.location.href = '{{ route("crm.leads.analytics") }}?filter=' + filter;
+    window.location.href = '{{ route("leads.analytics.index") }}?filter=' + filter;
 }
 </script>
 @endsection

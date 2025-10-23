@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Document;
 use App\Models\Signer;
+use App\Services\PythonPDFService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -40,13 +41,15 @@ class PublicDocumentController extends Controller
         $documentId = (int) $id;
         if ($documentId <= 0) {
             Log::warning('Invalid document ID in public sign method', ['id' => $id]);
-            return redirect('/')->with('error', 'Invalid document link.');
+            // ✅ FIX #4: Don't redirect public users to admin login
+            abort(404, 'Invalid document link.');
         }
 
         // Validate token format
         if (!$token || !is_string($token) || strlen($token) < 32 || !preg_match('/^[a-zA-Z0-9]+$/', $token)) {
             Log::warning('Invalid token format in public sign method', ['token_length' => strlen($token ?? '')]);
-            return redirect('/')->with('error', 'Invalid or expired signing link.');
+            // ✅ FIX #4: Don't redirect public users to admin login
+            abort(403, 'Invalid or expired signing link.');
         }
 
         try {
@@ -74,7 +77,12 @@ class PublicDocumentController extends Controller
                     'signer_exists' => !is_null($signer),
                     'signer_status' => $signer ? $signer->status : 'none'
                 ]);
-                return redirect('/')->with('error', 'Invalid or expired signing link.');
+                // ✅ FIX #4: If already signed, go to thank you page
+                if ($signer && $signer->status === 'signed') {
+                    return redirect()->route('public.documents.thankyou', ['id' => $document->id])
+                        ->with('info', 'This document has already been signed.');
+                }
+                abort(403, 'Invalid or expired signing link.');
             }
 
             // Track when document was opened
@@ -402,65 +410,168 @@ class PublicDocumentController extends Controller
                 }
 
                 if (!$signaturesSaved) {
-                    return redirect('/')->with('error', 'No signatures provided. Please draw signatures before submitting.');
+                    // ✅ FIX #4: Return to signing page with error
+                    Log::error('No valid signatures saved', [
+                        'document_id' => $document->id,
+                        'signer_id' => $signer->id
+                    ]);
+                    return redirect()->back()
+                        ->with('error', 'No valid signatures were detected. Please ensure all signature fields are properly signed.')
+                        ->withInput();
                 }
 
-                // Create signed PDF
-                $pdf = new TcpdfFpdi('P', 'mm', 'A4', true, 'UTF-8', false);
-                $pdf->SetAutoPageBreak(false);
-                $pageCount = $pdf->setSourceFile($tmpPdfPath);
-
-                for ($page = 1; $page <= $pageCount; $page++) {
-                    $tplIdx = $pdf->importPage($page);
-                    $specs = $pdf->getTemplateSize($tplIdx);
-                    $pdf->AddPage($specs['orientation'], [$specs['width'], $specs['height']]);
-                    $pdf->useTemplate($tplIdx, 0, 0, $specs['width'], $specs['height']);
-
-                    // Add signatures
-                    $fields = $document->signatureFields()->where('page_number', $page)->get();
-                    foreach ($fields as $field) {
-                        if (isset($signaturePositions[$field->id])) {
-                            $signatureInfo = $signaturePositions[$field->id];
-                            $signaturePath = $signatureInfo['path'];
-                            
-                            $pdfWidth = $specs['width'];
-                            $pdfHeight = $specs['height'];
-                            $x_mm = $signatureInfo['x_percent'] * $pdfWidth;
-                            $y_mm = $signatureInfo['y_percent'] * $pdfHeight;
-                            $w_mm = max(15, $signatureInfo['w_percent'] * $pdfWidth);
-                            $h_mm = max(15, $signatureInfo['h_percent'] * $pdfHeight);
-
-                            // Get signature file (handle both S3 and local)
-                            $tmpSignaturePath = null;
-                            
-                            if (file_exists($signaturePath)) {
-                                // Local file
-                                $tmpSignaturePath = $signaturePath;
-                            } else {
-                                // Try S3
-                                try {
-                                    $tmpSignaturePath = storage_path('app/tmp_signature_' . uniqid() . '.png');
-                                    $s3Image = Storage::disk('s3')->get($signaturePath);
-                                    file_put_contents($tmpSignaturePath, $s3Image);
-                                } catch (\Exception $e) {
-                                    Log::warning('Failed to get signature file', ['path' => $signaturePath, 'error' => $e->getMessage()]);
-                                    $tmpSignaturePath = null;
-                                }
+                // ✅ PYTHON PDF SERVICE: Try Python service first (supports ALL PDF compressions)
+                $pythonPdfService = new \App\Services\PythonPDFService();
+                $usedPythonService = false;
+                
+                if ($pythonPdfService->isHealthy()) {
+                    Log::info('Attempting to create signed PDF with Python service');
+                    
+                    // Prepare signatures in Python service format
+                    $signaturesForPython = [];
+                    foreach ($signaturePositions as $fieldId => $signatureInfo) {
+                        // Get the signature file path (handle both S3 and local)
+                        $signaturePath = $signatureInfo['path'];
+                        $tmpSignaturePath = null;
+                        
+                        if (file_exists($signaturePath)) {
+                            // Local file
+                            $tmpSignaturePath = $signaturePath;
+                        } else {
+                            // Try S3
+                            try {
+                                $tmpSignaturePath = storage_path('app/tmp_signature_' . uniqid() . '.png');
+                                $s3Image = Storage::disk('s3')->get($signaturePath);
+                                file_put_contents($tmpSignaturePath, $s3Image);
+                            } catch (\Exception $e) {
+                                Log::warning('Failed to get signature file from S3', ['path' => $signaturePath, 'error' => $e->getMessage()]);
+                                continue; // Skip this signature
                             }
-
-                            if ($tmpSignaturePath && file_exists($tmpSignaturePath)) {
-                                $pdf->Image($tmpSignaturePath, $x_mm, $y_mm, $w_mm, $h_mm, 'PNG');
-                                // Only delete if it's a temp file (not the original local file)
-                                if (strpos($tmpSignaturePath, 'tmp_signature_') !== false) {
-                                    @unlink($tmpSignaturePath);
-                                }
+                        }
+                        
+                        if ($tmpSignaturePath && file_exists($tmpSignaturePath)) {
+                            // Read signature as base64
+                            $signatureBase64 = base64_encode(file_get_contents($tmpSignaturePath));
+                            
+                            $signaturesForPython[] = [
+                                'field_id' => $fieldId,
+                                'page_number' => $signatureInfo['page'],
+                                'x_percent' => $signatureInfo['x_percent'],
+                                'y_percent' => $signatureInfo['y_percent'],
+                                'width_percent' => $signatureInfo['w_percent'],
+                                'height_percent' => $signatureInfo['h_percent'],
+                                'signature_data' => $signatureBase64
+                            ];
+                            
+                            // Clean up temp S3 file
+                            if (strpos($tmpSignaturePath, 'tmp_signature_') !== false) {
+                                @unlink($tmpSignaturePath);
                             }
                         }
                     }
+                    
+                    // Call Python service to add signatures
+                    $pythonSuccess = $pythonPdfService->addSignaturesToPdf(
+                        $tmpPdfPath,
+                        $outputTmpPath,
+                        $signaturesForPython
+                    );
+                    
+                    if ($pythonSuccess && file_exists($outputTmpPath) && filesize($outputTmpPath) > 0) {
+                        Log::info('Signed PDF created successfully with Python service', [
+                            'document_id' => $document->id,
+                            'output_size' => filesize($outputTmpPath)
+                        ]);
+                        $usedPythonService = true;
+                    } else {
+                        Log::warning('Python service returned success but file invalid, falling back to FPDI', [
+                            'file_exists' => file_exists($outputTmpPath),
+                            'file_size' => file_exists($outputTmpPath) ? filesize($outputTmpPath) : 0
+                        ]);
+                    }
+                } else {
+                    Log::warning('Python PDF service not available, using FPDI fallback');
                 }
+                
+                // ❌ FPDI FALLBACK: Use FPDI if Python service failed or unavailable
+                if (!$usedPythonService) {
+                    try {
+                        Log::info('Creating signed PDF with FPDI');
+                        
+                        $pdf = new TcpdfFpdi('P', 'mm', 'A4', true, 'UTF-8', false);
+                        $pdf->SetAutoPageBreak(false);
+                        $pageCount = $pdf->setSourceFile($tmpPdfPath);
 
-                // Save signed PDF
-                $pdf->Output($outputTmpPath, 'F');
+                        for ($page = 1; $page <= $pageCount; $page++) {
+                            $tplIdx = $pdf->importPage($page);
+                            $specs = $pdf->getTemplateSize($tplIdx);
+                            $pdf->AddPage($specs['orientation'], [$specs['width'], $specs['height']]);
+                            $pdf->useTemplate($tplIdx, 0, 0, $specs['width'], $specs['height']);
+
+                            // Add signatures
+                            $fields = $document->signatureFields()->where('page_number', $page)->get();
+                            foreach ($fields as $field) {
+                                if (isset($signaturePositions[$field->id])) {
+                                    $signatureInfo = $signaturePositions[$field->id];
+                                    $signaturePath = $signatureInfo['path'];
+                                    
+                                    $pdfWidth = $specs['width'];
+                                    $pdfHeight = $specs['height'];
+                                    $x_mm = $signatureInfo['x_percent'] * $pdfWidth;
+                                    $y_mm = $signatureInfo['y_percent'] * $pdfHeight;
+                                    $w_mm = max(15, $signatureInfo['w_percent'] * $pdfWidth);
+                                    $h_mm = max(15, $signatureInfo['h_percent'] * $pdfHeight);
+
+                                    // Get signature file (handle both S3 and local)
+                                    $tmpSignaturePath = null;
+                                    
+                                    if (file_exists($signaturePath)) {
+                                        // Local file
+                                        $tmpSignaturePath = $signaturePath;
+                                    } else {
+                                        // Try S3
+                                        try {
+                                            $tmpSignaturePath = storage_path('app/tmp_signature_' . uniqid() . '.png');
+                                            $s3Image = Storage::disk('s3')->get($signaturePath);
+                                            file_put_contents($tmpSignaturePath, $s3Image);
+                                        } catch (\Exception $e) {
+                                            Log::warning('Failed to get signature file', ['path' => $signaturePath, 'error' => $e->getMessage()]);
+                                            $tmpSignaturePath = null;
+                                        }
+                                    }
+
+                                    if ($tmpSignaturePath && file_exists($tmpSignaturePath)) {
+                                        $pdf->Image($tmpSignaturePath, $x_mm, $y_mm, $w_mm, $h_mm, 'PNG');
+                                        // Only delete if it's a temp file (not the original local file)
+                                        if (strpos($tmpSignaturePath, 'tmp_signature_') !== false) {
+                                            @unlink($tmpSignaturePath);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Save signed PDF
+                        $pdf->Output($outputTmpPath, 'F');
+                        
+                        Log::info('Signed PDF created with FPDI fallback', [
+                            'document_id' => $document->id,
+                            'output_size' => file_exists($outputTmpPath) ? filesize($outputTmpPath) : 0
+                        ]);
+                        
+                    } catch (\Exception $e) {
+                        Log::error('FPDI also failed to create signed PDF', [
+                            'document_id' => $document->id,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString()
+                        ]);
+                        
+                        // If FPDI also fails, return error with helpful message
+                        return redirect()->back()->with('error', 
+                            'Unable to process this PDF document. The document may use an unsupported compression format. ' .
+                            'Please contact support or try converting the PDF to a standard format.');
+                    }
+                }
 
                 if (!file_exists($outputTmpPath) || filesize($outputTmpPath) === 0) {
                     Log::error('Failed to create signed PDF', [
@@ -526,6 +637,9 @@ class PublicDocumentController extends Controller
                     'signed_at' => now()->toISOString()
                 ]);
 
+                // Create notifications and activity logs
+                $this->createSignatureNotifications($document, $signer);
+
                 // Redirect to thank you page with success message
                 return redirect()->route('public.documents.thankyou', ['id' => $document->id])
                     ->with('success', 'Document signed successfully! You can now download your signed document.');
@@ -538,13 +652,18 @@ class PublicDocumentController extends Controller
                 'signer_status' => $signer->status,
                 'signer_token_set' => $signer->token !== null
             ]);
-            return redirect('/')->with('error', 'Invalid signing attempt. Please contact support if this issue persists.');
+            // ✅ FIX #4: Return to signing page with error
+            return redirect()->back()
+                ->with('error', 'An unexpected error occurred while processing your signature. Please try again or contact support if the issue persists.');
         } catch (\Exception $e) {
             Log::error("Error in public submitSignatures", [
                 'error' => $e->getMessage(),
-                'document_id' => $id
+                'document_id' => $id,
+                'trace' => $e->getTraceAsString()
             ]);
-            return redirect('/')->with('error', 'An unexpected error occurred: ' . $e->getMessage());
+            // ✅ FIX #4: Return to signing page with error
+            return redirect()->back()
+                ->with('error', 'An unexpected error occurred while processing your signature. Please try again or contact support.');
         }
     }
 
@@ -1065,6 +1184,201 @@ class PublicDocumentController extends Controller
         }
 
         return $sanitized;
+    }
+
+    /**
+     * Create notifications and activity logs when document is signed
+     */
+    private function createSignatureNotifications($document, $signer)
+    {
+        try {
+            // Get signer information
+            $signerName = $signer->name ?? 'Unknown Signer';
+            $signedAt = now()->format('d/m/Y h:i A');
+            
+            // Determine the associated client/lead and responsible person
+            $associatedEntity = null;
+            $responsiblePersonId = null;
+            $entityType = null;
+            $notificationUrl = null;
+            
+            // Check if document is associated with a client matter
+            if ($document->client_matter_id) {
+                $clientMatter = \App\Models\ClientMatter::select('client_unique_matter_no', 'sel_person_responsible', 'client_id')
+                    ->where('id', $document->client_matter_id)
+                    ->first();
+                
+                if ($clientMatter) {
+                    $associatedEntity = \App\Models\Admin::find($clientMatter->client_id);
+                    $responsiblePersonId = $clientMatter->sel_person_responsible;
+                    $entityType = 'client';
+                    $notificationUrl = url("/admin/clients/detail/{$clientMatter->client_id}");
+                    
+                    if ($associatedEntity) {
+                        $this->createActivityAndNotification(
+                            $document,
+                            $associatedEntity,
+                            $responsiblePersonId,
+                            $signerName,
+                            $signedAt,
+                            $entityType,
+                            $notificationUrl,
+                            $clientMatter->client_unique_matter_no
+                        );
+                    }
+                }
+            }
+            // Check if document has client_id (direct client association)
+            elseif ($document->client_id) {
+                $associatedEntity = \App\Models\Admin::find($document->client_id);
+                
+                if ($associatedEntity) {
+                    $entityType = ($associatedEntity->type === 'lead') ? 'lead' : 'client';
+                    $notificationUrl = url("/admin/clients/detail/{$associatedEntity->id}");
+                    
+                    // For direct client associations, try to find responsible person
+                    // You can set this to a default admin or get from document creator
+                    $responsiblePersonId = $document->created_by ?? null;
+                    
+                    $this->createActivityAndNotification(
+                        $document,
+                        $associatedEntity,
+                        $responsiblePersonId,
+                        $signerName,
+                        $signedAt,
+                        $entityType,
+                        $notificationUrl
+                    );
+                }
+            }
+            // Check if document has polymorphic relationship (documentable)
+            elseif ($document->documentable_id && $document->documentable_type) {
+                if ($document->documentable_type === 'App\\Models\\Admin') {
+                    $associatedEntity = \App\Models\Admin::find($document->documentable_id);
+                    
+                    if ($associatedEntity) {
+                        $entityType = ($associatedEntity->type === 'lead') ? 'lead' : 'client';
+                        $notificationUrl = url("/admin/clients/detail/{$associatedEntity->id}");
+                        $responsiblePersonId = $document->created_by ?? null;
+                        
+                        $this->createActivityAndNotification(
+                            $document,
+                            $associatedEntity,
+                            $responsiblePersonId,
+                            $signerName,
+                            $signedAt,
+                            $entityType,
+                            $notificationUrl
+                        );
+                    }
+                } elseif ($document->documentable_type === 'App\\Models\\ClientMatter') {
+                    $clientMatter = \App\Models\ClientMatter::select('client_unique_matter_no', 'sel_person_responsible', 'client_id')
+                        ->where('id', $document->documentable_id)
+                        ->first();
+                    
+                    if ($clientMatter) {
+                        $associatedEntity = \App\Models\Admin::find($clientMatter->client_id);
+                        $responsiblePersonId = $clientMatter->sel_person_responsible;
+                        $entityType = 'client';
+                        $notificationUrl = url("/admin/clients/detail/{$clientMatter->client_id}");
+                        
+                        if ($associatedEntity) {
+                            $this->createActivityAndNotification(
+                                $document,
+                                $associatedEntity,
+                                $responsiblePersonId,
+                                $signerName,
+                                $signedAt,
+                                $entityType,
+                                $notificationUrl,
+                                $clientMatter->client_unique_matter_no
+                            );
+                        }
+                    }
+                }
+            }
+            
+            Log::info('Document signature notifications processed', [
+                'document_id' => $document->id,
+                'entity_type' => $entityType,
+                'has_entity' => !is_null($associatedEntity),
+                'has_responsible_person' => !is_null($responsiblePersonId)
+            ]);
+            
+        } catch (\Exception $e) {
+            // Log the error but don't break the signing flow
+            Log::error('Error creating signature notifications', [
+                'document_id' => $document->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+    
+    /**
+     * Helper method to create activity log and notification
+     */
+    private function createActivityAndNotification(
+        $document, 
+        $entity, 
+        $responsiblePersonId, 
+        $signerName, 
+        $signedAt, 
+        $entityType,
+        $notificationUrl,
+        $matterReference = null
+    ) {
+        $entityName = $entity->first_name . ' ' . $entity->last_name;
+        $documentTitle = $document->title ?? $document->file_name ?? 'Document #' . $document->id;
+        
+        // Create subject line
+        if ($matterReference) {
+            $subject = "{$signerName} signed document '{$documentTitle}' for matter {$matterReference}";
+        } else {
+            $subject = "{$signerName} signed document '{$documentTitle}' for {$entityType} {$entityName}";
+        }
+        
+        $description = "Document signed by {$signerName} at {$signedAt}";
+        
+        // Create Activity Log (appears on client/lead timeline)
+        \App\Models\ActivitiesLog::create([
+            'client_id' => $entity->id,
+            'created_by' => $responsiblePersonId ?? 1, // Default to system user if no responsible person
+            'subject' => $subject,
+            'description' => $description,
+            'activity_type' => 'document',
+        ]);
+        
+        Log::info('Activity log created for document signature', [
+            'document_id' => $document->id,
+            'client_id' => $entity->id,
+            'entity_type' => $entityType
+        ]);
+        
+        // Create Notification (appears in notification tab)
+        if ($responsiblePersonId) {
+            \App\Models\Notification::create([
+                'sender_id' => $entity->id, // The client/lead is the "sender"
+                'receiver_id' => $responsiblePersonId, // The responsible person receives it
+                'module_id' => $document->id,
+                'url' => $notificationUrl,
+                'notification_type' => 'document',
+                'message' => $subject,
+                'receiver_status' => 0, // Unread
+                'seen' => 0,
+            ]);
+            
+            Log::info('Notification created for document signature', [
+                'document_id' => $document->id,
+                'receiver_id' => $responsiblePersonId,
+                'entity_type' => $entityType
+            ]);
+        } else {
+            Log::warning('No responsible person found for notification', [
+                'document_id' => $document->id,
+                'entity_id' => $entity->id
+            ]);
+        }
     }
 }
 

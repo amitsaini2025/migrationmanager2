@@ -118,6 +118,7 @@ Route::prefix('signatures')->group(function () {
     
     // Association management (Phase 3)
     Route::post('/{id}/associate', [SignatureDashboardController::class, 'associate'])->name('admin.signatures.associate');
+    Route::get('/api/client-matters/{clientId}', [SignatureDashboardController::class, 'getClientMatters'])->name('admin.signatures.client-matters');
     Route::post('/{id}/detach', [SignatureDashboardController::class, 'detach'])->name('admin.signatures.detach');
 });
 

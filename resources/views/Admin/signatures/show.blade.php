@@ -743,7 +743,107 @@
             @endif
         </div>
     </div>
+    @elseif($document->status === 'signed')
+    <div class="association-info" style="background: #fff3cd; border-left: 4px solid #ffc107;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong><i class="fas fa-exclamation-triangle" style="color: #ffc107;"></i> Not Associated</strong>
+                <p style="margin: 5px 0 0 0; font-size: 13px; color: #856404;">
+                    This signed document is not associated with any client or lead
+                </p>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button type="button" class="btn btn-sm btn-primary" onclick="openAttachModal()">
+                    <i class="fas fa-link"></i> Attach Document
+                </button>
+            </div>
+        </div>
+    </div>
     @endif
+
+    <!-- Attach Document Modal -->
+    <div class="modal fade" id="attachModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <form id="attachForm" method="POST">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-link"></i> Attach Document to Client/Lead
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Document</label>
+                            <input type="text" class="form-control" value="{{ $document->display_title }}" readonly>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Signer Email <span style="color: #dc3545;">*</span></label>
+                            <div class="input-group">
+                                <input type="email" class="form-control" id="signerEmail" placeholder="Enter signer email address" value="{{ $document->signers->first()->email ?? '' }}" onkeypress="if(event.key==='Enter') lookupSigner()">
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-outline-primary" onclick="lookupSigner()" id="lookupBtn">
+                                        <i class="fas fa-search"></i> Lookup
+                                    </button>
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">Enter the signer's email to automatically find matching client or lead</small>
+                        </div>
+                        
+                        <div id="lookupResults" style="display: none;">
+                            <div class="form-group">
+                                <label>Found Match</label>
+                                <div class="alert alert-info" id="matchInfo">
+                                    <!-- Match info will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Entity Type <span style="color: #dc3545;">*</span></label>
+                                <select class="form-control" id="entityType" name="entity_type" required>
+                                    <option value="">-- Select Type --</option>
+                                    <option value="client">Client</option>
+                                    <option value="lead">Lead</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group" id="matterSelection" style="display: none;">
+                                <label>Select Matter <span style="color: #dc3545;">*</span></label>
+                                <select class="form-control" id="matterId" name="matter_id">
+                                    <option value="">-- Select Matter --</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Document Category <span style="color: #dc3545;">*</span></label>
+                                <select class="form-control" id="docCategory" name="doc_category" required>
+                                    <option value="">-- Select Category --</option>
+                                    <option value="visa" data-for="client">Visa Documents (Client)</option>
+                                    <option value="personal" data-for="lead">Personal Documents (Lead)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Note (Optional)</label>
+                                <textarea class="form-control" name="note" rows="3" placeholder="Add a note about this attachment..."></textarea>
+                                <small class="form-text text-muted">This note will appear in the audit trail</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="attachBtn" disabled>
+                            <i class="fas fa-check"></i> Attach Document
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <div class="detail-grid">
         <!-- Main Content -->
@@ -1242,6 +1342,208 @@
 </div>
 
 <script>
+// Association functionality data
+const clients = @json($clients ?? []);
+const leads = @json($leads ?? []);
+let currentMatch = null;
+
+// Debug: Log the data
+console.log('Clients loaded:', clients.length);
+console.log('Leads loaded:', leads.length);
+if (clients.length > 0) console.log('Sample client:', clients[0]);
+if (leads.length > 0) console.log('Sample lead:', leads[0]);
+
+// Open attach modal
+function openAttachModal() {
+    $('#attachModal').modal('show');
+    // Reset form
+    document.getElementById('lookupResults').style.display = 'none';
+    document.getElementById('attachBtn').disabled = true;
+    document.getElementById('entityType').value = '';
+    document.getElementById('matterId').innerHTML = '<option value="">-- Select Matter --</option>';
+    document.getElementById('matterSelection').style.display = 'none';
+    document.getElementById('docCategory').value = '';
+    
+    // Setup auto-search
+    setupAutoSearch();
+}
+
+// Lookup signer by email
+function lookupSigner() {
+    const email = document.getElementById('signerEmail').value.trim();
+    if (!email) {
+        alert('Please enter a signer email address');
+        return;
+    }
+    
+    // Show loading
+    const lookupBtn = document.getElementById('lookupBtn');
+    const originalText = lookupBtn.innerHTML;
+    lookupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
+    lookupBtn.disabled = true;
+    
+    // Search in clients and leads
+    const clientMatch = clients.find(client => 
+        client.email && client.email.toLowerCase() === email.toLowerCase()
+    );
+    const leadMatch = leads.find(lead => 
+        lead.email && lead.email.toLowerCase() === email.toLowerCase()
+    );
+    
+    setTimeout(() => {
+        lookupBtn.innerHTML = originalText;
+        lookupBtn.disabled = false;
+        
+        if (clientMatch) {
+            currentMatch = { type: 'client', data: clientMatch };
+            showMatch(clientMatch, 'Client');
+        } else if (leadMatch) {
+            currentMatch = { type: 'lead', data: leadMatch };
+            showMatch(leadMatch, 'Lead');
+        } else {
+            alert('No matching client or lead found for this email address');
+        }
+    }, 500);
+}
+
+// Auto-search as user types (with debounce)
+let searchTimeout;
+function setupAutoSearch() {
+    const emailInput = document.getElementById('signerEmail');
+    if (emailInput) {
+        emailInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const email = this.value.trim();
+            
+            if (email.length > 3) { // Only search if email has more than 3 characters
+                searchTimeout = setTimeout(() => {
+                    // Auto-search without showing loading
+                    const clientMatch = clients.find(client => 
+                        client.email && client.email.toLowerCase() === email.toLowerCase()
+                    );
+                    const leadMatch = leads.find(lead => 
+                        lead.email && lead.email.toLowerCase() === email.toLowerCase()
+                    );
+                    
+                    if (clientMatch) {
+                        currentMatch = { type: 'client', data: clientMatch };
+                        showMatch(clientMatch, 'Client');
+                    } else if (leadMatch) {
+                        currentMatch = { type: 'lead', data: leadMatch };
+                        showMatch(leadMatch, 'Lead');
+                    } else {
+                        // Hide results if no match
+                        document.getElementById('lookupResults').style.display = 'none';
+                        currentMatch = null;
+                    }
+                }, 800); // 800ms delay
+            } else {
+                // Hide results if email is too short
+                document.getElementById('lookupResults').style.display = 'none';
+                currentMatch = null;
+            }
+        });
+    }
+}
+
+// Show match results
+function showMatch(match, type) {
+    const matchInfo = document.getElementById('matchInfo');
+    matchInfo.innerHTML = `
+        <strong>${type}:</strong> ${match.first_name} ${match.last_name}<br>
+        <strong>Email:</strong> ${match.email}<br>
+        <strong>Type:</strong> ${type}
+    `;
+    
+    document.getElementById('lookupResults').style.display = 'block';
+    document.getElementById('entityType').value = type.toLowerCase();
+    document.getElementById('attachBtn').disabled = false;
+    
+    // Load matters if client
+    if (type === 'Client') {
+        loadClientMatters(match.id);
+    }
+}
+
+// Load client matters
+function loadClientMatters(clientId) {
+    fetch(`/admin/api/client-matters/${clientId}`)
+        .then(response => response.json())
+        .then(data => {
+            const matterSelect = document.getElementById('matterId');
+            matterSelect.innerHTML = '<option value="">-- Select Matter --</option>';
+            
+            if (data.matters && data.matters.length > 0) {
+                data.matters.forEach(matter => {
+                    const option = document.createElement('option');
+                    option.value = matter.id;
+                    option.textContent = matter.client_unique_matter_no || `Matter #${matter.id}`;
+                    matterSelect.appendChild(option);
+                });
+                document.getElementById('matterSelection').style.display = 'block';
+            } else {
+                document.getElementById('matterSelection').style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading matters:', error);
+            document.getElementById('matterSelection').style.display = 'none';
+        });
+}
+
+// Handle entity type change
+document.addEventListener('DOMContentLoaded', function() {
+    const entityType = document.getElementById('entityType');
+    const docCategory = document.getElementById('docCategory');
+    
+    if (entityType && docCategory) {
+        entityType.addEventListener('change', function() {
+            const type = this.value;
+            const options = docCategory.querySelectorAll('option');
+            
+            options.forEach(option => {
+                if (option.value === '') return;
+                const forType = option.getAttribute('data-for');
+                if (forType === type) {
+                    option.style.display = 'block';
+                } else {
+                    option.style.display = 'none';
+                }
+            });
+            
+            docCategory.value = '';
+        });
+    }
+    
+    // Handle form submission
+    const attachForm = document.getElementById('attachForm');
+    if (attachForm) {
+        attachForm.addEventListener('submit', function(e) {
+            if (!currentMatch) {
+                e.preventDefault();
+                alert('Please lookup a signer first');
+                return;
+            }
+            
+            // Set the form action and add hidden fields
+            this.action = '{{ route("admin.signatures.associate", $document->id) }}';
+            
+            // Add hidden fields for the match
+            const entityIdInput = document.createElement('input');
+            entityIdInput.type = 'hidden';
+            entityIdInput.name = 'entity_id';
+            entityIdInput.value = currentMatch.data.id;
+            this.appendChild(entityIdInput);
+            
+            const entityTypeInput = document.createElement('input');
+            entityTypeInput.type = 'hidden';
+            entityTypeInput.name = 'entity_type';
+            entityTypeInput.value = currentMatch.type;
+            this.appendChild(entityTypeInput);
+        });
+    }
+});
+
 function copySigningLink(url) {
     navigator.clipboard.writeText(url).then(function() {
         alert('Signing link copied to clipboard!');

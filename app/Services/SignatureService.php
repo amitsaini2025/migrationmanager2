@@ -296,6 +296,82 @@ class SignatureService
     }
 
     /**
+     * Associate a document with category-specific storage and matter
+     */
+    public function associateWithCategory(Document $document, string $entityType, int $entityId, ?int $matterId, string $docCategory, string $note = null): bool
+    {
+        try {
+            $documentableType = match($entityType) {
+                'client' => Admin::class,
+                'lead' => Lead::class,
+                default => throw new \InvalidArgumentException("Invalid entity type: {$entityType}")
+            };
+
+            // Determine document type based on category
+            $docType = match($docCategory) {
+                'visa' => 'visa_documents',
+                'personal' => 'personal_documents',
+                default => 'general'
+            };
+
+            $document->update([
+                'documentable_type' => $documentableType,
+                'documentable_id' => $entityId,
+                'client_matter_id' => $matterId,
+                'doc_type' => $docType,
+                'origin' => $entityType,
+            ]);
+
+            // Create audit trail entry in document_notes
+            DocumentNote::create([
+                'document_id' => $document->id,
+                'created_by' => auth('admin')->id() ?? 1,
+                'action_type' => 'associated',
+                'note' => $note ?? "Document associated with {$entityType} ({$docCategory})",
+                'metadata' => [
+                    'entity_type' => $entityType,
+                    'entity_id' => $entityId,
+                    'matter_id' => $matterId,
+                    'doc_category' => $docCategory,
+                    'doc_type' => $docType,
+                    'documentable_type' => $documentableType
+                ]
+            ]);
+
+            // Create activity log on Client/Lead timeline
+            if ($entityType === 'client') {
+                $matterText = $matterId ? " (Matter: #{$matterId})" : '';
+                ActivitiesLog::create([
+                    'client_id' => $entityId,
+                    'created_by' => auth('admin')->id() ?? 1,
+                    'activity_type' => 'document',
+                    'subject' => "Document #{$document->id} attached to {$docCategory} documents{$matterText}",
+                    'description' => $note ?? "Document '{$document->display_title}' was attached to this client's {$docCategory} documents"
+                ]);
+            }
+
+            // Log the association
+            Log::info('Document associated with category', [
+                'document_id' => $document->id,
+                'entity_type' => $entityType,
+                'entity_id' => $entityId,
+                'matter_id' => $matterId,
+                'doc_category' => $docCategory,
+                'doc_type' => $docType,
+                'note' => $note
+            ]);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to associate document with category', [
+                'document_id' => $document->id,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
      * Detach a document from its association
      */
     public function detach(Document $document, string $reason = null): bool

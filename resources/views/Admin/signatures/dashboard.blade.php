@@ -596,11 +596,7 @@
                             </form>
                             @endif
                             
-                            @if($doc->status === 'signed' && !$doc->documentable)
-                            <button type="button" class="btn btn-action btn-attach" onclick="openAttachModal({{ $doc->id }}, {{ json_encode($doc->display_title) }})">
-                                <i class="fas fa-link"></i> Attach
-                            </button>
-                            @endif
+                            {{-- Attach button removed - users can attach from document detail page --}}
                         </td>
                     </tr>
                     @endforeach
@@ -682,6 +678,110 @@
 
 @section('scripts')
 <script>
+// Data from controller - Clean and simple
+const clients = @json($clients ?? []);
+const leads = @json($leads ?? []);
+let currentDocId = null;
+
+console.log('✅ Dashboard script loaded. Clients:', clients.length, 'Leads:', leads.length);
+
+// Define openAttachModal globally - available immediately
+function openAttachModal(docId, docTitle) {
+    console.log('📝 openAttachModal called:', docId, docTitle);
+    
+    try {
+        currentDocId = docId;
+        
+        // Get modal elements
+        const docTitleEl = document.getElementById('attachDocTitle');
+        const entityTypeEl = document.getElementById('attachEntityType');
+        const entitySelectGroupEl = document.getElementById('entitySelectGroup');
+        const attachEntityIdEl = document.getElementById('attachEntityId');
+        const attachFormEl = document.getElementById('attachForm');
+        
+        // Validate elements exist
+        if (!docTitleEl || !entityTypeEl || !entitySelectGroupEl || !attachEntityIdEl || !attachFormEl) {
+            console.error('❌ Required modal elements not found');
+            alert('Error: Modal elements not found. Please refresh the page and try again.');
+            return;
+        }
+        
+        // Reset and populate modal
+        docTitleEl.value = docTitle;
+        entityTypeEl.value = '';
+        entitySelectGroupEl.style.display = 'none';
+        attachEntityIdEl.innerHTML = '<option value="">-- Select --</option>';
+        attachFormEl.action = '{{ url("/admin/signatures") }}/' + docId + '/associate';
+        
+        // Show modal
+        if (typeof $ !== 'undefined' && $.fn.modal) {
+            $('#attachModal').modal('show');
+            console.log('✅ Modal opened (jQuery)');
+        } else if (typeof bootstrap !== 'undefined') {
+            const modal = new bootstrap.Modal(document.getElementById('attachModal'));
+            modal.show();
+            console.log('✅ Modal opened (Bootstrap 5)');
+        } else {
+            console.error('❌ No modal library found');
+            alert('Error: Modal library not found. Please refresh the page.');
+        }
+    } catch (error) {
+        console.error('❌ Error in openAttachModal:', error);
+        alert('Error opening attachment modal. Please try again.');
+    }
+}
+
+// Wait for DOM to be fully loaded for event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ DOM ready, setting up event listeners');
+    
+    // Set up entity type change listener
+    const attachEntityTypeEl = document.getElementById('attachEntityType');
+    if (attachEntityTypeEl) {
+        attachEntityTypeEl.addEventListener('change', function() {
+            const type = this.value;
+            const selectGroup = document.getElementById('entitySelectGroup');
+            const select = document.getElementById('attachEntityId');
+            const label = document.getElementById('entitySelectLabel');
+            
+            if (!selectGroup || !select || !label) {
+                console.error('❌ Required elements for entity selection not found');
+                return;
+            }
+            
+            if (!type) {
+                selectGroup.style.display = 'none';
+                return;
+            }
+            
+            selectGroup.style.display = 'block';
+            label.textContent = 'Select ' + (type === 'client' ? 'Client' : 'Lead') + ' ';
+            
+            const data = type === 'client' ? clients : leads;
+            select.innerHTML = '<option value="">-- Select --</option>';
+            
+            if (data && data.length > 0) {
+                data.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = `${item.first_name} ${item.last_name} (${item.email})`;
+                    select.appendChild(option);
+                });
+                console.log(`✅ Loaded ${data.length} ${type}s into dropdown`);
+            } else {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'No ' + (type === 'client' ? 'clients' : 'leads') + ' available';
+                select.appendChild(option);
+                console.warn(`⚠️ No ${type}s available`);
+            }
+        });
+        console.log('✅ Entity type change listener attached');
+    } else {
+        console.error('❌ attachEntityType element not found');
+    }
+});
+
 // Bulk Actions
 function toggleSelectAll(checkbox) {
     document.querySelectorAll('.doc-checkbox').forEach(cb => {
@@ -754,52 +854,8 @@ function clearSelection() {
     updateBulkActions();
 }
 
-// Association Modal
-@php
-    $clients = \App\Models\Admin::where('role', '!=', 7)->get(['id', 'first_name', 'last_name', 'email']);
-@endphp
-const clients = @json($clients);
-@php
-    $leads = \App\Models\Lead::get(['id', 'first_name', 'last_name', 'email']);
-@endphp
-const leads = @json($leads);
-
-let currentDocId = null;
-
-function openAttachModal(docId, docTitle) {
-    currentDocId = docId;
-    document.getElementById('attachDocTitle').value = docTitle;
-    document.getElementById('attachEntityType').value = '';
-    document.getElementById('entitySelectGroup').style.display = 'none';
-    document.getElementById('attachEntityId').innerHTML = '<option value="">-- Select --</option>';
-    document.getElementById('attachForm').action = '{{ url("/admin/signatures") }}/' + docId + '/associate';
-    $('#attachModal').modal('show');
-}
-
-document.getElementById('attachEntityType').addEventListener('change', function() {
-    const type = this.value;
-    const selectGroup = document.getElementById('entitySelectGroup');
-    const select = document.getElementById('attachEntityId');
-    const label = document.getElementById('entitySelectLabel');
-    
-    if (!type) {
-        selectGroup.style.display = 'none';
-        return;
-    }
-    
-    selectGroup.style.display = 'block';
-    label.textContent = 'Select ' + (type === 'client' ? 'Client' : 'Lead') + ' ';
-    
-    const data = type === 'client' ? clients : leads;
-    select.innerHTML = '<option value="">-- Select --</option>';
-    
-    data.forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.id;
-        option.textContent = `${item.first_name} ${item.last_name} (${item.email})`;
-        select.appendChild(option);
-    });
-});
+// Verify function is defined
+console.log('✅ openAttachModal defined:', typeof openAttachModal === 'function');
 </script>
 @endsection
 

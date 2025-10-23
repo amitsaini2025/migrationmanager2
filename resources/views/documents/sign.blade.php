@@ -318,10 +318,9 @@
                 id="pdf-image-{{ $i }}"
                 src="{{ route('public.documents.page', ['id' => $document->id, 'page' => $i]) }}"
                 alt="Page {{ $i }}"
-                class="w-full h-auto rounded-md shadow-sm"
+                class="w-full h-auto rounded-md shadow-sm pdf-page-image"
                 style="max-width: 100%; z-index: 1; pointer-events: none; display: none;"
-                onerror="handleImageLoadError(this, {{ $i }})"
-                onload="handleImageLoadSuccess({{ $i }})"
+                data-page="{{ $i }}"
                 data-debug-url="{{ route('public.documents.page', ['id' => $document->id, 'page' => $i]) }}"
             >
                             @foreach ($signatureFields as $field)
@@ -365,8 +364,10 @@
                 @endfor
                 <div class="mt-6 flex justify-end">
                     <button
-                        type="submit"
+                        type="button"
+                        id="form-submit-btn"
                         class="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition"
+                        style="display:none;"
                     >
                         Submit Signatures
                     </button>
@@ -416,8 +417,83 @@
 
     <!-- Professional SignaturePad Implementation -->
     <script>
+        console.log('=== SIGNATURE SCRIPT LOADING ===');
+        
+        // Track which images have been processed to avoid duplicates
+        const processedImages = new Set();
+        let loadedPagesCount = 0;
+        const totalPages = {{ $pdfPages ?? 1 }};
+        
+        console.log('Total pages:', totalPages);
+        
+        function updateLoadingProgress() {
+            const loadingProgress = document.getElementById('loading-progress');
+            const loadedPagesEl = document.getElementById('loaded-pages');
+            
+            if (loadedPagesEl) {
+                loadedPagesEl.textContent = loadedPagesCount;
+            }
+            
+            if (loadingProgress) {
+                if (loadedPagesCount < totalPages) {
+                    loadingProgress.style.display = 'inline';
+                } else {
+                    loadingProgress.style.display = 'none';
+                }
+            }
+        }
+        
+        // Responsive positioning for signature fields
+        function positionSignatureFields(page) {
+            const img = document.getElementById('pdf-image-' + page);
+            if (!img) return;
+
+            // ✅ SAFETY CHECK: Ensure image is loaded and has valid dimensions
+            const naturalWidth = img.naturalWidth;
+            const naturalHeight = img.naturalHeight;
+            
+            if (!naturalWidth || !naturalHeight || naturalWidth === 0 || naturalHeight === 0) {
+                console.warn(`Page ${page} image not loaded yet. Dimensions: ${naturalWidth}x${naturalHeight}`);
+                // Retry after a short delay
+                setTimeout(() => positionSignatureFields(page), 100);
+                return;
+            }
+            
+            const displayWidth = img.clientWidth;
+            const displayHeight = img.clientHeight;
+            
+            if (!displayWidth || !displayHeight) {
+                console.warn(`Page ${page} image not rendered yet.`);
+                setTimeout(() => positionSignatureFields(page), 100);
+                return;
+            }
+
+            // Consistency check log
+            console.log(`Page ${page} Field Positions:`, {
+                natural: {w: naturalWidth, h: naturalHeight},
+                display: {w: displayWidth, h: displayHeight},
+                aspect_ratio_match: (displayWidth / displayHeight).toFixed(4) === (naturalWidth / naturalHeight).toFixed(4)
+            });
+
+            document.querySelectorAll('.signature-field[data-page="' + page + '"]').forEach(field => {
+                const xPercent = parseFloat(field.getAttribute('data-x-percent')) || 0;
+                const yPercent = parseFloat(field.getAttribute('data-y-percent')) || 0;
+                const wPercent = parseFloat(field.getAttribute('data-w-percent')) || 0;
+                const hPercent = parseFloat(field.getAttribute('data-h-percent')) || 0;
+
+                // Scale positions to display
+                field.style.left = (xPercent * displayWidth) + 'px';
+                field.style.top = (yPercent * displayHeight) + 'px';
+                field.style.width = (wPercent * displayWidth) + 'px';
+                field.style.height = (hPercent * displayHeight) + 'px';
+            });
+        }
+        
         // Image loading handlers - Make them global for inline handlers
+        // Define these functions immediately to avoid timing issues with inline onload handlers
+        console.log('Defining handleImageLoadSuccess...');
         window.handleImageLoadSuccess = function(pageNum) {
+            console.log('handleImageLoadSuccess called for page:', pageNum);
             // Prevent duplicate processing
             if (processedImages.has(pageNum)) {
                 console.log('Page ' + pageNum + ' already processed, skipping...');
@@ -444,7 +520,9 @@
             }
         };
 
+        console.log('Defining handleImageLoadError...');
         window.handleImageLoadError = function(imgElement, pageNum) {
+            console.error('handleImageLoadError called for page:', pageNum);
             const loadingPlaceholder = document.getElementById('loading-placeholder-' + pageNum);
             const errorPlaceholder = document.getElementById('error-placeholder-' + pageNum);
             
@@ -454,6 +532,9 @@
             console.error('Failed to load PDF page image:', pageNum, 'URL:', imgElement.src);
             console.error('Image element:', imgElement);
         };
+        
+        console.log('Functions defined. handleImageLoadSuccess:', typeof window.handleImageLoadSuccess);
+        console.log('Functions defined. handleImageLoadError:', typeof window.handleImageLoadError);
 
         window.retryLoadImage = function(pageNum) {
             const img = document.getElementById('pdf-image-' + pageNum);
@@ -579,31 +660,36 @@
         }
 
         // remove legacy initializer
-
-        // Track which images have been processed to avoid duplicates
-        const processedImages = new Set();
-        let loadedPagesCount = 0;
-        const totalPages = {{ $pdfPages }};
-        
-        function updateLoadingProgress() {
-            const loadingProgress = document.getElementById('loading-progress');
-            const loadedPagesEl = document.getElementById('loaded-pages');
-            
-            if (loadedPagesEl) {
-                loadedPagesEl.textContent = loadedPagesCount;
-            }
-            
-            if (loadingProgress) {
-                if (loadedPagesCount < totalPages) {
-                    loadingProgress.style.display = 'inline';
-                } else {
-                    loadingProgress.style.display = 'none';
-                }
-            }
-        }
         
         document.addEventListener('DOMContentLoaded', function () {
             console.log('Document signing page loaded');
+            
+            // Attach event listeners to PDF page images
+            const pdfImages = document.querySelectorAll('.pdf-page-image');
+            console.log('Found', pdfImages.length, 'PDF images to attach listeners to');
+            
+            pdfImages.forEach(function(img) {
+                const pageNum = parseInt(img.getAttribute('data-page'));
+                console.log('Attaching listeners to page', pageNum);
+                
+                img.addEventListener('load', function() {
+                    console.log('Image load event fired for page', pageNum);
+                    window.handleImageLoadSuccess(pageNum);
+                });
+                
+                img.addEventListener('error', function() {
+                    console.log('Image error event fired for page', pageNum);
+                    window.handleImageLoadError(img, pageNum);
+                });
+                
+                // Check if image is already loaded (cached)
+                if (img.complete && img.naturalWidth > 0) {
+                    console.log('Page', pageNum, 'already loaded from cache');
+                    loadedPagesCount++;
+                    updateLoadingProgress();
+                    window.handleImageLoadSuccess(pageNum);
+                }
+            });
             
             // Show loading progress
             updateLoadingProgress();
@@ -613,14 +699,6 @@
                 const img = document.getElementById('pdf-image-' + i);
                 if (img) {
                     console.log('Page ' + i + ' URL:', img.src);
-                    
-                    // Check if image is already cached/loaded
-                    if (img.complete && img.naturalWidth > 0) {
-                        console.log('Page ' + i + ' already loaded from cache');
-                        loadedPagesCount++;
-                        updateLoadingProgress();
-                        handleImageLoadSuccess(i);
-                    }
                 }
             }
             
@@ -642,9 +720,14 @@
             const startBtn = document.getElementById('start-signing-btn');
             const nextBtn = document.getElementById('next-field-btn');
             const submitBtn = document.getElementById('submit-signatures-btn');
+            const formSubmitBtn = document.getElementById('form-submit-btn');
+            
             startBtn && startBtn.addEventListener('click', () => goToNextUnsignedField(true));
             nextBtn && nextBtn.addEventListener('click', () => goToNextUnsignedField(true));
+            
+            // Both submit buttons call the same function
             submitBtn && submitBtn.addEventListener('click', finishSigning);
+            formSubmitBtn && formSubmitBtn.addEventListener('click', finishSigning);
         });
 
         function activateSignatureField(fieldId, page) {
@@ -897,74 +980,67 @@
 
         // Populate hidden fields before submitting
         function populateHiddenFields() {
-            for (let i = 1; i <= {{ $pdfPages }}; i++) {
-                var pageSignatures = {};
-                var pagePositions = {};
-                Object.keys(savedSignatures).forEach(function(fieldId) {
-                    var signature = savedSignatures[fieldId];
-                    if (signature.page === i) {
-                        pageSignatures[fieldId] = signature.data;
-                        pagePositions[fieldId] = {
-                            x_percent: signature.x_percent,
-                            y_percent: signature.y_percent,
-                            w_percent: signature.w_percent,
-                            h_percent: signature.h_percent
-                        };
+            try {
+                let populatedCount = 0;
+                
+                for (let i = 1; i <= {{ $pdfPages }}; i++) {
+                    var pageSignatures = {};
+                    var pagePositions = {};
+                    
+                    Object.keys(savedSignatures).forEach(function(fieldId) {
+                        var signature = savedSignatures[fieldId];
+                        if (signature.page === i) {
+                            pageSignatures[fieldId] = signature.data;
+                            pagePositions[fieldId] = {
+                                x_percent: signature.x_percent,
+                                y_percent: signature.y_percent,
+                                w_percent: signature.w_percent,
+                                h_percent: signature.h_percent
+                            };
+                        }
+                    });
+
+                    // ✅ FIX #5: VALIDATE JSON BEFORE SETTING
+                    const signaturesJson = JSON.stringify(pageSignatures);
+                    const positionsJson = JSON.stringify(pagePositions);
+                    
+                    // Verify JSON is valid and not empty
+                    if (signaturesJson === 'undefined' || positionsJson === 'undefined') {
+                        throw new Error('Invalid signature data for page ' + i);
                     }
-                });
-                document.getElementById('signature-input-' + i).value = JSON.stringify(pageSignatures);
-                document.getElementById('signature-position-' + i).value = JSON.stringify(pagePositions);
+                    
+                    const signatureInput = document.getElementById('signature-input-' + i);
+                    const positionInput = document.getElementById('signature-position-' + i);
+                    
+                    if (!signatureInput || !positionInput) {
+                        throw new Error('Hidden input fields not found for page ' + i);
+                    }
+                    
+                    signatureInput.value = signaturesJson;
+                    positionInput.value = positionsJson;
+                    
+                    // Count pages with signatures
+                    if (Object.keys(pageSignatures).length > 0) {
+                        populatedCount++;
+                    }
+                }
+                
+                console.log('✅ Populated fields for ' + populatedCount + ' pages');
+                
+                // Verify we populated at least one page
+                if (populatedCount === 0) {
+                    throw new Error('No signature data was populated');
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('❌ Error populating hidden fields:', error);
+                return false;
             }
         }
 
         // Expose activateSignatureField to global scope for inline onclick
         window.activateSignatureField = activateSignatureField;
-
-        // Responsive positioning for signature fields
-        function positionSignatureFields(page) {
-            const img = document.getElementById('pdf-image-' + page);
-            if (!img) return;
-
-            // ✅ SAFETY CHECK: Ensure image is loaded and has valid dimensions
-            const naturalWidth = img.naturalWidth;
-            const naturalHeight = img.naturalHeight;
-            
-            if (!naturalWidth || !naturalHeight || naturalWidth === 0 || naturalHeight === 0) {
-                console.warn(`Page ${page} image not loaded yet. Dimensions: ${naturalWidth}x${naturalHeight}`);
-                // Retry after a short delay
-                setTimeout(() => positionSignatureFields(page), 100);
-                return;
-            }
-            
-            const displayWidth = img.clientWidth;
-            const displayHeight = img.clientHeight;
-            
-            if (!displayWidth || !displayHeight) {
-                console.warn(`Page ${page} image not rendered yet.`);
-                setTimeout(() => positionSignatureFields(page), 100);
-                return;
-            }
-
-            // Consistency check log
-            console.log(`Page ${page} Field Positions:`, {
-                natural: {w: naturalWidth, h: naturalHeight},
-                display: {w: displayWidth, h: displayHeight},
-                aspect_ratio_match: (displayWidth / displayHeight).toFixed(4) === (naturalWidth / naturalHeight).toFixed(4)
-            });
-
-            document.querySelectorAll('.signature-field[data-page="' + page + '"]').forEach(field => {
-                const xPercent = parseFloat(field.getAttribute('data-x-percent')) || 0;
-                const yPercent = parseFloat(field.getAttribute('data-y-percent')) || 0;
-                const wPercent = parseFloat(field.getAttribute('data-w-percent')) || 0;
-                const hPercent = parseFloat(field.getAttribute('data-h-percent')) || 0;
-
-                // Scale positions to display
-                field.style.left = (xPercent * displayWidth) + 'px';
-                field.style.top = (yPercent * displayHeight) + 'px';
-                field.style.width = (wPercent * displayWidth) + 'px';
-                field.style.height = (hPercent * displayHeight) + 'px';
-            });
-        }
 
         // Debounce function to prevent excessive calls
         function debounce(func, wait) {
@@ -1012,9 +1088,16 @@
             const signedCount = Object.keys(savedSignatures).length;
             const total = totalRequiredFields;
             const progressCount = document.getElementById('progress-count');
-            const submitBtn = document.getElementById('submit-signatures-btn');
+            const headerSubmitBtn = document.getElementById('submit-signatures-btn');
+            const formSubmitBtn = document.getElementById('form-submit-btn');
+            
+            // Update progress count
             if (progressCount) progressCount.textContent = signedCount;
-            if (submitBtn) submitBtn.style.display = (signedCount >= total && total > 0) ? 'inline-block' : 'none';
+            
+            // Show/hide BOTH submit buttons together (synchronized)
+            const shouldShow = (signedCount >= total && total > 0);
+            if (headerSubmitBtn) headerSubmitBtn.style.display = shouldShow ? 'inline-block' : 'none';
+            if (formSubmitBtn) formSubmitBtn.style.display = shouldShow ? 'inline-block' : 'none';
         }
 
         function getNextUnsignedField() {
@@ -1042,29 +1125,74 @@
             const totalFields = document.querySelectorAll('.signature-field').length;
             const signedFields = Object.keys(savedSignatures).length;
             
+            // Check if all fields are signed
             if (signedFields < totalFields) {
                 alert(`Please sign all signature fields. ${signedFields} of ${totalFields} fields are signed.`);
                 return false;
             }
+            
+            // ✅ FIX #3: VALIDATE EACH SIGNATURE HAS ACTUAL DATA
+            const emptySignatures = [];
+            Object.keys(savedSignatures).forEach(fieldId => {
+                const signature = savedSignatures[fieldId];
+                
+                // Check if signature data is empty or invalid
+                if (!signature.data || 
+                    signature.data === '' || 
+                    signature.data === 'data:image/png;base64,' || 
+                    signature.data.length < 50) { // Minimum size for valid signature
+                    emptySignatures.push(fieldId);
+                }
+            });
+            
+            if (emptySignatures.length > 0) {
+                alert(`Some signature fields appear to be empty or invalid. Please re-sign these fields.`);
+                
+                // Highlight the empty fields
+                emptySignatures.forEach(fieldId => {
+                    const field = document.getElementById('signature-field-' + fieldId);
+                    if (field) {
+                        field.style.border = '3px solid red';
+                        field.style.animation = 'pulseFocus 1.2s ease-in-out infinite';
+                        
+                        // Reset highlighting after 3 seconds
+                        setTimeout(() => {
+                            field.style.border = '';
+                            field.style.animation = '';
+                        }, 3000);
+                    }
+                });
+                
+                return false;
+            }
+            
             return true;
         }
 
         function finishSigning() {
             console.log('=== FINISH SIGNING CALLED ===');
             
+            // ✅ FIX #1: PREVENT DUPLICATE CLICKS
+            if (window.signingInProgress) {
+                console.log('Already processing - ignoring duplicate call');
+                return;
+            }
+            
+            // Set flag IMMEDIATELY before validation
+            window.signingInProgress = true;
+            
             if (!validateAllSignatures()) {
                 console.log('Validation failed in finishSigning');
+                // Reset flag if validation fails
+                window.signingInProgress = false;
                 return;
             }
             
             console.log('Validation passed - proceeding with submission');
             
-            // Mark that signing is in progress
-            window.signingInProgress = true;
-            
-            // Show loading state for both submit buttons
+            // Show loading state for BOTH submit buttons (synchronized)
             const headerSubmitBtn = document.getElementById('submit-signatures-btn');
-            const formSubmitBtn = document.querySelector('button[type="submit"]');
+            const formSubmitBtn = document.getElementById('form-submit-btn');
             
             if (headerSubmitBtn) {
                 headerSubmitBtn.textContent = 'Processing...';
@@ -1075,7 +1203,7 @@
                 formSubmitBtn.disabled = true;
             }
             
-            console.log('Loading state applied to buttons');
+            console.log('Loading state applied to both buttons');
             
             // Add loading overlay
             const loadingOverlay = document.createElement('div');
@@ -1103,37 +1231,118 @@
             `;
             document.body.appendChild(loadingOverlay);
             
-            populateHiddenFields();
-            console.log('Hidden fields populated');
+            // ✅ FIX #5: VALIDATE HIDDEN FIELDS WERE POPULATED
+            const populated = populateHiddenFields();
+            if (!populated) {
+                alert('Failed to prepare signature data for submission. Please try again.');
+                
+                // Reset state
+                window.signingInProgress = false;
+                const overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.remove();
+                if (headerSubmitBtn) {
+                    headerSubmitBtn.textContent = 'Submit Signatures';
+                    headerSubmitBtn.disabled = false;
+                }
+                if (formSubmitBtn) {
+                    formSubmitBtn.textContent = 'Submit Signatures';
+                    formSubmitBtn.disabled = false;
+                }
+                return;
+            }
+            
+            console.log('Hidden fields populated successfully');
             
             const form = document.getElementById('signature-form');
             console.log('Form found:', !!form);
             console.log('Form action:', form ? form.action : 'N/A');
             
             if (form) {
+                // ✅ FIX #2: ADD TIMEOUT MECHANISM FOR SLOW SUBMISSIONS
+                // Store timeout IDs in array for proper cleanup
+                window.submissionTimeouts = window.submissionTimeouts || [];
+                
+                const warningTimeout = setTimeout(() => {
+                    console.warn('Submission taking longer than expected...');
+                    
+                    // Update overlay to show it's still processing
+                    const overlay = document.getElementById('loading-overlay');
+                    if (overlay) {
+                        overlay.innerHTML = `
+                            <div style="text-align: center;">
+                                <div style="margin-bottom: 20px;">⏳</div>
+                                <div>Still processing...</div>
+                                <div style="font-size: 14px; margin-top: 10px; opacity: 0.8;">
+                                    This is taking longer than expected due to large file size or slow connection.
+                                    <br>Please wait, do not close this window.
+                                </div>
+                            </div>
+                        `;
+                    }
+                }, 30000); // Show warning after 30 seconds
+                
+                // Set a hard timeout after 90 seconds total
+                const hardTimeout = setTimeout(() => {
+                    console.error('Submission timeout - resetting');
+                    window.signingInProgress = false;
+                    const overlay = document.getElementById('loading-overlay');
+                    if (overlay) overlay.remove();
+                    if (headerSubmitBtn) {
+                        headerSubmitBtn.textContent = 'Submit Signatures';
+                        headerSubmitBtn.disabled = false;
+                    }
+                    if (formSubmitBtn) {
+                        formSubmitBtn.textContent = 'Submit Signatures';
+                        formSubmitBtn.disabled = false;
+                    }
+                    alert('Submission timeout. This may be due to a network issue or server problem. Please check your connection and try again.');
+                }, 90000); // Hard timeout at 90 seconds
+                
+                // Store BOTH timeout IDs for cleanup on successful redirect
+                window.submissionTimeouts.push(warningTimeout, hardTimeout);
+                
                 console.log('Submitting form programmatically...');
                 form.submit();
+            } else {
+                // Handle missing form
+                alert('Error: Form not found. Please refresh the page and try again.');
+                window.signingInProgress = false;
+                const overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.remove();
+                if (headerSubmitBtn) {
+                    headerSubmitBtn.textContent = 'Submit Signatures';
+                    headerSubmitBtn.disabled = false;
+                }
+                if (formSubmitBtn) {
+                    formSubmitBtn.textContent = 'Submit Signatures';
+                    formSubmitBtn.disabled = false;
+                }
             }
         }
 
-        // Enhanced form submission with multipage validation
+        // Form submit event - only for safety/edge cases
+        // Both buttons call finishSigning() which handles validation and submission
         document.querySelector('form').addEventListener('submit', function (e) {
-            console.log('=== FORM SUBMIT EVENT ===');
+            console.log('=== FORM SUBMIT EVENT (Safety Check) ===');
             console.log('Form action:', this.action);
-            console.log('Form method:', this.method);
-            console.log('Signing in progress:', window.signingInProgress);
             
-            // Only validate if not already validated by finishSigning()
-            if (!window.signingInProgress && !validateAllSignatures()) {
-                console.log('Validation failed - preventing submission');
+            // This should only fire if form is submitted programmatically by finishSigning()
+            // If signingInProgress is not set, something went wrong
+            if (!window.signingInProgress) {
+                console.error('Form submitted without going through finishSigning() - this should not happen');
                 e.preventDefault();
                 return false;
             }
             
-            console.log('Validation passed - form will submit');
-            
-            // Mark that signing is in progress
-            window.signingInProgress = true;
+            console.log('Form submission allowed - signingInProgress is true');
+        });
+
+        // ✅ FIX #2: CLEANUP TIMEOUTS ON PAGE UNLOAD (successful redirect)
+        window.addEventListener('beforeunload', function() {
+            if (window.submissionTimeouts && window.submissionTimeouts.length > 0) {
+                window.submissionTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+                window.submissionTimeouts = [];
+            }
         });
     </script>
 </body>

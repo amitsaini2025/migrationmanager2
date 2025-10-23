@@ -94,7 +94,14 @@ class SignatureDashboardController extends Controller
         // Provide errors variable for the layout
         $errors = $request->session()->get('errors') ?? new \Illuminate\Support\MessageBag();
 
-        return view('Admin.signatures.dashboard', compact('documents', 'counts', 'user', 'errors'));
+        // Load clients and leads for attach modal
+        $clients = Admin::where('role', '!=', 7)
+            ->select('id', 'first_name', 'last_name', 'email')
+            ->get();
+        $leads = Lead::select('id', 'first_name', 'last_name', 'email')
+            ->get();
+
+        return view('Admin.signatures.dashboard', compact('documents', 'counts', 'user', 'errors', 'clients', 'leads'));
     }
 
     public function create(Request $request)
@@ -371,10 +378,19 @@ class SignatureDashboardController extends Controller
             ->orderBy('email')
             ->get();
 
+        // Load clients and leads for attach functionality
+        $clients = Admin::where('role', '!=', 7)
+            ->select('id', 'first_name', 'last_name', 'email')
+            ->orderBy('first_name')
+            ->get();
+        $leads = Lead::select('id', 'first_name', 'last_name', 'email')
+            ->orderBy('first_name')
+            ->get();
+
         // Provide errors variable for the layout
         $errors = request()->session()->get('errors') ?? new \Illuminate\Support\MessageBag();
 
-        return view('Admin.signatures.show', compact('document', 'errors', 'emailAccounts'));
+        return view('Admin.signatures.show', compact('document', 'errors', 'emailAccounts', 'clients', 'leads'));
     }
 
     public function sendReminder(Request $request, $id)
@@ -564,29 +580,37 @@ class SignatureDashboardController extends Controller
 
     public function getClientMatters($id)
     {
-        $matters = \DB::table('client_matters')
-            ->where('client_id', $id)
-            ->join('matters', 'client_matters.sel_matter_id', '=', 'matters.id')
-            ->select(
-                'client_matters.id',
-                'client_matters.client_unique_matter_no',
-                'matters.title as matter_title',
-                'client_matters.matter_status'
-            )
-            ->orderBy('client_matters.created_at', 'desc')
-            ->get()
-            ->map(function($matter) {
-                return [
-                    'id' => $matter->id,
-                    'label' => $matter->client_unique_matter_no . ' - ' . $matter->matter_title,
-                    'status' => $matter->matter_status
-                ];
-            });
+        try {
+            $matters = \DB::table('client_matters')
+                ->where('client_id', $id)
+                ->join('matters', 'client_matters.sel_matter_id', '=', 'matters.id')
+                ->select(
+                    'client_matters.id',
+                    'client_matters.client_unique_matter_no',
+                    'matters.title as matter_title',
+                    'client_matters.matter_status'
+                )
+                ->orderBy('client_matters.created_at', 'desc')
+                ->get()
+                ->map(function($matter) {
+                    return [
+                        'id' => $matter->id,
+                        'client_unique_matter_no' => $matter->client_unique_matter_no,
+                        'matter_title' => $matter->matter_title,
+                        'matter_status' => $matter->matter_status
+                    ];
+                });
 
-        return response()->json([
-            'success' => true,
-            'matters' => $matters
-        ]);
+            return response()->json([
+                'success' => true,
+                'matters' => $matters
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading matters'
+            ], 500);
+        }
     }
 
     /**
@@ -602,22 +626,32 @@ class SignatureDashboardController extends Controller
         $request->validate([
             'entity_type' => 'required|string|in:client,lead',
             'entity_id' => 'required|integer',
+            'matter_id' => 'nullable|integer|exists:client_matters,id',
+            'doc_category' => 'required|string|in:visa,personal',
             'note' => 'nullable|string|max:500'
         ]);
 
-        $success = $this->signatureService->associate(
+        $success = $this->signatureService->associateWithCategory(
             $document,
             $request->entity_type,
             $request->entity_id,
+            $request->matter_id,
+            $request->doc_category,
             $request->note
         );
 
         if ($success) {
-            return back()->with('success', 'Document successfully attached to ' . $request->entity_type . '!');
+            $message = 'Document successfully attached to ' . $request->entity_type . '!';
+            if ($request->matter_id) {
+                $matter = \App\Models\ClientMatter::find($request->matter_id);
+                $message .= ' (Matter: ' . ($matter->client_unique_matter_no ?? '#' . $matter->id) . ')';
+            }
+            return back()->with('success', $message);
         } else {
             return back()->with('error', 'Failed to attach document. Please try again.');
         }
     }
+
 
     /**
      * Detach a document from its current association

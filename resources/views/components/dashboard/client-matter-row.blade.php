@@ -41,8 +41,8 @@
         {{ $client->first_name ?: config('constants.empty') }} {{ $client->last_name ?: config('constants.empty') }}
     </td>
     <td class="col-dob">
-        @if($matter->dob)
-            {{ \Carbon\Carbon::parse($matter->dob)->format('d/m/Y') }}
+        @if($client && $client->dob)
+            {{ \Carbon\Carbon::parse($client->dob)->format('d/m/Y') }}
         @else
             {{ config('constants.empty') }}
         @endif

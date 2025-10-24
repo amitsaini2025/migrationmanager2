@@ -127,6 +127,14 @@ class Admin extends Authenticatable
     }
 
     /**
+     * Alias for createdDocuments() - for backward compatibility
+     */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(\App\Models\Document::class, 'created_by');
+    }
+
+    /**
      * Get DOB verifications done by this staff member
      */
     public function dobVerifications(): HasMany

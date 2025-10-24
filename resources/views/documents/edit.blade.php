@@ -230,7 +230,7 @@
                     <div class="preview-container" id="preview-container">
                         <img
                             id="preview-image"
-                            src="{{ route('documents.page', ['id' => $document->id, 'page' => 1]) }}"
+                            src="{{ route('public.documents.page', ['id' => $document->id, 'page' => 1]) }}"
                             alt="Document Preview"
                             style="max-width: 100%; height: auto; display: block;"
                         >
@@ -354,7 +354,7 @@
             
             // Update preview image with proper route parameters
             const documentId = {{ $document->id }};
-            const baseUrl = '{{ route("documents.page", ["id" => $document->id, "page" => 1]) }}';
+            const baseUrl = '{{ route("public.documents.page", ["id" => $document->id, "page" => 1]) }}';
             const newUrl = baseUrl.replace('/page/1', `/page/${pageNumber}`);
             const img = document.getElementById('preview-image');
             img.src = newUrl;
@@ -687,8 +687,28 @@
             addSignatureField(currentPage, dims.width / 2, dims.height / 2);
         });
 
+        let isSubmitting = false;
         document.getElementById('signature-form').addEventListener('submit', function(e) {
-            updateForm(); // Ensure the latest fields are rendered
+            if (!isSubmitting) {
+                e.preventDefault(); // Prevent default submission on first click
+                
+                // Ensure the latest fields are rendered
+                updateForm();
+                
+                // Validate that we have at least one signature field
+                if (signatureFields.length === 0) {
+                    alert('Please add at least one signature field before saving.');
+                    return;
+                }
+                
+                // Set flag and submit the form programmatically after DOM updates
+                isSubmitting = true;
+                
+                // Use setTimeout to ensure DOM updates are complete
+                setTimeout(() => {
+                    this.submit();
+                }, 100);
+            }
         });
     </script>
 </body>

@@ -125,7 +125,7 @@ $roles = \App\UserRole::find(Auth::user()->role);
 $module_access = json_decode($roles->module_access, true);
 
 if (!array_key_exists('20', $module_access)) {
-    return Redirect::to('/admin/dashboard')->with('error', 'Unauthorized access');
+    return Redirect::to('/dashboard')->with('error', 'Unauthorized access');
 }
 ```
 
@@ -156,10 +156,10 @@ if (!array_key_exists('20', $module_access)) {
 
 #### Important Routes
 ```php
-// Admin routes
-Route::get('/clients', 'Admin\ClientsController@index')->name('admin.clients.index');
-Route::get('/clients/detail/{client_id}/{client_unique_matter_ref_no?}', 'Admin\ClientsController@detail')->name('admin.clients.detail');
-Route::post('/clients/store', 'Admin\ClientsController@store')->name('admin.clients.store');
+// CRM routes
+Route::get('/clients', 'CRM\ClientsController@index')->name('clients.index');
+Route::get('/clients/detail/{client_id}/{client_unique_matter_ref_no?}', 'CRM\ClientsController@detail')->name('clients.detail');
+Route::post('/clients/store', 'CRM\ClientsController@store')->name('clients.store');
 
 // Agent routes
 Route::get('/clients', 'Agent\ClientsController@index')->name('agent.clients.index');
@@ -662,7 +662,7 @@ class ClientTest extends TestCase
             'email' => 'john@example.com'
         ];
         
-        $response = $this->post('/admin/clients/store', $clientData);
+        $response = $this->post('/clients/store', $clientData);
         $response->assertStatus(200);
     }
 }

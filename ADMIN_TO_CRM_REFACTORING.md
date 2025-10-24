@@ -937,9 +937,169 @@ php artisan route:list | grep my_profile
 
 ---
 
+## 📝 Post-Refactoring Feature Additions
+
+### EOI/ROI Management Feature (October 24, 2025)
+
+After the core CRM refactoring, a new EOI/ROI (Expression of Interest / Request of Invitation) management feature was implemented for client visa applications.
+
+#### What Was Added
+
+**New Controller: `ClientEoiRoiController`**
+- Located: `app/Http/Controllers/CRM/ClientEoiRoiController.php`
+- Namespace: `App\Http\Controllers\CRM`
+- Purpose: Manage EOI/ROI records for clients applying for Australian skilled migration visas
+
+**Controller Methods:**
+1. `index()` - List all EOI/ROI records for a specific client
+2. `show()` - Display a single EOI/ROI record with full details
+3. `upsert()` - Create or update an EOI/ROI record (supports both operations)
+4. `destroy()` - Delete an EOI/ROI record
+5. `calculatePoints()` - Calculate immigration points for specified subclass (189, 190, 491)
+6. `revealPassword()` - Securely decrypt and reveal EOI portal password (with audit logging)
+
+**Routes Added** (`routes/clients.php` lines 139-147):
+```php
+Route::prefix('clients/{client}/eoi-roi')->name('clients.eoi-roi.')->group(function () {
+    Route::get('/', [ClientEoiRoiController::class, 'index'])->name('index');
+    Route::get('/calculate-points', [ClientEoiRoiController::class, 'calculatePoints'])->name('calculatePoints');
+    Route::post('/', [ClientEoiRoiController::class, 'upsert'])->name('upsert');
+    Route::get('/{eoiReference}', [ClientEoiRoiController::class, 'show'])->name('show');
+    Route::delete('/{eoiReference}', [ClientEoiRoiController::class, 'destroy'])->name('destroy');
+    Route::get('/{eoiReference}/reveal-password', [ClientEoiRoiController::class, 'revealPassword'])->name('revealPassword');
+});
+```
+
+**View Created:**
+- File: `resources/views/crm/clients/tabs/eoi_roi.blade.php`
+- Features:
+  - EOI/ROI entries table with sortable columns
+  - Create/Edit form for EOI records
+  - ANZSCO occupation autocomplete
+  - Subclass selection (189, 190, 491)
+  - State/territory multi-select
+  - Points calculator integration
+  - Password encryption field with show/hide toggle
+  - Status management (draft, submitted, invited, nominated, rejected, withdrawn)
+  - Date pickers for submission, invitation, and nomination dates
+  - ROI reference tracking
+
+**Frontend Assets:**
+- JavaScript: `public/js/clients/eoi-roi.js`
+- AJAX communication with backend API
+- Dynamic form validation
+- Real-time points calculation
+- Autocomplete functionality for ANZSCO occupations
+
+**Client Detail Integration:**
+- Updated: `resources/views/crm/clients/detail.blade.php`
+- Added "EOI / ROI" tab button in sidebar navigation (lines 233-238)
+- Tab only appears for EOI-eligible matters
+- Includes EOI/ROI tab content conditionally (lines 321-323)
+
+#### Technical Details
+
+**Database Table Used:**
+- `client_eoi_references` - existing table structure utilized
+- Fields: EOI number, subclasses (JSON), states (JSON), occupation, points, dates, password (encrypted), status
+
+**Key Features:**
+1. **Multiple Subclass Support**: Track EOI for multiple visa subclasses simultaneously
+2. **Multi-State Nomination**: Record multiple state nomination applications
+3. **Secure Password Storage**: EOI portal passwords encrypted with Laravel encryption
+4. **Points Integration**: Integrates with existing `PointsService` for accurate point calculations
+5. **Audit Trail**: Tracks creator and updater with timestamps
+6. **Conditional Display**: Only shows for matters flagged as EOI-eligible (`$isEoiMatter`)
+
+**Integration Points:**
+- Uses existing `PointsService` for points calculation
+- Follows existing CRM authentication (`auth:admin` middleware)
+- Respects existing authorization policies
+- Uses existing date handling patterns (dd/mm/yyyy format)
+
+#### Route Examples
+
+```
+List EOI Records:
+GET /clients/123/eoi-roi
+
+Create New EOI:
+POST /clients/123/eoi-roi
+{
+    "eoi_number": "E000123456",
+    "eoi_subclasses": ["189", "190"],
+    "eoi_states": ["NSW", "VIC"],
+    "eoi_occupation": "Software Engineer",
+    "eoi_points": 85,
+    "eoi_submission_date": "15/10/2025",
+    "eoi_status": "submitted"
+}
+
+Calculate Points:
+GET /clients/123/eoi-roi/calculate-points?subclass=190&months_ahead=6
+
+Delete EOI Record:
+DELETE /clients/123/eoi-roi/456
+```
+
+#### Files Modified/Created
+
+**Created:**
+- `app/Http/Controllers/CRM/ClientEoiRoiController.php` (394 lines)
+- `resources/views/crm/clients/tabs/eoi_roi.blade.php` (552 lines)
+- `public/js/clients/eoi-roi.js` (new frontend logic)
+
+**Modified:**
+- `routes/clients.php` (added 8 new routes)
+- `resources/views/crm/clients/detail.blade.php` (added tab button and content include)
+- `resources/views/crm/clients/tabs/email_handling.blade.php` (minor formatting)
+
+**Documentation Updated:**
+- `ADMIN_TO_CRM_REFACTORING.md` (this file)
+- `CRM_SYSTEM_DOCUMENTATION.md` (feature documentation)
+- `MANUAL_TESTING_CHECKLIST.md` (added EOI/ROI testing section)
+- `README.md` (feature list updated)
+
+#### Benefits
+
+1. **Centralized EOI Management**: All EOI/ROI data in one place per client
+2. **Points Tracking**: Real-time points calculation for visa eligibility
+3. **Password Security**: Encrypted storage of sensitive EOI portal credentials
+4. **Multi-Application Support**: Track multiple EOI submissions per client
+5. **Audit Compliance**: Full audit trail of EOI record changes
+
+#### Testing Checklist
+
+- [x] Controller created with all CRUD methods
+- [x] Routes registered and tested
+- [x] View integrated into client detail page
+- [x] JavaScript functionality implemented
+- [x] Date normalization working (dd/mm/yyyy → Y-m-d)
+- [x] Password encryption/decryption working
+- [x] Points calculation integration verified
+- [x] Authorization middleware applied
+- [x] Error handling and logging implemented
+- [x] Frontend validation working
+- [ ] Manual browser testing (pending)
+- [ ] Test with real client data (pending)
+
+#### Future Enhancements
+
+Potential improvements for future iterations:
+1. EOI status change notifications
+2. Invitation date expiry warnings
+3. State nomination tracking workflow
+4. EOI submission reminders
+5. Points threshold alerts
+6. Historical points tracking over time
+7. Bulk EOI operations
+8. Export EOI data to PDF/Excel
+
+---
+
 **End of Documentation**
 
 *This refactoring was completed using automated PowerShell scripts to ensure consistency and reduce human error. All changes are reversible via Git.*
 
-*Last Updated: October 23, 2025 - Added CRMUtilityController renaming documentation*
+*Last Updated: October 24, 2025 - Added EOI/ROI Management Feature documentation*
 

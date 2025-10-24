@@ -27,7 +27,7 @@ class ClientEoiRoiController extends Controller
     /**
      * Display a listing of EOI/ROI records for a client
      * 
-     * GET /admin/clients/{client}/eoi-roi
+     * GET /clients/{client}/eoi-roi
      */
     public function index(Admin $client): JsonResponse
     {
@@ -63,7 +63,7 @@ class ClientEoiRoiController extends Controller
     /**
      * Show a specific EOI/ROI record
      * 
-     * GET /admin/clients/{client}/eoi-roi/{eoiReference}
+     * GET /clients/{client}/eoi-roi/{eoiReference}
      */
     public function show(Admin $client, ClientEoiReference $eoiReference): JsonResponse
     {
@@ -97,7 +97,7 @@ class ClientEoiRoiController extends Controller
     /**
      * Create or update an EOI/ROI record
      * 
-     * POST /admin/clients/{client}/eoi-roi
+     * POST /clients/{client}/eoi-roi
      */
     public function upsert(Request $request, Admin $client): JsonResponse
     {
@@ -185,7 +185,7 @@ class ClientEoiRoiController extends Controller
     /**
      * Delete an EOI/ROI record
      * 
-     * DELETE /admin/clients/{client}/eoi-roi/{eoiReference}
+     * DELETE /clients/{client}/eoi-roi/{eoiReference}
      */
     public function destroy(Admin $client, ClientEoiReference $eoiReference): JsonResponse
     {
@@ -230,7 +230,7 @@ class ClientEoiRoiController extends Controller
     /**
      * Calculate points for a client with optional subclass
      * 
-     * GET /admin/clients/{client}/eoi-roi/calculate-points?subclass=190
+     * GET /clients/{client}/eoi-roi/calculate-points?subclass=190
      */
     public function calculatePoints(Request $request, Admin $client): JsonResponse
     {
@@ -268,7 +268,7 @@ class ClientEoiRoiController extends Controller
     /**
      * View the decrypted password for an EOI record (authorized viewing only)
      * 
-     * GET /admin/clients/{client}/eoi-roi/{eoiReference}/reveal-password
+     * GET /clients/{client}/eoi-roi/{eoiReference}/reveal-password
      */
     public function revealPassword(Admin $client, ClientEoiReference $eoiReference): JsonResponse
     {

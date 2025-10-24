@@ -24,12 +24,12 @@ A complete EOI/ROI workflow management system inside the client detail area that
 
 **Routes:** 6 new routes in `routes/web.php`
 ```
-GET    /admin/clients/{client}/eoi-roi
-POST   /admin/clients/{client}/eoi-roi
-GET    /admin/clients/{client}/eoi-roi/{id}
-DELETE /admin/clients/{client}/eoi-roi/{id}
-GET    /admin/clients/{client}/eoi-roi/calculate-points
-GET    /admin/clients/{client}/eoi-roi/{id}/reveal-password
+GET    /clients/{client}/eoi-roi
+POST   /clients/{client}/eoi-roi
+GET    /clients/{client}/eoi-roi/{id}
+DELETE /clients/{client}/eoi-roi/{id}
+GET    /clients/{client}/eoi-roi/calculate-points
+GET    /clients/{client}/eoi-roi/{id}/reveal-password
 ```
 
 ---

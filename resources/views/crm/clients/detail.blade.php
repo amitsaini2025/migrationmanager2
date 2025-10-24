@@ -244,6 +244,10 @@ use App\Http\Controllers\Controller;
                     <i class="fas fa-envelope"></i>
                     <span>Emails</span>
                 </button>
+                <button class="client-nav-button" data-tab="emailhandling">
+                    <i class="fas fa-inbox"></i>
+                    <span>Email Handling</span>
+                </button>
                 <button class="client-nav-button" data-tab="formgenerations">
                     <i class="fas fa-file-alt"></i>
                     <span>Form Generation</span>
@@ -320,6 +324,7 @@ use App\Http\Controllers\Controller;
                 
                 @include('crm.clients.tabs.accounts')
                 @include('crm.clients.tabs.conversations')
+                @include('crm.clients.tabs.email_handling')
                 @include('crm.clients.tabs.form_generation_client')
                 @include('crm.clients.tabs.appointments')
                 @include('crm.clients.tabs.client_portal')

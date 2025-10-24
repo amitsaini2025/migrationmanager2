@@ -911,7 +911,7 @@
 
             // API call commented out temporarily to fix 404 error
             /*
-            fetch('/admin/api/emails')
+            fetch('/api/emails')
             .then(response => response.json())
             .then(data => {
                 loading.classList.remove('active');
@@ -1199,7 +1199,7 @@
 
                  // Download attachment - commented out temporarily
          function downloadAttachment(attachmentId) {
-             // window.open(`/admin/api/attachments/${attachmentId}/download`, '_blank');
+             // window.open(`/api/attachments/${attachmentId}/download`, '_blank');
              showMessage('Attachment download temporarily disabled', 'info');
          }
          
@@ -1236,9 +1236,9 @@
              // Show loading message
              showMessage('Generating PDF...', 'success');
              
-             // Open PDF export in new window - commented out temporarily
-             // window.open(`/admin/api/emails/${emailId}/export-pdf`, '_blank');
-             showMessage('PDF export temporarily disabled', 'info');
+            // Open PDF export in new window - commented out temporarily
+            // window.open(`/api/emails/${emailId}/export-pdf`, '_blank');
+            showMessage('PDF export temporarily disabled', 'info');
          }
          
          // Download all attachments for an email
@@ -1255,11 +1255,11 @@
                  return;
              }
              
-             // Download each attachment - commented out temporarily
-             email.attachments.forEach(attachment => {
-                                   // window.open(`/admin/api/attachments/${attachment.id}/download`, '_blank');
-                                   showMessage('Attachment download temporarily disabled', 'info');
-             });
+            // Download each attachment - commented out temporarily
+            email.attachments.forEach(attachment => {
+                                  // window.open(`/api/attachments/${attachment.id}/download`, '_blank');
+                                  showMessage('Attachment download temporarily disabled', 'info');
+            });
              
              showMessage(`Downloading ${email.attachments.length} attachment(s)...`, 'success');
          }

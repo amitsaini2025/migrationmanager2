@@ -411,44 +411,44 @@ The system includes Python-based document conversion:
 - `POST /login` - Authenticate user
 - `GET /register` - Registration page (if enabled)
 
-### Admin Routes (Protected)
-- `GET /admin/dashboard` - Admin dashboard with key metrics
+### CRM Routes (Protected - Staff Access)
+- `GET /dashboard` - CRM dashboard with key metrics
 - **Clients:**
-  - `GET /admin/clients` - List all clients
-  - `GET /admin/clients/create` - Create new client
-  - `GET /admin/clients/{id}` - View client details
-  - `GET /admin/clients/{id}/edit` - Edit client
-  - `DELETE /admin/clients/{id}` - Delete client
+  - `GET /clients` - List all clients
+  - `GET /clients/create` - Create new client
+  - `GET /clients/{id}` - View client details
+  - `GET /clients/{id}/edit` - Edit client
+  - `DELETE /clients/{id}` - Delete client
   
 - **Applications:**
-  - `GET /admin/applications` - List all applications
-  - `GET /admin/applications/create` - Create application
-  - `GET /admin/applications/{id}` - View application details
-  - `PUT /admin/applications/{id}` - Update application status
+  - `GET /applications` - List all applications
+  - `GET /applications/create` - Create application
+  - `GET /applications/{id}` - View application details
+  - `PUT /applications/{id}` - Update application status
   
 - **Invoices:**
-  - `GET /admin/invoices` - List invoices
-  - `GET /admin/invoices/create` - Create invoice
-  - `GET /admin/invoices/{id}` - View invoice
-  - `POST /admin/invoices/{id}/send` - Email invoice
-  - `POST /admin/invoices/{id}/payment` - Record payment
+  - `GET /invoices` - List invoices
+  - `GET /invoices/create` - Create invoice
+  - `GET /invoices/{id}` - View invoice
+  - `POST /invoices/{id}/send` - Email invoice
+  - `POST /invoices/{id}/payment` - Record payment
   
 - **Appointments:**
-  - `GET /admin/appointments` - Calendar view
-  - `POST /admin/appointments` - Create appointment
-  - `PUT /admin/appointments/{id}` - Update appointment
-  - `DELETE /admin/appointments/{id}` - Cancel appointment
+  - `GET /appointments` - Calendar view
+  - `POST /appointments` - Create appointment
+  - `PUT /appointments/{id}` - Update appointment
+  - `DELETE /appointments/{id}` - Cancel appointment
   
 - **Leads:**
-  - `GET /admin/leads` - List leads
-  - `POST /admin/leads` - Create lead
-  - `PUT /admin/leads/{id}/convert` - Convert to client
+  - `GET /leads` - List leads
+  - `POST /leads` - Create lead
+  - `PUT /leads/{id}/convert` - Convert to client
   
 - **Reports:**
-  - `GET /admin/reports/clients` - Client reports
-  - `GET /admin/reports/applications` - Application reports
-  - `GET /admin/reports/revenue` - Financial reports
-  - `GET /admin/reports/export` - Export data
+  - `GET /reports/clients` - Client reports
+  - `GET /reports/applications` - Application reports
+  - `GET /reports/revenue` - Financial reports
+  - `GET /reports/export` - Export data
 
 ### Client Portal Routes (Protected)
 - `GET /portal/dashboard` - Client dashboard

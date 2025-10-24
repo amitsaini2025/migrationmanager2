@@ -16,7 +16,7 @@ These pages are high-traffic and were directly affected by the changes.
 
 ### ✅ **Test 1: Client Detail Page - Receipts (HIGHEST PRIORITY)**
 
-**Page:** `/admin/clients/detail/{any_client_id}`  
+**Page:** `/clients/detail/{any_client_id}`  
 **Library Used:** bootstrap-datepicker  
 **Why Critical:** Most used feature, financial data
 
@@ -57,12 +57,12 @@ ROLLBACK: Uncomment line 1401 in admin_client_detail.blade.php
 
 ### ✅ **Test 2: Lead Creation Form (CRITICAL - Was Conflicting!)**
 
-**Page:** `/admin/leads/create`  
+**Page:** `/leads/create`  
 **Library Used:** daterangepicker  
 **Why Critical:** High traffic, had library conflicts before fix
 
 #### Steps:
-1. [ ] Navigate to `/admin/leads/create`
+1. [ ] Navigate to `/leads/create`
 2. [ ] Scroll to **"Date of Birth"** field
 3. [ ] Click on the DOB field
    - [ ] ✅ Datepicker opens (should be modern modal with month/year dropdowns)
@@ -97,12 +97,12 @@ ROLLBACK: Uncomment lines 33-35 in admin_client_detail_dashboard.blade.php
 
 ### ✅ **Test 3: Client Creation Form (CRITICAL - Was Conflicting!)**
 
-**Page:** `/admin/clients/create`  
+**Page:** `/clients/create`  
 **Library Used:** daterangepicker  
 **Why Critical:** Important workflow, had conflicts
 
 #### Steps:
-1. [ ] Navigate to `/admin/clients/create`
+1. [ ] Navigate to `/clients/create`
 2. [ ] Find and click **"Date of Birth"** field
    - [ ] ✅ Daterangepicker opens (modern modal style)
    - [ ] ✅ Can select date
@@ -119,7 +119,7 @@ ROLLBACK: Uncomment lines 33-35 in admin_client_detail_dashboard.blade.php
 
 ### ✅ **Test 4: Lead Edit Form**
 
-**Page:** `/admin/leads/edit/{any_lead_id}`  
+**Page:** `/leads/edit/{any_lead_id}`  
 **Library Used:** daterangepicker
 
 #### Steps:
@@ -139,7 +139,7 @@ ROLLBACK: Uncomment lines 33-35 in admin_client_detail_dashboard.blade.php
 
 ### ✅ **Test 5: Client Edit Form**
 
-**Page:** `/admin/clients/edit/{any_client_id}`  
+**Page:** `/clients/edit/{any_client_id}`  
 **Library Used:** daterangepicker
 
 1. [ ] Navigate to any client edit page
@@ -154,7 +154,7 @@ ROLLBACK: Uncomment lines 33-35 in admin_client_detail_dashboard.blade.php
 
 ### ✅ **Test 6: Dashboard Pages**
 
-**Page:** `/admin/dashboard`  
+**Page:** `/dashboard`  
 **Library Used:** daterangepicker
 
 1. [ ] Navigate to main dashboard
@@ -165,7 +165,7 @@ ROLLBACK: Uncomment lines 33-35 in admin_client_detail_dashboard.blade.php
 4. [ ] [ ] ✅ Filtering works correctly
 
 **Also Test:**
-- [ ] `/admin/dashboard-optimized` (if accessible)
+- [ ] `/dashboard-optimized` (if accessible)
 
 ---
 

@@ -4731,6 +4731,9 @@ class ClientsController extends Controller
 
             return response()->json(['items' => $results]);
         }
+        
+        // Return empty array when query is empty
+        return response()->json(['items' => []]);
     }
 
     public function getAllUser(Request $request, Admin $product) {
@@ -11078,8 +11081,16 @@ class ClientsController extends Controller
     {
         $requestData = $request->all();
         
-        // Decode the client ID
-        $clientId = $this->decodeString(@$requestData['client_id']);
+        // Decode the client ID - handle empty/null for personal tasks
+        $clientId = null;
+        $encodedClientId = null;
+        
+        if (!empty($requestData['client_id'])) {
+            // Extract just the encoded part (format: "ENCODED/Matter/NO" or "ENCODED/Client")
+            $clientIdParts = explode('/', $requestData['client_id']);
+            $encodedClientId = $clientIdParts[0];
+            $clientId = $this->decodeString($encodedClientId);
+        }
 
         // Generate unique task ID
         $taskUniqueId = 'group_' . uniqid('', true);
@@ -11113,9 +11124,16 @@ class ClientsController extends Controller
                 $notification->sender_id = Auth::user()->id;
                 $notification->receiver_id = $assigneeId;
                 $notification->module_id = $clientId;
-                $notification->url = \URL::to('/clients/detail/' . @$requestData['client_id']);
-                $notification->notify_text = 'assigned you a task';
-                $notification->is_read = 0;
+                
+                // Set URL based on whether client exists
+                if (!empty($requestData['client_id'])) {
+                    $notification->url = \URL::to('/clients/detail/' . $requestData['client_id']);
+                } else {
+                    $notification->url = \URL::to('/action');
+                }
+                
+                $notification->message = 'assigned you a task';
+                $notification->seen = 0;
                 $notification->save();
             }
         }
@@ -11135,8 +11153,14 @@ class ClientsController extends Controller
             // Find the existing task
             $task = \App\Models\Note::findOrFail($requestData['note_id']);
             
-            // Decode the client ID
-            $clientId = $this->decodeString(@$requestData['client_id']);
+            // Decode the client ID - handle empty/null for personal tasks
+            $clientId = null;
+            if (!empty($requestData['client_id'])) {
+                // Extract just the encoded part (format: "ENCODED/Matter/NO" or "ENCODED/Client")
+                $clientIdParts = explode('/', $requestData['client_id']);
+                $encodedClientId = $clientIdParts[0];
+                $clientId = $this->decodeString($encodedClientId);
+            }
             
             // Update task fields
             $task->description = @$requestData['description'];
@@ -11156,9 +11180,16 @@ class ClientsController extends Controller
                 $notification->sender_id = Auth::user()->id;
                 $notification->receiver_id = $task->assigned_to;
                 $notification->module_id = $clientId;
-                $notification->url = \URL::to('/clients/detail/' . @$requestData['client_id']);
-                $notification->notify_text = 'updated your task';
-                $notification->is_read = 0;
+                
+                // Set URL based on whether client exists
+                if (!empty($requestData['client_id'])) {
+                    $notification->url = \URL::to('/clients/detail/' . $requestData['client_id']);
+                } else {
+                    $notification->url = \URL::to('/action');
+                }
+                
+                $notification->message = 'updated your task';
+                $notification->seen = 0;
                 $notification->save();
             }
 
@@ -11176,8 +11207,14 @@ class ClientsController extends Controller
     {
         $requestData = $request->all();
         
-        // Decode the client ID
-        $clientId = $this->decodeString(@$requestData['client_id']);
+        // Decode the client ID - handle empty/null for personal tasks
+        $clientId = null;
+        if (!empty($requestData['client_id'])) {
+            // Extract just the encoded part (format: "ENCODED/Matter/NO" or "ENCODED/Client")
+            $clientIdParts = explode('/', $requestData['client_id']);
+            $encodedClientId = $clientIdParts[0];
+            $clientId = $this->decodeString($encodedClientId);
+        }
 
         // Generate unique task ID
         $taskUniqueId = 'group_' . uniqid('', true);
@@ -11206,9 +11243,16 @@ class ClientsController extends Controller
             $notification->sender_id = Auth::user()->id;
             $notification->receiver_id = $task->assigned_to;
             $notification->module_id = $clientId;
-            $notification->url = \URL::to('/clients/detail/' . @$requestData['client_id']);
-            $notification->notify_text = 'assigned you a task';
-            $notification->is_read = 0;
+            
+            // Set URL based on whether client exists
+            if (!empty($requestData['client_id'])) {
+                $notification->url = \URL::to('/clients/detail/' . $requestData['client_id']);
+            } else {
+                $notification->url = \URL::to('/action');
+            }
+            
+            $notification->message = 'assigned you a task';
+            $notification->seen = 0;
             $notification->save();
         }
 

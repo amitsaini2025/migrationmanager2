@@ -566,8 +566,9 @@ console.log(timestring);
 	$(document).ready(function(){
 		 var showPopover = $.fn.popover.Constructor.prototype.show;
             $.fn.popover.Constructor.prototype.show = function () {
-                showPopover.call(this);
-                if (this.options.showCallback) {
+                // Use apply to pass all original arguments to the show method
+                showPopover.apply(this, arguments);
+                if (this.options && this.options.showCallback) {
                     this.options.showCallback.call(this);
                 }
             }

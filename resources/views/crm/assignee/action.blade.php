@@ -517,7 +517,7 @@
                     <a class="btn btn-primary" style="border-radius: 0px;" id="assigned_by_me"  href="{{URL::to('/assigned_by_me')}}">Assigned by me</a>
                     <a class="btn btn-primary" style="border-radius: 0px;" id="archived-tab"  href="{{URL::to('/action_completed')}}">Completed</a>
                     <button class="btn btn-primary tab-button add_my_task" data-container="body" data-role="popover" data-placement="bottom-start" data-html="true" data-content="
-                        <div class='modern-popover-content'>
+                        <div class='modern-popover-content add-task-layout'>
                             <div class='form-group'>
                                 <label class='control-label'><i class='fa fa-user-circle'></i> Client</label>
                                 <select id='assign_client_id' class='form-control js-data-example-ajaxccsearch__addmytask' placeholder='Search and select client...'></select>
@@ -550,19 +550,13 @@
                                 <div id='assignees-error' class='error-message'></div>
                             </div>
                             
-                            <div class='form-group'>
+                            <div class='form-group form-group-full-width'>
                                 <label class='control-label'><i class='fa fa-comment'></i> Task Description</label>
                                 <textarea id='assignnote' class='form-control' rows='3' placeholder='Enter task description...'></textarea>
                                 <div id='note-error' class='error-message'></div>
                             </div>
                             
-                            <div class='form-group'>
-                                <label class='control-label'><i class='fa fa-calendar'></i> Follow-up Date</label>
-                                <input type='text' class='form-control datepicker' placeholder='dd/mm/yyyy' id='popoverdatetime' value='@php echo date(\"d/m/Y\"); @endphp' name='popoverdate'>
-                            </div>
-                            
                             <input id='task_group' name='task_group' type='hidden' value='Personal Task'>
-                            <input type='hidden' value='' id='popoverrealdate' name='popoverrealdate' />
                             
                             <div class='text-center'>
                                 <button class='btn btn-primary' id='add_my_task'>
@@ -631,10 +625,6 @@
 <script src="{{URL::to('/')}}/js/components/dropdown-multi-select.js"></script>
 <style>
 /* Ensure popovers display correctly */
-.popover {
-    z-index: 9999 !important;
-    max-width: 500px !important;
-}
 
 .btn_readmore {
     color: #007bff !important;
@@ -653,65 +643,44 @@
 
     /* Popover styling for better design */
     .popover {
-        max-width: 500px !important;
-        width: 500px !important;
-        border-radius: 8px !important;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
-        border: 1px solid #e9ecef !important;
+        max-width: 600px !important;
+        width: 600px !important;
+        border-radius: 10px !important;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12) !important;
+        border: none !important;
         z-index: 9999 !important;
+        overflow: hidden !important;
     }
     
-    /* Adjust popover position for Add New Task button */
-    .add_my_task + .popover {
-        left: 0 !important;
-        top: 5px !important;
-    }
-    
-    /* Ensure proper popover positioning for Add New Task */
-    .add_my_task[data-toggle="popover"] + .popover {
-        left: 0 !important;
-        top: 5px !important;
-        transform: none !important;
-    }
-    
-    /* Additional positioning for Add New Task popover */
-    body > .popover[data-popper-placement*="bottom"] {
-        left: 0 !important;
-        top: 5px !important;
-    }
-    
-    /* Target the specific popover content for Add New Task */
-    .popover[data-content*="Select Assignee"] {
-        left: 0 !important;
-        top: 5px !important;
-    }
-    
-    /* More specific targeting for Add New Task popover */
-    .popover[data-content*="popover-content11"] {
-        left: 0 !important;
-        top: 5px !important;
-        margin-top: 0 !important;
-    }
-    
-    /* Additional positioning to bring popup closer to button */
-    .add_my_task + .popover,
-    .add_my_task ~ .popover {
-        left: 0 !important;
-        top: 5px !important;
-        margin-top: 0 !important;
-        position: absolute !important;
-    }
-    
-    /* Ensure popup appears right below the button */
-    body > .popover {
-        margin-top: 5px !important;
-    }
-    
-    /* Force popup to appear near the button */
-    .popover {
+    /* Center Add My Task popover in the middle of the page */
+    .popover.add-my-task-popover {
         position: fixed !important;
-        left: auto !important;
-        right: auto !important;
+        left: 50% !important;
+        top: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        margin: 0 !important;
+    }
+    
+    /* Hide arrow for centered Add My Task popover */
+    .popover.add-my-task-popover .arrow,
+    .popover.add-my-task-popover .popover-arrow {
+        display: none !important;
+    }
+    
+    /* Add backdrop for Add My Task popup */
+    .popover-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 9998;
+        display: none;
+    }
+    
+    .popover-backdrop.show {
+        display: block;
     }
     
     /* Fix popover display issues */
@@ -729,41 +698,72 @@
     }
 
 .popover .popover-header {
-    background-color: #0d6efd !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     color: white !important;
-    border-bottom: 1px solid #0d6efd !important;
+    border-bottom: none !important;
     border-radius: 8px 8px 0 0 !important;
-    padding: 15px 20px !important;
+    padding: 16px 20px !important;
     font-weight: 600 !important;
-    font-size: 16px !important;
+    font-size: 15px !important;
+    letter-spacing: 0.5px !important;
 }
 
 .popover .popover-body {
     padding: 20px !important;
-    max-height: 400px !important;
-    overflow-y: auto !important;
     word-wrap: break-word !important;
     white-space: normal !important;
 }
 
+.popover .popover-body * {
+    box-sizing: border-box !important;
+}
+
 /* Form styling within popover */
 .popover .form-group {
-    margin-bottom: 15px !important;
+    margin-bottom: 0 !important;
+    box-sizing: border-box !important;
+}
+
+.popover .modern-popover-content {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 20px !important;
+    padding: 5px !important;
+}
+
+.popover .modern-popover-content > .form-group {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+}
+
+.popover .modern-popover-content > .form-group-full-width {
+    grid-column: 1 / -1 !important;
+}
+
+.popover .modern-popover-content > .text-center {
+    grid-column: 1 / -1 !important;
+    margin-top: 10px !important;
 }
 
 .popover .form-group label {
-    font-weight: 500 !important;
-    color: #495057 !important;
-    margin-bottom: 5px !important;
+    font-weight: 600 !important;
+    color: #2c3e50 !important;
+    margin-bottom: 8px !important;
     display: block !important;
+    font-size: 13px !important;
 }
 
 .popover .form-control {
     border: 1px solid #ced4da !important;
     border-radius: 6px !important;
-    padding: 8px 12px !important;
+    padding: 10px 12px !important;
     font-size: 14px !important;
     transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
 }
 
 .popover .form-control:focus {
@@ -775,44 +775,70 @@
 .popover textarea.form-control {
     min-height: 80px !important;
     resize: vertical !important;
+    line-height: 1.5 !important;
 }
 
 .popover select.form-control {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m1 6 7 7 7-7'/%3e%3c/svg%3e") !important;
-    background-repeat: no-repeat !important;
-    background-position: right 0.75rem center !important;
-    background-size: 16px 12px !important;
-    padding-right: 2.5rem !important;
+    appearance: auto !important;
+    -webkit-appearance: auto !important;
+    -moz-appearance: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+}
+
+.popover .select2-container {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.popover .assigneeselect2 {
+    width: 100% !important;
+    max-width: 100% !important;
 }
 
 /* Button styling */
 .popover .btn {
-    padding: 10px 20px !important;
+    padding: 12px 30px !important;
     font-size: 14px !important;
-    font-weight: 500 !important;
-    border-radius: 6px !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
     transition: all 0.2s ease !important;
+    letter-spacing: 0.5px !important;
+}
+
+.popover .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border: none !important;
+    color: white !important;
+}
+
+.popover .btn-primary:hover {
+    background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
 }
 
 .popover .btn-info {
-    background-color: #0d6efd !important;
-    border-color: #0d6efd !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border: none !important;
     color: white !important;
 }
 
 .popover .btn-info:hover {
-    background-color: #0b5ed7 !important;
-    border-color: #0b5ed7 !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.3) !important;
+    background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
 }
 
 /* Error message styling */
 .popover .error-message {
     color: #dc3545 !important;
-    font-size: 12px !important;
-    margin-top: 5px !important;
+    font-size: 11px !important;
+    margin-top: 4px !important;
     font-weight: 500 !important;
+    display: block !important;
+    min-height: 16px !important;
 }
 
 /* Box header styling */
@@ -850,6 +876,10 @@
     
     .popover .form-group {
         margin-bottom: 12px !important;
+    }
+    
+    .popover .modern-popover-content {
+        grid-template-columns: 1fr !important;
     }
 }
 
@@ -980,10 +1010,11 @@ $(function () {
         html: true,
         sanitize: false,
         trigger: 'click',
-        placement: 'bottom-start',
+        placement: 'top',
+        boundary: 'viewport',
         container: 'body',
         title: '<i class="fa fa-plus-circle"></i> Add New Task',
-        template: '<div class="popover" role="tooltip"><div class="popover-header"></div><div class="popover-body"></div></div>'
+        template: '<div class="popover add-my-task-popover" role="tooltip"><div class="popover-header"></div><div class="popover-body"></div></div>'
     });
     
     var table = $('.yajra-datatable').DataTable({
@@ -992,13 +1023,14 @@ $(function () {
         ajax: {
             url: "{{ route('action.list') }}",
             data: function(d) {
-                d.filter = $('.tab-button.active').data('filter');
-                d.search = $('#searchInput').val(); // Pass the search term to the server
+                var $activeTab = $('.tab-button.active');
+                d.filter = $activeTab.length ? ($activeTab.data('filter') || 'all') : 'all';
+                d.search = $('#searchInput').val() || ''; // Pass the search term to the server
             },
             error: function(xhr, error, thrown) {
                 console.error('DataTables Ajax Error:', error, thrown);
                 // Handle UTF-8 encoding errors gracefully
-                if (xhr.responseText && xhr.responseText.includes('Malformed UTF-8')) {
+                if (xhr && xhr.responseText && xhr.responseText.includes('Malformed UTF-8')) {
                     console.warn('UTF-8 encoding issue detected. Please refresh the page.');
                 }
             }
@@ -1020,6 +1052,7 @@ $(function () {
                 sanitize: false,
                 trigger: 'click',
                 placement: 'bottom',
+                boundary: 'viewport',
                 container: 'body'
             });
 
@@ -1042,19 +1075,37 @@ $(function () {
         table.ajax.reload(); // Trigger DataTables reload with the new search term
     });
 
+    // Helper function to escape HTML to prevent XSS
+    function escapeHtml(text) {
+        if (!text) return '';
+        var map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
     // Function to generate Update Task popover content
     function getUpdateTaskContent(assignedTo, noteId, taskId, taskGroup, followupDate, clientId) {
-        // Convert followupDate to dd/mm/YYYY if it exists
-        var formattedDate = followupDate ? moment(followupDate, 'YYYY-MM-DD').format('DD/MM/YYYY') : '<?php echo date('d/m/Y'); ?>';
+        // Sanitize all inputs to prevent XSS
+        assignedTo = String(assignedTo || '');
+        noteId = escapeHtml(noteId || '');
+        taskId = escapeHtml(taskId || '');
+        taskGroup = String(taskGroup || '');
+        clientId = escapeHtml(clientId || '');
+        
         return `
-            <div id="popover-content" class="modern-popover-content">
+            <div id="popover-content" class="modern-popover-content update-task-layout">
                 <div class="form-group">
                     <label class="control-label"><i class="fa fa-user"></i> Select Assignee</label>
                     <select class="assigneeselect2 form-control" id="rem_cat" name="rem_cat">
                         <option value="">Select Assignee...</option>
                         @foreach(\App\Models\Admin::where('role','!=',7)->where('status',1)->orderby('first_name','ASC')->get() as $admin)
                             <?php $branchname = \App\Models\Branch::where('id',$admin->office_id)->first(); ?>
-                            <option value="{{ $admin->id }}" ${assignedTo == {{ $admin->id }} ? 'selected' : ''}>
+                            <option value="{{ $admin->id }}" ${assignedTo == '{{ $admin->id }}' ? 'selected' : ''}>
                                 {{ $admin->first_name }} {{ $admin->last_name }} ({{ @$branchname->office_name }})
                             </option>
                         @endforeach
@@ -1063,32 +1114,26 @@ $(function () {
                 </div>
                 
                 <div class="form-group">
-                    <label class="control-label"><i class="fa fa-comment"></i> Task Description</label>
-                    <textarea id="assignnote" class="form-control" rows="3" placeholder="Enter task description...">${noteId || ''}</textarea>
-                    <div id="note-error" class="error-message"></div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="control-label"><i class="fa fa-calendar"></i> Follow-up Date</label>
-                    <input type="text" class="form-control datepicker" placeholder="dd/mm/yyyy" id="popoverdatetime" value="${formattedDate}" name="popoverdate">
-                </div>
-                
-                <div class="form-group">
                     <label class="control-label"><i class="fa fa-tag"></i> Task Group</label>
                     <select class="assigneeselect2 form-control" id="task_group" name="task_group">
                         <option value="">Select Group...</option>
                         <option value="Call" ${taskGroup == 'Call' ? 'selected' : ''}>📞 Call</option>
                         <option value="Checklist" ${taskGroup == 'Checklist' ? 'selected' : ''}>✓ Checklist</option>
-                        <option value="Review" ${taskGroup == 'Review' ? 'selected' : ''}>👁 Review</option>
+                        <option value="Review" ${taskGroup == 'Review' ? 'selected' : ''}>📋 Review</option>
                         <option value="Query" ${taskGroup == 'Query' ? 'selected' : ''}>❓ Query</option>
                         <option value="Urgent" ${taskGroup == 'Urgent' ? 'selected' : ''}>🔥 Urgent</option>
                     </select>
                     <div id="task-group-error" class="error-message"></div>
                 </div>
                 
+                <div class="form-group form-group-full-width">
+                    <label class="control-label"><i class="fa fa-comment"></i> Task Description</label>
+                    <textarea id="assignnote" class="form-control" rows="3" placeholder="Enter task description...">${noteId}</textarea>
+                    <div id="note-error" class="error-message"></div>
+                </div>
+                
                 <input id="assign_note_id" type="hidden" value="${taskId}">
                 <input id="assign_client_id" type="hidden" value="${clientId}">
-                <input type="hidden" value="" id="popoverrealdate" name="popoverrealdate" />
                 
                 <div class="text-center">
                     <button class="btn btn-primary" id="updateTask">
@@ -1098,26 +1143,45 @@ $(function () {
             </div>`;
     }
 
-    // Initialize datepicker for Add My Task popover
+    // Initialize client select for Add My Task popover (combined handler)
     $(document).on('shown.bs.popover', '.add_my_task', function() {
-        $('#popoverdatetime').daterangepicker({
-            singleDatePicker: true,
-            showDropdowns: true,
-            locale: {
-                format: 'DD/MM/YYYY'
-            },
-            autoApply: true,
-            parentEl: 'body' // Force the datepicker to be appended to body
+        // Find the popover - try with class first, fallback to looking for all visible popovers
+        var $popover = $('.popover.add-my-task-popover');
+        if ($popover.length === 0) {
+            $popover = $('.popover:visible').last();
+            $popover.addClass('add-my-task-popover');
+        }
+        
+        // Center the popover in the middle of the screen
+        $popover.css({
+            'position': 'fixed',
+            'left': '50%',
+            'top': '50%',
+            'transform': 'translate(-50%, -50%)',
+            'margin': '0',
+            'z-index': '9999'
         });
         
-        // Ensure datepicker appears above popover
-        $('.daterangepicker').css({
-            'z-index': '99999',
-            'position': 'fixed'
+        // Create and show backdrop
+        if (!$('.popover-backdrop').length) {
+            $('body').append('<div class="popover-backdrop"></div>');
+        }
+        $('.popover-backdrop').addClass('show');
+        
+        // Close popup when clicking backdrop
+        $('.popover-backdrop').off('click').on('click', function() {
+            $('.add_my_task').popover('hide');
         });
         
-        // Initialize client search select with AJAX
-        initializeClientSelect2();
+        // Initialize client search select with AJAX after positioning
+        setTimeout(function() {
+            initializeClientSelect2();
+        }, 100);
+    });
+    
+    // Hide backdrop when Add My Task popover is hidden
+    $(document).on('hidden.bs.popover', '.add_my_task', function() {
+        $('.popover-backdrop').removeClass('show');
     });
     
     // Function to initialize client Select2
@@ -1150,11 +1214,19 @@ $(function () {
                             delay: 250,
                             processResults: function (data) {
                                 console.log('AJAX response:', data);
+                                // Validate data is an object and has items
+                                if (!data || typeof data !== 'object') {
+                                    console.warn('Invalid data received from server');
+                                    return { results: [] };
+                                }
                                 return {
                                     results: data.items || []
                                 };
                             },
-                            cache: true
+                            cache: true,
+                            error: function(xhr, status, error) {
+                                console.error('Error fetching clients:', error);
+                            }
                         },
                         templateResult: formatRepomainMYTask,
                         templateSelection: formatRepoSelectionmainMYTask,
@@ -1203,7 +1275,7 @@ $(function () {
         }
 
         var $container = $(
-            "<div dataid="+repo.cid+" class='selectclient select2-result-repository ag-flex ag-space-between ag-align-center')'>" +
+            "<div dataid="+(repo.cid || '')+" class='selectclient select2-result-repository ag-flex ag-space-between ag-align-center')'>" +
 
             "<div  class='ag-flex ag-align-start'>" +
                 "<div  class='ag-flex ag-flex-column col-hr-1'><div class='ag-flex'><span  class='select2-result-repository__title text-semi-bold'></span>&nbsp;</div>" +
@@ -1220,84 +1292,30 @@ $(function () {
             "</div>"
         );
 
-        $container.find(".select2-result-repository__title").text(repo.name);
-        $container.find(".select2-result-repository__description").text(repo.email);
+        $container.find(".select2-result-repository__title").text(repo.name || '');
+        $container.find(".select2-result-repository__description").text(repo.email || '');
         if(repo.status == 'Archived'){
-            $container.find(".select2resultrepositorystatistics").append('<span class="ui label  select2-result-repository__statistics">'+repo.status+'</span>');
-        } else {
-            $container.find(".select2resultrepositorystatistics").append('<span class="ui label yellow select2-result-repository__statistics">'+repo.status+'</span>');
+            $container.find(".select2resultrepositorystatistics").append('<span class="ui label  select2-result-repository__statistics">'+(repo.status || '')+'</span>');
+        } else if(repo.status) {
+            $container.find(".select2resultrepositorystatistics").append('<span class="ui label yellow select2-result-repository__statistics">'+(repo.status || '')+'</span>');
         }
         return $container;
     }
 
     function formatRepoSelectionmainMYTask (repo) {
-        return repo.name || repo.text;
+        return (repo && repo.name) || (repo && repo.text) || '';
     }
     
-    // Ensure Add My Task popover works correctly
+    // Ensure Add My Task popover works correctly (backup initialization on click)
     $(document).on('click', '.add_my_task', function(e) {
-        // Let the popover handle the click naturally
-        // Only prevent default if needed
-        
-        // Also try to initialize Select2 when popover is clicked
+        // Backup initialization attempt - the main one happens on 'shown.bs.popover'
         setTimeout(function() {
             initializeClientSelect2();
         }, 200);
     });
-    
-    // Position popup correctly after it's shown
-    $(document).on('shown.bs.popover', '.add_my_task', function() {
-        var $popover = $('.popover').last();
-        var $button = $(this);
-        var buttonOffset = $button.offset();
-        
-        // Position the popup right below the button
-        $popover.css({
-            'position': 'absolute',
-            'left': buttonOffset.left + 'px',
-            'top': (buttonOffset.top + $button.outerHeight() + 5) + 'px',
-            'z-index': 9999
-        });
-        
-        // Try to initialize Select2 after positioning
-        setTimeout(function() {
-            initializeClientSelect2();
-        }, 100);
-    });
-    
-    // Re-initialize Add New Task popover if needed
-    $(document).ready(function() {
-        if (!$('.add_my_task').data('bs.popover')) {
-            $('.add_my_task').popover({
-                html: true,
-                sanitize: false,
-                trigger: 'click',
-                placement: 'bottom-start',
-                container: 'body',
-                template: '<div class="popover" role="tooltip"><div class="popover-header"></div><div class="popover-body"></div></div>'
-            });
-        }
 
-    });
-
-    // Initialize datepicker for Update Task popover
+    // Initialize Update Task popover
     $(document).on('shown.bs.popover', '.update_task', function() {
-        $('#popoverdatetime').daterangepicker({
-            singleDatePicker: true,
-            showDropdowns: true,
-            locale: {
-                format: 'DD/MM/YYYY'
-            },
-            autoApply: true,
-            parentEl: 'body' // Force the datepicker to be appended to body
-        });
-        
-        // Ensure datepicker appears above popover
-        $('.daterangepicker').css({
-            'z-index': '99999',
-            'position': 'fixed'
-        });
-        
         //$('.assigneeselect2').select2();
         //$('.summernote-simple').summernote();
     });
@@ -1308,13 +1326,20 @@ $(function () {
             url: "{{ route('action.counts') }}",
             method: "GET",
             success: function(data) {
-                $('#all-count').text(data.all || 0);
-                $('#call-count').text(data.call || 0);
-                $('#checklist-count').text(data.checklist || 0);
-                $('#review-count').text(data.review || 0);
-                $('#query-count').text(data.query || 0);
-                $('#urgent-count').text(data.urgent || 0);
-                $('#personal-task-count').text(data.personal_task || 0);
+                if (data && typeof data === 'object') {
+                    $('#all-count').text(data.all || 0);
+                    $('#call-count').text(data.call || 0);
+                    $('#checklist-count').text(data.checklist || 0);
+                    $('#review-count').text(data.review || 0);
+                    $('#query-count').text(data.query || 0);
+                    $('#urgent-count').text(data.urgent || 0);
+                    $('#personal-task-count').text(data.personal_task || 0);
+                } else {
+                    console.warn('Invalid badge count data received');
+                }
+            },
+            error: function(xhr) {
+                console.error('Error fetching badge counts:', xhr.responseText);
             }
         });
     }
@@ -1329,12 +1354,12 @@ $(function () {
     // Handle Update Task button click
     $('.yajra-datatable').on('click', '.update_task', function() {
         var $button = $(this);
-        var assignedTo = $button.data('assignedto');
-        var noteId = $button.data('noteid');
-        var taskId = $button.data('taskid');
-        var taskGroup = $button.data('taskgroupid');
-        var followupDate = $button.data('followupdate');
-        var clientId = $button.data('clientid');
+        var assignedTo = $button.data('assignedto') || '';
+        var noteId = $button.data('noteid') || '';
+        var taskId = $button.data('taskid') || '';
+        var taskGroup = $button.data('taskgroupid') || '';
+        var followupDate = $button.data('followupdate') || '';
+        var clientId = $button.data('clientid') || '';
 
         // Set popover content
         $button.popover('dispose'); // Dispose of any existing popover
@@ -1345,6 +1370,7 @@ $(function () {
             content: getUpdateTaskContent(assignedTo, noteId, taskId, taskGroup, followupDate, clientId),
             trigger: 'manual',
             placement: 'auto',
+            boundary: 'viewport',
             template: '<div class="popover" role="tooltip"><div class="popover-header"></div><div class="popover-body"></div></div>',
             container: 'body'
         }).popover('show');
@@ -1365,6 +1391,12 @@ $(function () {
         
         var $button = $(this);
         var fullContent = $button.data('full-content');
+        
+        // Only show popover if content exists
+        if (!fullContent) {
+            console.warn('No content found for read more button');
+            return;
+        }
         
         // Hide any other open popovers
         $('.update_task').popover('hide');
@@ -1390,12 +1422,17 @@ $(function () {
     // Handle Update Task submission
     $(document).on('click', '#updateTask', function() {
         var $popover = $(this).closest('.popover');
-        var taskId = $popover.find('#assign_note_id').val();
-        var clientId = $popover.find('#assign_client_id').val();
-        var assignee = $popover.find('#rem_cat').val();
-        var note = $popover.find('#assignnote').val();
-        var followupDate = $popover.find('#popoverdatetime').val();
-        var taskGroup = $popover.find('#task_group').val();
+        
+        if (!$popover.length) {
+            console.error('Popover not found');
+            return;
+        }
+        
+        var taskId = $popover.find('#assign_note_id').val() || '';
+        var clientId = $popover.find('#assign_client_id').val() || '';
+        var assignee = $popover.find('#rem_cat').val() || '';
+        var note = $popover.find('#assignnote').val() || '';
+        var taskGroup = $popover.find('#task_group').val() || '';
 
         // Clear previous error messages
         $popover.find('.error-message').text('');
@@ -1406,7 +1443,7 @@ $(function () {
             $popover.find('#assignee-error').text('Please select an assignee.');
             isValid = false;
         }
-        if (!note) {
+        if (!note || note.trim() === '') {
             $popover.find('#note-error').text('Please enter a note.');
             isValid = false;
         }
@@ -1419,9 +1456,6 @@ $(function () {
             return; // Stop submission if validation fails
         }
 
-        // Convert dd/mm/YYYY to YYYY-MM-DD for server compatibility
-        var formattedDate = moment(followupDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
-
         $.ajax({
             type: 'post',
             url: "{{URL::to('/')}}/update-task",
@@ -1431,7 +1465,6 @@ $(function () {
                 client_id: clientId,
                 assigned_to: assignee,
                 description: note,
-                followup_date: formattedDate,
                 task_group: taskGroup
             },
             success: function(response) {
@@ -1455,6 +1488,13 @@ $(function () {
         });
 
         var url = $(this).data('remote');
+        
+        if (!url) {
+            console.error('No delete URL found');
+            alert('Unable to delete: missing URL');
+            return;
+        }
+        
         var deleteConfirm = confirm("Are you sure?");
         if (deleteConfirm) {
             $.ajax({
@@ -1471,22 +1511,30 @@ $(function () {
     // Complete task
     $('.yajra-datatable').on('click', '.complete_task', function() {
         var row_id = $(this).attr('data-id');
-        var row_unique_group_id = $(this).attr('data-unique_group_id');
-        if (row_id) {
-            $.ajax({
-                type: 'post',
-                url: "{{URL::to('/')}}/update-task-completed",
-                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')},
-                data: {id: row_id, unique_group_id: row_unique_group_id},
-                success: function(response) {
-                    table.draw(false);
-                }
-            });
+        var row_unique_group_id = $(this).attr('data-unique_group_id') || '';
+        
+        if (!row_id) {
+            console.error('No task ID found');
+            return;
         }
+        
+        $.ajax({
+            type: 'post',
+            url: "{{URL::to('/')}}/update-task-completed",
+            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')},
+            data: {id: row_id, unique_group_id: row_unique_group_id},
+            success: function(response) {
+                table.draw(false);
+            },
+            error: function(xhr) {
+                console.error('Error completing task:', xhr.responseText);
+                alert('An error occurred while completing the task.');
+            }
+        });
     });
 
-    // Add My Task
-    $(document).delegate('#add_my_task', 'click', function() {
+    // Add My Task submission
+    $(document).on('click', '#add_my_task', function() {
         $(".popuploader").show();
         var flag = true;
         var error = "";
@@ -1512,38 +1560,40 @@ $(function () {
         }
 
         if (flag) {
-            // Convert dd/mm/YYYY to YYYY-MM-DD for server compatibility
-            var followupDate = $('#popoverdatetime').val();
-            var formattedDate = moment(followupDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
-
             $.ajax({
                 type: 'post',
                 url: "{{URL::to('/')}}/clients/personalfollowup/store",
                 headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')},
+                dataType: 'json',
                 data: {
                     note_type: 'follow_up',
                     description: $('#assignnote').val(),
                     client_id: $('#assign_client_id').val(),
-                    followup_datetime: formattedDate,
                     rem_cat: selectedRemCat,
                     task_group: $('#task_group').val()
                 },
                 success: function(response) {
                     $('.popuploader').hide();
-                    var obj = $.parseJSON(response);
-                    if (obj.success) {
+                    // Response is already parsed as JSON due to dataType: 'json'
+                    if (response && response.success) {
                         $("[data-role=popover]").each(function() {
                             (($(this).popover('hide').data('bs.popover')||{}).inState||{}).click = false
                         });
+                        $('.popover-backdrop').removeClass('show');
                         table.draw(false);
                     } else {
-                        alert(obj.message);
+                        alert(response && response.message ? response.message : 'An error occurred');
                         table.draw(false);
                     }
+                },
+                error: function(xhr, status, error) {
+                    $('.popuploader').hide();
+                    console.error('Error adding task:', error);
+                    alert('Failed to add task. Please try again.');
                 }
             });
         } else {
-            $("#loader").hide();
+            $(".popuploader").hide();
         }
     });
 });

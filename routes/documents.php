@@ -177,8 +177,9 @@ Route::patch('/documents/{id}', [AdminDocumentController::class, 'update'])
     ->name('documents.update');
 
 /*---------- Admin Signing & Reminder Operations ----------*/
-Route::post('/documents/{document}/sign', [AdminDocumentController::class, 'submitSignatures'])
-    ->name('documents.submitSignatures');
+// Removed duplicate admin submitSignatures route - using public route instead
+// Route::post('/documents/{document}/sign', [AdminDocumentController::class, 'submitSignatures'])
+//     ->name('documents.submitSignatures');
 
 Route::post('/documents/{document}/send-reminder', [AdminDocumentController::class, 'sendReminder'])
     ->name('documents.sendReminder');
@@ -189,12 +190,14 @@ Route::post('/documents/{document}/send-signing-link', [AdminDocumentController:
 Route::get('/documents/{document}/sign', [AdminDocumentController::class, 'showSignForm'])
     ->name('documents.showSignForm');
 
-Route::get('/sign/{id}/{token}', [AdminDocumentController::class, 'sign'])
-    ->name('documents.sign');
+// Removed duplicate admin sign route - public route handles signing via email links
+// Route::get('/sign/{id}/{token}', [AdminDocumentController::class, 'sign'])
+//     ->name('documents.sign');
 
 /*---------- Admin Document Viewing & Download ----------*/
-Route::get('/documents/{id}/page/{page}', [AdminDocumentController::class, 'getPage'])
-    ->name('documents.page');
+// Removed duplicate admin page route - using public route instead
+// Route::get('/documents/{id}/page/{page}', [AdminDocumentController::class, 'getPage'])
+//     ->name('documents.page');
 
 Route::get('/documents/{id}/download-signed', [AdminDocumentController::class, 'downloadSigned'])
     ->name('documents.download.signed');
@@ -202,8 +205,9 @@ Route::get('/documents/{id}/download-signed', [AdminDocumentController::class, '
 Route::get('/documents/{id}/download-signed-and-thankyou', [AdminDocumentController::class, 'downloadSignedAndThankyou'])
     ->name('documents.download_and_thankyou');
 
-Route::get('/documents/thankyou/{id?}', [AdminDocumentController::class, 'thankyou'])
-    ->name('documents.thankyou');
+// Removed duplicate admin thankyou route - using public route instead
+// Route::get('/documents/thankyou/{id?}', [AdminDocumentController::class, 'thankyou'])
+//     ->name('documents.thankyou');
 
 // Redirect old document index to Signature Dashboard (moved to end to avoid conflicts)
 Route::get('/documents/{id?}', function($id = null) {

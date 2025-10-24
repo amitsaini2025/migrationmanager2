@@ -62,6 +62,7 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Messaging routes (specific routes first to avoid conflicts)
     Route::post('/messages/send', [ClientPortalMessageController::class, 'sendMessage']);
+    Route::post('/messages/send-to-client', [ClientPortalMessageController::class, 'sendMessageToClient']);
     Route::get('/messages', [ClientPortalMessageController::class, 'getMessages']);
     Route::get('/messages/unread-count', [ClientPortalMessageController::class, 'getUnreadCount']);
     Route::post('/messages/{id}/read', [ClientPortalMessageController::class, 'markAsRead']);

@@ -277,6 +277,8 @@
             <strong>ℹ️ Using Pusher Cloud:</strong> This version connects to Pusher's managed cloud service instead of a self-hosted Reverb server. 
             <br><br>
             <strong>✅ Pre-configured:</strong> Pusher credentials from your .env file are already filled in below. Just enter your User ID and Bearer Token to start!
+            <br><br>
+            <strong>📤 Bidirectional Messaging:</strong> You can now both RECEIVE messages from mobile app and SEND messages directly to the client associated with the selected matter!
         </div>
         
         <!-- Statistics Boxes -->
@@ -356,6 +358,20 @@
                 <button onclick="clearMessages()">🗑️ Clear Messages</button>
                 <button onclick="clearLog()">📋 Clear Log</button>
             </div>
+        </div>
+        
+        <!-- Send Message Section -->
+        <div class="config">
+            <h3>📤 Send Message</h3>
+            <label>💬 Message Content:</label>
+            <textarea id="messageText" rows="4" placeholder="Type your message here..." style="width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; font-family: Arial, sans-serif; resize: vertical;"></textarea>
+            
+            <div style="margin-top: 15px;">
+                <button class="success" onclick="sendMessage()">📤 Send Message</button>
+                <button onclick="clearMessageInput()">🗑️ Clear Input</button>
+            </div>
+            
+            <div id="sendMessageStatus" style="margin-top: 10px; padding: 10px; display: none; border-radius: 5px;"></div>
         </div>
         
         <div>
@@ -453,12 +469,19 @@
         async function fetchUnreadCount() {
             try {
                 const bearerToken = document.getElementById('bearerToken').value;
+                const clientMatterId = document.getElementById('clientMatterId').value;
+                
                 if (!bearerToken) {
                     log('⚠️ No bearer token available for unread count', 'warning');
                     return;
                 }
                 
-                const response = await fetch('/api/messages/unread-count', {
+                if (!clientMatterId || clientMatterId < 1) {
+                    log('⚠️ No Client Matter ID provided for fetching unread count', 'warning');
+                    return;
+                }
+                
+                const response = await fetch(`/api/messages/unread-count?client_matter_id=${clientMatterId}`, {
                     method: 'GET',
                     headers: {
                         'Authorization': 'Bearer ' + bearerToken,
@@ -470,7 +493,7 @@
                     const data = await response.json();
                     if (data.success) {
                         updateUnreadCount(data.data.unread_count);
-                        log(`📊 Unread count: ${data.data.unread_count}`, 'info');
+                        log(`📊 Unread count for matter ${clientMatterId}: ${data.data.unread_count}`, 'info');
                     }
                 } else {
                     console.error('Failed to fetch unread count:', response.status);
@@ -844,11 +867,101 @@
             log('🗑️ Displayed messages cleared (database totals preserved)', 'info');
         }
         
+        function clearMessageInput() {
+            document.getElementById('messageText').value = '';
+            log('🗑️ Message input cleared', 'info');
+        }
+        
+        function showSendStatus(message, isSuccess) {
+            const statusDiv = document.getElementById('sendMessageStatus');
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+            
+            if (isSuccess) {
+                statusDiv.style.background = '#d4edda';
+                statusDiv.style.color = '#155724';
+                statusDiv.style.border = '1px solid #c3e6cb';
+            } else {
+                statusDiv.style.background = '#f8d7da';
+                statusDiv.style.color = '#721c24';
+                statusDiv.style.border = '1px solid #f5c6cb';
+            }
+            
+            // Hide after 5 seconds
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        async function sendMessage() {
+            try {
+                const bearerToken = document.getElementById('bearerToken').value;
+                const clientMatterId = document.getElementById('clientMatterId').value;
+                const messageText = document.getElementById('messageText').value.trim();
+                
+                // Validate inputs
+                if (!bearerToken) {
+                    log('❌ Bearer Token is required to send messages', 'error');
+                    showSendStatus('❌ Error: Bearer Token is required. Please enter your Bearer Token.', false);
+                    return;
+                }
+                
+                if (!clientMatterId || clientMatterId < 1) {
+                    log('❌ Client Matter ID is required to send messages', 'error');
+                    showSendStatus('❌ Error: Client Matter ID is required. Please enter a valid Client Matter ID.', false);
+                    return;
+                }
+                
+                if (!messageText) {
+                    log('❌ Message content cannot be empty', 'error');
+                    showSendStatus('❌ Error: Message content cannot be empty. Please type a message.', false);
+                    return;
+                }
+                
+                log('📤 Sending message to client...', 'info');
+                showSendStatus('⏳ Sending message to client...', true);
+                
+                // Send API request to new endpoint that sends only to client
+                const response = await fetch('/api/messages/send-to-client', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + bearerToken,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: messageText,
+                        client_matter_id: parseInt(clientMatterId)
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    log(`✅ Message sent successfully! Message ID: ${data.data.message_id}`, 'success');
+                    log(`👤 Sent to client: ${data.data.recipient.name} (ID: ${data.data.recipient.id})`, 'info');
+                    showSendStatus(`✅ Message sent successfully to client: ${data.data.recipient.name}`, true);
+                    
+                    // Clear the message input
+                    clearMessageInput();
+                    
+                    // The message will appear in the messages container automatically via WebSocket
+                } else {
+                    log(`❌ Failed to send message: ${data.message}`, 'error');
+                    showSendStatus(`❌ Failed to send message: ${data.message}`, false);
+                }
+                
+            } catch (error) {
+                log(`❌ Error sending message: ${error.message}`, 'error');
+                showSendStatus(`❌ Error sending message: ${error.message}`, false);
+            }
+        }
+        
         // Initial log
         log('☁️ Pusher Cloud Real-Time Message Listener Ready', 'success');
         log('📝 Enter your Pusher credentials and User ID, then click "Connect to Pusher Cloud"', 'info');
         log('💡 TIP: Get free Pusher credentials at https://dashboard.pusher.com/', 'warning');
-        log('💡 Send a message via Postman to /api/messages/send to test', 'info');
+        log('💡 You can now send messages directly from this page!', 'info');
     </script>
 </body>
 </html>

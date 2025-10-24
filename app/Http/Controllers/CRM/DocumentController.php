@@ -402,7 +402,15 @@ class DocumentController extends Controller
                 'filename' => $uploadedFile->getClientOriginalName()
             ]);
 
-            return redirect()->route('documents.edit', $document->id)->with('success', 'Document uploaded successfully! Please place signature fields.');
+            // Option 1: Redirect back to create page with success message and edit link
+            return redirect()->route('documents.create')->with([
+                'success' => 'Document uploaded successfully!',
+                'document_id' => $document->id,
+                'show_edit_link' => true
+            ]);
+            
+            // Option 2: Or redirect to edit page (uncomment below and comment above)
+            // return redirect()->route('documents.edit', $document->id)->with('success', 'Document uploaded successfully! Please place signature fields.');
         } catch (\Exception $e) {
             return $this->handleError(
                 $e,
@@ -1687,14 +1695,14 @@ class DocumentController extends Controller
                         // Show a view that triggers the download and then redirects to thank you
                         return view('crm.documents.download_and_thankyou', [
                             'downloadUrl' => $tempUrl,
-                            'thankyouUrl' => route('documents.thankyou', ['id' => $id])
+                            'thankyouUrl' => route('public.documents.thankyou', ['id' => $id])
                         ]);
                     }
                 }
                 // Fallback: direct download if S3 key not found or file missing
                 return view('crm.documents.download_and_thankyou', [
                     'downloadUrl' => $signedDocUrl,
-                    'thankyouUrl' => route('documents.thankyou', ['id' => $id])
+                    'thankyouUrl' => route('public.documents.thankyou', ['id' => $id])
                 ]);
             }
             return redirect()->back()->with('error', 'Signed document not found.');

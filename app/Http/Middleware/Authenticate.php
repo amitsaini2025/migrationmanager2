@@ -14,16 +14,17 @@ class Authenticate extends Middleware
      */
     protected function redirectTo($request)
     {
-        // For API requests, don't redirect
-        if ($request->expectsJson()) {
-            return null;
+        // Check if this is an API request
+        if ($request->is('api/*')) {
+            return null; // API requests should not redirect
         }
-
-        // Check if the route exists, otherwise return null to prevent errors
-        if (\Illuminate\Support\Facades\Route::has('crm.login')) {
-            return route('crm.login');
+        
+        // Check if this is an email user request
+        if ($request->is('email_users/*')) {
+            return route('email_users.login');
         }
-
-        return '/login';
+        
+        // Default to CRM login (formerly admin.login)
+        return route('crm.login');
     }
 }

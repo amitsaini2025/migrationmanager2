@@ -25,7 +25,7 @@
     // =========================================================================
 
     /**
-     * Get client ID from the DOM
+     * Get client ID from the DOM (kept for backward compatibility)
      */
     function getClientId() {
         const container = document.querySelector('.email-interface-container');
@@ -40,6 +40,24 @@
         }
         
         return container.dataset.clientId;
+    }
+
+    /**
+     * Get matter ID from the DOM
+     */
+    function getMatterId() {
+        const container = document.querySelector('.email-interface-container');
+        if (!container) {
+            console.warn('Email interface container not found - this page may not support email handling');
+            return null;
+        }
+        
+        if (!container.dataset.matterId) {
+            console.error('Matter ID not found in DOM - container exists but data-matter-id attribute is missing');
+            return null;
+        }
+        
+        return container.dataset.matterId;
     }
 
     /**
@@ -363,8 +381,15 @@
      */
     async function uploadFiles(files) {
         const clientId = getClientId();
+        const matterId = getMatterId();
+        
         if (!clientId) {
             showNotification('Client ID not found', 'error');
+            return;
+        }
+        
+        if (!matterId) {
+            showNotification('Matter ID not found. Please select a matter.', 'error');
             return;
         }
 
@@ -392,10 +417,10 @@
             formData.append('client_id', clientId);
             formData.append('type', 'client');
             
-            // Add client matter ID if available (you can make this dynamic later)
+            // Add matter ID - this is now REQUIRED for matter-specific emails
             formData.append(
                 currentMailType === 'sent' ? 'upload_sent_mail_client_matter_id' : 'upload_inbox_mail_client_matter_id',
-                ''
+                matterId
             );
 
             console.log('Uploading to:', currentMailType === 'sent' ? '/upload-sent-fetch-mail' : '/upload-fetch-mail');
@@ -553,8 +578,16 @@
      */
     async function loadEmailsFromServer() {
         const clientId = getClientId();
+        const matterId = getMatterId();
+        
         if (!clientId) {
             console.warn('Cannot load emails - client ID not available');
+            return;
+        }
+        
+        if (!matterId) {
+            console.warn('Cannot load emails - matter ID not available');
+            renderEmptyState('Please select a matter to view emails');
             return;
         }
 
@@ -574,6 +607,7 @@
 
             const requestBody = {
                 client_id: clientId,
+                client_matter_id: matterId, // Add matter_id to filter emails
                 search: currentSearch,
                 status: '', // Keep for backward compatibility (mail_is_read)
                 label_id: currentLabelId

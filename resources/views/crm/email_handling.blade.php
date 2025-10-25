@@ -2,8 +2,23 @@
 @php
     // Support both $client and $fetchedData variable names
     $clientData = $client ?? $fetchedData ?? null;
+    
+    // Get the matter ID from URL or most recent matter
+    $matterId = null;
+    if (isset($id1) && $id1 != "") {
+        $clientMatter = \App\Models\ClientMatter::where('client_id', $clientData->id)
+            ->where('client_unique_matter_no', $id1)
+            ->first();
+        $matterId = $clientMatter ? $clientMatter->id : null;
+    } else {
+        $clientMatter = \App\Models\ClientMatter::where('client_id', $clientData->id)
+            ->where('matter_status', 1)
+            ->orderBy('id', 'desc')
+            ->first();
+        $matterId = $clientMatter ? $clientMatter->id : null;
+    }
 @endphp
-<div class="email-interface-container" data-client-id="{{ $clientData->id ?? '' }}">
+<div class="email-interface-container" data-client-id="{{ $clientData->id ?? '' }}" data-matter-id="{{ $matterId ?? '' }}">
     <!-- Top Control Bar (Search & Filters) -->
     <div class="email-control-bar">
         <div class="control-section search-section">

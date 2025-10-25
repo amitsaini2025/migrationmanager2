@@ -8698,12 +8698,21 @@ class ClientsController extends Controller
     {
         try {
             $client_id = $request->input('client_id');
+            $client_matter_id = $request->input('client_matter_id'); // NEW: Filter by matter
             $status = $request->input('status');
             $search = $request->input('search');
             $label_id = $request->input('label_id');
 
-            // Base query for inbox mail - ADD relationships
-            $query = \App\Models\MailReport::where('client_id', $client_id)
+            // Validate that matter ID is provided
+            if (!$client_matter_id) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Matter ID is required'
+                ], 400);
+            }
+
+            // Base query for inbox mail - FILTER BY MATTER ID instead of client_id
+            $query = \App\Models\MailReport::where('client_matter_id', $client_matter_id)
                 ->where('type', 'client')
                 ->where('mail_type', 1)
                 ->where('conversion_type', 'conversion_email_fetch')
@@ -8795,20 +8804,21 @@ class ClientsController extends Controller
         try
 		{
             $client_id = $request->input('client_id');
+            $client_matter_id = $request->input('client_matter_id'); // NEW: Filter by matter
             $type = $request->input('type');
             $status = $request->input('status');
             $search = $request->input('search');
 
             // Validate input
-            if (!$client_id) {
+            if (!$client_matter_id) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Client ID is required'
+                    'message' => 'Matter ID is required'
                 ], 400);
             }
 
-            // Base query for sent mail
-            $query = \App\Models\MailReport::where('client_id', $client_id)
+            // Base query for sent mail - FILTER BY MATTER ID instead of client_id
+            $query = \App\Models\MailReport::where('client_matter_id', $client_matter_id)
                 ->where('type', 'client')
                 ->where('mail_type', 1)
                 ->where(function ($query) {

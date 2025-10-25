@@ -64,8 +64,15 @@ Route::get('/get-templates', 'CRM\CRMUtilityController@gettemplates')->name('cli
 Route::post('/sendmail', 'CRM\CRMUtilityController@sendmail')->name('clients.sendmail');
 
 Route::post('/upload-mail', 'CRM\ClientsController@uploadmail');
-Route::post('/upload-fetch-mail', 'CRM\ClientsController@uploadfetchmail'); //upload inbox email
-Route::post('/upload-sent-fetch-mail', 'CRM\ClientsController@uploadsentfetchmail'); //upload sent email
+
+// LEGACY ROUTES (using PEAR - deprecated)
+// Route::post('/upload-fetch-mail', 'CRM\ClientsController@uploadfetchmail'); //upload inbox email
+// Route::post('/upload-sent-fetch-mail', 'CRM\ClientsController@uploadsentfetchmail'); //upload sent email
+
+// MODERN ROUTES (using Python microservice - recommended)
+Route::post('/upload-fetch-mail', 'CRM\EmailUploadController@uploadInboxEmails')->name('email.upload.inbox');
+Route::post('/upload-sent-fetch-mail', 'CRM\EmailUploadController@uploadSentEmails')->name('email.upload.sent');
+Route::get('/email/check-service', 'CRM\EmailUploadController@checkPythonService')->name('email.check.service');
 
 Route::post('/reassiginboxemail', 'CRM\ClientsController@reassiginboxemail')->name('clients.reassiginboxemail');
 Route::post('/reassigsentemail', 'CRM\ClientsController@reassigsentemail')->name('clients.reassigsentemail');
@@ -250,6 +257,7 @@ Route::post('/clients/toggle-client-portal', 'CRM\ClientPortalController@toggleC
 
 /*---------- ANZSCO Occupation Search ----------*/
 Route::get('/anzsco/search', [AnzscoOccupationController::class, 'search'])->name('anzsco.search');
+Route::get('/anzsco/code/{code}', [AnzscoOccupationController::class, 'getByCode'])->name('anzsco.getByCode');
 
 /*---------- Client Validation & Utilities ----------*/
 Route::post('/check-email', 'CRM\ClientsController@checkEmail')->name('check.email');

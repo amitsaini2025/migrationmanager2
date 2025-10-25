@@ -50,45 +50,52 @@ class EmailParserService:
             # Parse the .msg file
             msg = extract_msg.Message(file_path)
             
-            # Extract basic information
-            email_data = {
-                'success': True,
-                'subject': self._safe_get(msg.subject, ''),
-                'sender_name': '',
-                'sender_email': '',
-                'sent_date': self._safe_get(msg.date),
-                'received_date': None,
-                'html_content': self._safe_get(msg.htmlBody, ''),
-                'text_content': self._safe_get(msg.body, ''),
-                'recipients': [],
-                'attachments': [],
-                'headers': {},
-                'message_id': self._safe_get(getattr(msg, 'messageId', ''), ''),
-                'file_path': file_path,
-                'file_size': os.path.getsize(file_path)
-            }
-            
-            # Extract sender information
-            sender_info = self._extract_sender_info(msg)
-            email_data['sender_name'] = sender_info['name']
-            email_data['sender_email'] = sender_info['email']
-            
-            # Extract recipients
-            email_data['recipients'] = self._extract_recipients(msg)
-            
-            # Set received date (usually same as sent date for incoming emails)
-            if email_data['sent_date']:
-                email_data['received_date'] = email_data['sent_date']
-            
-            # Extract attachments
-            email_data['attachments'] = self._extract_attachments(msg)
-            
-            # Extract headers
-            email_data['headers'] = self._extract_headers(msg)
-            
-            logger.info(f"Successfully parsed email: {email_data['subject']}")
-            
-            return email_data
+            try:
+                # Extract basic information
+                email_data = {
+                    'success': True,
+                    'subject': self._safe_get(msg.subject, ''),
+                    'sender_name': '',
+                    'sender_email': '',
+                    'sent_date': self._safe_get(msg.date),
+                    'received_date': None,
+                    'html_content': self._safe_get(msg.htmlBody, ''),
+                    'text_content': self._safe_get(msg.body, ''),
+                    'recipients': [],
+                    'attachments': [],
+                    'headers': {},
+                    'message_id': self._safe_get(getattr(msg, 'messageId', ''), ''),
+                    'file_path': file_path,
+                    'file_size': os.path.getsize(file_path)
+                }
+                
+                # Extract sender information
+                sender_info = self._extract_sender_info(msg)
+                email_data['sender_name'] = sender_info['name']
+                email_data['sender_email'] = sender_info['email']
+                
+                # Extract recipients
+                email_data['recipients'] = self._extract_recipients(msg)
+                
+                # Set received date (usually same as sent date for incoming emails)
+                if email_data['sent_date']:
+                    email_data['received_date'] = email_data['sent_date']
+                
+                # Extract attachments
+                email_data['attachments'] = self._extract_attachments(msg)
+                
+                # Extract headers
+                email_data['headers'] = self._extract_headers(msg)
+                
+                logger.info(f"Successfully parsed email: {email_data['subject']}")
+                
+                return email_data
+            finally:
+                # Always close the message to release file handle (critical for Windows)
+                try:
+                    msg.close()
+                except:
+                    pass
             
         except Exception as e:
             logger.error(f"Error parsing .msg file {file_path}: {str(e)}")

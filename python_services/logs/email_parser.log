@@ -8,3 +8,15 @@
 2025-10-25 13:01:06 - services.email_parser_service - INFO - Email Parser Service initialized
 2025-10-25 13:01:16 - services.email_parser_service - INFO - Email Parser Service initialized
 2025-10-25 13:01:16 - services.email_parser_service - INFO - Email Parser Service initialized
+2025-10-25 15:08:26 - services.email_parser_service - INFO - Email Parser Service initialized
+2025-10-25 15:08:26 - services.email_parser_service - INFO - Email Parser Service initialized
+2025-10-25 15:09:48 - services.email_parser_service - INFO - Email Parser Service initialized
+2025-10-25 15:09:48 - services.email_parser_service - INFO - Email Parser Service initialized
+2025-10-25 15:10:43 - services.email_parser_service - INFO - Parsing .msg file: temp\For Sale _ Landmark Church Street Corner - One of the Largest Remaining Undeveloped Sites.msg
+2025-10-25 15:10:46 - services.email_parser_service - INFO - Successfully parsed email: For Sale | Landmark Church Street Corner - One of the Largest Remaining Undeveloped Sites
+2025-10-25 15:10:57 - services.email_parser_service - INFO - Parsing .msg file: temp\Please Sign Your Document.msg
+2025-10-25 15:10:57 - services.email_parser_service - INFO - Successfully parsed email: Please Sign Your Document
+2025-10-25 15:13:45 - services.email_parser_service - INFO - Email Parser Service initialized
+2025-10-25 15:13:45 - services.email_parser_service - INFO - Email Parser Service initialized
+2025-10-25 15:15:19 - services.email_parser_service - INFO - Parsing .msg file: temp\Virtual Discussion_ Using Zoho for Student Enrollment.msg
+2025-10-25 15:15:20 - services.email_parser_service - INFO - Successfully parsed email: Virtual Discussion: Using Zoho for Student Enrollment

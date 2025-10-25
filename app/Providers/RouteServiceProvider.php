@@ -49,6 +49,18 @@ class RouteServiceProvider extends ServiceProvider
             }
         });
 
+        // Custom route model binding for 'client' parameter (same as 'admin' since they use the same model)
+        Route::bind('client', function ($value) {
+            try {
+                // Decode the encoded client ID
+                $decodedId = convert_uudecode(base64_decode($value));
+                return \App\Models\Admin::findOrFail($decodedId);
+            } catch (\Exception $e) {
+                // If decoding fails, try to find by the original value
+                return \App\Models\Admin::findOrFail($value);
+            }
+        });
+
         parent::boot();
     }
 

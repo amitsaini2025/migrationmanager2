@@ -1,14 +1,7 @@
 <!-- Email Handling Interface -->
 <div class="email-interface-container">
-    <!-- Top Control Bar -->
+    <!-- Top Control Bar (Search & Filters Only) -->
     <div class="email-control-bar">
-        <div class="control-section upload-section">
-            <label for="emailFileInput" class="file-input-label">Choose files</label>
-            <input type="file" id="emailFileInput" class="file-input" accept=".msg" multiple style="display: none;">
-            <span class="file-status" id="fileStatus">No file chosen</span>
-            <button class="upload-btn" id="uploadBtn" disabled>Upload</button>
-        </div>
-        
         <div class="control-section search-section">
             <label for="emailSearchInput">Search:</label>
             <input type="text" id="emailSearchInput" class="search-input" placeholder="Search emails...">
@@ -37,8 +30,28 @@
 
     <!-- Main Content Area -->
     <div class="email-main-content">
-        <!-- Left Email List Pane -->
+        <!-- Left Email List Pane with Upload Area -->
         <div class="email-list-pane">
+            <!-- Drag & Drop Upload Section -->
+            <div class="upload-section-header">
+                <span class="upload-title">Upload Emails</span>
+            </div>
+            <div class="upload-section-container">
+                <div id="upload-area" class="drag-drop-zone">
+                    <div class="drag-drop-content">
+                        <i class="fas fa-cloud-upload-alt drag-drop-icon"></i>
+                        <div class="drag-drop-text">Drag & drop .msg files here</div>
+                        <div class="drag-drop-subtext">or click to browse</div>
+                        <div id="file-count" class="file-count-badge">0</div>
+                    </div>
+                    <input type="file" id="emailFileInput" class="file-input" accept=".msg" multiple style="display: none;">
+                </div>
+                <div id="upload-progress" class="upload-progress">
+                    <span id="fileStatus">Ready to upload</span>
+                </div>
+            </div>
+            
+            <!-- Email List Header -->
             <div class="email-list-header">
                 <span class="results-count" id="resultsCount">0 results</span>
                 <div class="pagination-controls">
@@ -56,7 +69,7 @@
                     </div>
                     <div class="empty-state-text">
                         <h3>No emails found</h3>
-                        <p>Upload .msg files to get started with email management.</p>
+                        <p>Upload .msg files above to get started.</p>
                     </div>
                 </div>
             </div>
@@ -80,7 +93,7 @@
 
 <!-- Include necessary CSS and JavaScript -->
 <link rel="stylesheet" href="{{ asset('css/email-handling.css') }}">
-{{-- @vite(['resources/js/app.js']) --}}  {{-- Commented out temporarily to fix 404 error --}}
+<script src="{{ asset('js/email-handling.js') }}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -100,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('initializeSearch available:', typeof window.initializeSearch);
     console.log('loadEmails available:', typeof window.loadEmails);
     
-    // Initialize modules if they exist
+    // Initialize modules
     if (typeof window.initializeUpload === 'function') {
         console.log('Initializing upload module...');
         window.initializeUpload();
@@ -117,21 +130,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load emails on page load
     if (typeof window.loadEmails === 'function') {
-        console.log('Loading emails...');
+        console.log('Loading initial emails...');
         window.loadEmails();
     } else {
         console.error('Load emails function not available!');
-    }
-    
-    // Debug: Add manual event listener for file input
-    if (fileInput) {
-        fileInput.addEventListener('change', function() {
-            console.log('File input change detected');
-            console.log('Files selected:', this.files.length);
-            if (this.files.length > 0) {
-                console.log('File names:', Array.from(this.files).map(f => f.name));
-            }
-        });
     }
 });
 </script> 

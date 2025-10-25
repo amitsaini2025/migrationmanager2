@@ -219,6 +219,7 @@ async def parse_analyze_render_email(file: UploadFile = File(...)):
     2. Analyze content
     3. Render enhanced HTML
     """
+    temp_path = None
     try:
         logger.info(f"Processing email file: {file.filename}")
         
@@ -226,8 +227,10 @@ async def parse_analyze_render_email(file: UploadFile = File(...)):
         if not validate_file_type(file.filename, ['.msg']):
             raise HTTPException(status_code=400, detail="Invalid file type. Only .msg files are allowed.")
         
-        # Save file temporarily
-        temp_path = Path(f"temp/{file.filename}")
+        # Save file temporarily with unique name to avoid conflicts
+        import time
+        temp_filename = f"{int(time.time() * 1000)}_{file.filename}"
+        temp_path = Path(f"temp/{temp_filename}")
         temp_path.parent.mkdir(exist_ok=True)
         
         content = await file.read()
@@ -253,13 +256,31 @@ async def parse_analyze_render_email(file: UploadFile = File(...)):
             'processing_status': 'success'
         }
         
-        # Clean up
-        temp_path.unlink()
+        # Clean up - retry mechanism for Windows file locking
+        if temp_path and temp_path.exists():
+            import time
+            for attempt in range(3):
+                try:
+                    temp_path.unlink()
+                    break
+                except PermissionError as pe:
+                    if attempt < 2:
+                        time.sleep(0.1)  # Wait 100ms before retry
+                    else:
+                        logger.warning(f"Could not delete temp file {temp_path}: {str(pe)}")
+                except Exception as cleanup_error:
+                    logger.warning(f"Error during cleanup of {temp_path}: {str(cleanup_error)}")
         
         return JSONResponse(content=result)
         
     except Exception as e:
         logger.error(f"Error in email processing pipeline: {str(e)}")
+        # Attempt cleanup on error
+        if temp_path and temp_path.exists():
+            try:
+                temp_path.unlink()
+            except:
+                logger.warning(f"Could not clean up temp file on error: {temp_path}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

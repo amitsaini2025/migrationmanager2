@@ -157,4 +157,13 @@ class Admin extends Authenticatable
     {
         return $this->hasMany(\App\Models\Client::class, 'visa_expiry_verified_by');
     }
+
+    /**
+     * Get the EOI/ROI references for this client
+     * Note: Admins table also stores client records
+     */
+    public function eoiReferences(): HasMany
+    {
+        return $this->hasMany(\App\Models\ClientEoiReference::class, 'client_id');
+    }
 }

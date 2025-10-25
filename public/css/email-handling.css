@@ -2,7 +2,7 @@
 .email-interface-container {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    min-height: 500px;
     background: #f5f5f5;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
@@ -17,6 +17,7 @@
     border-bottom: 1px solid #e0e0e0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     gap: 20px;
+    flex-wrap: wrap;
 }
 
 .control-section {
@@ -25,54 +26,10 @@
     gap: 10px;
 }
 
-.upload-section {
-    flex: 0 0 auto;
-}
-
-.file-input-label {
-    background: #007bff;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    border: none;
-    transition: background-color 0.2s;
-}
-
-.file-input-label:hover {
-    background: #0056b3;
-}
-
-.file-status {
-    color: #666;
-    font-size: 14px;
-    margin: 0 10px;
-}
-
-.upload-btn {
-    background: #007bff;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.2s;
-}
-
-.upload-btn:hover:not(:disabled) {
-    background: #0056b3;
-}
-
-.upload-btn:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-}
-
 .search-section {
     flex: 1;
     max-width: 300px;
+    min-width: 200px;
 }
 
 .search-section label {
@@ -87,7 +44,7 @@
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 14px;
-    min-width: 200px;
+    min-width: 150px;
 }
 
 .search-input:focus {
@@ -149,6 +106,7 @@
     gap: 20px;
     padding: 20px;
     min-height: 0;
+    height: 600px;
 }
 
 /* Left Email List Pane */
@@ -162,32 +120,163 @@
     overflow: hidden;
 }
 
+/* Upload Section */
+.upload-section-header {
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.upload-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.upload-section-container {
+    padding: 16px;
+    border-bottom: 1px solid #e0e0e0;
+    background: #ffffff;
+}
+
+/* Drag & Drop Zone */
+.drag-drop-zone {
+    position: relative;
+    border: 2px dashed #cbd5e0;
+    border-radius: 8px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background: #f8f9fa;
+}
+
+.drag-drop-zone:hover {
+    border-color: #007bff;
+    background: #e7f3ff;
+    transform: scale(1.01);
+}
+
+.drag-drop-zone.drag-over {
+    border-color: #007bff !important;
+    background: #cfe2ff !important;
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0,123,255,0.2);
+}
+
+.drag-drop-content {
+    pointer-events: none;
+}
+
+.drag-drop-icon {
+    font-size: 32px;
+    color: #6c757d;
+    margin-bottom: 8px;
+    display: block;
+    transition: color 0.2s;
+}
+
+.drag-drop-zone:hover .drag-drop-icon,
+.drag-drop-zone.drag-over .drag-drop-icon {
+    color: #007bff;
+}
+
+.drag-drop-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 4px;
+}
+
+.drag-drop-subtext {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.file-input {
+    display: none;
+}
+
+/* File Count Badge */
+.file-count-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #007bff;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    animation: bounceIn 0.5s ease-out;
+}
+
+.file-count-badge.show {
+    display: flex;
+}
+
+/* Upload Progress */
+.upload-progress {
+    margin-top: 12px;
+    text-align: center;
+    min-height: 20px;
+}
+
+.upload-progress span {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.upload-progress.uploading span {
+    color: #007bff;
+    font-weight: 500;
+    animation: pulse 1.5s infinite;
+}
+
+.upload-progress.success span {
+    color: #28a745;
+    font-weight: 500;
+}
+
+.upload-progress.error span {
+    color: #dc3545;
+    font-weight: 500;
+}
+
+/* Email List Header */
 .email-list-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 20px;
+    padding: 12px 16px;
     border-bottom: 1px solid #e0e0e0;
     background: #f8f9fa;
 }
 
 .results-count {
-    font-size: 14px;
-    color: #666;
+    font-size: 13px;
+    color: #495057;
     font-weight: 500;
 }
 
 .pagination-controls {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .pagination-btn {
     background: #007bff;
     color: white;
     border: none;
-    padding: 6px 12px;
+    padding: 4px 12px;
     border-radius: 4px;
     cursor: pointer;
     font-size: 12px;
@@ -199,15 +288,18 @@
 }
 
 .pagination-btn:disabled {
-    background: #ccc;
+    background: #adb5bd;
     cursor: not-allowed;
 }
 
 .page-info {
-    font-size: 12px;
-    color: #666;
+    font-size: 11px;
+    color: #6c757d;
+    min-width: 40px;
+    text-align: center;
 }
 
+/* Email List */
 .email-list {
     flex: 1;
     overflow-y: auto;
@@ -215,10 +307,10 @@
 }
 
 .email-item {
-    padding: 15px 20px;
+    padding: 12px 16px;
     border-bottom: 1px solid #f0f0f0;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.15s;
 }
 
 .email-item:hover {
@@ -227,40 +319,41 @@
 
 .email-item.selected {
     background: #e3f2fd;
-    border-left: 4px solid #007bff;
+    border-left: 3px solid #007bff;
+    padding-left: 13px;
 }
 
 .email-item-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .email-subject {
-    font-weight: 600;
-    color: #333;
-    font-size: 14px;
+    font-weight: 500;
+    color: #212529;
+    font-size: 13px;
     line-height: 1.4;
     flex: 1;
-    margin-right: 10px;
+    margin-right: 8px;
 }
 
 .email-date {
-    font-size: 12px;
-    color: #666;
+    font-size: 11px;
+    color: #6c757d;
     white-space: nowrap;
 }
 
 .email-sender {
-    font-size: 13px;
-    color: #666;
-    margin-bottom: 5px;
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 4px;
 }
 
 .email-preview {
-    font-size: 12px;
-    color: #888;
+    font-size: 11px;
+    color: #adb5bd;
     line-height: 1.4;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -284,7 +377,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #999;
+    color: #adb5bd;
 }
 
 .placeholder-content {
@@ -293,52 +386,59 @@
 
 .placeholder-content i {
     font-size: 48px;
-    margin-bottom: 20px;
-    color: #ccc;
+    margin-bottom: 16px;
+    color: #dee2e6;
 }
 
 .placeholder-content h3 {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 500;
-    margin: 0 0 10px 0;
-    color: #666;
+    margin: 0;
+    color: #6c757d;
 }
 
 .email-content-view {
     flex: 1;
-    padding: 20px;
+    padding: 24px;
     overflow-y: auto;
 }
 
 .email-content-header {
     border-bottom: 1px solid #e0e0e0;
-    padding-bottom: 20px;
+    padding-bottom: 16px;
     margin-bottom: 20px;
 }
 
 .email-content-subject {
     font-size: 20px;
     font-weight: 600;
-    color: #333;
-    margin-bottom: 10px;
+    color: #212529;
+    margin-bottom: 12px;
 }
 
 .email-content-meta {
     display: flex;
-    gap: 20px;
-    font-size: 14px;
-    color: #666;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    color: #6c757d;
 }
 
-.email-content-meta span {
+.email-content-meta div {
     display: flex;
     align-items: center;
-    gap: 5px;
+}
+
+.email-content-meta strong {
+    min-width: 80px;
+    font-weight: 600;
+    color: #495057;
 }
 
 .email-content-body {
     line-height: 1.6;
-    color: #333;
+    color: #212529;
+    font-size: 14px;
 }
 
 .email-content-body img {
@@ -353,37 +453,105 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 60px 20px;
+    padding: 40px 20px;
     text-align: center;
-    color: #666;
+    color: #6c757d;
 }
 
 .empty-state-icon {
     font-size: 48px;
-    color: #ccc;
-    margin-bottom: 20px;
+    color: #dee2e6;
+    margin-bottom: 16px;
 }
 
 .empty-state-text h3 {
-    margin: 0 0 10px 0;
-    font-size: 18px;
+    margin: 0 0 8px 0;
+    font-size: 16px;
     font-weight: 500;
-    color: #333;
+    color: #495057;
 }
 
 .empty-state-text p {
     margin: 0;
-    font-size: 14px;
-    color: #666;
+    font-size: 13px;
+    color: #6c757d;
     line-height: 1.5;
+}
+
+/* Animations */
+@keyframes bounceIn {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Scrollbar Styling */
+.email-list::-webkit-scrollbar,
+.email-content-view::-webkit-scrollbar {
+    width: 8px;
+}
+
+.email-list::-webkit-scrollbar-track,
+.email-content-view::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.email-list::-webkit-scrollbar-thumb,
+.email-content-view::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 4px;
+}
+
+.email-list::-webkit-scrollbar-thumb:hover,
+.email-content-view::-webkit-scrollbar-thumb:hover {
+    background: #a0aec0;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
     .email-control-bar {
         flex-direction: column;
-        gap: 15px;
-        padding: 15px;
+        gap: 12px;
+        padding: 12px;
     }
     
     .control-section {
@@ -391,13 +559,28 @@
         justify-content: center;
     }
     
+    .search-section {
+        max-width: 100%;
+    }
+    
     .email-main-content {
         flex-direction: column;
-        padding: 15px;
+        padding: 12px;
+        height: auto;
     }
     
     .email-list-pane {
         flex: none;
-        height: 300px;
+        height: 400px;
     }
+    
+    .email-content-pane {
+        height: 400px;
+    }
+}
+
+/* Loading spinner for email list */
+.email-list .fa-spinner {
+    font-size: 24px;
+    color: #007bff;
 }

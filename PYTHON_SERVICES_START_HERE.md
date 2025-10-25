@@ -19,14 +19,30 @@ The **Unified Python Services** is a single FastAPI microservice that handles:
 
 ## 🚀 Quick Start (2 Minutes)
 
+### Windows
 ```bash
 # 1. Navigate to service
 cd C:\xampp\htdocs\migrationmanager\python_services
 
 # 2. Start service
-py main.py
+start_services.bat
 
 # 3. Test it
+curl http://localhost:5000/health
+```
+
+### Linux
+```bash
+# 1. Navigate to service
+cd /var/www/migrationmanager/python_services
+
+# 2. Make script executable
+chmod +x start_services.sh
+
+# 3. Start service
+./start_services.sh
+
+# 4. Test it (in another terminal)
 curl http://localhost:5000/health
 ```
 

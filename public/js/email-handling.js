@@ -16,12 +16,9 @@
     let isUploading = false;
     let currentMailType = 'inbox'; // 'inbox' or 'sent' - determines endpoint
     let currentLabelId = ''; // EmailLabel.id for filtering
-    let currentCategory = ''; // Category filter
-    let currentPriority = ''; // Priority filter
     let currentSearch = '';
     let currentSort = 'date';
     let availableLabels = []; // Loaded from API
-    let availableCategories = []; // Extracted from emails
 
     // =========================================================================
     // Utility Functions
@@ -32,11 +29,17 @@
      */
     function getClientId() {
         const container = document.querySelector('.email-interface-container');
-        if (container && container.dataset.clientId) {
-            return container.dataset.clientId;
+        if (!container) {
+            console.warn('Email interface container not found - this page may not support email handling');
+            return null;
         }
-        console.error('Client ID not found in DOM');
-        return null;
+        
+        if (!container.dataset.clientId) {
+            console.error('Client ID not found in DOM - container exists but data-client-id attribute is missing');
+            return null;
+        }
+        
+        return container.dataset.clientId;
     }
 
     /**
@@ -110,6 +113,103 @@
         const sizes = ['B', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    /**
+     * Get attachment icon class based on content type
+     */
+    function getAttachmentIcon(contentType) {
+        if (!contentType) return 'fas fa-paperclip';
+        
+        const type = contentType.toLowerCase();
+        
+        // Images
+        if (type.includes('image')) {
+            return 'fas fa-image';
+        }
+        
+        // PDFs
+        if (type.includes('pdf')) {
+            return 'fas fa-file-pdf';
+        }
+        
+        // Word documents
+        if (type.includes('word') || type.includes('document') || type.includes('.docx')) {
+            return 'fas fa-file-word';
+        }
+        
+        // Excel spreadsheets
+        if (type.includes('excel') || type.includes('spreadsheet') || type.includes('.xlsx')) {
+            return 'fas fa-file-excel';
+        }
+        
+        // PowerPoint
+        if (type.includes('powerpoint') || type.includes('presentation')) {
+            return 'fas fa-file-powerpoint';
+        }
+        
+        // Archives
+        if (type.includes('zip') || type.includes('rar') || type.includes('archive')) {
+            return 'fas fa-file-archive';
+        }
+        
+        // Code files
+        if (type.includes('text/plain') || type.includes('code') || type.includes('javascript') || type.includes('html')) {
+            return 'fas fa-file-code';
+        }
+        
+        // Default
+        return 'fas fa-paperclip';
+    }
+
+    /**
+     * Get attachment icon color class based on content type
+     */
+    function getAttachmentIconColor(contentType) {
+        if (!contentType) return '';
+        
+        const type = contentType.toLowerCase();
+        
+        if (type.includes('image')) return 'attachment-icon-image';
+        if (type.includes('pdf')) return 'attachment-icon-pdf';
+        if (type.includes('word') || type.includes('document')) return 'attachment-icon-word';
+        if (type.includes('excel') || type.includes('spreadsheet')) return 'attachment-icon-excel';
+        
+        return '';
+    }
+
+    /**
+     * Check if attachment can be previewed
+     */
+    function canPreviewAttachment(contentType) {
+        if (!contentType) return false;
+        
+        const type = contentType.toLowerCase();
+        return type.includes('image/') || type.includes('pdf');
+    }
+
+    /**
+     * Sanitize filename for safe download
+     */
+    function sanitizeFilename(filename) {
+        if (!filename) return 'download';
+        
+        // Remove invalid filename characters
+        return filename
+            .replace(/[/\\?%*:|"<>]/g, '-')  // Replace invalid chars
+            .replace(/\s+/g, '_')             // Replace spaces with underscore
+            .substring(0, 200);               // Limit length
+    }
+
+    /**
+     * Filter to get only regular (non-inline) attachments
+     */
+    function getRegularAttachments(attachments) {
+        if (!attachments || !Array.isArray(attachments)) {
+            return [];
+        }
+        
+        return attachments.filter(att => !att.is_inline);
     }
 
     /**
@@ -288,20 +388,20 @@
                 formData.append('email_files[]', file);
             });
 
-            // Add required fields based on current label (inbox or sent)
+            // Add required fields based on current mail type (inbox or sent)
             formData.append('client_id', clientId);
             formData.append('type', 'client');
             
             // Add client matter ID if available (you can make this dynamic later)
             formData.append(
-                currentLabel === 'sent' ? 'upload_sent_mail_client_matter_id' : 'upload_inbox_mail_client_matter_id',
+                currentMailType === 'sent' ? 'upload_sent_mail_client_matter_id' : 'upload_inbox_mail_client_matter_id',
                 ''
             );
 
-            console.log('Uploading to:', currentLabel === 'sent' ? '/upload-sent-fetch-mail' : '/upload-fetch-mail');
+            console.log('Uploading to:', currentMailType === 'sent' ? '/upload-sent-fetch-mail' : '/upload-fetch-mail');
 
             const response = await fetch(
-                currentLabel === 'sent' ? '/upload-sent-fetch-mail' : '/upload-fetch-mail',
+                currentMailType === 'sent' ? '/upload-sent-fetch-mail' : '/upload-fetch-mail',
                 {
                     method: 'POST',
                     headers: {
@@ -391,12 +491,19 @@
 
         const searchInput = document.getElementById('emailSearchInput');
         const labelFilter = document.getElementById('labelFilter');
-        const sortFilter = document.getElementById('sortFilter');
-        const applyBtn = document.getElementById('applyBtn');
+        const applyBtn = document.getElementById('applyFiltersBtn');
 
-        if (!searchInput || !labelFilter || !sortFilter || !applyBtn) {
-            console.error('Search elements not found');
+        if (!searchInput) {
+            console.warn('Search input not found - skipping search initialization');
             return;
+        }
+        
+        if (!labelFilter) {
+            console.warn('Label filter not found - search will work with limited functionality');
+        }
+        
+        if (!applyBtn) {
+            console.warn('Apply button not found - search will work with limited functionality');
         }
 
         // Real-time search (debounced)
@@ -409,27 +516,22 @@
         searchInput.addEventListener('input', debouncedSearch);
 
         // Label filter change
-        labelFilter.addEventListener('change', function() {
-            currentLabel = this.value;
-            currentPage = 1;
-            loadEmails();
-        });
-
-        // Sort filter change
-        sortFilter.addEventListener('change', function() {
-            currentSort = this.value;
-            currentPage = 1;
-            loadEmails();
-        });
+        if (labelFilter) {
+            labelFilter.addEventListener('change', function() {
+                currentLabelId = this.value;
+                currentPage = 1;
+                loadEmails();
+            });
+        }
 
         // Apply button (for immediate search)
-        applyBtn.addEventListener('click', function() {
-            currentSearch = searchInput.value;
-            currentLabel = labelFilter.value;
-            currentSort = sortFilter.value;
-            currentPage = 1;
-            loadEmails();
-        });
+        if (applyBtn) {
+            applyBtn.addEventListener('click', function() {
+                currentSearch = searchInput.value;
+                currentPage = 1;
+                loadEmails();
+            });
+        }
 
         console.log('Search module initialized');
     };
@@ -452,7 +554,7 @@
     async function loadEmailsFromServer() {
         const clientId = getClientId();
         if (!clientId) {
-            console.error('Client ID not found');
+            console.warn('Cannot load emails - client ID not available');
             return;
         }
 
@@ -474,9 +576,7 @@
                 client_id: clientId,
                 search: currentSearch,
                 status: '', // Keep for backward compatibility (mail_is_read)
-                label_id: currentLabelId,    // NEW: EmailLabel filter
-                category: currentCategory,    // NEW: Category filter
-                priority: currentPriority     // NEW: Priority filter
+                label_id: currentLabelId
             };
 
             console.log('Fetching emails from:', endpoint, requestBody);
@@ -497,9 +597,6 @@
 
             const emails = await response.json();
             console.log('Emails received:', emails);
-
-            // Extract unique categories for filter dropdown
-            extractCategories(emails);
 
             // Apply sorting
             const sortedEmails = sortEmails(emails);
@@ -578,7 +675,7 @@
 
         const subject = email.subject || '(No subject)';
         const from = email.from_mail || 'Unknown sender';
-        const to = email.to_mail || 'Unknown recipient';
+        const to = cleanRecipients(email.to_mail) || 'Unknown recipient';
         const date = formatDate(email.created_at);
         const isRead = email.mail_is_read == 1;
 
@@ -586,15 +683,6 @@
         const hasAttachments = email.attachments && Array.isArray(email.attachments) && email.attachments.length > 0;
         const attachmentIcon = hasAttachments 
             ? `<i class="fas fa-paperclip attachment-indicator" title="${email.attachments.length} attachment(s)"></i>`
-            : '';
-
-        // NEW: Priority badge
-        const priority = email.priority || 'low';
-        const priorityBadge = `<span class="priority-badge priority-${priority}">${priority.toUpperCase()}</span>`;
-
-        // NEW: Category badge
-        const categoryBadge = email.category 
-            ? `<span class="category-badge">${email.category}</span>`
             : '';
 
         // NEW: Label badges
@@ -617,8 +705,6 @@
             <div class="email-sender">From: ${escapeHtml(from)}</div>
             <div class="email-sender" style="font-size: 12px; color: #999;">To: ${escapeHtml(to)}</div>
             <div class="email-badges">
-                ${priorityBadge}
-                ${categoryBadge}
                 ${labelBadges}
             </div>
         `;
@@ -693,7 +779,7 @@
     }
 
     /**
-     * Load and display email details
+     * Load and display email details with attachments
      */
     function loadEmailDetail(email) {
         const emailContentView = document.getElementById('emailContentView');
@@ -710,11 +796,67 @@
 
         const subject = email.subject || '(No subject)';
         const from = email.from_mail || 'Unknown';
-        const to = email.to_mail || 'Unknown';
+        const to = cleanRecipients(email.to_mail) || 'Unknown';
         const date = formatDate(email.created_at);
         const message = email.message || '(No content)';
 
-        // Check if we have a preview URL to show the original .msg file
+        // Get regular (non-inline) attachments
+        const regularAttachments = getRegularAttachments(email.attachments);
+        const hasAttachments = regularAttachments.length > 0;
+
+        // Build attachment list HTML
+        let attachmentHtml = '';
+        if (hasAttachments) {
+            const attachmentItems = regularAttachments.map(att => `
+                <div class="attachment-item" data-attachment-id="${att.id}">
+                    <div class="attachment-info">
+                        <i class="${getAttachmentIcon(att.content_type)} attachment-icon ${getAttachmentIconColor(att.content_type)}"></i>
+                        <div class="attachment-details">
+                            <div class="attachment-name">${escapeHtml(att.filename || att.display_name || 'Unknown')}</div>
+                            <div class="attachment-size">${formatFileSize(att.file_size || 0)}</div>
+                        </div>
+                    </div>
+                    <div class="attachment-actions">
+                        <button class="download-btn download-attachment-btn" 
+                                data-attachment-id="${att.id}" 
+                                data-filename="${escapeHtml(att.filename || att.display_name || 'file')}"
+                                title="Download ${escapeHtml(att.filename || 'file')}">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                        ${canPreviewAttachment(att.content_type) ? `
+                        <button class="preview-btn preview-attachment-btn" 
+                                data-attachment-id="${att.id}" 
+                                data-filename="${escapeHtml(att.filename || att.display_name || 'file')}"
+                                title="Preview ${escapeHtml(att.filename || 'file')}">
+                            <i class="fas fa-eye"></i> Preview
+                        </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            attachmentHtml = `
+                <div class="attachment-list">
+                    <div class="attachment-list-header">
+                        <span class="attachment-list-title">
+                            <i class="fas fa-paperclip"></i> 
+                            ${regularAttachments.length} Attachment${regularAttachments.length !== 1 ? 's' : ''}
+                        </span>
+                        ${regularAttachments.length > 1 ? `
+                        <button class="download-all-btn" 
+                                data-mail-report-id="${email.id}"
+                                data-email-subject="${escapeHtml(subject)}"
+                                title="Download all attachments as ZIP">
+                            <i class="fas fa-download"></i> Download All
+                        </button>
+                        ` : ''}
+                    </div>
+                    ${attachmentItems}
+                </div>
+            `;
+        }
+
+        // Original .msg file download section
         let previewSection = '';
         if (email.preview_url) {
             previewSection = `
@@ -727,6 +869,7 @@
             `;
         }
 
+        // Render complete email detail
         emailContentView.innerHTML = `
             <div class="email-content-header">
                 <div class="email-content-subject">${escapeHtml(subject)}</div>
@@ -739,8 +882,38 @@
             <div class="email-content-body">
                 ${message}
             </div>
+            ${attachmentHtml}
             ${previewSection}
         `;
+    }
+
+    /**
+     * Clean recipient strings by removing Python object representations
+     */
+    function cleanRecipients(recipientString) {
+        if (!recipientString) return '';
+        
+        // Split by comma to handle multiple recipients
+        const recipients = recipientString.split(',');
+        
+        // Filter out invalid recipients (Python object strings, malformed addresses)
+        const validRecipients = recipients
+            .map(r => r.trim())
+            .filter(r => {
+                // Remove entries that look like Python object representations
+                if (r.includes('<extract_msg.') || r.includes('object at 0x')) {
+                    return false;
+                }
+                // Remove entries that look like raw object references
+                if (r.includes('Recipient') && r.includes('0x')) {
+                    return false;
+                }
+                // Keep only entries that look like valid email addresses or names
+                return r.length > 0 && !r.startsWith('<') && !r.includes('0x');
+            });
+        
+        // Return cleaned recipient list or a placeholder if none are valid
+        return validRecipients.length > 0 ? validRecipients.join(', ') : '';
     }
 
     /**
@@ -993,7 +1166,8 @@
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${emailSubject || 'email'}_attachments.zip`;
+            const sanitizedSubject = sanitizeFilename(emailSubject || 'email');
+            a.download = `${sanitizedSubject}_attachments.zip`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -1025,48 +1199,6 @@
             console.error('Error previewing attachment:', error);
             showNotification('Error previewing attachment: ' + error.message, 'error');
         }
-    }
-
-    // =========================================================================
-    // Category Extraction
-    // =========================================================================
-
-    /**
-     * Extract unique categories from emails and populate filter
-     */
-    function extractCategories(emails) {
-        if (!Array.isArray(emails)) return;
-
-        const categories = new Set();
-        emails.forEach(email => {
-            if (email.category) {
-                categories.add(email.category);
-            }
-        });
-
-        availableCategories = Array.from(categories).sort();
-        populateCategoryFilter();
-    }
-
-    /**
-     * Populate category filter dropdown
-     */
-    function populateCategoryFilter() {
-        const categoryFilter = document.getElementById('categoryFilter');
-        if (!categoryFilter) return;
-
-        // Clear existing options (except "All Categories")
-        while (categoryFilter.options.length > 1) {
-            categoryFilter.remove(1);
-        }
-
-        // Add category options
-        availableCategories.forEach(category => {
-            const option = document.createElement('option');
-            option.value = category;
-            option.textContent = category;
-            categoryFilter.appendChild(option);
-        });
     }
 
     // =========================================================================
@@ -1108,22 +1240,6 @@
         if (labelFilter) {
             labelFilter.addEventListener('change', function() {
                 currentLabelId = this.value;
-            });
-        }
-
-        // Category filter
-        const categoryFilter = document.getElementById('categoryFilter');
-        if (categoryFilter) {
-            categoryFilter.addEventListener('change', function() {
-                currentCategory = this.value;
-            });
-        }
-
-        // Priority filter
-        const priorityFilter = document.getElementById('priorityFilter');
-        if (priorityFilter) {
-            priorityFilter.addEventListener('change', function() {
-                currentPriority = this.value;
             });
         }
 
@@ -1198,6 +1314,70 @@
         if (previewOverlay) {
             previewOverlay.addEventListener('click', hidePreviewModal);
         }
+
+        // Initialize attachment handlers
+        initializeAttachmentHandlers();
+    }
+
+    /**
+     * Event delegation for attachment buttons
+     * Handles all attachment-related clicks
+     */
+    function initializeAttachmentHandlers() {
+        // Single delegated listener for all attachment actions
+        document.addEventListener('click', function(e) {
+            const target = e.target.closest('button');
+            if (!target) return;
+
+            // Download individual attachment
+            if (target.classList.contains('download-attachment-btn')) {
+                e.preventDefault();
+                const attachmentId = target.dataset.attachmentId;
+                const filename = target.dataset.filename;
+                
+                if (attachmentId && filename) {
+                    // Disable button during download
+                    const originalHtml = target.innerHTML;
+                    target.disabled = true;
+                    target.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
+                    
+                    downloadAttachment(attachmentId, filename).finally(() => {
+                        target.disabled = false;
+                        target.innerHTML = originalHtml;
+                    });
+                }
+            }
+
+            // Preview attachment
+            if (target.classList.contains('preview-attachment-btn')) {
+                e.preventDefault();
+                const attachmentId = target.dataset.attachmentId;
+                const filename = target.dataset.filename;
+                
+                if (attachmentId && filename) {
+                    previewAttachment(attachmentId, filename);
+                }
+            }
+
+            // Download all attachments as ZIP
+            if (target.classList.contains('download-all-btn')) {
+                e.preventDefault();
+                const mailReportId = target.dataset.mailReportId;
+                const emailSubject = target.dataset.emailSubject;
+                
+                if (mailReportId) {
+                    // Disable button during download
+                    const originalHtml = target.innerHTML;
+                    target.disabled = true;
+                    target.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating ZIP...';
+                    
+                    downloadAllAttachments(mailReportId, emailSubject).finally(() => {
+                        target.disabled = false;
+                        target.innerHTML = originalHtml;
+                    });
+                }
+            }
+        });
     }
 
     /**

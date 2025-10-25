@@ -11,3 +11,20 @@
 2025-10-25 15:10:57 - main - ERROR - HTTP 500: [WinError 32] The process cannot access the file because it is being used by another process: 'temp\\Please Sign Your Document.msg'
 2025-10-25 15:13:45 - __main__ - INFO - Starting Migration Manager Python Services on 127.0.0.1:5000
 2025-10-25 15:15:19 - main - INFO - Parsing email file: Virtual Discussion_ Using Zoho for Student Enrollment.msg
+2025-10-25 18:44:50 - __main__ - INFO - Starting Migration Manager Python Services on 127.0.0.1:5000
+2025-10-25 18:45:47 - main - INFO - Parsing email file: Re_ Minh Toan LE I Tourist Visa I submit by 20_10.msg
+2025-10-25 18:45:48 - main - INFO - Analyzing email: Re: Minh Toan LE I Tourist Visa I submit by 20/10
+2025-10-25 19:03:33 - main - INFO - Parsing email file: Fw_ Updated TP report with Cl 55 and 56 for 71 princes Highway_ pakenham.msg
+2025-10-25 19:03:34 - main - INFO - Analyzing email: Fw: Updated TP report with Cl 55 and 56 for 71 princes Highway, pakenham
+2025-10-25 19:04:20 - main - INFO - Parsing email file: For Sale _ Landmark Church Street Corner - One of the Largest Remaining Undeveloped Sites.msg
+2025-10-25 19:04:23 - main - INFO - Analyzing email: For Sale | Landmark Church Street Corner - One of the Largest Remaining Undeveloped Sites
+2025-10-25 19:04:23 - main - INFO - Parsing email file: Please Sign Your Document.msg
+2025-10-25 19:04:23 - main - INFO - Analyzing email: Please Sign Your Document
+2025-10-25 19:08:33 - main - INFO - Parsing email file: Resume_Vandana Chandok for Office Manager.msg
+2025-10-25 19:08:33 - main - INFO - Analyzing email: Resume_Vandana Chandok for Office Manager
+2025-10-25 19:09:08 - main - INFO - Parsing email file: Fw_ LEAP Invoice INV01078195 is attached  - Bansal Lawyers.msg
+2025-10-25 19:09:09 - main - INFO - Analyzing email: Fw: LEAP Invoice INV01078195 is attached  - Bansal Lawyers
+2025-10-25 19:34:26 - main - INFO - Parsing email file: Fw_ InfoTrack - EFT Payment Confirmation - w876948.msg
+2025-10-25 19:34:26 - main - INFO - Analyzing email: Fw: InfoTrack - EFT Payment Confirmation - w876948
+2025-10-25 19:38:13 - main - INFO - Parsing email file: Fw_ Overdue Account – Action Required for GWW Account 3212470000.msg
+2025-10-25 19:38:14 - main - INFO - Analyzing email: Fw: Overdue Account – Action Required for GWW Account 3212470000

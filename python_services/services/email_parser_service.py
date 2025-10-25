@@ -241,20 +241,38 @@ class EmailParserService:
         """Extract attachment information from message."""
         attachments = []
         
+        # Get email body to check for inline references
+        body = self._safe_get(msg.body, '')
+        html_body = self._safe_get(msg.htmlBody, '')
+        combined_body = f"{body}{html_body}".lower()
+        
         try:
             for attachment in msg.attachments:
                 try:
+                    content_id = self._safe_get(getattr(attachment, 'contentId', ''), '')
+                    
+                    # Only mark as inline if:
+                    # 1. It has a content_id AND
+                    # 2. The body references it with cid:
+                    # 3. OR it's an image with content_id (common for inline images)
+                    is_inline = False
+                    if content_id:
+                        # Check if body references this content_id
+                        cid_ref = f"cid:{content_id.strip('<>')}"
+                        if cid_ref.lower() in combined_body:
+                            is_inline = True
+                    
                     attachment_data = {
                         'filename': self._safe_get(attachment.longFilename or attachment.shortFilename, 'Unknown'),
                         'content_type': self._safe_get(getattr(attachment, 'contentType', 'application/octet-stream'), 'application/octet-stream'),
-                        'content_id': self._safe_get(getattr(attachment, 'contentId', ''), ''),
-                        'is_inline': bool(getattr(attachment, 'contentId', None)),
+                        'content_id': content_id,
+                        'is_inline': is_inline,
                         'size': len(attachment.data) if attachment.data else 0,
                         'data': None
                     }
                     
-                    # Only include data if it's not too large
-                    if attachment.data and len(attachment.data) < 1000000:  # 1MB limit
+                    # Only include data if it's not too large (20MB limit)
+                    if attachment.data and len(attachment.data) < 20971520:  # 20MB limit (20 * 1024 * 1024)
                         try:
                             attachment_data['data'] = self._safe_get(attachment.data)
                         except:

@@ -457,9 +457,12 @@ class EmailUploadController extends Controller
             $s3Path = null;
             $s3Key = null;
             
-            if (isset($attachmentData['content']) && !empty($attachmentData['content'])) {
+            // Check for both 'content' and 'data' keys (Python service uses 'data')
+            $attachmentContent = $attachmentData['content'] ?? $attachmentData['data'] ?? null;
+            
+            if (!empty($attachmentContent)) {
                 $s3Key = $clientUniqueId . '/attachments/' . time() . '_' . $attachmentData['filename'];
-                Storage::disk('s3')->put($s3Key, base64_decode($attachmentData['content']));
+                Storage::disk('s3')->put($s3Key, base64_decode($attachmentContent));
                 $s3Path = Storage::disk('s3')->url($s3Key);
             }
 
@@ -470,7 +473,7 @@ class EmailUploadController extends Controller
                 'content_type' => $attachmentData['content_type'] ?? 'application/octet-stream',
                 'file_path' => $s3Path,
                 's3_key' => $s3Key,
-                'file_size' => $attachmentData['file_size'] ?? 0,
+                'file_size' => $attachmentData['file_size'] ?? $attachmentData['size'] ?? 0,
                 'content_id' => $attachmentData['content_id'] ?? null,
                 'is_inline' => $attachmentData['is_inline'] ?? false,
                 'extension' => pathinfo($attachmentData['filename'] ?? 'unknown', PATHINFO_EXTENSION),
@@ -484,7 +487,7 @@ class EmailUploadController extends Controller
     }
 
     /**
-     * Auto-assign labels based on mail type
+     * Auto-assign labels based on sender domain
      * 
      * @param \App\Models\MailReport $mailReport
      * @param string $mailType
@@ -492,13 +495,40 @@ class EmailUploadController extends Controller
     protected function autoAssignLabels($mailReport, $mailType)
     {
         try {
-            $labelName = $mailType === 'inbox' ? 'Inbox' : 'Sent';
+            // Company domains that indicate emails WE sent
+            $companyDomains = [
+                '@bansalimmigration.com.au',
+                '@bansaleducation.com.au',
+                '@bansallawyers.com.au'
+            ];
+            
+            // Check if email is from our company domains
+            $isFromCompany = false;
+            $senderEmail = strtolower($mailReport->from_mail);
+            
+            foreach ($companyDomains as $domain) {
+                if (str_contains($senderEmail, $domain)) {
+                    $isFromCompany = true;
+                    break;
+                }
+            }
+            
+            // Assign "Sent" label if from company domain, otherwise "Inbox" label
+            $labelName = $isFromCompany ? 'Sent' : 'Inbox';
+            
             $label = \App\Models\EmailLabel::where('name', $labelName)
                 ->where('type', 'system')
                 ->first();
             
             if ($label) {
                 $mailReport->labels()->attach($label->id);
+                
+                Log::info('Auto-assigned label', [
+                    'email_id' => $mailReport->id,
+                    'sender' => $mailReport->from_mail,
+                    'label' => $labelName,
+                    'is_from_company' => $isFromCompany
+                ]);
             }
         } catch (\Exception $e) {
             Log::warning('Failed to auto-assign label', ['error' => $e->getMessage()]);

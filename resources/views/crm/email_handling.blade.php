@@ -1,5 +1,9 @@
 <!-- Email Handling Interface -->
-<div class="email-interface-container" data-client-id="{{ $client->id ?? '' }}">
+@php
+    // Support both $client and $fetchedData variable names
+    $clientData = $client ?? $fetchedData ?? null;
+@endphp
+<div class="email-interface-container" data-client-id="{{ $clientData->id ?? '' }}">
     <!-- Top Control Bar (Search & Filters) -->
     <div class="email-control-bar">
         <div class="control-section search-section">
@@ -18,20 +22,6 @@
             <select id="labelFilter" class="filter-select">
                 <option value="">All Labels</option>
                 <!-- Populated dynamically -->
-            </select>
-            
-            <label for="categoryFilter">Category:</label>
-            <select id="categoryFilter" class="filter-select">
-                <option value="">All Categories</option>
-                <!-- Populated dynamically -->
-            </select>
-            
-            <label for="priorityFilter">Priority:</label>
-            <select id="priorityFilter" class="filter-select">
-                <option value="">All Priorities</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
             </select>
         </div>
         
@@ -178,11 +168,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Debug: Check if elements exist
     const fileInput = document.getElementById('emailFileInput');
-    const uploadBtn = document.getElementById('uploadBtn');
+    const uploadArea = document.getElementById('upload-area');
     const fileStatus = document.getElementById('fileStatus');
     
     console.log('File input found:', !!fileInput);
-    console.log('Upload button found:', !!uploadBtn);
+    console.log('Upload area found:', !!uploadArea);
     console.log('File status found:', !!fileStatus);
     
     // Debug: Check if modules are available

@@ -36,8 +36,6 @@ class MailReport extends Authenticatable
         // Python analysis fields
         'python_analysis',
         'python_rendering',
-        'category',
-        'priority',
         'sentiment',
         'language',
         'enhanced_html',
@@ -56,7 +54,7 @@ class MailReport extends Authenticatable
         'updated_at'
     ];
 
-	public $sortable = ['id', 'created_at', 'updated_at', 'subject', 'from_mail', 'category', 'priority'];
+	public $sortable = ['id', 'created_at', 'updated_at', 'subject', 'from_mail'];
 
     protected $casts = [
         'python_analysis' => 'array',
@@ -159,55 +157,6 @@ class MailReport extends Authenticatable
     public function isReply(): bool
     {
         return isset($this->thread_info['is_reply']) && $this->thread_info['is_reply'];
-    }
-
-    /**
-     * Get priority badge class for UI.
-     */
-    public function getPriorityBadgeClassAttribute(): string
-    {
-        return match($this->priority ?? 'low') {
-            'high' => 'bg-red-100 text-red-800',
-            'medium' => 'bg-yellow-100 text-yellow-800',
-            'low' => 'bg-green-100 text-green-800',
-            default => 'bg-gray-100 text-gray-800'
-        };
-    }
-
-    /**
-     * Get category badge class for UI.
-     */
-    public function getCategoryBadgeClassAttribute(): string
-    {
-        return match($this->category ?? 'Uncategorized') {
-            'Business' => 'bg-blue-100 text-blue-800',
-            'Personal' => 'bg-purple-100 text-purple-800',
-            'Spam' => 'bg-red-100 text-red-800',
-            'Newsletter' => 'bg-green-100 text-green-800',
-            'System' => 'bg-gray-100 text-gray-800',
-            'Migration Related' => 'bg-orange-100 text-orange-800',
-            'Visa Grant' => 'bg-green-100 text-green-800',
-            'Visa Refusal' => 'bg-red-100 text-red-800',
-            'Request for Information' => 'bg-yellow-100 text-yellow-800',
-            'Natural Justice Letter' => 'bg-red-100 text-red-800',
-            default => 'bg-gray-100 text-gray-800'
-        };
-    }
-
-    /**
-     * Scope to filter by category.
-     */
-    public function scopeByCategory($query, $category)
-    {
-        return $query->where('category', $category);
-    }
-
-    /**
-     * Scope to filter by priority.
-     */
-    public function scopeByPriority($query, $priority)
-    {
-        return $query->where('priority', $priority);
     }
 
     /**

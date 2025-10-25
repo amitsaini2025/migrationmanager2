@@ -34,6 +34,8 @@ python_services/
 ├── config.py                       # Configuration
 ├── start_services.py               # Startup script (cross-platform)
 ├── start_services.bat              # Windows startup
+├── start_services.sh               # Linux startup
+├── install_service_linux.sh        # Linux service installer
 │
 ├── services/                       # Service modules
 │   ├── __init__.py
@@ -67,35 +69,61 @@ python_services/
 
 ## 🚀 Installation
 
-### 1. Install Python Dependencies
+### Windows
+
+#### 1. Install Python Dependencies
 
 ```bash
 cd C:\xampp\htdocs\migrationmanager\python_services
 pip install -r requirements.txt
 ```
 
-### 2. Verify Installation
+#### 2. Start Service
 
+**Option A: Using batch file (recommended)**
 ```bash
-python main.py --help
+start_services.bat
 ```
 
-### 3. Start Service
-
-**Option A: Using startup script**
+**Option B: Using Python script**
 ```bash
 python start_services.py
 ```
 
-**Option B: Direct start**
+**Option C: Direct start**
 ```bash
 python main.py --host 127.0.0.1 --port 5000
 ```
 
-**Option C: With auto-reload (development)**
+### Linux
+
+#### 1. Install Python Dependencies
+
 ```bash
-python main.py --reload
+cd /var/www/migrationmanager/python_services
+python3 -m pip install -r requirements.txt
 ```
+
+#### 2. Start Service
+
+**Option A: Using shell script (recommended)**
+```bash
+chmod +x start_services.sh
+./start_services.sh
+```
+
+**Option B: Install as systemd service (production)**
+```bash
+chmod +x install_service_linux.sh
+sudo ./install_service_linux.sh
+```
+
+**Option C: Direct start**
+```bash
+python3 main.py --host 127.0.0.1 --port 5000
+```
+
+For detailed Linux deployment instructions, see **[LINUX_DEPLOYMENT.md](LINUX_DEPLOYMENT.md)**
 
 ## 📡 API Endpoints
 
@@ -368,27 +396,49 @@ python python_services/main.py
 
 ### Development
 ```bash
+# Windows
 python main.py --reload
+
+# Linux
+python3 main.py --reload
 ```
 
 ### Production (Windows)
 ```bash
-# As a Windows Service (using NSSM)
-nssm install PythonServices "C:\Python39\python.exe" "C:\xampp\htdocs\migrationmanager\python_services\main.py"
-nssm start PythonServices
+# Option 1: Using NSSM (recommended)
+# 1. Download NSSM from https://nssm.cc/download
+# 2. Install as service:
+nssm install MigrationPythonServices "C:\Python39\python.exe" "C:\xampp\htdocs\migrationmanager\python_services\main.py"
+nssm set MigrationPythonServices AppDirectory "C:\xampp\htdocs\migrationmanager\python_services"
+nssm set MigrationPythonServices AppParameters "--host 127.0.0.1 --port 5000"
+nssm start MigrationPythonServices
+
+# Option 2: Using Python script
+python start_services.py --windows-service
 ```
 
 ### Production (Linux)
 ```bash
-# Using systemd
-sudo systemctl enable python-services
-sudo systemctl start python-services
+# Automated installation (recommended)
+cd /var/www/migrationmanager/python_services
+sudo ./install_service_linux.sh
+
+# Service management
+sudo systemctl start migration-python-services
+sudo systemctl stop migration-python-services
+sudo systemctl restart migration-python-services
+sudo systemctl status migration-python-services
+
+# View logs
+sudo journalctl -u migration-python-services -f
 ```
+
+**📘 Complete Linux deployment guide:** [LINUX_DEPLOYMENT.md](LINUX_DEPLOYMENT.md)
 
 ### Docker (Optional)
 ```bash
 docker build -t migration-manager-python-services .
-docker run -p 5000:5000 migration-manager-python-services
+docker run -d -p 5000:5000 --name python-services migration-manager-python-services
 ```
 
 ## 📞 Support

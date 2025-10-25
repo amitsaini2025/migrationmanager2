@@ -20,3 +20,21 @@
 2025-10-25 15:09:48 - services.email_analyzer_service - INFO - Email Analyzer Service initialized
 2025-10-25 15:13:45 - services.email_analyzer_service - INFO - Email Analyzer Service initialized
 2025-10-25 15:13:45 - services.email_analyzer_service - INFO - Email Analyzer Service initialized
+2025-10-25 18:44:50 - services.email_analyzer_service - INFO - Email Analyzer Service initialized
+2025-10-25 18:44:50 - services.email_analyzer_service - INFO - Email Analyzer Service initialized
+2025-10-25 18:45:48 - services.email_analyzer_service - INFO - Analyzing email: Re: Minh Toan LE I Tourist Visa I submit by 20/10
+2025-10-25 18:45:48 - services.email_analyzer_service - INFO - Analysis completed: Business - medium priority
+2025-10-25 19:03:34 - services.email_analyzer_service - INFO - Analyzing email: Fw: Updated TP report with Cl 55 and 56 for 71 princes Highway, pakenham
+2025-10-25 19:03:34 - services.email_analyzer_service - INFO - Analysis completed: Spam - high priority
+2025-10-25 19:04:23 - services.email_analyzer_service - INFO - Analyzing email: For Sale | Landmark Church Street Corner - One of the Largest Remaining Undeveloped Sites
+2025-10-25 19:04:23 - services.email_analyzer_service - INFO - Analysis completed: Business - high priority
+2025-10-25 19:04:23 - services.email_analyzer_service - INFO - Analyzing email: Please Sign Your Document
+2025-10-25 19:04:23 - services.email_analyzer_service - INFO - Analysis completed: Spam - medium priority
+2025-10-25 19:08:33 - services.email_analyzer_service - INFO - Analyzing email: Resume_Vandana Chandok for Office Manager
+2025-10-25 19:08:33 - services.email_analyzer_service - INFO - Analysis completed: Personal - high priority
+2025-10-25 19:09:09 - services.email_analyzer_service - INFO - Analyzing email: Fw: LEAP Invoice INV01078195 is attached  - Bansal Lawyers
+2025-10-25 19:09:09 - services.email_analyzer_service - INFO - Analysis completed: Migration - high priority
+2025-10-25 19:34:26 - services.email_analyzer_service - INFO - Analyzing email: Fw: InfoTrack - EFT Payment Confirmation - w876948
+2025-10-25 19:34:26 - services.email_analyzer_service - INFO - Analysis completed: Business - medium priority
+2025-10-25 19:38:14 - services.email_analyzer_service - INFO - Analyzing email: Fw: Overdue Account – Action Required for GWW Account 3212470000
+2025-10-25 19:38:14 - services.email_analyzer_service - INFO - Analysis completed: Business - high priority

@@ -648,11 +648,6 @@
     color: #92400e;
 }
 
-.priority-badge.priority-high {
-    background: #fee2e2;
-    color: #991b1b;
-}
-
 /* Label Badges */
 .label-badge {
     display: inline-flex;
@@ -1006,6 +1001,42 @@
 
 .attachment-icon.fa-paperclip {
     color: #9ca3af;
+}
+
+/* Colored attachment icons */
+.attachment-icon-image {
+    color: #3b82f6;
+}
+
+.attachment-icon-pdf {
+    color: #ef4444;
+}
+
+.attachment-icon-word {
+    color: #2563eb;
+}
+
+.attachment-icon-excel {
+    color: #10b981;
+}
+
+/* Loading state for buttons */
+.download-btn:disabled,
+.preview-btn:disabled,
+.download-all-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.download-btn .fa-spinner,
+.download-all-btn .fa-spinner,
+.preview-btn .fa-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 .attachment-details {

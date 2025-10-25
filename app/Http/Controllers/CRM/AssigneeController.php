@@ -1036,7 +1036,6 @@ public function update_apppointment_description(Request $request){
             'client_id' => 'nullable|string', // Client ID is optional for Personal Tasks
             'assigned_to' => 'required|exists:admins,id', // Check against the admins table instead of users
             'description' => 'required|string',
-            'followup_date' => 'required|date',
             'task_group' => 'required|string|in:Call,Checklist,Review,Query,Urgent,Personal Task', // Include Personal Task
         ]);
 
@@ -1081,13 +1080,16 @@ public function update_apppointment_description(Request $request){
             $admin_data = Admin::where('id', $validated['assigned_to'])->first();
             $assignee_name = $admin_data ? $admin_data->first_name . " " . $admin_data->last_name : 'N/A';
 
+            // Use the original task's followup_date or today's date if not available
+            $followupDate = $currentTask->followup_date ?: date('Y-m-d');
+
             // Step 3: Create a new task with the provided information
             $newTask = new Note;
             $newTask->user_id = Auth::user()->id;
             $newTask->client_id = $clientId;
             $newTask->assigned_to = $validated['assigned_to'];
             $newTask->description = $validated['description'];
-            $newTask->followup_date = $validated['followup_date'];
+            $newTask->followup_date = $followupDate;
             $newTask->task_group = $validated['task_group'];
             $newTask->type = 'client';
             $newTask->folloup = 1;
@@ -1108,7 +1110,7 @@ public function update_apppointment_description(Request $request){
                 } else {
                     $newTaskLog->use_for = "";
                 }
-                $newTaskLog->followup_date = $validated['followup_date'];
+                $newTaskLog->followup_date = $followupDate;
                 $newTaskLog->task_group = $validated['task_group'];
                 $newTaskLog->task_status = 0; // New task is incomplete
                 $newTaskLog->save();

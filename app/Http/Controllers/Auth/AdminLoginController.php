@@ -49,11 +49,17 @@ class AdminLoginController extends Controller
 
     protected function validateLogin(Request $request)
     {
-        $this->validate($request, [
-        'email' => 'required|string',
-        'password' => 'required|string',
-        'g-recaptcha-response' => 'required',
-        ]);
+        $rules = [
+            'email' => 'required|string',
+            'password' => 'required|string',
+        ];
+        
+        // Only require reCAPTCHA if it's configured
+        if (config('services.recaptcha.key') && config('services.recaptcha.secret')) {
+            $rules['g-recaptcha-response'] = 'required';
+        }
+        
+        $this->validate($request, $rules);
     }
 
 	public function authenticated(Request $request, $user)
@@ -62,29 +68,39 @@ class AdminLoginController extends Controller
         //echo "<pre>user==";print_r($user);
         //dd('###');
 
-        $recaptcha_response = $request->input('g-recaptcha-response');//dd($recaptcha_response);
-        if (is_null($recaptcha_response)) {
-            $errors = ['g-recaptcha-response' => 'Please Complete the Recaptcha to proceed'];
-            return redirect()->back()
-            ->withErrors($errors);
+        // Only verify reCAPTCHA if it's configured
+        if (config('services.recaptcha.key') && config('services.recaptcha.secret')) {
+            $recaptcha_response = $request->input('g-recaptcha-response');//dd($recaptcha_response);
+            if (is_null($recaptcha_response)) {
+                $errors = ['g-recaptcha-response' => 'Please Complete the Recaptcha to proceed'];
+                return redirect()->back()
+                ->withErrors($errors);
+            }
+
+            $url = "https://www.google.com/recaptcha/api/siteverify";
+
+           //echo "secret===".config('services.recaptcha.secret');
+            //echo "<br/>";
+           // echo "IpUtils===".IpUtils::anonymize($request->ip());
+            //die('@@@');
+            $body = [
+                'secret' => config('services.recaptcha.secret'),
+                'response' => $recaptcha_response,
+                'remoteip' => IpUtils::anonymize($request->ip()) //anonymize the ip to be GDPR compliant. Otherwise just pass the default ip address
+            ];
+
+            $response = Http::get($url, $body); //dd($response);
+            $result = json_decode($response); //dd($result);
+
+            if (!$response->successful() || $result->success != true) {
+                //return redirect()->back()->with('status', 'Please Complete the Recaptcha Again to proceed');
+                $errors = ['g-recaptcha-response' => 'Please Complete the Recaptcha Again to proceed'];
+                return redirect()->back()->withErrors($errors);
+            }
         }
-
-        $url = "https://www.google.com/recaptcha/api/siteverify";
-
-       //echo "secret===".config('services.recaptcha.secret');
-        //echo "<br/>";
-       // echo "IpUtils===".IpUtils::anonymize($request->ip());
-        //die('@@@');
-        $body = [
-            'secret' => config('services.recaptcha.secret'),
-            'response' => $recaptcha_response,
-            'remoteip' => IpUtils::anonymize($request->ip()) //anonymize the ip to be GDPR compliant. Otherwise just pass the default ip address
-        ];
-
-        $response = Http::get($url, $body); //dd($response);
-        $result = json_decode($response); //dd($result);
-
-        if ($response->successful() && $result->success == true) { //dd('ifff');
+        
+        // If reCAPTCHA is disabled or verification passed, proceed with login
+        if (true) { //dd('ifff');
             //$request->authenticate();
 
             //$request->session()->regenerate();
@@ -143,10 +159,6 @@ class AdminLoginController extends Controller
             }
 
             return redirect()->intended($this->redirectPath());
-        } else { //dd('elsee');
-            //return redirect()->back()->with('status', 'Please Complete the Recaptcha Again to proceed');
-            $errors = ['g-recaptcha-response' => 'Please Complete the Recaptcha Again to proceed'];
-            return redirect()->back()->withErrors($errors);
         }
     }
 

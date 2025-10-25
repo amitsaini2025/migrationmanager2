@@ -631,6 +631,13 @@
 
             const emails = await response.json();
             console.log('Emails received:', emails);
+            
+            // Debug: Check attachments in received emails
+            emails.forEach((email, index) => {
+                if (email.attachments && email.attachments.length > 0) {
+                    console.log(`Email ${index} (ID: ${email.id}) has ${email.attachments.length} attachments`);
+                }
+            });
 
             // Apply sorting
             const sortedEmails = sortEmails(emails);
@@ -837,6 +844,15 @@
         // Get regular (non-inline) attachments
         const regularAttachments = getRegularAttachments(email.attachments);
         const hasAttachments = regularAttachments.length > 0;
+        
+        // Debug logging
+        console.log('Loading email detail:', {
+            id: email.id,
+            subject: email.subject,
+            attachments: email.attachments,
+            regularAttachments: regularAttachments,
+            hasAttachments: hasAttachments
+        });
 
         // Build attachment list HTML
         let attachmentHtml = '';

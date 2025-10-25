@@ -1124,9 +1124,12 @@
                         </script>
 
 
+                        {{-- Address Auto-Fill Section with Backend API Integration --}}
+                        {{-- This section handles address autocomplete using postcode lookup via backend proxy --}}
                         <meta name="csrf-token" content="{{ csrf_token() }}">
                         <title>Address Auto-Fill</title>
                         <style>
+                            /* Autocomplete dropdown styling */
                             .autocomplete-items {
                                 border: 1px solid #d4d4d4;
                                 border-bottom: none;
@@ -1162,7 +1165,9 @@
                             }
                         </style>
 
+                        {{-- Address Fields Container - Supports multiple addresses with dynamic row addition --}}
                         <div id="address-fields-wrapper">
+                            {{-- Display existing client addresses (readonly mode) --}}
                             @if(count($clientAddresses) > 0)
                                 @foreach($clientAddresses as $index => $address)
                                 <div class="address-fields row mb-3" id="row-{{ $index }}">
@@ -1223,13 +1228,23 @@
                         </div>
 
                         <script>
+                        /**
+                         * Address Management Script
+                         * Features:
+                         * - Dynamic address row addition
+                         * - Postcode-based address lookup via backend API
+                         * - Australian regional code calculation
+                         * - Row validation and freezing mechanism
+                         */
                         $(document).ready(function() {
+                            // Setup CSRF token for all AJAX requests
                             $.ajaxSetup({
                                 headers: {
                                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                                 }
                             });
 
+                            // Add a new editable address row to the form
                             function addNewAddressRow() {
                                 $('.address-fields:last').removeClass('error-row');
 
@@ -1265,6 +1280,7 @@
                             }
 
 
+                            // Validate that current address row has required fields filled
                             function validateCurrentRow() {
                                 var $currentRow = $('.address-fields:last');
                                 var zip = $currentRow.find('input[name="zip[]"]').val().trim();
@@ -1285,12 +1301,13 @@
                                 return true;
                             }
 
+                            // Freeze (lock) the current address row to prevent further editing
                             function freezeCurrentAddressRow() {
                                 var $currentRow = $('.address-fields:last');
                                 // Set the current row's fields to readonly
                                 $currentRow.find('input').attr('readonly', true);
                                 $currentRow.find('button').prop('disabled', true);
-                                $currentRow.addClass('frozen'); // Optionally, add a class to indicate the row is frozen
+                                $currentRow.addClass('frozen'); // Add visual indicator class
                             }
 
                             $(document).on('click', '.add-row-btn', function() {
@@ -1303,9 +1320,15 @@
                                 }
                             });
 
+                            /**
+                             * Calculate Australian Regional Code based on postcode
+                             * Returns regional classification for visa purposes
+                             * @param {string|number} postCode - Australian postcode
+                             * @returns {string} Regional classification (e.g., "Regional City of NSW")
+                             */
                             function getRegionalCodeInfo(postCode)
                             {
-                                //2259, 2264 to 2308, 2500 to 2526, 2528 to 2535 and 2574
+                                // NSW Regional City postcodes: 2259, 2264 to 2308, 2500 to 2526, 2528 to 2535 and 2574
                                 if(
                                     ( postCode ==2259)
                                     ||
@@ -1516,11 +1539,13 @@
                                 return postCodeInfo;
                             }
 
+                            // Handle postcode input - trigger address lookup when 4+ characters entered
                             $(document).on('input', '.postal_code', function() {
                                 var postcode = $(this).val();
                                 var $row = $(this).closest('.address-fields');
 
                                 if (postcode.length > 3) {
+                                    // Call backend API to fetch address suggestions
                                     $.ajax({
                                         url: '{{ route("clients.updateAddress") }}',
                                         method: 'POST',

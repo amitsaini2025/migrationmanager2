@@ -107,7 +107,7 @@ class Admin extends Authenticatable
      */
     public function assignedClients(): HasMany
     {
-        return $this->hasMany(\App\Models\Client::class, 'agent_id');
+        return $this->hasMany(\App\Models\Admin::class, 'agent_id');
     }
 
     /**
@@ -139,7 +139,7 @@ class Admin extends Authenticatable
      */
     public function dobVerifications(): HasMany
     {
-        return $this->hasMany(\App\Models\Client::class, 'dob_verified_by');
+        return $this->hasMany(\App\Models\Admin::class, 'dob_verified_by');
     }
 
     /**
@@ -147,7 +147,7 @@ class Admin extends Authenticatable
      */
     public function phoneVerifications(): HasMany
     {
-        return $this->hasMany(\App\Models\Client::class, 'phone_verified_by');
+        return $this->hasMany(\App\Models\Admin::class, 'phone_verified_by');
     }
 
     /**
@@ -155,7 +155,7 @@ class Admin extends Authenticatable
      */
     public function visaExpiryVerifications(): HasMany
     {
-        return $this->hasMany(\App\Models\Client::class, 'visa_expiry_verified_by');
+        return $this->hasMany(\App\Models\Admin::class, 'visa_expiry_verified_by');
     }
 
     /**

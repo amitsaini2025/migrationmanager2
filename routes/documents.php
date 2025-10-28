@@ -86,13 +86,53 @@ Route::get('/debug-pdf-page/{id}/{page}', function($id, $page) {
     try {
         $document = \App\Models\Document::findOrFail($id);
         $url = $document->myfile;
+        $tmpPdfPath = null;
+        $isLocalFile = false;
         
-        if ($url && file_exists(storage_path('app/public/' . $url))) {
-            $filePath = storage_path('app/public/' . $url);
+        // Check if URL is a full S3 URL or local path
+        if ($url && filter_var($url, FILTER_VALIDATE_URL) && strpos($url, 's3') !== false) {
+            // This is an S3 URL - extract the key
+            $s3Key = null;
+            $parsed = parse_url($url);
+            if (isset($parsed['path'])) {
+                $s3Key = ltrim(urldecode($parsed['path']), '/');
+            }
             
+            if ($s3Key && \Storage::disk('s3')->exists($s3Key)) {
+                // Download PDF from S3 to a temp file
+                $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
+                $pdfStream = \Storage::disk('s3')->get($s3Key);
+                file_put_contents($tmpPdfPath, $pdfStream);
+                \Log::info('Debug route: Downloaded S3 file for preview', ['s3Key' => $s3Key, 'tempPath' => $tmpPdfPath]);
+            }
+        } elseif ($url && file_exists(storage_path('app/public/' . $url))) {
+            // This is a local file path and file exists
+            $tmpPdfPath = storage_path('app/public/' . $url);
+            $isLocalFile = true;
+        } else {
+            // Try to build S3 key from DB fields as fallback
+            if (!empty($document->myfile_key) && !empty($document->doc_type) && !empty($document->client_id)) {
+                $s3Key = $document->client_id . '/' . $document->doc_type . '/' . $document->myfile_key;
+                
+                if (\Storage::disk('s3')->exists($s3Key)) {
+                    // Download PDF from S3 to a temp file
+                    $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
+                    $pdfStream = \Storage::disk('s3')->get($s3Key);
+                    file_put_contents($tmpPdfPath, $pdfStream);
+                    \Log::info('Debug route: Downloaded S3 file via fallback', ['s3Key' => $s3Key, 'tempPath' => $tmpPdfPath]);
+                }
+            }
+        }
+        
+        if ($tmpPdfPath && file_exists($tmpPdfPath)) {
             $pdfService = app(\App\Services\PythonPDFService::class);
             if ($pdfService->isHealthy()) {
-                $result = $pdfService->convertPageToImage($filePath, $page, 150);
+                $result = $pdfService->convertPageToImage($tmpPdfPath, $page, 150);
+                
+                // Clean up temp file (only if it was created from S3, not local file)
+                if (!$isLocalFile) {
+                    @unlink($tmpPdfPath);
+                }
                 
                 if ($result && ($result['success'] ?? false)) {
                     $imageData = base64_decode(explode(',', $result['image_data'])[1]);
@@ -105,10 +145,16 @@ Route::get('/debug-pdf-page/{id}/{page}', function($id, $page) {
                     ]);
                 }
             }
+            
+            // Clean up on failure
+            if (!$isLocalFile && file_exists($tmpPdfPath)) {
+                @unlink($tmpPdfPath);
+            }
         }
         
-        return response()->json(['error' => 'Failed to generate image'], 500);
+        return response()->json(['error' => 'Failed to generate image', 'document_id' => $id, 'page' => $page], 500);
     } catch (\Exception $e) {
+        \Log::error('Debug route error', ['error' => $e->getMessage(), 'document_id' => $id, 'page' => $page]);
         return response()->json(['error' => $e->getMessage()], 500);
     }
 })->name('debug.pdf.page');

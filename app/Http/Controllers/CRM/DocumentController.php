@@ -363,30 +363,31 @@ class DocumentController extends Controller
                 \Log::warning('Ghostscript normalization failed, using original PDF', ['path' => $tempFullPath]);
             }
 
-            // Store the file permanently and update document with file info
-            $permanentPath = 'documents/' . uniqid() . '_' . $uploadedFile->getClientOriginalName();
-            $permanentFullPath = storage_path('app/public/' . $permanentPath);
+            // Upload to S3 instead of local storage
+            $adminId = auth('admin')->id();
+            $docType = 'ad_hoc_documents'; // Category for manually uploaded documents
+            $s3FileName = time() . '_' . $uploadedFile->getClientOriginalName();
+            $s3FilePath = $adminId . '/' . $docType . '/' . $s3FileName;
             
-            // Ensure the documents directory exists
-            $documentsDir = storage_path('app/public/documents');
-            if (!file_exists($documentsDir)) {
-                mkdir($documentsDir, 0777, true);
-            }
+            // Upload to S3
+            Storage::disk('s3')->put($s3FilePath, file_get_contents($pdfToAdd));
+            $s3Url = Storage::disk('s3')->url($s3FilePath);
             
-            // Copy the file to permanent location
-            copy($pdfToAdd, $permanentFullPath);
-            
-            // Update document with file information
+            // Update document with S3 file information
             $document->update([
                 'file_name' => $uploadedFile->getClientOriginalName(),
                 'filetype' => $uploadedFile->getMimeType(),
-                'myfile' => $permanentPath,
+                'myfile' => $s3Url,              // Full S3 URL
+                'myfile_key' => $s3FileName,     // S3 key for reference
+                'doc_type' => $docType,          // Document category
+                'client_id' => $adminId,         // Associated admin ID
                 'file_size' => $uploadedFile->getSize(),
             ]);
             
-            \Log::info('Document file stored successfully', [
+            \Log::info('Document file uploaded to S3 successfully', [
                 'document_id' => $document->id,
-                'file_path' => $permanentPath,
+                's3_url' => $s3Url,
+                's3_path' => $s3FilePath,
                 'file_size' => $uploadedFile->getSize()
             ]);
 
@@ -1632,54 +1633,97 @@ class DocumentController extends Controller
     {
         try {
             $document = Document::findOrFail($id);
-            if ($document->signed_doc_link) {
-                $signedDocUrl = $document->signed_doc_link;
-                
-                // Parse the URL to get the path
-                $parsed = parse_url($signedDocUrl);
-                $urlPath = $parsed['path'] ?? '';
-                
-                // Check if it's a local storage path (contains /storage/)
-                if (strpos($urlPath, '/storage/') !== false) {
-                    // Extract the path after /storage/
-                    $parts = explode('/storage/', $urlPath);
-                    $relativePath = end($parts);
-                    
-                    // Check if file exists in local storage
-                    if (\Storage::disk('public')->exists($relativePath)) {
-                        $filePath = storage_path('app/public/' . $relativePath);
-                        return response()->download($filePath, $document->id . '_signed.pdf');
-                    }
-                }
-                
-                // Try S3 storage
-                if (isset($parsed['path'])) {
-                    // Remove leading slash
-                    $s3Key = ltrim($parsed['path'], '/');
-                    $disk = \Storage::disk('s3');
-                    if ($disk->exists($s3Key)) {
-                        $tempUrl = $disk->temporaryUrl(
-                            $s3Key,
-                            now()->addMinutes(5),
-                            [
-                                'ResponseContentDisposition' => 'attachment; filename="' . $document->id . '_signed.pdf"',
-                            ]
-                        );
-                        return redirect($tempUrl);
-                    }
-                }
-                // Fallback: direct redirect if S3 key not found or file missing
-                return redirect($signedDocUrl);
+            
+            $fileUrl = $document->signed_doc_link;
+            $filename = $document->id . '_signed.pdf';
+            
+            if (!$fileUrl) {
+                return abort(400, 'Missing signed document link');
             }
-            return redirect()->back()->with('error', 'Signed document not found.');
+            
+            \Log::info('Download signed document attempt', [
+                'document_id' => $id,
+                'signed_doc_link' => $fileUrl
+            ]);
+            
+            // Parse the URL to extract storage path
+            $parsed = parse_url($fileUrl);
+            if (!isset($parsed['path'])) {
+                \Log::error('Invalid URL format', ['url' => $fileUrl]);
+                return abort(400, 'Invalid file URL format');
+            }
+            
+            // Extract the path after /storage/ for local storage files
+            $urlPath = $parsed['path'];
+            
+            if (strpos($urlPath, '/storage/') !== false) {
+                // This is a local storage path: /storage/signed/50236_signed.pdf
+                // Extract: signed/50236_signed.pdf
+                $parts = explode('/storage/', $urlPath);
+                $relativePath = end($parts);
+                
+                \Log::info('Checking local storage', [
+                    'relativePath' => $relativePath,
+                    'fullPath' => storage_path('app/public/' . $relativePath),
+                    'exists' => \Storage::disk('public')->exists($relativePath)
+                ]);
+                
+                // Check if file exists in storage/app/public/
+                if (!\Storage::disk('public')->exists($relativePath)) {
+                    \Log::error('File not found in local storage', [
+                        'relativePath' => $relativePath,
+                        'fullPath' => storage_path('app/public/' . $relativePath)
+                    ]);
+                    return abort(404, 'Signed document file not found in storage');
+                }
+                
+                // Direct PHP output - bypass all Laravel/Symfony processing
+                $filePath = storage_path('app/public/' . $relativePath);
+                
+                \Log::info('Attempting direct PHP file output', [
+                    'relativePath' => $relativePath,
+                    'filePath' => $filePath,
+                    'filename' => $filename,
+                    'filesize' => filesize($filePath)
+                ]);
+                
+                // Clear any output buffers
+                if (ob_get_level()) {
+                    ob_end_clean();
+                }
+                
+                // Set headers directly
+                header('Content-Type: application/pdf');
+                header('Content-Disposition: attachment; filename="' . $filename . '"');
+                header('Content-Length: ' . filesize($filePath));
+                header('Cache-Control: no-cache, must-revalidate');
+                header('Pragma: public');
+                header('Expires: 0');
+                
+                // Output file
+                readfile($filePath);
+                
+                \Log::info('File output completed');
+                
+                exit;
+            }
+            
+            // If not a /storage/ path, treat as direct file path
+            \Log::error('Unexpected URL format - not a storage path', [
+                'url' => $fileUrl,
+                'path' => $urlPath
+            ]);
+            
+            return abort(400, 'Invalid storage URL format');
+            
         } catch (\Exception $e) {
-            return $this->handleError(
-                $e,
-                'download_signed_document',
-                'An error occurred while downloading the document.',
-                'back',
-                ['document_id' => $id]
-            );
+            \Log::error('Error downloading signed document', [
+                'document_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return abort(500, 'Error generating download link: ' . $e->getMessage());
         }
     }
 

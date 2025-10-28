@@ -57,6 +57,11 @@ return [
     |
     */
 
+    'python_pdf' => [
+        'url' => env('PYTHON_PDF_SERVICE_URL', 'http://127.0.0.1:5000'),
+        'timeout' => env('PYTHON_PDF_SERVICE_TIMEOUT', 60),
+    ],
+
     'python_converter' => [
         'url' => env('PYTHON_CONVERTER_URL', 'http://localhost:5000'),
         'timeout' => env('PYTHON_CONVERTER_TIMEOUT', 120),

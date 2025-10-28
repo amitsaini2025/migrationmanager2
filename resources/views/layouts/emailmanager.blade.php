@@ -115,6 +115,13 @@
 	<script src="{{asset('js/custom.js')}}"></script>
 	<script>
 		$(document).ready(function () {
+			// Setup CSRF token for all AJAX requests
+			$.ajaxSetup({
+				headers: {
+					'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+				}
+			});
+			
 			$('.js-data-example-ajaxccsearch').select2({
 
 		 closeOnSelect: true,

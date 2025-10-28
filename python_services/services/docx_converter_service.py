@@ -82,17 +82,22 @@ class DocxConverterService:
         if not self.libreoffice_path:
             return False
         
-        try:
-            result = subprocess.run(
-                [self.libreoffice_path, '--version'],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
-            return result.returncode == 0
-        except Exception as e:
-            logger.warning(f"LibreOffice check failed: {str(e)}")
-            return False
+        # On Windows, LibreOffice --version opens a GUI window
+        # Just check if the file exists instead of running it
+        return os.path.exists(self.libreoffice_path)
+        
+        # Original check (disabled to prevent GUI window)
+        # try:
+        #     result = subprocess.run(
+        #         [self.libreoffice_path, '--version'],
+        #         capture_output=True,
+        #         text=True,
+        #         timeout=10
+        #     )
+        #     return result.returncode == 0
+        # except Exception as e:
+        #     logger.warning(f"LibreOffice check failed: {str(e)}")
+        #     return False
     
     def convert_to_pdf(self, file_content: bytes, filename: str) -> Dict[str, Any]:
         """

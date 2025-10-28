@@ -535,6 +535,13 @@
     <script src="{{asset('js/custom.js')}}"></script>
     <script>
         $(document).ready(function () {
+            // Setup CSRF token for all AJAX requests
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
+            
             $(".tel_input").on("blur", function() {
                 this.value =  this.value;
             });

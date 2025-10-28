@@ -422,6 +422,13 @@ body, html {
 @push('scripts')
 <script>
 jQuery(document).ready(function($){
+    // Setup CSRF token for all AJAX requests
+    $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
+    });
+    
     $(document).delegate('.attendsessionforclient', 'click', function(){
         var waitingtype = $(this).attr('data-waitingtype');
         var appliid = $(this).attr('data-id');

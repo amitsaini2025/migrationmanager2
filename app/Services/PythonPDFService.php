@@ -30,7 +30,7 @@ class PythonPDFService
         }
 
         try {
-            $response = Http::timeout(5)->get($this->baseUrl . '/health');
+            $response = Http::timeout(15)->get($this->baseUrl . '/health');
             
             if ($response->successful()) {
                 $data = $response->json();

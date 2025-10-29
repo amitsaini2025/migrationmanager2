@@ -25,7 +25,17 @@ class DashboardController extends Controller
     {
         $dashboardData = $this->dashboardService->getDashboardData($request);
         
-        return view('crm.dashboard-optimized', $dashboardData);
+        return view('crm.dashboard-optimized-test', $dashboardData);
+    }
+
+    /**
+     * Show the test dashboard for experiments
+     */
+    public function indexTest(DashboardRequest $request)
+    {
+        $dashboardData = $this->dashboardService->getDashboardData($request);
+        
+        return view('crm.dashboard-optimized-test', $dashboardData);
     }
 
     /**

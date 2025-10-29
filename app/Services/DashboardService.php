@@ -79,20 +79,30 @@ class DashboardService
 
     /**
      * Get notes data with proper relationships
+     * Ordered by urgency: overdue first, then by deadline date
      */
     private function getNotesData($user)
     {
-        $query = Note::with(['client:id,first_name,last_name,client_id'])
+        $query = Note::with(['client:id,first_name,last_name,client_id', 'assignedUser:id,first_name,last_name'])
             ->whereNotNull('note_deadline')
             ->where('status', '!=', 1);
 
+        // Admin sees notes assigned to them OR unassigned notes
+        // Other roles only see notes assigned to them
         if ($user->role == 1) {
-            // Admin sees all notes
+            $query->where(function($q) use ($user) {
+                $q->where('assigned_to', $user->id)
+                  ->orWhereNull('assigned_to')
+                  ->orWhere('assigned_to', 0);
+            });
         } else {
             $query->where('assigned_to', $user->id);
         }
 
-        return $query->orderBy('note_deadline', 'DESC')->get();
+        // Order by deadline ASC to show most urgent (earliest deadlines) first
+        return $query->orderBy('note_deadline', 'ASC')
+            ->limit(20) // Limit to 20 most urgent notes
+            ->get();
     }
 
     /**
@@ -102,7 +112,8 @@ class DashboardService
     {
         $query = ClientMatter::with([
                 'client:id,first_name,last_name,client_id',
-                'matter:id,title'
+                'matter:id,title',
+                'personResponsible:id,first_name,last_name'
             ])
             ->where('matter_status', 1)
             ->where('updated_at', '>=', Carbon::now()->subDays(100));
@@ -110,8 +121,87 @@ class DashboardService
         // Apply role-based filtering
         $this->applyRoleBasedFiltering($query, $user);
 
-        return $query->orderByDesc('updated_at')
+        $cases = $query->orderByDesc('updated_at')
+            ->limit(50) // Limit to 50 most recent cases to avoid timeout
             ->get();
+        
+        // Enrich only the first 20 cases with activity (those displayed on dashboard)
+        // This prevents timeout when there are thousands of cases
+        foreach ($cases->take(20) as $case) {
+            $case->latest_activity = $this->getLatestActivity($case);
+        }
+        
+        // Set default activity for remaining cases
+        foreach ($cases->slice(20) as $case) {
+            $case->latest_activity = [
+                'type' => 'default',
+                'date' => $case->updated_at
+            ];
+        }
+
+        return $cases;
+    }
+
+    /**
+     * Get the latest activity for a case
+     * Optimized to check only the most relevant activity sources
+     */
+    private function getLatestActivity($case)
+    {
+        $activities = [];
+        $clientId = $case->client_id;
+        
+        try {
+            // Use a single optimized query to get the most recent activity from each source
+            // This is much faster than multiple separate queries
+            
+            // Check activities_log first (most common source)
+            $latestActivityLog = ActivitiesLog::where('client_id', $clientId)
+                ->select('subject', 'created_at')
+                ->latest('created_at')
+                ->first();
+            
+            if ($latestActivityLog) {
+                $subject = strtolower($latestActivityLog->subject ?? '');
+                $type = 'default';
+                
+                if (str_contains($subject, 'stage') || str_contains($subject, 'workflow')) {
+                    $type = 'stage_updated';
+                } elseif (str_contains($subject, 'status')) {
+                    $type = 'status_changed';
+                } elseif (str_contains($subject, 'appointment') || str_contains($subject, 'meeting')) {
+                    $type = 'appointment_scheduled';
+                } elseif (str_contains($subject, 'payment') || str_contains($subject, 'invoice')) {
+                    $type = 'payment_received';
+                } elseif (str_contains($subject, 'note')) {
+                    $type = 'note_added';
+                } elseif (str_contains($subject, 'email')) {
+                    $type = 'email_sent';
+                } elseif (str_contains($subject, 'document') || str_contains($subject, 'upload')) {
+                    $type = 'document_uploaded';
+                } elseif (str_contains($subject, 'sign')) {
+                    $type = 'signed';
+                }
+                
+                return [
+                    'type' => $type,
+                    'date' => $latestActivityLog->created_at
+                ];
+            }
+            
+            // Fallback to case update time
+            return [
+                'type' => 'default',
+                'date' => $case->updated_at
+            ];
+            
+        } catch (\Exception $e) {
+            Log::debug('Error fetching activity: ' . $e->getMessage());
+            return [
+                'type' => 'default',
+                'date' => $case->updated_at
+            ];
+        }
     }
 
     /**
@@ -150,7 +240,14 @@ class DashboardService
     {
         $query = Note::whereNotNull('note_deadline')->where('status', '!=', 1);
 
-        if ($user->role != 1) {
+        // Admin sees notes assigned to them OR unassigned notes
+        if ($user->role == 1) {
+            $query->where(function($q) use ($user) {
+                $q->where('assigned_to', $user->id)
+                  ->orWhereNull('assigned_to')
+                  ->orWhere('assigned_to', 0);
+            });
+        } else {
             $query->where('assigned_to', $user->id);
         }
 

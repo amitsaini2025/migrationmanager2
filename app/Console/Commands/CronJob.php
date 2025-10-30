@@ -15,7 +15,7 @@ use App\Models\ShareInvoice;
  use App\Mail\CommonMail;
 use App\Mail\InvoiceEmailManager;
 use Mail;
-use Config;
+
 class CronJob extends Command
 {
     /**
@@ -165,19 +165,18 @@ class CronJob extends Command
 		{
 			$subject		=	$subject;	
 		}	
-		$explodeTo = explode(';', $to);//for multiple and single to
-            $invoicearray['subject'] = $subject;
-            $invoicearray['from'] = $sender;
-            $invoicearray['content'] = $emailContent;
-		Mail::to($explodeTo)->queue(new InvoiceEmailManager($invoicearray));
-	
-		// check for failures
-		if (Mail::failures()) {
+		try {
+			$explodeTo = explode(';', $to);//for multiple and single to
+			$invoicearray['subject'] = $subject;
+			$invoicearray['from'] = $sender;
+			$invoicearray['content'] = $emailContent;
+			Mail::to($explodeTo)->queue(new InvoiceEmailManager($invoicearray));
+			
+			return true;
+		} catch (\Exception $e) {
+			\Log::error('Email sending failed in CronJob: ' . $e->getMessage());
 			return false;
 		}
-
-		// otherwise everything is okay ...
-		return true;
 		
 	}
 }

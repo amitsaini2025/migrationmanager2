@@ -12,7 +12,6 @@ use App\Models\UserRole;
 use App\Models\UserType;
 
 use Auth;
-use Config;
 
 class UserController extends Controller
 {
@@ -130,7 +129,7 @@ class UserController extends Controller
 			}*/
 
 			if(!$saved) {
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			} else {
 				return redirect()->route('adminconsole.system.users.active')->with('success', 'User added Successfully');
 			}
@@ -183,7 +182,7 @@ class UserController extends Controller
 		}
 		else
 		{
-			return redirect()->route('adminconsole.system.users.index')->with('error', Config::get('constants.unauthorized'));
+			return redirect()->route('adminconsole.system.users.index')->with('error', config('constants.unauthorized'));
 		}
 	}
 
@@ -247,7 +246,7 @@ class UserController extends Controller
 
 		if(!$saved)
 		{
-			return redirect()->back()->with('error', Config::get('constants.server_error'));
+			return redirect()->back()->with('error', config('constants.server_error'));
 		}
 		else
 		{
@@ -270,7 +269,7 @@ class UserController extends Controller
 
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 
 			else
@@ -370,7 +369,7 @@ class UserController extends Controller
 			/* Profile Image Upload Function Start */
 					if($request->hasfile('profile_img'))
 					{
-						$profile_img = $this->uploadFile($request->file('profile_img'), Config::get('constants.profile_imgs'));
+						$profile_img = $this->uploadFile($request->file('profile_img'), config('constants.profile_imgs'));
 					}
 					else
 					{
@@ -382,7 +381,7 @@ class UserController extends Controller
 
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
@@ -422,7 +421,7 @@ class UserController extends Controller
 		}
 		else
 		{
-			return redirect()->route('adminconsole.system.users.clientlist')->with('error', Config::get('constants.unauthorized'));
+			return redirect()->route('adminconsole.system.users.clientlist')->with('error', config('constants.unauthorized'));
 		}
 	}
 
@@ -479,11 +478,11 @@ class UserController extends Controller
 			/* Unlink File Function Start */
 				if($requestData['profile_img'] != '')
 					{
-						$this->unlinkFile($requestData['old_profile_img'], Config::get('constants.profile_imgs'));
+						$this->unlinkFile($requestData['old_profile_img'], config('constants.profile_imgs'));
 					}
 			/* Unlink File Function End */
 
-			$profile_img = $this->uploadFile($request->file('profile_img'), Config::get('constants.profile_imgs'));
+			$profile_img = $this->uploadFile($request->file('profile_img'), config('constants.profile_imgs'));
 		}
 		else
 		{
@@ -496,7 +495,7 @@ class UserController extends Controller
 
 		if(!$saved)
 		{
-			return redirect()->back()->with('error', Config::get('constants.server_error'));
+			return redirect()->back()->with('error', config('constants.server_error'));
 		}
 		else
 		{

@@ -17,7 +17,6 @@ use PhpOffice\PhpWord\TemplateProcessor;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
 use Auth;
-use Config;
 
 /**
  * ClientFormGenerationController

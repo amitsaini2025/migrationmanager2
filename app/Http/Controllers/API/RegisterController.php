@@ -9,7 +9,6 @@ use App\Http\Controllers\API\BaseController as BaseController;
 use App\Models\User;
 use App\Models\Admin;
 use Validator;
-use Config;
 
 class RegisterController extends BaseController
 {
@@ -96,7 +95,7 @@ $wedding_anniversary = '';
 		/*if($user)
 		{
 			 $replace = array('{logo}', '{first_name}', '{last_name}', '{year}');					
-			$replace_with = array(\URL::to('/').Config::get('constants.logoImg'), @$requestData['first_name'], @$requestData['last_name'], date('Y'));
+			$replace_with = array(\URL::to('/').config('constants.logoImg'), @$requestData['first_name'], @$requestData['last_name'], date('Y'));
 			
 			$this->send_email_template($replace, $replace_with, 'signup', @$requestData['email']); 
 		

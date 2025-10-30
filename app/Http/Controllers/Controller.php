@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Routing\Controller as BaseController;
-use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\DB;
 
@@ -25,7 +24,7 @@ use Illuminate\Support\Facades\Mail;
 
 class Controller extends BaseController
 {
-    use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
+    use AuthorizesRequests;
 
 	public function __construct()
     {
@@ -126,53 +125,42 @@ class Controller extends BaseController
 		}
 		$explodeTo = explode(';', $to);//for multiple and single to
 
-		// Use the custom mail service for handling dynamic SMTP configurations
-		$result = \App\Services\CustomMailService::sendEmailTemplate(
-			$replace, 
-			$replace_with, 
-			$alias, 
-			$to, 
-			$subject, 
-			$sender, 
-			$sendername
-		);
-
-		// check for failures
-		if (Mail::failures()) {
+		try {
+			// Use the custom mail service for handling dynamic SMTP configurations
+			$result = \App\Services\CustomMailService::sendEmailTemplate(
+				$replace, 
+				$replace_with, 
+				$alias, 
+				$to, 
+				$subject, 
+				$sender, 
+				$sendername
+			);
+			
+			return true;
+		} catch (\Exception $e) {
+			\Log::error('Email sending failed: ' . $e->getMessage());
 			return false;
 		}
-
-		if(count(Mail::failures()) > 0){
-			// Handle failures
-			$failedRecipients = Mail::failures();
-			foreach ($failedRecipients as $email) {
-				// Handle failure for $email
-				dd($email);
-			}
-			return false;
-		}
-
-		// otherwise everything is okay ...
-		return true;
 
 	}
 
 	protected function send_compose_template($to = null, $subject = null, $sender = null,$content, $sendername, $array = array(), $cc = array())
 	{
 
-		$explodeTo = explode(';', $to);//for multiple and single to
-		$q = Mail::to($explodeTo);
+		try {
+			$explodeTo = explode(';', $to);//for multiple and single to
+			$q = Mail::to($explodeTo);
 			if(!empty($cc)){
 				$q->cc($cc);
 			}
-		$q->send(new CommonMail($content, $subject, $sender, $sendername, $array));
-        // check for failures
-		if ( Mail::flushMacros() ) { //Mail::failures()
-            return false;
+			$q->send(new CommonMail($content, $subject, $sender, $sendername, $array));
+			
+			return true;
+		} catch (\Exception $e) {
+			\Log::error('Email sending failed: ' . $e->getMessage());
+			return false;
 		}
-
-		// otherwise everything is okay ...
-		return true;
 
 	}
 	protected function send_attachment_email_template($replace = array(), $replace_with = array(), $alias = null, $to = null, $subject = null, $sender = null,$invoicearray)
@@ -184,19 +172,18 @@ class Controller extends BaseController
 		{
 			$subject		=	$subject;
 		}
-		$explodeTo = explode(';', $to);//for multiple and single to
-            $invoicearray['subject'] = $subject;
-            $invoicearray['from'] = $sender;
-            $invoicearray['content'] = $emailContent;
-		Mail::to($explodeTo)->queue(new InvoiceEmailManager($invoicearray));
-
-		// check for failures
-		if (Mail::failures()) {
+		try {
+			$explodeTo = explode(';', $to);//for multiple and single to
+			$invoicearray['subject'] = $subject;
+			$invoicearray['from'] = $sender;
+			$invoicearray['content'] = $emailContent;
+			Mail::to($explodeTo)->queue(new InvoiceEmailManager($invoicearray));
+			
+			return true;
+		} catch (\Exception $e) {
+			\Log::error('Email sending failed: ' . $e->getMessage());
 			return false;
 		}
-
-		// otherwise everything is okay ...
-		return true;
 
 	}
 
@@ -209,35 +196,33 @@ class Controller extends BaseController
 		{
 			$subject		=	$subject;
 		}
-		$explodeTo = explode(';', $to);//for multiple and single to
-            $invoicearray['subject'] = $subject;
-            $invoicearray['from'] = $sender;
-            $invoicearray['content'] = $emailContent;
-		Mail::to($explodeTo)->queue(new MultipleattachmentEmailManager($invoicearray));
-
-		// check for failures
-		if (Mail::failures()) {
+		try {
+			$explodeTo = explode(';', $to);//for multiple and single to
+			$invoicearray['subject'] = $subject;
+			$invoicearray['from'] = $sender;
+			$invoicearray['content'] = $emailContent;
+			Mail::to($explodeTo)->queue(new MultipleattachmentEmailManager($invoicearray));
+			
+			return true;
+		} catch (\Exception $e) {
+			\Log::error('Email sending failed: ' . $e->getMessage());
 			return false;
 		}
-
-		// otherwise everything is okay ...
-		return true;
 
 	}
 
 	protected function send_multiple_attach_compose($to = null, $subject = null,$sender,$invoicearray)
 	{
-		$explodeTo = explode(';', $to);//for multiple and single to
-            $invoicearray['from'] = $sender;
-		Mail::to($explodeTo)->queue(new MultipleattachmentEmailManager($invoicearray));
-
-		// check for failures
-		if (Mail::failures()) {
+		try {
+			$explodeTo = explode(';', $to);//for multiple and single to
+			$invoicearray['from'] = $sender;
+			Mail::to($explodeTo)->queue(new MultipleattachmentEmailManager($invoicearray));
+			
+			return true;
+		} catch (\Exception $e) {
+			\Log::error('Email sending failed: ' . $e->getMessage());
 			return false;
 		}
-
-		// otherwise everything is okay ...
-		return true;
 
 	}
 
@@ -289,7 +274,7 @@ class Controller extends BaseController
 	public function createSlug($userid, $table, $title, $id = 0)
     {
         // Normalize the title
-        $slug = str_slug($title);
+        $slug = Str::slug($title);
 
         // Get any that could possibly be related.
         // This cuts the queries down by doing it once.
@@ -322,7 +307,7 @@ class Controller extends BaseController
 	public function createlocSlug($table, $title, $id = 0)
     {
         // Normalize the title
-        $slug = str_slug($title);
+        $slug = Str::slug($title);
 
         // Get any that could possibly be related.
         // This cuts the queries down by doing it once.
@@ -468,7 +453,7 @@ class Controller extends BaseController
 	public function createEmailSlug($table, $title, $id = 0)
     {
         // Normalize the title
-        $slug = str_slug($title);
+        $slug = Str::slug($title);
 
         // Get any that could possibly be related.
         // This cuts the queries down by doing it once.

@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 use App\Models\Matter;
-use Config;
 
 class MatterController extends Controller
 {
@@ -82,7 +81,7 @@ class MatterController extends Controller
             $saved = $obj->save();
             if (!$saved)
             {
-                return redirect()->back()->with('error', Config::get('constants.server_error'));
+                return redirect()->back()->with('error', config('constants.server_error'));
             }
             else
             {
@@ -112,7 +111,7 @@ class MatterController extends Controller
         }
         else
         {
-            return redirect()->route('adminconsole.features.matter.index')->with('error', Config::get('constants.unauthorized'));
+            return redirect()->route('adminconsole.features.matter.index')->with('error', config('constants.unauthorized'));
         }
     }
 
@@ -158,7 +157,7 @@ class MatterController extends Controller
         $saved = $obj->save();
         if (!$saved)
         {
-            return redirect()->back()->with('error', Config::get('constants.server_error'));
+            return redirect()->back()->with('error', config('constants.server_error'));
         }
         else
         {

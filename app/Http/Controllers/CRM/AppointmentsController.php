@@ -315,7 +315,7 @@ class AppointmentsController extends Controller
 			$objs->save();
             return redirect()->route('appointments.index')->with('success','Appointment updated successfully');
 		} else {
-			return redirect()->route('appointments.index')->with('error',Config::get('constants.server_error') );
+			return redirect()->route('appointments.index')->with('error',config('constants.server_error') );
 		}
 
         //$data['time']= Carbon::parse($request->time)->format('H:i:s');
@@ -1258,7 +1258,7 @@ public function update_apppointment_comment(Request $request){
             //return Redirect::to('/appointments-cal')->with('success', 'Appointment updated successfully.');
             return Redirect()->back()->with('success', 'Appointment updated successfully.');
         } else {
-            return redirect()->back()->with('error', Config::get('constants.server_error'));
+            return redirect()->back()->with('error', config('constants.server_error'));
         }
 
     }

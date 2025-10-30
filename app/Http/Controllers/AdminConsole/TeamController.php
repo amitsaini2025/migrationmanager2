@@ -10,8 +10,7 @@ use Illuminate\Support\Facades\Redirect;
 use App\Models\Admin;
 use App\Models\Team; 
   
-use Auth; 
-use Config;
+use Auth;
 
 class TeamController extends Controller
 {
@@ -73,7 +72,7 @@ class TeamController extends Controller
 		}
 		else
 		{
-			return redirect()->route('adminconsole.system.teams.index')->with('error', Config::get('constants.unauthorized'));
+			return redirect()->route('adminconsole.system.teams.index')->with('error', config('constants.unauthorized'));
 		}
 	}
 
@@ -99,7 +98,7 @@ class TeamController extends Controller
 		
 		if(!$saved)
 		{
-			return redirect()->back()->with('error', Config::get('constants.server_error'));
+			return redirect()->back()->with('error', config('constants.server_error'));
 		}
 		else
 		{
@@ -125,7 +124,7 @@ class TeamController extends Controller
 			
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{

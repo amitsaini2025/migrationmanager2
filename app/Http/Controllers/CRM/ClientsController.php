@@ -15,7 +15,6 @@ use App\Models\ServiceFeeOption;
 use App\Models\ServiceFeeOptionType;
 use App\Models\OnlineForm;
 use Auth;
-use Config;
 use PDF;
 use App\Models\CheckinLog;
 use App\Models\Note;
@@ -1229,7 +1228,7 @@ class ClientsController extends Controller
                 return Redirect::to('/clients')->with('error', 'Client does not exist.');
             }
         } else {
-            return Redirect::to('/clients')->with('error', Config::get('constants.unauthorized'));
+            return Redirect::to('/clients')->with('error', config('constants.unauthorized'));
         }
     }
 
@@ -3474,7 +3473,7 @@ class ClientsController extends Controller
 
 			$saved = $obj->save();
             if (!$saved) {
-                return redirect()->back()->with('error', Config::get('constants.server_error'));
+                return redirect()->back()->with('error', config('constants.server_error'));
             }
 
             // Update service taken (unchanged)
@@ -4331,7 +4330,7 @@ class ClientsController extends Controller
                 return redirect()->route('clients.index')->with('error', 'Clients Not Exist');
             }
         } else {
-            return redirect()->route('clients.index')->with('error', Config::get('constants.unauthorized'));
+            return redirect()->route('clients.index')->with('error', config('constants.unauthorized'));
         }
     }
 
@@ -4909,7 +4908,7 @@ class ClientsController extends Controller
 		$obj->client_id		=  @$requestData['client_id'];
 		$saved				=	$obj->save();
 		if(!$saved) {
-            return redirect()->back()->with('error', Config::get('constants.server_error'));
+            return redirect()->back()->with('error', config('constants.server_error'));
         } else {
             return redirect()->back()->with('success', 'Email uploaded Successfully');
         }
@@ -7559,7 +7558,7 @@ class ClientsController extends Controller
                 $fileName = $file->getClientOriginalName();
                 $explodeFileName = explode('.', $fileName);
 
-                //$document_upload = $this->uploadrenameFile($file, Config::get('constants.documents'));
+                //$document_upload = $this->uploadrenameFile($file, config('constants.documents'));
 
                 //$file = $request->file('document_upload');
                 $name = time() . $file->getClientOriginalName();
@@ -7706,7 +7705,7 @@ class ClientsController extends Controller
                 $fileName = $file->getClientOriginalName();
                 $explodeFileName = explode('.', $fileName);
 
-                //$document_upload = $this->uploadrenameFile($file, Config::get('constants.documents'));
+                //$document_upload = $this->uploadrenameFile($file, config('constants.documents'));
 
                 //$file = $request->file('document_upload');
                 $name = time() . $file->getClientOriginalName();
@@ -7853,7 +7852,7 @@ class ClientsController extends Controller
                 $fileName = $file->getClientOriginalName();
                 $explodeFileName = explode('.', $fileName);
 
-                //$document_upload = $this->uploadrenameFile($file, Config::get('constants.documents'));
+                //$document_upload = $this->uploadrenameFile($file, config('constants.documents'));
 
                 //$file = $request->file('document_upload');
                 $name = time() . $file->getClientOriginalName();
@@ -8490,12 +8489,12 @@ class ClientsController extends Controller
                 }
             }
             if(!$saved_mail_report_info) {
-                return redirect()->back()->with('error', Config::get('constants.server_error'));
+                return redirect()->back()->with('error', config('constants.server_error'));
             } else {
                 return redirect()->back()->with('success', 'Inbox email re-assigned successfully');
             }
         } else {
-            return redirect()->back()->with('error', Config::get('constants.server_error'));
+            return redirect()->back()->with('error', config('constants.server_error'));
 		}
     }
 
@@ -8569,12 +8568,12 @@ class ClientsController extends Controller
                 }
             }
             if(!$saved_mail_report_info) {
-                return redirect()->back()->with('error', Config::get('constants.server_error'));
+                return redirect()->back()->with('error', config('constants.server_error'));
             } else {
                 return redirect()->back()->with('success', 'Sent email re-assigned successfully');
             }
         } else {
-            return redirect()->back()->with('error', Config::get('constants.server_error'));
+            return redirect()->back()->with('error', config('constants.server_error'));
 		}
     }
 
@@ -10917,7 +10916,7 @@ class ClientsController extends Controller
                 return Redirect::to('/clients')->with('error', 'Clients Not Exist');
             }
         } else {
-            return Redirect::to('/clients')->with('error', Config::get('constants.unauthorized'));
+            return Redirect::to('/clients')->with('error', config('constants.unauthorized'));
         }
 	}
 

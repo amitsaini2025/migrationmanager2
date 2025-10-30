@@ -30,7 +30,6 @@ use App\Models\ActivitiesLog;
 use App\Models\ClientPartner;
 use Illuminate\Support\Facades\Log;
 use Auth;
-use Config;
 
 /**
  * ClientPersonalDetailsController
@@ -1574,7 +1573,7 @@ class ClientPersonalDetailsController extends Controller
         }
         //dd($route);
         if(!$saved) {
-            return redirect()->back()->with('error', Config::get('constants.server_error'));
+            return redirect()->back()->with('error', config('constants.server_error'));
         } else if( $route ==url('/assignee')) {
             //$subject = 'Lead status has changed to '.@$requestData['status'].' from '. \Auth::user()->first_name;
             $subject = 'Lead status has changed from '. \Auth::user()->first_name;
@@ -1622,7 +1621,7 @@ class ClientPersonalDetailsController extends Controller
                 return Redirect::to('/clients')->with('error', 'Clients Not Exist');
             }
         } else {
-            return Redirect::to('/clients')->with('error', Config::get('constants.unauthorized'));
+            return Redirect::to('/clients')->with('error', config('constants.unauthorized'));
         }
     }
 }

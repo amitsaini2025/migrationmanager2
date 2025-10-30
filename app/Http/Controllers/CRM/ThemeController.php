@@ -11,8 +11,7 @@ use App\Models\Admin;
 use App\HolidayTheme;
  
 use Auth;
-use Config;
- 
+
 class ThemeController extends Controller
 {
     /**
@@ -93,7 +92,7 @@ class ThemeController extends Controller
 			$requestData 		= 	$request->all();
 			if($request->hasfile('image')) 
 					{	
-						$topinclu_image = $this->uploadFile($request->file('image'), Config::get('constants.themes_img')); 
+						$topinclu_image = $this->uploadFile($request->file('image'), config('constants.themes_img')); 
 					}
 					else
 					{
@@ -108,7 +107,7 @@ class ThemeController extends Controller
 			
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
@@ -141,11 +140,11 @@ class ThemeController extends Controller
 				/* Unlink File Function Start */ 
 					if($requestData['image'] != '')
 						{
-							$this->unlinkFile($requestData['old_image'], Config::get('constants.themes_img'));
+							$this->unlinkFile($requestData['old_image'], config('constants.themes_img'));
 						}
 				/* Unlink File Function End */
 				
-				$topinclu_image = $this->uploadFile($request->file('image'), Config::get('constants.themes_img'));
+				$topinclu_image = $this->uploadFile($request->file('image'), config('constants.themes_img'));
 			}
 			else
 			{
@@ -161,7 +160,7 @@ class ThemeController extends Controller
 			
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
@@ -185,7 +184,7 @@ class ThemeController extends Controller
 			}
 			else
 			{
-				return Redirect::to('/themes')->with('error', Config::get('constants.unauthorized'));
+				return Redirect::to('/themes')->with('error', config('constants.unauthorized'));
 			}		
 		}				
 	}

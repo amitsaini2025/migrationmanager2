@@ -10,8 +10,7 @@ use Illuminate\Support\Facades\Redirect;
 use App\Models\Admin;
 use App\Models\UploadChecklist; 
   
-use Auth; 
-use Config;
+use Auth;
 
 class UploadChecklistController extends Controller
 {
@@ -54,7 +53,7 @@ class UploadChecklistController extends Controller
 			/* Profile Image Upload Function Start */						  
 			if($request->hasfile('checklists')) 
 			{	
-				$checklists = $this->uploadFile($request->file('checklists'), Config::get('constants.checklists'));
+				$checklists = $this->uploadFile($request->file('checklists'), config('constants.checklists'));
 			}
 			else
 			{
@@ -66,7 +65,7 @@ class UploadChecklistController extends Controller
 			
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{

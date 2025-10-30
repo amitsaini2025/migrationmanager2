@@ -10,8 +10,7 @@ use Illuminate\Support\Facades\Redirect;
 use App\Models\Admin;
 use App\Models\Tag; 
   
-use Auth; 
-use Config;
+use Auth;
 
 class TagController extends Controller
 {
@@ -77,7 +76,7 @@ class TagController extends Controller
 			
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
@@ -110,7 +109,7 @@ class TagController extends Controller
 		} 
 		else
 		{
-			return redirect()->route('adminconsole.features.tags.index')->with('error', Config::get('constants.unauthorized'));
+			return redirect()->route('adminconsole.features.tags.index')->with('error', config('constants.unauthorized'));
 		}		 
 	}
 
@@ -138,7 +137,7 @@ class TagController extends Controller
 		
 		if(!$saved)
 		{
-			return redirect()->back()->with('error', Config::get('constants.server_error'));
+			return redirect()->back()->with('error', config('constants.server_error'));
 		}
 		else
 		{

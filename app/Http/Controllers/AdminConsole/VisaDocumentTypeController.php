@@ -11,7 +11,6 @@ use App\Models\Admin;
 use App\Models\VisaDocumentType;
 
 use Auth;
-use Config;
 
 class VisaDocumentTypeController extends Controller
 {
@@ -59,7 +58,7 @@ class VisaDocumentTypeController extends Controller
 			$saved	=	$obj->save();
             if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
@@ -85,7 +84,7 @@ class VisaDocumentTypeController extends Controller
 				return redirect()->route('adminconsole.features.visadocumenttype.index')->with('error', 'Visa Document Type Not Exist');
 			}
 		} else {
-			return redirect()->route('adminconsole.features.visadocumenttype.index')->with('error', Config::get('constants.unauthorized'));
+			return redirect()->route('adminconsole.features.visadocumenttype.index')->with('error', config('constants.unauthorized'));
 		}
     }
 
@@ -110,7 +109,7 @@ class VisaDocumentTypeController extends Controller
         $saved = $obj->save();
         
         if(!$saved) {
-			return redirect()->back()->with('error', Config::get('constants.server_error'));
+			return redirect()->back()->with('error', config('constants.server_error'));
 		} else {
 			return redirect()->route('adminconsole.features.visadocumenttype.index')->with('success', 'Visa Document Type Updated Successfully');
 		}

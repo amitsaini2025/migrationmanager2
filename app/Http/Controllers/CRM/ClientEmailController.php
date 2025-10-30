@@ -11,7 +11,6 @@ use App\Models\Admin;
 use App\Models\EmailRecord;
 use App\Models\ActivitiesLog;
 use Auth;
-use Config;
 use Hfig\MAPI;
 use Hfig\MAPI\OLE\Pear;
 use Hfig\MAPI\Message\Msg;

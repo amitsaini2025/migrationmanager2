@@ -12,7 +12,6 @@ use App\Models\CheckinLog;
 use App\Models\CheckinHistory;
 
 use Auth;
-use Config;
 
 class OfficeVisitController extends Controller
 {
@@ -44,7 +43,7 @@ class OfficeVisitController extends Controller
 		$saved = $obj->save();
         if(!$saved)
 		{
-			return redirect()->back()->with('error', Config::get('constants.server_error'));
+			return redirect()->back()->with('error', config('constants.server_error'));
 		}
 		else
 		{

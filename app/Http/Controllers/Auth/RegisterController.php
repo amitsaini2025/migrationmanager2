@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Http\Request;
-use Config;
+use Illuminate\Support\Str;
 use DB;
 
 class RegisterController extends Controller
@@ -97,7 +97,7 @@ class RegisterController extends Controller
 		{	
 			$verifyUser = VerifyUser::create([
 				'user_id' => $result->id,
-				'token' => str_random(40)
+				'token' => Str::random(40)
 			]);
 		$tokenurl = \URL::to('/user/verify/'.$verifyUser->token);
 	$replaceav = array('{company_logo}','{emailid}','{tokenemail}');

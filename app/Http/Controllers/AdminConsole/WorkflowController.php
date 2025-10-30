@@ -12,7 +12,6 @@ use App\Models\Workflow;
 use App\Models\WorkflowStage;
 
 use Auth;
-use Config;
 
 class WorkflowController extends Controller
 {
@@ -75,7 +74,7 @@ class WorkflowController extends Controller
 				$save	 =	$o->save();
 			}
             if(!$save) {
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			} else {
 				return redirect()->route('adminconsole.features.workflow.index')->with('success', 'Workflow Stages Added Successfully');
 			}
@@ -98,7 +97,7 @@ class WorkflowController extends Controller
 				return redirect()->route('adminconsole.features.workflow.index')->with('error', 'Workflow Stages Not Exist');
 			}
 		} else {
-			return redirect()->route('adminconsole.features.workflow.index')->with('error', Config::get('constants.unauthorized'));
+			return redirect()->route('adminconsole.features.workflow.index')->with('error', config('constants.unauthorized'));
 		}
 	}
 
@@ -117,7 +116,7 @@ class WorkflowController extends Controller
 		
 		$saved = WorkflowStage::where('id', $id)->update(['name' => $requestData['stage_name'][0]]);
 		if(!$saved) {
-			return redirect()->back()->with('error', Config::get('constants.server_error'));
+			return redirect()->back()->with('error', config('constants.server_error'));
 		} else {
 			return redirect()->route('adminconsole.features.workflow.index')->with('success', 'Workflow Stages Updated Successfully');
 		}

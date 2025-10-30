@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 use App\Models\DocumentChecklist;
-use Config;
 use Illuminate\Validation\Rule;
 
 class DocumentChecklistController extends Controller
@@ -59,7 +58,7 @@ class DocumentChecklistController extends Controller
             $obj->doc_type = $requestData['doc_type'];
             $saved = $obj->save();
             if (!$saved) {
-                return redirect()->back()->with('error', Config::get('constants.server_error'));
+                return redirect()->back()->with('error', config('constants.server_error'));
             } else {
                 return redirect()->route('adminconsole.features.documentchecklist.index')->with('success', 'Checklist Added Successfully');
             }
@@ -81,7 +80,7 @@ class DocumentChecklistController extends Controller
                 return redirect()->route('adminconsole.features.documentchecklist.index')->with('error', 'Checklist Not Exist');
             }
         } else {
-            return redirect()->route('adminconsole.features.documentchecklist.index')->with('error', Config::get('constants.unauthorized'));
+            return redirect()->route('adminconsole.features.documentchecklist.index')->with('error', config('constants.unauthorized'));
         }
     }
 
@@ -111,7 +110,7 @@ class DocumentChecklistController extends Controller
         $obj->doc_type = $requestData['doc_type'];
         $saved = $obj->save();
         if (!$saved) {
-            return redirect()->back()->with('error', Config::get('constants.server_error'));
+            return redirect()->back()->with('error', config('constants.server_error'));
         } else {
             return redirect()->route('adminconsole.features.documentchecklist.index')->with('success', 'Checklist Updated Successfully');
         }

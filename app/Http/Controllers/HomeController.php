@@ -17,7 +17,6 @@ use App\Models\HomeContent;
 use App\Mail\CommonMail;
 
 use Illuminate\Support\Facades\Session;
-use Config;
 use Cookie;
 
 use Mail;

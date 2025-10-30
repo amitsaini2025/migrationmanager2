@@ -10,8 +10,7 @@ use Illuminate\Support\Facades\Redirect;
 use App\Models\Admin;
 use App\Models\MatterEmailTemplate; 
   
-use Auth; 
-use Config;
+use Auth;
 
 class MatterEmailTemplateController extends Controller
 {
@@ -68,7 +67,7 @@ class MatterEmailTemplateController extends Controller
 			$saved				=	$obj->save();  
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
@@ -98,7 +97,7 @@ class MatterEmailTemplateController extends Controller
 		} 
 		else
 		{
-			return redirect()->route('adminconsole.features.matteremailtemplate.index')->with('error', Config::get('constants.unauthorized'));
+			return redirect()->route('adminconsole.features.matteremailtemplate.index')->with('error', config('constants.unauthorized'));
 		}
 	}
 
@@ -122,7 +121,7 @@ class MatterEmailTemplateController extends Controller
 		
 		if(!$saved)
 		{
-			return redirect()->back()->with('error', Config::get('constants.server_error'));
+			return redirect()->back()->with('error', config('constants.server_error'));
 		}
 		else
 		{

@@ -16,7 +16,6 @@ use PDF;
 use App\Models\InvoicePayment;
 use App\Models\Setting;
 use Auth;
-use Config;
 use App\Models\ActivitiesLog;
 use App\Models\Note;
 use App\Models\ClientMatter;
@@ -101,7 +100,7 @@ class CRMUtilityController extends Controller
 
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
@@ -139,11 +138,11 @@ class CRMUtilityController extends Controller
 					/* Unlink File Function Start */
 						if($requestData['profile_img'] != '')
 							{
-								$this->unlinkFile($requestData['old_profile_img'], Config::get('constants.profile_imgs'));
+								$this->unlinkFile($requestData['old_profile_img'], config('constants.profile_imgs'));
 							}
 					/* Unlink File Function End */
 
-					$profile_img = $this->uploadFile($request->file('profile_img'), Config::get('constants.profile_imgs'));
+					$profile_img = $this->uploadFile($request->file('profile_img'), config('constants.profile_imgs'));
 				}
 				else
 				{
@@ -170,7 +169,7 @@ class CRMUtilityController extends Controller
 
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
@@ -233,7 +232,7 @@ class CRMUtilityController extends Controller
 										}
 									else
 										{
-											return redirect()->back()->with('error', Config::get('constants.server_error'));
+											return redirect()->back()->with('error', config('constants.server_error'));
 										}
 								}
 						}
@@ -277,11 +276,11 @@ class CRMUtilityController extends Controller
 					/* Unlink File Function Start */
 						if(@$requestData['logo'] != '')
 							{
-								$this->unlinkFile(@$requestData['old_logo'], Config::get('constants.logo'));
+								$this->unlinkFile(@$requestData['old_logo'], config('constants.logo'));
 							}
 					/* Unlink File Function End */
 
-					$logo = $this->uploadFile($request->file('logo'), Config::get('constants.logo'));
+					$logo = $this->uploadFile($request->file('logo'), config('constants.logo'));
 				}
 				else
 				{
@@ -306,7 +305,7 @@ class CRMUtilityController extends Controller
 
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
@@ -337,11 +336,11 @@ class CRMUtilityController extends Controller
 			$saved				=	$obj->save();
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
-				return Redirect::to('/api-key')->with('success', 'Api Key'.Config::get('constants.edited'));
+				return Redirect::to('/api-key')->with('success', 'Api Key'.config('constants.edited'));
 			}
 		}else{
 			return view('crm.apikey');
@@ -391,7 +390,7 @@ class CRMUtilityController extends Controller
 							}
 							else
 							{
-								$message = Config::get('constants.server_error');
+								$message = config('constants.server_error');
 							}
 						}
 						else
@@ -416,7 +415,7 @@ class CRMUtilityController extends Controller
 		}
 		else
 		{
-			$message = Config::get('constants.post_method');
+			$message = config('constants.post_method');
 		}
 		echo json_encode(array('status'=>$status, 'message'=>$message));
 		 die;
@@ -455,7 +454,7 @@ class CRMUtilityController extends Controller
 							}
 							else
 							{
-								$message = Config::get('constants.server_error');
+								$message = config('constants.server_error');
 							}
 						}
 						else
@@ -476,7 +475,7 @@ class CRMUtilityController extends Controller
 		}
 		else
 		{
-			$message = Config::get('constants.post_method');
+			$message = config('constants.post_method');
 		}
 		echo json_encode(array('status'=>$status, 'message'=>$message));
 		die;
@@ -518,7 +517,7 @@ class CRMUtilityController extends Controller
 							}
 							else
 							{
-								$message = Config::get('constants.server_error');
+								$message = config('constants.server_error');
 							}
 						}
 						else
@@ -543,7 +542,7 @@ class CRMUtilityController extends Controller
 		}
 		else
 		{
-			$message = Config::get('constants.post_method');
+			$message = config('constants.post_method');
 		}
 		echo json_encode(array('status'=>$status, 'message'=>$message));
 		die;
@@ -585,7 +584,7 @@ class CRMUtilityController extends Controller
 							}
 							else
 							{
-								$message = Config::get('constants.server_error').'sss';
+								$message = config('constants.server_error').'sss';
 							}
 						}
 						else
@@ -610,7 +609,7 @@ class CRMUtilityController extends Controller
 		}
 		else
 		{
-			$message = Config::get('constants.post_method');
+			$message = config('constants.post_method');
 		}
 		echo json_encode(array('status'=>$status, 'message'=>$message));
 		die;
@@ -652,7 +651,7 @@ class CRMUtilityController extends Controller
 							}
 							else
 							{
-								$message = Config::get('constants.server_error').'sss';
+								$message = config('constants.server_error').'sss';
 							}
 						}
 						else
@@ -677,7 +676,7 @@ class CRMUtilityController extends Controller
 		}
 		else
 		{
-			$message = Config::get('constants.post_method');
+			$message = config('constants.post_method');
 		}
 		echo json_encode(array('status'=>$status, 'message'=>$message));
 		die;
@@ -728,7 +727,7 @@ class CRMUtilityController extends Controller
 							}
 							else
 							{
-								$message = Config::get('constants.server_error');
+								$message = config('constants.server_error');
 							}
 						}
 						else
@@ -753,7 +752,7 @@ class CRMUtilityController extends Controller
 		}
 		else
 		{
-			$message = Config::get('constants.post_method');
+			$message = config('constants.post_method');
 		}
 		echo json_encode(array('status'=>$status, 'message'=>$message, 'astatus'=>$astatus));
 		die;
@@ -794,7 +793,7 @@ class CRMUtilityController extends Controller
                                 }
                             }
 							else {
-								$message = Config::get('constants.server_error');
+								$message = config('constants.server_error');
 							}
 						}
                         else if($requestData['table'] == 'client_matters'){
@@ -803,7 +802,7 @@ class CRMUtilityController extends Controller
 								$status = 1;
 								$message = 'Record has been enabled successfully.';
 							} else {
-								$message = Config::get('constants.server_error');
+								$message = config('constants.server_error');
 							}
 						}
                         else if($requestData['table'] == 'quotations'){
@@ -812,7 +811,7 @@ class CRMUtilityController extends Controller
 								$status = 1;
 								$message = 'Record has been enabled successfully.';
 							} else {
-								$message = Config::get('constants.server_error');
+								$message = config('constants.server_error');
 							}
 						}
 						else if($requestData['table'] == 'currencies'){
@@ -823,7 +822,7 @@ class CRMUtilityController extends Controller
                                     $status = 1;
                                     $message = 'Record has been deleted successfully.';
                                 } else {
-                                    $message = Config::get('constants.server_error');
+                                    $message = config('constants.server_error');
                                 }
                             }else{
                                 $message = 'ID does not exist, please check it once again.';
@@ -838,7 +837,7 @@ class CRMUtilityController extends Controller
                                     $status = 1;
                                     $message = 'Record has been deleted successfully.';
                                 } else {
-                                    $message = Config::get('constants.server_error');
+                                    $message = config('constants.server_error');
                                 }
                             }else{
                                 $message = 'ID does not exist, please check it once again.';
@@ -855,7 +854,7 @@ class CRMUtilityController extends Controller
                                 }
                                 else
                                 {
-                                    $message = Config::get('constants.server_error');
+                                    $message = config('constants.server_error');
                                 }
                         }
                         else if($requestData['table'] == 'agents'){
@@ -865,7 +864,7 @@ class CRMUtilityController extends Controller
                                 $status = 1;
                                 $message = 'Record has been Archived successfully.';
                             } else {
-                                $message = Config::get('constants.server_error');
+                                $message = config('constants.server_error');
                             }
 						}
                         else if($requestData['table'] == 'products'){
@@ -883,7 +882,7 @@ class CRMUtilityController extends Controller
                                     $status = 1;
                                     $message = 'Record has been deleted successfully.';
                                 } else {
-                                    $message = Config::get('constants.server_error');
+                                    $message = config('constants.server_error');
                                 }
                                 }else{
                                     $message = 'ID does not exist, please check it once again.';
@@ -896,7 +895,7 @@ class CRMUtilityController extends Controller
                                 $status = 1;
                                 $message = 'Record has been deleted successfully.';
                             } else {
-                                $message = Config::get('constants.server_error');
+                                $message = config('constants.server_error');
                             }
                         }
 					}
@@ -916,7 +915,7 @@ class CRMUtilityController extends Controller
             }
         }
 		else {
-			$message = Config::get('constants.post_method');
+			$message = config('constants.post_method');
 		}
 		echo json_encode(array('status'=>$status, 'message'=>$message));
 		die;
@@ -949,7 +948,7 @@ class CRMUtilityController extends Controller
 					}
 					else
 					{
-						$message = Config::get('constants.server_error');
+						$message = config('constants.server_error');
 					}
 				}
 				else
@@ -964,7 +963,7 @@ class CRMUtilityController extends Controller
 		}
 		else
 		{
-			$message = Config::get('constants.post_method');
+			$message = config('constants.post_method');
 		}
 		echo json_encode(array('status'=>$status, 'message'=>$message, 'data'=>$data));
 		die;
@@ -997,7 +996,7 @@ class CRMUtilityController extends Controller
 					}
 					else
 					{
-						$message = Config::get('constants.server_error');
+						$message = config('constants.server_error');
 					}
 				}
 				else
@@ -1012,7 +1011,7 @@ class CRMUtilityController extends Controller
 		}
 		else
 		{
-			$message = Config::get('constants.post_method');
+			$message = config('constants.post_method');
 		}
 		echo json_encode(array('status'=>$status, 'message'=>$message, 'data'=>$data));
 		die;
@@ -1048,7 +1047,7 @@ class CRMUtilityController extends Controller
 					}
 					else
 					{
-						$message = Config::get('constants.server_error');
+						$message = config('constants.server_error');
 					}
 				}
 				else
@@ -1063,7 +1062,7 @@ class CRMUtilityController extends Controller
 		}
 		else
 		{
-			$message = Config::get('constants.post_method');
+			$message = config('constants.post_method');
 		}
 		echo json_encode(array('status'=>$status, 'message'=>$message, 'data'=>$data));
 		die;
@@ -1355,7 +1354,7 @@ class CRMUtilityController extends Controller
             unset($array['file']);
         }
         if(!$saved) {
-            return redirect()->back()->with('error', Config::get('constants.server_error'));
+            return redirect()->back()->with('error', config('constants.server_error'));
         } else {
             return redirect()->back()->with('success', 'Email Sent Successfully');
         }

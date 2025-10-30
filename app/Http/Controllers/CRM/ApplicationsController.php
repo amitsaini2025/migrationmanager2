@@ -13,8 +13,8 @@ use App\Models\Application;
 use App\Models\ApplicationFeeOptionType;
 use App\Models\ApplicationFeeOption;
    use PDF;
+use Illuminate\Support\Str;
 use Auth;
-use Config;
 
 class ApplicationsController extends Controller
 {
@@ -379,8 +379,8 @@ class ApplicationsController extends Controller
 				?>
 					<div class="note_col" id="note_id_<?php echo $list->id; ?>">
 						<div class="note_content">
-							<h4><a class="viewapplicationnote" data-id="<?php echo $list->id; ?>" href="javascript:;"><?php echo @$list->title == "" ? config('constants.empty') : str_limit(@$list->title, '19', '...'); ?></a></h4>
-							<p><?php echo @$list->description == "" ? config('constants.empty') : str_limit(@$list->description, '15', '...'); ?></p>
+						<h4><a class="viewapplicationnote" data-id="<?php echo $list->id; ?>" href="javascript:;"><?php echo @$list->title == "" ? config('constants.empty') : Str::limit(@$list->title, 19, '...'); ?></a></h4>
+						<p><?php echo @$list->description == "" ? config('constants.empty') : Str::limit(@$list->description, 15, '...'); ?></p>
 						</div>
 						<div class="extra_content">
 							<div class="left">
@@ -900,7 +900,7 @@ class ApplicationsController extends Controller
 		if (isset($_FILES['file']['name'][0])) {
 		  foreach ($_FILES['file']['name'] as $keys => $values) {
 			$fileName = $_FILES['file']['name'][$keys];
-			if (move_uploaded_file($_FILES['file']['tmp_name'][$keys], Config::get('constants.documents').'/'. $fileName)) {
+			if (move_uploaded_file($_FILES['file']['tmp_name'][$keys], config('constants.documents').'/'. $fileName)) {
 				$obj = new \App\Models\ApplicationDocument;
 				$obj->type = $request->type;
 				$obj->typename = $request->typename;

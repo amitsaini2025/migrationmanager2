@@ -12,7 +12,6 @@ use App\Models\UserRole;
 use App\Models\UserType;
 
 use Auth;
-use Config;
 
 class UserroleController extends Controller
 {
@@ -90,7 +89,7 @@ class UserroleController extends Controller
 			
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
@@ -130,7 +129,7 @@ class UserroleController extends Controller
 		}
 		else
 		{
-			return redirect()->route('adminconsole.system.roles.index')->with('error', Config::get('constants.unauthorized'));
+			return redirect()->route('adminconsole.system.roles.index')->with('error', config('constants.unauthorized'));
 		}
 	}
 
@@ -166,7 +165,7 @@ class UserroleController extends Controller
 		
 		if(!$saved)
 		{
-			return redirect()->back()->with('error', Config::get('constants.server_error'));
+			return redirect()->back()->with('error', config('constants.server_error'));
 		}
 		else
 		{

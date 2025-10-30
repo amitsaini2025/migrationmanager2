@@ -10,8 +10,7 @@ use Illuminate\Support\Facades\Redirect;
 use App\Models\Admin;
 use App\Models\Branch;
  
-use Auth; 
-use Config;
+use Auth;
 
 class BranchesController extends Controller
 {
@@ -88,7 +87,7 @@ class BranchesController extends Controller
 			
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
@@ -121,7 +120,7 @@ class BranchesController extends Controller
 		} 
 		else
 		{
-			return redirect()->route('adminconsole.system.offices.index')->with('error', Config::get('constants.unauthorized'));
+			return redirect()->route('adminconsole.system.offices.index')->with('error', config('constants.unauthorized'));
 		}
 	}
 
@@ -161,7 +160,7 @@ class BranchesController extends Controller
 		
 		if(!$saved)
 		{
-			return redirect()->back()->with('error', Config::get('constants.server_error'));
+			return redirect()->back()->with('error', config('constants.server_error'));
 		}
 		else
 		{
@@ -188,7 +187,7 @@ class BranchesController extends Controller
 			} 
 			else
 			{
-				return redirect()->route('adminconsole.system.offices.index')->with('error', Config::get('constants.unauthorized'));
+				return redirect()->route('adminconsole.system.offices.index')->with('error', config('constants.unauthorized'));
 			}		
 		 	
 		
@@ -213,7 +212,7 @@ class BranchesController extends Controller
 			} 
 			else
 			{
-				return redirect()->route('adminconsole.system.offices.index')->with('error', Config::get('constants.unauthorized'));
+				return redirect()->route('adminconsole.system.offices.index')->with('error', config('constants.unauthorized'));
 			}		
 		 	
 		

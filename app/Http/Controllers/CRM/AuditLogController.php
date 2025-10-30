@@ -10,8 +10,7 @@ use Illuminate\Support\Facades\Redirect;
 use App\Models\Admin;
 use App\Models\UserLog;
  
-use Auth; 
-use Config;
+use Auth;
 
 class AuditLogController extends Controller
 {

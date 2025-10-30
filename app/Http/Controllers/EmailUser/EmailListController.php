@@ -15,7 +15,6 @@ use App\Models\EmailRecord;
 use App\Models\MailReport;
 
 use Auth;
-use Config;
 use Illuminate\Support\Facades\Storage;
 
 use App\Models\Matter;

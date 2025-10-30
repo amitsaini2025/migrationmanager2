@@ -11,8 +11,7 @@ use App\Models\Admin;
 use App\Models\MatterOtherEmailTemplate; 
 use App\Models\Matter;
   
-use Auth; 
-use Illuminate\Support\Facades\Config;
+use Auth;
 use Illuminate\Support\Facades\Log;
 use Exception;
 
@@ -83,7 +82,7 @@ class MatterOtherEmailTemplateController extends Controller
 			$saved				=	$obj->save();  
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
@@ -126,7 +125,7 @@ class MatterOtherEmailTemplateController extends Controller
 			} 
 			else
 			{
-				return redirect()->route('adminconsole.features.matterotheremailtemplate.index')->with('error', Config::get('constants.unauthorized'));
+				return redirect()->route('adminconsole.features.matterotheremailtemplate.index')->with('error', config('constants.unauthorized'));
 			}
 		}
 
@@ -158,7 +157,7 @@ class MatterOtherEmailTemplateController extends Controller
 		
 		if(!$saved)
 		{
-			return redirect()->back()->with('error', Config::get('constants.server_error'));
+			return redirect()->back()->with('error', config('constants.server_error'));
 		}
 		else
 		{

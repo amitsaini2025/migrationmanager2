@@ -11,7 +11,6 @@ use App\Models\Admin;
 use App\Models\PersonalDocumentType;
 
 use Auth;
-use Config;
 
 class PersonalDocumentTypeController extends Controller
 {
@@ -59,7 +58,7 @@ class PersonalDocumentTypeController extends Controller
 			$saved	=	$obj->save();
             if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
@@ -85,7 +84,7 @@ class PersonalDocumentTypeController extends Controller
 				return redirect()->route('adminconsole.features.personaldocumenttype.index')->with('error', 'Personal Document Type Not Exist');
 			}
 		} else {
-			return redirect()->route('adminconsole.features.personaldocumenttype.index')->with('error', Config::get('constants.unauthorized'));
+			return redirect()->route('adminconsole.features.personaldocumenttype.index')->with('error', config('constants.unauthorized'));
 		}
     }
 
@@ -110,7 +109,7 @@ class PersonalDocumentTypeController extends Controller
         $saved = $obj->save();
         
         if(!$saved) {
-			return redirect()->back()->with('error', Config::get('constants.server_error'));
+			return redirect()->back()->with('error', config('constants.server_error'));
 		} else {
 			return redirect()->route('adminconsole.features.personaldocumenttype.index')->with('success', 'Personal Document Type Updated Successfully');
 		}

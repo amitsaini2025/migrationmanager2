@@ -10,8 +10,7 @@ use Illuminate\Support\Facades\Redirect;
 use App\Models\Admin;
 use App\Models\CrmEmailTemplate; 
   
-use Auth; 
-use Config;
+use Auth;
 
 class CrmEmailTemplateController extends Controller
 {
@@ -74,7 +73,7 @@ class CrmEmailTemplateController extends Controller
 			
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
@@ -107,7 +106,7 @@ class CrmEmailTemplateController extends Controller
 		} 
 		else
 		{
-			return redirect()->route('adminconsole.features.crmemailtemplate.index')->with('error', Config::get('constants.unauthorized'));
+			return redirect()->route('adminconsole.features.crmemailtemplate.index')->with('error', config('constants.unauthorized'));
 		}		
 	}
 
@@ -133,7 +132,7 @@ class CrmEmailTemplateController extends Controller
 		
 		if(!$saved)
 		{
-			return redirect()->back()->with('error', Config::get('constants.server_error'));
+			return redirect()->back()->with('error', config('constants.server_error'));
 		}
 		else
 		{

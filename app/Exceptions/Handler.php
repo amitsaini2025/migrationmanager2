@@ -6,9 +6,6 @@ use Exception;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Support\Facades\Redirect;
-
-use Config;
-
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 
 use Throwable;
@@ -61,7 +58,7 @@ class Handler extends ExceptionHandler
     {
 		if ($exception instanceof MethodNotAllowedHttpException)
 		{
-			//return Redirect::to('/exception')->with('error', Config::get('constants.exception'));
+			//return Redirect::to('/exception')->with('error', config('constants.exception'));
 		}
 		/* if ($this->isHttpException($exception))
 		{

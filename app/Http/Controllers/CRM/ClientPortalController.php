@@ -13,7 +13,6 @@ use Illuminate\Support\Str;
 use App\Models\Admin;
 use App\Models\ActivitiesLog;
 use Auth;
-use Config;
 
 /**
  * ClientPortalController

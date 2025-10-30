@@ -38,19 +38,19 @@ class VisaExpireReminderEmail extends Command
     protected function send_compose_template($content, $sendername, $to = null, $subject = null, $sender = null, $array = array(), $cc = array())
 	{
 
+	try {
 		$explodeTo = explode(';', $to);//for multiple and single to
 		$q = Mail::to($explodeTo);
-			if(!empty($cc)){
-				$q->cc($cc);
-			}
-		$q->send(new CommonMail($content, $subject, $sender, $sendername, $array));
-        // check for failures
-		if ( Mail::flushMacros() ) { //Mail::failures()
-            return false;
+		if(!empty($cc)){
+			$q->cc($cc);
 		}
-
-		// otherwise everything is okay ...
+		$q->send(new CommonMail($content, $subject, $sender, $sendername, $array));
+		
 		return true;
+	} catch (\Exception $e) {
+		\Log::error('Email sending failed in VisaExpireReminderEmail: ' . $e->getMessage());
+		return false;
+	}
 
 	}
 

@@ -13,7 +13,6 @@ use App\Models\ApplicationActivitiesLog;
 use App\Models\OnlineForm;
 use App\Models\ClientMatter;
 use Auth;
-use Config;
 use Carbon\Carbon;
 
 /**
@@ -410,7 +409,7 @@ class ClientNotesController extends Controller
     	     if($save){
     	         return Redirect::to('/clients/detail/'.base64_encode(convert_uuencode(@$requestData['client_id'])))->with('success', 'Previous Visa Updated Successfully');
     	     }else{
-    	         return redirect()->back()->with('error', Config::get('constants.server_error'));
+    	         return redirect()->back()->with('error', config('constants.server_error'));
     	     }
     	}
 
@@ -488,7 +487,7 @@ class ClientNotesController extends Controller
     	     if($save){
     	         return Redirect::to('/clients/detail/'.base64_encode(convert_uuencode(@$requestData['client_id'])))->with('success', 'Record Updated Successfully');
     	     }else{
-    	         return redirect()->back()->with('error', Config::get('constants.server_error'));
+    	         return redirect()->back()->with('error', config('constants.server_error'));
     	     }
     	}
 }

@@ -14,7 +14,6 @@ use App\Models\clientServiceTaken;
 use App\Models\AccountClientReceipt;
 use App\Mail\HubdocInvoiceMail;
 use Auth;
-use Config;
 use PDF;
 use Carbon\Carbon;
 

@@ -11,7 +11,6 @@ use App\Models\ActivitiesLog;
 use App\Models\CheckinLog;
 use App\Models\Note;
 use Auth;
-use Config;
 use DateTime;
 use DateTimeZone;
 use Carbon\Carbon;

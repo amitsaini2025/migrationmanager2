@@ -10,7 +10,6 @@ use Illuminate\Routing\Route;
 use App\Models\EmailTemplate;
 
 use Auth;
-use Config;
 
 class EmailTemplateController extends Controller
 {
@@ -90,11 +89,11 @@ class EmailTemplateController extends Controller
 			
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
-				return Redirect::to('/email_templates')->with('success', 'Email Template'.Config::get('constants.edited'));
+				return Redirect::to('/email_templates')->with('success', 'Email Template'.config('constants.edited'));
 			}				
 		}
 	}
@@ -127,11 +126,11 @@ class EmailTemplateController extends Controller
 			
 			if(!$saved)
 			{
-				return redirect()->back()->with('error', Config::get('constants.server_error'));
+				return redirect()->back()->with('error', config('constants.server_error'));
 			}
 			else
 			{
-				return Redirect::to('/email_templates')->with('success', 'Email Template'.Config::get('constants.edited'));
+				return Redirect::to('/email_templates')->with('success', 'Email Template'.config('constants.edited'));
 			}				
 		}
 		else
@@ -146,12 +145,12 @@ class EmailTemplateController extends Controller
 				}
 				else
 				{
-					return Redirect::to('/email_templates')->with('error', 'Email Template'.Config::get('constants.not_exist'));
+					return Redirect::to('/email_templates')->with('error', 'Email Template'.config('constants.not_exist'));
 				}	
 			}
 			else
 			{
-				return Redirect::to('/email_templates')->with('error', Config::get('constants.unauthorized'));
+				return Redirect::to('/email_templates')->with('error', config('constants.unauthorized'));
 			}		
 		}				
 	}

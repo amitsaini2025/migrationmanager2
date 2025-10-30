@@ -59,7 +59,7 @@ class AdminLoginController extends Controller
             $rules['g-recaptcha-response'] = 'required';
         }
         
-        $this->validate($request, $rules);
+        $request->validate($rules);
     }
 
 	public function authenticated(Request $request, $user)

@@ -8,7 +8,6 @@ use App\Http\Controllers\API\ClientPortalDashboardController;
 use App\Http\Controllers\API\ClientPortalDocumentController;
 use App\Http\Controllers\API\ClientPortalWorkflowController;
 use App\Http\Controllers\API\ClientPortalMessageController;
-use App\Http\Controllers\API\TokenValidationController;
 
 /*
 |--------------------------------------------------------------------------

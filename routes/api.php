@@ -8,6 +8,7 @@ use App\Http\Controllers\API\ClientPortalDashboardController;
 use App\Http\Controllers\API\ClientPortalDocumentController;
 use App\Http\Controllers\API\ClientPortalWorkflowController;
 use App\Http\Controllers\API\ClientPortalMessageController;
+use App\Http\Controllers\API\TokenValidationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,6 +27,7 @@ Route::post('/admin-login', [ClientPortalController::class, 'adminLogin']);
 Route::post('/refresh', [ClientPortalController::class, 'refresh']);
 Route::post('/forgot-password', [ClientPortalController::class, 'forgotPassword']);
 Route::post('/reset-password', [ClientPortalController::class, 'resetPassword']);
+
 
 // Protected routes (authentication required)
 Route::middleware('auth:sanctum')->group(function () {

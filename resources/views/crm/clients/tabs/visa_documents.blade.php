@@ -16,14 +16,46 @@
                         }
                     }
 
-                    $visaDocCatList = \App\Models\VisaDocumentType::select('id', 'title','client_id','client_matter_id')
+                    /*$visaDocCatList = \App\Models\VisaDocumentType::select('id', 'title','client_id','client_matter_id')
                     ->where('status', 1)
                     ->where(function($query) use ($client_selected_matter_id1) {
                         $query->whereNull('client_matter_id')
                             ->orWhere('client_matter_id', (int) $client_selected_matter_id1);
                     })
                     ->orderBy('id', 'ASC')
-                    ->get();
+                    ->get();*/
+
+
+                    $SelectedClientId = $fetchedData->id;
+                    $visaDocCatList = \App\Models\VisaDocumentType::select('id', 'title', 'client_id', 'client_matter_id')
+                        ->where('status', 1)
+                        ->where(function($query) use ($SelectedClientId,$client_selected_matter_id1) {
+                            $query->where(function($q) {
+                                    // 1️⃣ Both client_id and client_matter_id are NULL
+                                    $q->whereNull('client_id')
+                                    ->whereNull('client_matter_id');
+                                })
+                                ->orWhere(function($q) use ($SelectedClientId) {
+                                    // 2️⃣ client_id matches and client_matter_id is NULL
+                                    $q->where('client_id', $SelectedClientId)
+                                    ->whereNull('client_matter_id');
+                                })
+                                ->orWhere(function($q) use ($SelectedClientId, $client_selected_matter_id1) {
+                                    // 3️⃣ client_id matches and client_matter_id matches
+                                    $q->where('client_id', $SelectedClientId)
+                                    ->where('client_matter_id', $client_selected_matter_id1);
+                                });
+                        })
+                        ->orderByRaw("
+                            CASE
+                                WHEN (`client_id` IS NULL AND `client_matter_id` IS NULL) THEN 1
+                                WHEN (`client_id` = ? AND `client_matter_id` = ?) THEN 2
+                                WHEN (`client_id` = ? AND `client_matter_id` IS NULL) THEN 3
+                                ELSE 4
+                            END, `id` ASC
+                        ", [$SelectedClientId, $client_selected_matter_id1, $SelectedClientId])
+                        ->get();
+
                     ?>
 
                     <!-- Visa Documents Content -->

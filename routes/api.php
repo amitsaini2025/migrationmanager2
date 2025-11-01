@@ -27,6 +27,7 @@ Route::post('/refresh', [ClientPortalController::class, 'refresh']);
 Route::post('/forgot-password', [ClientPortalController::class, 'forgotPassword']);
 Route::post('/reset-password', [ClientPortalController::class, 'resetPassword']);
 
+
 // Protected routes (authentication required)
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [ClientPortalController::class, 'logout']);

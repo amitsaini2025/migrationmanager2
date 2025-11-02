@@ -1,5 +1,6 @@
            <!-- Accounts Test Tab -->
            <div class="tab-pane" id="accounts-test-tab">
+<?php use Illuminate\Support\Facades\Storage; ?>
 
 <div class="card full-width">
     <div class="alert alert-warning">
@@ -168,8 +169,25 @@
                                 <?php
                                 if(isset($rec_val->uploaded_doc_id) && $rec_val->uploaded_doc_id != ""){
                                     $client_doc_list = DB::table('documents')->select('myfile')->where('id',$rec_val->uploaded_doc_id)->first();
-                                    if($client_doc_list){ ?>
-                                        <a target="_blank" title="See Attached Document" class="link-primary" href="<?php echo $client_doc_list->myfile;?>"><i class="fas fa-file-pdf"></i></a>
+                                    if($client_doc_list){ 
+                                        // Generate S3 URL from the stored filename
+                                        if (filter_var($client_doc_list->myfile, FILTER_VALIDATE_URL)) {
+                                            $docUrl = $client_doc_list->myfile;
+                                        } else {
+                                            $client_info = \App\Models\Admin::find($fetchedData->id);
+                                            $matter_info = \App\Models\ClientMatter::find($rec_val->client_matter_id);
+                                            $client_id = $client_info ? $client_info->client_id : '';
+                                            $matter_unique_id = $matter_info ? $matter_info->client_unique_matter_no : '';
+                                            
+                                            if($matter_unique_id) {
+                                                $filePath = $client_id.'/'.$matter_unique_id.'/accounts/'.$client_doc_list->myfile;
+                                            } else {
+                                                $filePath = $client_id.'/accounts/'.$client_doc_list->myfile;
+                                            }
+                                            $docUrl = Storage::disk('s3')->url($filePath);
+                                        }
+                                        ?>
+                                        <a target="_blank" title="See Attached Document" class="link-primary" href="<?php echo $docUrl;?>"><i class="fas fa-file-pdf"></i></a>
                                     <?php
                                     }
                                 } ?>
@@ -193,14 +211,34 @@
                                         <div class="dropdown-divider"></div>
                                         <?php if(!empty($rec_val->uploaded_doc_id)) { 
                                             $uploadedDoc = \App\Models\Document::find($rec_val->uploaded_doc_id);
-                                            if($uploadedDoc && !empty($uploadedDoc->myfile)) { ?>
-                                        <a class="dropdown-item" href="<?php echo $uploadedDoc->myfile; ?>" target="_blank">
+                                            if($uploadedDoc && !empty($uploadedDoc->myfile)) { 
+                                                // Generate S3 URL from the stored filename
+                                                if (filter_var($uploadedDoc->myfile, FILTER_VALIDATE_URL)) {
+                                                    // Already a full URL
+                                                    $docUrl = $uploadedDoc->myfile;
+                                                } else {
+                                                    // Just a filename - generate S3 URL
+                                                    $client_info = \App\Models\Admin::find($fetchedData->id);
+                                                    $matter_info = \App\Models\ClientMatter::find($rec_val->client_matter_id);
+                                                    $client_id = $client_info ? $client_info->client_id : '';
+                                                    $matter_unique_id = $matter_info ? $matter_info->client_unique_matter_no : '';
+                                                    
+                                                    if($matter_unique_id) {
+                                                        $filePath = $client_id.'/'.$matter_unique_id.'/accounts/'.$uploadedDoc->myfile;
+                                                    } else {
+                                                        $filePath = $client_id.'/accounts/'.$uploadedDoc->myfile;
+                                                    }
+                                                    $docUrl = Storage::disk('s3')->url($filePath);
+                                                }
+                                                ?>
+                                        <a class="dropdown-item" href="<?php echo $docUrl; ?>" target="_blank">
                                             <i class="fas fa-file-alt"></i> View Uploaded Receipt
                                         </a>
                                         <?php } } ?>
                                         <a class="dropdown-item upload-clientreceipt-doc" href="javascript:;" 
                                             data-receipt-id="<?php echo $rec_val->id; ?>" 
-                                            data-client-id="<?php echo $fetchedData->id; ?>">
+                                            data-client-id="<?php echo $fetchedData->id; ?>"
+                                            data-matter-id="<?php echo $rec_val->client_matter_id; ?>">
                                             <i class="fas fa-upload"></i> <?php echo !empty($rec_val->uploaded_doc_id) ? 'Replace' : 'Upload'; ?> Receipt Document
                                         </a>
                                         <?php if($rec_val->client_fund_ledger_type !== 'Fee Transfer'){ ?>
@@ -439,9 +477,26 @@
                                     <?php
                                     if(isset($off_val->uploaded_doc_id) && $off_val->uploaded_doc_id >0){
                                         $office_doc_list = DB::table('documents')->select('myfile')->where('id',$off_val->uploaded_doc_id)->first();
-                                        if($office_doc_list){ ?>
+                                        if($office_doc_list){ 
+                                            // Generate S3 URL from the stored filename
+                                            if (filter_var($office_doc_list->myfile, FILTER_VALIDATE_URL)) {
+                                                $docUrl = $office_doc_list->myfile;
+                                            } else {
+                                                $client_info = \App\Models\Admin::find($fetchedData->id);
+                                                $matter_info = \App\Models\ClientMatter::find($off_val->client_matter_id);
+                                                $client_id = $client_info ? $client_info->client_id : '';
+                                                $matter_unique_id = $matter_info ? $matter_info->client_unique_matter_no : '';
+                                                
+                                                if($matter_unique_id) {
+                                                    $filePath = $client_id.'/'.$matter_unique_id.'/accounts/'.$office_doc_list->myfile;
+                                                } else {
+                                                    $filePath = $client_id.'/accounts/'.$office_doc_list->myfile;
+                                                }
+                                                $docUrl = Storage::disk('s3')->url($filePath);
+                                            }
+                                            ?>
                                             <br/>
-                                            <a title="See Attached Document" target="_blank" class="link-primary" href="<?php echo $office_doc_list->myfile;?>"><i class="fas fa-file-pdf"></i> Document</a>
+                                            <a title="See Attached Document" target="_blank" class="link-primary" href="<?php echo $docUrl;?>"><i class="fas fa-file-pdf"></i> Document</a>
                                         <?php
                                         }
                                     } ?>
@@ -492,14 +547,32 @@
                                             <div class="dropdown-divider"></div>
                                             <?php if(!empty($off_val->uploaded_doc_id)) { 
                                                 $uploadedDoc = \App\Models\Document::find($off_val->uploaded_doc_id);
-                                                if($uploadedDoc && !empty($uploadedDoc->myfile)) { ?>
-                                            <a class="dropdown-item" href="<?php echo $uploadedDoc->myfile; ?>" target="_blank">
+                                                if($uploadedDoc && !empty($uploadedDoc->myfile)) { 
+                                                    // Generate S3 URL from the stored filename
+                                                    if (filter_var($uploadedDoc->myfile, FILTER_VALIDATE_URL)) {
+                                                        $docUrl = $uploadedDoc->myfile;
+                                                    } else {
+                                                        $client_info = \App\Models\Admin::find($fetchedData->id);
+                                                        $matter_info = \App\Models\ClientMatter::find($off_val->client_matter_id);
+                                                        $client_id = $client_info ? $client_info->client_id : '';
+                                                        $matter_unique_id = $matter_info ? $matter_info->client_unique_matter_no : '';
+                                                        
+                                                        if($matter_unique_id) {
+                                                            $filePath = $client_id.'/'.$matter_unique_id.'/accounts/'.$uploadedDoc->myfile;
+                                                        } else {
+                                                            $filePath = $client_id.'/accounts/'.$uploadedDoc->myfile;
+                                                        }
+                                                        $docUrl = Storage::disk('s3')->url($filePath);
+                                                    }
+                                                    ?>
+                                            <a class="dropdown-item" href="<?php echo $docUrl; ?>" target="_blank">
                                                 <i class="fas fa-file-alt"></i> View Uploaded Receipt
                                             </a>
                                             <?php } } ?>
                                             <a class="dropdown-item upload-officereceipt-doc" href="javascript:;" 
                                                 data-receipt-id="<?php echo $off_val->id; ?>" 
-                                                data-client-id="<?php echo $fetchedData->id; ?>">
+                                                data-client-id="<?php echo $fetchedData->id; ?>"
+                                                data-matter-id="<?php echo $off_val->client_matter_id; ?>">
                                                 <i class="fas fa-upload"></i> <?php echo !empty($off_val->uploaded_doc_id) ? 'Replace' : 'Upload'; ?> Receipt Document
                                             </a>
                                             <?php if(!isset($off_val->save_type) || $off_val->save_type == 'draft') { ?>
@@ -764,54 +837,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Edit Office Receipt Entry Handler
+    // Edit Office Receipt Entry Handler - REPLACED WITH DIRECT ATTACHMENT ABOVE
+    // This delegated handler doesn't work because Bootstrap dropdown stops event propagation
+    // Keeping it commented for reference only
+    /*
     $(document).on('click', '.edit-office-receipt-entry', function(e) {
-        e.preventDefault();
-        
-        var $row = $(this).closest('tr');
-        var id = $(this).data('id');
-        var receiptId = $(this).data('receiptid');
-        var transDate = $(this).data('trans-date');
-        var entryDate = $(this).data('entry-date');
-        var paymentMethod = $(this).data('payment-method');
-        var description = $(this).data('description');
-        var deposit = $(this).data('deposit');
-        var invoiceNo = $(this).data('invoice-no');
-        var matterId = $(this).data('matter-id');
-        var uploadedDocId = $(this).data('uploaded-doc-id');
-        
-        console.log('✏️ Editing Office Receipt:', {id, receiptId, transDate, paymentMethod, deposit, invoiceNo});
-        
-        // Populate modal fields
-        $('#editOfficeReceiptForm input[name="id"]').val(id);
-        $('#edit_office_receipt_id').val(receiptId);
-        $('#edit_office_client_matter_id').val(matterId);
-        $('#edit_office_trans_date').val(transDate);
-        $('#edit_office_entry_date').val(entryDate);
-        $('#edit_office_payment_method').val(paymentMethod);
-        $('#edit_office_deposit_amount').val(deposit);
-        $('#edit_office_description').val(description);
-        
-        // Initialize datepickers
-        $('#edit_office_trans_date, #edit_office_entry_date').datepicker({
-            format: 'dd/mm/yyyy',
-            autoclose: true,
-            todayHighlight: true
-        });
-        
-        // Load invoices for the matter and select the current one
-        loadInvoicesForEdit(matterId, invoiceNo);
-        
-        // Show current document if exists
-        if(uploadedDocId && uploadedDocId != '') {
-            $('#current_document_display').html('<p class="text-info"><i class="fas fa-file-pdf"></i> Document attached (ID: ' + uploadedDocId + ')</p>');
-        } else {
-            $('#current_document_display').html('');
-        }
-        
-        // Show modal
-        $('#editOfficeReceiptModal').modal('show');
+        // This code moved to attachEditOfficeReceiptHandlers() function above
     });
+    */
     
     // Function to load invoices for the edit modal
     function loadInvoicesForEdit(matterId, selectedInvoice) {
@@ -1020,6 +1053,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="modal-body">
                     <input type="hidden" id="upload_receipt_id" name="receipt_id">
                     <input type="hidden" id="upload_client_id" name="clientid">
+                    <input type="hidden" id="upload_matter_id" name="client_matter_id">
                     <input type="hidden" id="upload_receipt_type" name="receipt_type">
                     <input type="hidden" name="doctype" value="receipt_uploads">
                     <input type="hidden" name="type" value="client">
@@ -1048,37 +1082,142 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 $(document).ready(function() {
-    // Upload Client Receipt Document
-    $(document).on('click', '.upload-clientreceipt-doc', function() {
-        let receiptId = $(this).data('receipt-id');
-        let clientId = $(this).data('client-id');
-        
-        $('#upload_receipt_id').val(receiptId);
-        $('#upload_client_id').val(clientId);
-        $('#upload_receipt_type').val('client');
-        $('#uploadReceiptDocModal').modal('show');
-    });
+    // FIX: Bootstrap dropdown stops event propagation completely
+    // Solution: Directly attach handlers to each button after page load
     
-    // Upload Office Receipt Document
-    $(document).on('click', '.upload-officereceipt-doc', function() {
-        let receiptId = $(this).data('receipt-id');
-        let clientId = $(this).data('client-id');
+    // Function to attach upload receipt handlers
+    function attachUploadHandlers() {
+        // Upload Client Receipt Document - direct attachment
+        $('.upload-clientreceipt-doc').off('click').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            let receiptId = $(this).data('receipt-id');
+            let clientId = $(this).data('client-id');
+            let matterId = $(this).data('matter-id');
+            
+            $('#upload_receipt_id').val(receiptId);
+            $('#upload_client_id').val(clientId);
+            $('#upload_matter_id').val(matterId);
+            $('#upload_receipt_type').val('client');
+            $('#uploadReceiptDocModal').modal('show');
+        });
         
-        $('#upload_receipt_id').val(receiptId);
-        $('#upload_client_id').val(clientId);
-        $('#upload_receipt_type').val('office');
-        $('#uploadReceiptDocModal').modal('show');
-    });
+        // Upload Office Receipt Document - direct attachment
+        $('.upload-officereceipt-doc').off('click').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            let receiptId = $(this).data('receipt-id');
+            let clientId = $(this).data('client-id');
+            let matterId = $(this).data('matter-id');
+            
+            $('#upload_receipt_id').val(receiptId);
+            $('#upload_client_id').val(clientId);
+            $('#upload_matter_id').val(matterId);
+            $('#upload_receipt_type').val('office');
+            $('#uploadReceiptDocModal').modal('show');
+        });
+        
+        // Upload Journal Receipt Document - direct attachment
+        $('.upload-journalreceipt-doc').off('click').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            let receiptId = $(this).data('receipt-id');
+            let clientId = $(this).data('client-id');
+            let matterId = $(this).data('matter-id');
+            
+            $('#upload_receipt_id').val(receiptId);
+            $('#upload_client_id').val(clientId);
+            $('#upload_matter_id').val(matterId);
+            $('#upload_receipt_type').val('journal');
+            $('#uploadReceiptDocModal').modal('show');
+        });
+    }
     
-    // Upload Journal Receipt Document
-    $(document).on('click', '.upload-journalreceipt-doc', function() {
-        let receiptId = $(this).data('receipt-id');
-        let clientId = $(this).data('client-id');
-        
-        $('#upload_receipt_id').val(receiptId);
-        $('#upload_client_id').val(clientId);
-        $('#upload_receipt_type').val('journal');
-        $('#uploadReceiptDocModal').modal('show');
+    // FIX: Move modals to body to prevent z-index/positioning issues
+    // Bootstrap modals must be direct children of body to work properly
+    if ($('#uploadReceiptDocModal').parent().attr('id') !== 'body' && !$('#uploadReceiptDocModal').parent().is('body')) {
+        $('#uploadReceiptDocModal').appendTo('body');
+        console.log('✅ Upload Receipt Modal moved to body level');
+    }
+    
+    // Also move editOfficeReceiptModal if it's not already at body level
+    if ($('#editOfficeReceiptModal').length > 0 && !$('#editOfficeReceiptModal').parent().is('body')) {
+        $('#editOfficeReceiptModal').appendTo('body');
+        console.log('✅ Edit Office Receipt Modal moved to body level');
+    }
+    
+    // Also move editLedgerModal if it's not already at body level
+    if ($('#editLedgerModal').length > 0 && !$('#editLedgerModal').parent().is('body')) {
+        $('#editLedgerModal').appendTo('body');
+        console.log('✅ Edit Ledger Modal moved to body level');
+    }
+    
+    // Function to attach edit office receipt handlers
+    function attachEditOfficeReceiptHandlers() {
+        $('.edit-office-receipt-entry').off('click').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            var id = $(this).data('id');
+            var receiptId = $(this).data('receiptid');
+            var transDate = $(this).data('trans-date');
+            var entryDate = $(this).data('entry-date');
+            var paymentMethod = $(this).data('payment-method');
+            var description = $(this).data('description');
+            var deposit = $(this).data('deposit');
+            var invoiceNo = $(this).data('invoice-no');
+            var matterId = $(this).data('matter-id');
+            var uploadedDocId = $(this).data('uploaded-doc-id');
+            
+            console.log('✏️ Editing Office Receipt:', {id, receiptId, transDate, paymentMethod, deposit, invoiceNo});
+            
+            // Populate modal fields
+            $('#editOfficeReceiptForm input[name="id"]').val(id);
+            $('#edit_office_receipt_id').val(receiptId);
+            $('#edit_office_client_matter_id').val(matterId);
+            $('#edit_office_trans_date').val(transDate);
+            $('#edit_office_entry_date').val(entryDate);
+            $('#edit_office_payment_method').val(paymentMethod);
+            $('#edit_office_deposit_amount').val(deposit);
+            $('#edit_office_description').val(description);
+            
+            // Initialize datepickers
+            $('#edit_office_trans_date, #edit_office_entry_date').datepicker({
+                format: 'dd/mm/yyyy',
+                autoclose: true,
+                todayHighlight: true
+            });
+            
+            // Load invoices for the matter and select the current one
+            loadInvoicesForEdit(matterId, invoiceNo);
+            
+            // Show current document if exists
+            if(uploadedDocId && uploadedDocId != '') {
+                $('#current_document_display').html('<p class="text-info"><i class="fas fa-file-pdf"></i> Document attached (ID: ' + uploadedDocId + ')</p>');
+            } else {
+                $('#current_document_display').html('');
+            }
+            
+            // Show modal
+            $('#editOfficeReceiptModal').modal('show');
+        });
+    }
+    
+    // Attach handlers on page load
+    attachUploadHandlers();
+    attachEditOfficeReceiptHandlers();
+    
+    // Re-attach after any dynamic content updates
+    $(document).on('DOMNodeInserted', function(e) {
+        if ($(e.target).find('.upload-clientreceipt-doc, .upload-officereceipt-doc, .upload-journalreceipt-doc').length) {
+            attachUploadHandlers();
+        }
+        if ($(e.target).find('.edit-office-receipt-entry').length) {
+            attachEditOfficeReceiptHandlers();
+        }
     });
     
     // Handle form submission
@@ -1114,7 +1253,12 @@ $(document).ready(function() {
             },
             success: function(response) {
                 if (response.status) {
-                    toastr.success(response.message || 'Document uploaded successfully');
+                    // Use toastr if available, otherwise use alert
+                    if (typeof toastr !== 'undefined') {
+                        toastr.success(response.message || 'Document uploaded successfully');
+                    } else {
+                        alert(response.message || 'Document uploaded successfully');
+                    }
                     $('#uploadReceiptDocModal').modal('hide');
                     $('#uploadReceiptDocForm')[0].reset();
                     
@@ -1123,12 +1267,20 @@ $(document).ready(function() {
                         location.reload();
                     }, 1000);
                 } else {
-                    toastr.error(response.message || 'Failed to upload document');
+                    if (typeof toastr !== 'undefined') {
+                        toastr.error(response.message || 'Failed to upload document');
+                    } else {
+                        alert('Error: ' + (response.message || 'Failed to upload document'));
+                    }
                 }
             },
             error: function(xhr) {
                 console.error('Upload error:', xhr);
-                toastr.error('An error occurred while uploading the document');
+                if (typeof toastr !== 'undefined') {
+                    toastr.error('An error occurred while uploading the document');
+                } else {
+                    alert('Error: An error occurred while uploading the document');
+                }
             },
             complete: function() {
                 submitBtn.prop('disabled', false).html(originalText);

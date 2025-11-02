@@ -136,7 +136,7 @@
                                 <input class="docclientreceiptupload" type="file" name="document_upload[]"/>
 
                             </div>
-							<button onclick="customValidate('client_receipt_form')" type="button" class="btn btn-primary" style="margin:0px !important;">Save Report</button>
+							<button onclick="customValidate('client_receipt_form')" type="button" class="btn btn-primary" style="margin:0px !important;">Save Entry</button>
 							<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
 						</div>
                     </div>
@@ -246,8 +246,8 @@
 
 						<div class="col-9 col-md-9 col-lg-9 text-right">
                             <input type="hidden" name="save_type" class="save_type" value="">
-                            <button onclick="customValidate('invoice_receipt_form','draft')" type="button" class="btn btn-primary" style="margin:0px !important;">Save Draft</button>
-							<button onclick="customValidate('invoice_receipt_form','final')" type="button" class="btn btn-primary" style="margin:0px !important;">Save and Finalised</button>
+                            <button onclick="customValidate('invoice_receipt_form','draft')" type="button" class="btn btn-primary" style="margin:0px !important;">Draft Invoice</button>
+							<button onclick="customValidate('invoice_receipt_form','final')" type="button" class="btn btn-primary" style="margin:0px !important;">Create Invoice</button>
                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
 						</div>
                     </div>
@@ -467,7 +467,7 @@
 
                         <div class="col-12 col-md-12 col-lg-12 text-right">
                             <input type="hidden" name="save_type" class="save_type" value="">
-                            <button onclick="customValidate('adjust_invoice_receipt_form','final')" type="button" class="btn btn-primary" style="margin:0px !important;">Save and Finalised</button>
+                            <button onclick="customValidate('adjust_invoice_receipt_form','final')" type="button" class="btn btn-primary" style="margin:0px !important;">Create Invoice</button>
                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
 						</div>
                     </div>
@@ -594,7 +594,7 @@
                                 <input class="docclientreceiptupload" type="file" name="document_upload[]"/>
                             </div>
 
-                            <button onclick="customValidate('create_client_receipt')" type="button" class="btn btn-primary" style="margin:0px !important;">Save Report</button>
+                            <button onclick="customValidate('create_client_receipt')" type="button" class="btn btn-primary" style="margin:0px !important;">Save Entry</button>
 							<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
 						</div>
                     </div>
@@ -737,8 +737,8 @@
 
 						<div class="col-9 col-md-9 col-lg-9 text-right">
                             <input type="hidden" name="save_type" class="save_type" value="">
-                            <button onclick="customValidate('create_invoice_receipt','draft')" type="button" class="btn btn-primary" style="margin:0px !important;">Save Draft</button>
-							<button onclick="customValidate('create_invoice_receipt','final')" type="button" class="btn btn-primary" style="margin:0px !important;">Save and Finalised</button>
+                            <button onclick="customValidate('create_invoice_receipt','draft')" type="button" class="btn btn-primary" style="margin:0px !important;">Draft Invoice</button>
+							<button onclick="customValidate('create_invoice_receipt','final')" type="button" class="btn btn-primary" style="margin:0px !important;">Create Invoice</button>
                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
 						</div>
                     </div>
@@ -869,7 +869,7 @@
                                 <input class="docofficereceiptupload"  type="file" name="document_upload[]"/>
                             </div>
 
-                            <button onclick="customValidate('create_office_receipt')" type="button" class="btn btn-primary" style="margin: 0px !important;">Save Report</button>
+                            <button onclick="customValidate('create_office_receipt')" type="button" class="btn btn-primary" style="margin: 0px !important;">Save Entry</button>
 							<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
 						</div>
                     </div>
@@ -996,7 +996,7 @@
                                 <input class="docjournalreceiptupload" type="file" name="document_upload[]"/>
                             </div>
 
-                            <button onclick="customValidate('create_journal_receipt')" type="button" class="btn btn-primary" style="margin:0px !important;">Save Report</button>
+                            <button onclick="customValidate('create_journal_receipt')" type="button" class="btn btn-primary" style="margin:0px !important;">Save Entry</button>
 							<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
 						</div>
                     </div>

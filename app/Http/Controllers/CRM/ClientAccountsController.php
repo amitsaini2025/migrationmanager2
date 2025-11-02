@@ -883,6 +883,7 @@ class ClientAccountsController extends Controller
     public function listOfInvoice(Request $request)
     {
         $requestData         =     $request->all();
+        $response            =     [];
         // Get only non-voided invoices that are unpaid or partially paid
         $record_get = DB::table('account_client_receipts')
             ->select('invoice_no', 'invoice_status', 'balance_amount')
@@ -923,6 +924,7 @@ class ClientAccountsController extends Controller
     public function clientLedgerBalanceAmount(Request $request)
     {
         $requestData         =     $request->all();
+        $response            =     [];
         $latest_balance = DB::table('account_client_receipts')
             ->where('client_matter_id', $requestData['selectedMatter'])
             ->where('client_id', $requestData['client_id'])
@@ -949,6 +951,7 @@ class ClientAccountsController extends Controller
     public function getInfoByReceiptId(Request $request)
     {
         $requestData = $request->all();
+        $response    = [];
         $receiptid = $requestData['receiptid'];
         $record_get = array();
         $record_get_parent = array();
@@ -986,6 +989,7 @@ class ClientAccountsController extends Controller
     public function getTopReceiptValInDB(Request $request)
     {
         $requestData =     $request->all();
+        $response    =     [];
         $receipt_type = $requestData['type'];
         $record_count = DB::table('account_client_receipts')->where('receipt_type',$receipt_type)->max('id');
         if($record_count) {
@@ -1012,6 +1016,7 @@ class ClientAccountsController extends Controller
     public function getTopInvoiceNoFromDB(Request $request)
     {
         $requestData =     $request->all();
+        $response    =     [];
         $receipt_type = $requestData['type'];
    
         //Start Logic For Invoice no
@@ -1276,13 +1281,39 @@ class ClientAccountsController extends Controller
           }
           
           // Log activity
-          $subject = 'updated office receipt. Reference no- ' . $receipt->trans_no . ' (saved as ' . $saveType . ')';
+          $userName = Auth::user()->first_name . ' ' . Auth::user()->last_name;
+          $formattedAmount = '$' . number_format(floatval($receipt->deposit_amount), 2);
+          $transDate = date('d/m/Y', strtotime($receipt->trans_date));
+          $saveTypeText = $saveType == 'draft' ? ' (Draft)' : '';
+          
+          $subject = "Office Receipt Updated - {$formattedAmount} (Ref: {$receipt->trans_no}){$saveTypeText}";
+          
+          $description = "<div class='activity-detail'>";
+          $description .= "<p><strong>{$userName}</strong> updated an office receipt:</p>";
+          $description .= "<ul>";
+          $description .= "<li><strong>Reference No:</strong> {$receipt->trans_no}</li>";
+          $description .= "<li><strong>Amount:</strong> {$formattedAmount}</li>";
+          $description .= "<li><strong>Transaction Date:</strong> {$transDate}</li>";
+          $description .= "<li><strong>Payment Method:</strong> {$receipt->payment_method}</li>";
+          if (!empty($receipt->description)) {
+              $description .= "<li><strong>Description:</strong> " . htmlspecialchars($receipt->description) . "</li>";
+          }
+          if (!empty($receipt->invoice_no)) {
+              $description .= "<li><strong>Invoice No:</strong> {$receipt->invoice_no}</li>";
+          }
+          if ($insertedDocId !== null) {
+              $description .= "<li><strong>Document:</strong> Updated</li>";
+          }
+          $description .= "<li><strong>Status:</strong> " . ($saveType == 'draft' ? 'Draft' : 'Finalized') . "</li>";
+          $description .= "</ul>";
+          $description .= "</div>";
           
           $objs = new \App\Models\ActivitiesLog;
           $objs->client_id = $requestData['client_id'];
           $objs->created_by = Auth::user()->id;
-          $objs->description = '';
+          $objs->description = $description;
           $objs->subject = $subject;
+          $objs->activity_type = 'financial';
           $objs->save();
           
           return response()->json([
@@ -1782,12 +1813,47 @@ class ClientAccountsController extends Controller
   public function uploadclientreceiptdocument(Request $request)
   {
       $id = $request->clientid;
+      $receipt_id = $request->receipt_id; // Get the receipt ID
+      $client_matter_id = $request->client_matter_id; // Get the matter ID
+      
       $client_info = \App\Models\Admin::select('client_id')->where('id', $id)->first();
       if (!empty($client_info)) {
           $client_id = $client_info->client_id;
       } else {
           $client_id = "";
       }
+      
+      // CRITICAL: Validate receipt belongs to this client (security)
+      if ($receipt_id) {
+          $receiptExists = DB::table('account_client_receipts')
+              ->where('id', $receipt_id)
+              ->where('client_id', $id)
+              ->exists();
+          if (!$receiptExists) {
+              return response()->json([
+                  'status' => false,
+                  'message' => 'Invalid receipt ID'
+              ], 400);
+          }
+      }
+      
+      // CRITICAL: Validate matter belongs to this client (security)
+      $matter_unique_id = "";
+      if($client_matter_id) {
+          $matter_info = DB::table('client_matters')
+              ->select('client_unique_matter_no')
+              ->where('id', $client_matter_id)
+              ->where('client_id', $id)
+              ->first();
+          if(!$matter_info) {
+              return response()->json([
+                  'status' => false,
+                  'message' => 'Invalid matter ID'
+              ], 400);
+          }
+          $matter_unique_id = $matter_info->client_unique_matter_no;
+      }
+      
       $doctype = isset($request->doctype)? $request->doctype : '';
       if ($request->hasfile('document_upload')) {
           if(!is_array($request->file('document_upload'))){
@@ -1804,30 +1870,67 @@ class ClientAccountsController extends Controller
            //$document_upload = $this->uploadrenameFile($file, config('constants.documents'));
 
            //$file = $request->file('document_upload');
-           $name = time() . $file->getClientOriginalName();
+           // Sanitize filename to prevent issues with special characters
+           $sanitizedFilename = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $file->getClientOriginalName());
+           $name = time() . '_' . $sanitizedFilename;
            //$explodeFileName1 = explode('.', $name);
            //$filePath = 'documents/' . $name;
-           $filePath = $client_id.'/'.$doctype.'/'. $name;
-           Storage::disk('s3')->put($filePath, file_get_contents($file));
+           // New folder structure: Client/Matter/Accounts
+           if($matter_unique_id) {
+               $filePath = $client_id.'/'.$matter_unique_id.'/accounts/'. $name;
+           } else {
+               $filePath = $client_id.'/accounts/'. $name;
+           }
+           
+           // CRITICAL: Start transaction for data integrity
+           DB::beginTransaction();
+           try {
+               Storage::disk('s3')->put($filePath, file_get_contents($file));
 
-           //$exploadename = explode('.', $document_upload);
-           $exploadename = explode('.', $name);
+               //$exploadename = explode('.', $document_upload);
+               $exploadename = explode('.', $name);
 
-           $obj = new \App\Models\Document;
-           $obj->file_name = $explodeFileName[0];
-           $obj->filetype = $exploadename[1];
-           $obj->user_id = Auth::user()->id;
-           //$obj->myfile = $document_upload;
-           $obj->myfile = $name;
+               $obj = new \App\Models\Document;
+               $obj->file_name = $explodeFileName[0];
+               $obj->filetype = $exploadename[1];
+               $obj->user_id = Auth::user()->id;
+               //$obj->myfile = $document_upload;
+               $obj->myfile_key = $name;  // Store filename for backward compatibility
+               $obj->myfile = $name;  // Keep original behavior - stores filename not URL
 
-           $obj->client_id = $id;
-           $obj->type = $request->type;
-           $obj->file_size = $size;
-           $obj->doc_type = $doctype;
-           $saved = $obj->save();
+               $obj->client_id = $id;
+               $obj->type = $request->type;
+               $obj->file_size = $size;
+               $obj->doc_type = $doctype;
+               $obj->client_matter_id = $client_matter_id;  // Store matter ID
+               $saved = $obj->save();
+               
+               // Update the receipt with the uploaded document ID
+               if ($receipt_id && $obj->id) {
+                   DB::table('account_client_receipts')
+                       ->where('id', $receipt_id)
+                       ->update(['uploaded_doc_id' => $obj->id]);
+               }
+               
+               DB::commit();
+           } catch (\Exception $e) {
+               DB::rollBack();
+               // Clean up S3 file if database operations failed
+               Storage::disk('s3')->delete($filePath);
+               \Log::error('Document upload failed', [
+                   'error' => $e->getMessage(),
+                   'client_id' => $id,
+                   'receipt_id' => $receipt_id
+               ]);
+               return response()->json([
+                   'status' => false,
+                   'message' => 'Failed to upload document: ' . $e->getMessage()
+               ], 500);
+           }
           }
 
           if($saved){
+           
            if($request->type == 'client'){
                $subject = 'added 1 client receipt document';
                $objs = new ActivitiesLog;
@@ -1839,7 +1942,7 @@ class ClientAccountsController extends Controller
 
            }
            $response['status']     =     true;
-           $response['message']    =    'You’ve successfully uploaded your client receipt document';
+           $response['message']    =    "You've successfully uploaded your client receipt document";
            $fetchd = \App\Models\Document::where('client_id',$id)->where('doc_type',$doctype)->where('type',$request->type)->orderby('created_at', 'DESC')->get();
            ob_start();
            foreach($fetchd as $fetch){
@@ -1924,12 +2027,48 @@ class ClientAccountsController extends Controller
   public function uploadofficereceiptdocument(Request $request)
   {
       $id = $request->clientid;
+      $receipt_id = $request->receipt_id; // Get the receipt ID
+      $client_matter_id = $request->client_matter_id; // Get the matter ID
+      
       $client_info = \App\Models\Admin::select('client_id')->where('id', $id)->first();
       if (!empty($client_info)) {
           $client_id = $client_info->client_id;
       } else {
           $client_id = "";
       }
+      
+      // CRITICAL: Validate receipt belongs to this client (security)
+      if ($receipt_id) {
+          $receiptExists = DB::table('account_client_receipts')
+              ->where('id', $receipt_id)
+              ->where('client_id', $id)
+              ->where('receipt_type', 2) // Office receipt
+              ->exists();
+          if (!$receiptExists) {
+              return response()->json([
+                  'status' => false,
+                  'message' => 'Invalid office receipt ID'
+              ], 400);
+          }
+      }
+      
+      // CRITICAL: Validate matter belongs to this client (security)
+      $matter_unique_id = "";
+      if($client_matter_id) {
+          $matter_info = DB::table('client_matters')
+              ->select('client_unique_matter_no')
+              ->where('id', $client_matter_id)
+              ->where('client_id', $id)
+              ->first();
+          if(!$matter_info) {
+              return response()->json([
+                  'status' => false,
+                  'message' => 'Invalid matter ID'
+              ], 400);
+          }
+          $matter_unique_id = $matter_info->client_unique_matter_no;
+      }
+      
       $doctype = isset($request->doctype)? $request->doctype : '';
       if ($request->hasfile('document_upload')) {
           if(!is_array($request->file('document_upload'))){
@@ -1946,30 +2085,67 @@ class ClientAccountsController extends Controller
            //$document_upload = $this->uploadrenameFile($file, config('constants.documents'));
 
            //$file = $request->file('document_upload');
-           $name = time() . $file->getClientOriginalName();
+           // Sanitize filename to prevent issues with special characters
+           $sanitizedFilename = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $file->getClientOriginalName());
+           $name = time() . '_' . $sanitizedFilename;
            //$explodeFileName1 = explode('.', $name);
            //$filePath = 'documents/' . $name;
-           $filePath = $client_id.'/'.$doctype.'/'. $name;
-           Storage::disk('s3')->put($filePath, file_get_contents($file));
+           // New folder structure: Client/Matter/Accounts
+           if($matter_unique_id) {
+               $filePath = $client_id.'/'.$matter_unique_id.'/accounts/'. $name;
+           } else {
+               $filePath = $client_id.'/accounts/'. $name;
+           }
+           
+           // CRITICAL: Start transaction for data integrity
+           DB::beginTransaction();
+           try {
+               Storage::disk('s3')->put($filePath, file_get_contents($file));
 
-           //$exploadename = explode('.', $document_upload);
-           $exploadename = explode('.', $name);
+               //$exploadename = explode('.', $document_upload);
+               $exploadename = explode('.', $name);
 
-           $obj = new \App\Models\Document;
-           $obj->file_name = $explodeFileName[0];
-           $obj->filetype = $exploadename[1];
-           $obj->user_id = Auth::user()->id;
-           //$obj->myfile = $document_upload;
-           $obj->myfile = $name;
+               $obj = new \App\Models\Document;
+               $obj->file_name = $explodeFileName[0];
+               $obj->filetype = $exploadename[1];
+               $obj->user_id = Auth::user()->id;
+               //$obj->myfile = $document_upload;
+               $obj->myfile_key = $name;  // Store filename for backward compatibility
+               $obj->myfile = $name;  // Keep original behavior - stores filename not URL
 
-           $obj->client_id = $id;
-           $obj->type = $request->type;
-           $obj->file_size = $size;
-           $obj->doc_type = $doctype;
-           $saved = $obj->save();
+               $obj->client_id = $id;
+               $obj->type = $request->type;
+               $obj->file_size = $size;
+               $obj->doc_type = $doctype;
+               $obj->client_matter_id = $client_matter_id;  // Store matter ID
+               $saved = $obj->save();
+               
+               // Update the receipt with the uploaded document ID
+               if ($receipt_id && $obj->id) {
+                   DB::table('account_client_receipts')
+                       ->where('id', $receipt_id)
+                       ->update(['uploaded_doc_id' => $obj->id]);
+               }
+               
+               DB::commit();
+           } catch (\Exception $e) {
+               DB::rollBack();
+               // Clean up S3 file if database operations failed
+               Storage::disk('s3')->delete($filePath);
+               \Log::error('Office receipt document upload failed', [
+                   'error' => $e->getMessage(),
+                   'client_id' => $id,
+                   'receipt_id' => $receipt_id
+               ]);
+               return response()->json([
+                   'status' => false,
+                   'message' => 'Failed to upload document: ' . $e->getMessage()
+               ], 500);
+           }
           }
 
           if($saved){
+           
            if($request->type == 'client'){
                $subject = 'added 1 office receipt document';
                $objs = new ActivitiesLog;
@@ -1981,7 +2157,7 @@ class ClientAccountsController extends Controller
 
            }
            $response['status']     =     true;
-           $response['message']    =    'You’ve successfully uploaded your office receipt document';
+           $response['message']    =    "You've successfully uploaded your office receipt document";
            $fetchd = \App\Models\Document::where('client_id',$id)->where('doc_type',$doctype)->where('type',$request->type)->orderby('created_at', 'DESC')->get();
            ob_start();
            foreach($fetchd as $fetch){
@@ -2066,12 +2242,47 @@ class ClientAccountsController extends Controller
   public function uploadjournalreceiptdocument(Request $request)
   {
       $id = $request->clientid;
+      $receipt_id = $request->receipt_id; // Get the receipt ID
+      $client_matter_id = $request->client_matter_id; // Get the matter ID
+      
       $client_info = \App\Models\Admin::select('client_id')->where('id', $id)->first();
       if (!empty($client_info)) {
           $client_id = $client_info->client_id;
       } else {
           $client_id = "";
       }
+      
+      // CRITICAL: Validate journal entry belongs to this client (security)
+      if ($receipt_id) {
+          $receiptExists = DB::table('account_journal_entries')
+              ->where('id', $receipt_id)
+              ->where('client_id', $id)
+              ->exists();
+          if (!$receiptExists) {
+              return response()->json([
+                  'status' => false,
+                  'message' => 'Invalid journal entry ID'
+              ], 400);
+          }
+      }
+      
+      // CRITICAL: Validate matter belongs to this client (security)
+      $matter_unique_id = "";
+      if($client_matter_id) {
+          $matter_info = DB::table('client_matters')
+              ->select('client_unique_matter_no')
+              ->where('id', $client_matter_id)
+              ->where('client_id', $id)
+              ->first();
+          if(!$matter_info) {
+              return response()->json([
+                  'status' => false,
+                  'message' => 'Invalid matter ID'
+              ], 400);
+          }
+          $matter_unique_id = $matter_info->client_unique_matter_no;
+      }
+      
       $doctype = isset($request->doctype)? $request->doctype : '';
       if ($request->hasfile('document_upload')) {
           if(!is_array($request->file('document_upload'))){
@@ -2088,30 +2299,67 @@ class ClientAccountsController extends Controller
            //$document_upload = $this->uploadrenameFile($file, config('constants.documents'));
 
            //$file = $request->file('document_upload');
-           $name = time() . $file->getClientOriginalName();
+           // Sanitize filename to prevent issues with special characters
+           $sanitizedFilename = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $file->getClientOriginalName());
+           $name = time() . '_' . $sanitizedFilename;
            //$explodeFileName1 = explode('.', $name);
            //$filePath = 'documents/' . $name;
-           $filePath = $client_id.'/'.$doctype.'/'. $name;
-           Storage::disk('s3')->put($filePath, file_get_contents($file));
+           // New folder structure: Client/Matter/Accounts
+           if($matter_unique_id) {
+               $filePath = $client_id.'/'.$matter_unique_id.'/accounts/'. $name;
+           } else {
+               $filePath = $client_id.'/accounts/'. $name;
+           }
+           
+           // CRITICAL: Start transaction for data integrity
+           DB::beginTransaction();
+           try {
+               Storage::disk('s3')->put($filePath, file_get_contents($file));
 
-           //$exploadename = explode('.', $document_upload);
-           $exploadename = explode('.', $name);
+               //$exploadename = explode('.', $document_upload);
+               $exploadename = explode('.', $name);
 
-           $obj = new \App\Models\Document;
-           $obj->file_name = $explodeFileName[0];
-           $obj->filetype = $exploadename[1];
-           $obj->user_id = Auth::user()->id;
-           //$obj->myfile = $document_upload;
-           $obj->myfile = $name;
+               $obj = new \App\Models\Document;
+               $obj->file_name = $explodeFileName[0];
+               $obj->filetype = $exploadename[1];
+               $obj->user_id = Auth::user()->id;
+               //$obj->myfile = $document_upload;
+               $obj->myfile_key = $name;  // Store filename for backward compatibility
+               $obj->myfile = $name;  // Keep original behavior - stores filename not URL
 
-           $obj->client_id = $id;
-           $obj->type = $request->type;
-           $obj->file_size = $size;
-           $obj->doc_type = $doctype;
-           $saved = $obj->save();
+               $obj->client_id = $id;
+               $obj->type = $request->type;
+               $obj->file_size = $size;
+               $obj->doc_type = $doctype;
+               $obj->client_matter_id = $client_matter_id;  // Store matter ID
+               $saved = $obj->save();
+               
+               // Update the journal entry with the uploaded document ID
+               if ($receipt_id && $obj->id) {
+                   DB::table('account_journal_entries')
+                       ->where('id', $receipt_id)
+                       ->update(['uploaded_doc_id' => $obj->id]);
+               }
+               
+               DB::commit();
+           } catch (\Exception $e) {
+               DB::rollBack();
+               // Clean up S3 file if database operations failed
+               Storage::disk('s3')->delete($filePath);
+               \Log::error('Journal receipt document upload failed', [
+                   'error' => $e->getMessage(),
+                   'client_id' => $id,
+                   'receipt_id' => $receipt_id
+               ]);
+               return response()->json([
+                   'status' => false,
+                   'message' => 'Failed to upload document: ' . $e->getMessage()
+               ], 500);
+           }
           }
 
           if($saved){
+           
            if($request->type == 'client'){
                $subject = 'added 1 journal receipt document';
                $objs = new ActivitiesLog;
@@ -2122,7 +2370,7 @@ class ClientAccountsController extends Controller
                $objs->save();
            }
            $response['status']     =     true;
-           $response['message']    =    'You’ve successfully uploaded your journal receipt document';
+           $response['message']    =    "You've successfully uploaded your journal receipt document";
            $fetchd = \App\Models\Document::where('client_id',$id)->where('doc_type',$doctype)->where('type',$request->type)->orderby('created_at', 'DESC')->get();
            ob_start();
            foreach($fetchd as $fetch){
@@ -3518,12 +3766,38 @@ public function updateClientFundsLedger(Request $request)
         }
 
         // Log activity
-        $subject = "updated client funds ledger entry. Reference no- {$entry->trans_no}";
+        $userName = auth()->user()->first_name . ' ' . auth()->user()->last_name;
+        $transactionType = $deposit_amount > 0 ? 'Deposit' : 'Withdrawal';
+        $amount = $deposit_amount > 0 ? $deposit_amount : $withdraw_amount;
+        $formattedAmount = '$' . number_format($amount, 2);
+        $formattedBalance = '$' . number_format($running_balance, 2);
+        $transDate = date('d/m/Y', strtotime($trans_date));
+        
+        $subject = "Client Funds Ledger Updated - {$formattedAmount} (Ref: {$entry->trans_no})";
+        
+        $descriptionText = "<div class='activity-detail'>";
+        $descriptionText .= "<p><strong>{$userName}</strong> updated a client funds ledger entry:</p>";
+        $descriptionText .= "<ul>";
+        $descriptionText .= "<li><strong>Type:</strong> {$transactionType}</li>";
+        $descriptionText .= "<li><strong>Amount:</strong> {$formattedAmount}</li>";
+        $descriptionText .= "<li><strong>Transaction Date:</strong> {$transDate}</li>";
+        $descriptionText .= "<li><strong>Reference No:</strong> {$entry->trans_no}</li>";
+        if (!empty($description)) {
+            $descriptionText .= "<li><strong>Description:</strong> " . htmlspecialchars($description) . "</li>";
+        }
+        $descriptionText .= "<li><strong>Updated Balance:</strong> {$formattedBalance}</li>";
+        if ($insertedDocId !== null) {
+            $descriptionText .= "<li><strong>Document:</strong> Attached</li>";
+        }
+        $descriptionText .= "</ul>";
+        $descriptionText .= "</div>";
+        
         $activity = new \App\Models\ActivitiesLog;
         $activity->client_id = $entry->client_id;
         $activity->created_by = auth()->user()->id;
-        $activity->description = '';
+        $activity->description = $descriptionText;
         $activity->subject = $subject;
+        $activity->activity_type = 'financial';
         $activity->save();
 
         return response()->json([

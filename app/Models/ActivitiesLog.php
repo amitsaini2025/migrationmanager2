@@ -120,6 +120,12 @@ class ActivitiesLog extends Authenticatable
 			'email' => 'fa-envelope',
 			'document' => 'fa-file-alt',
 			'note' => 'fa-sticky-note',
+			'financial' => 'fa-dollar-sign',
+			'lead_converted' => 'fa-user-check',
+			'followup_scheduled' => 'fa-calendar-plus',
+			'followup_completed' => 'fa-calendar-check',
+			'followup_rescheduled' => 'fa-calendar-alt',
+			'followup_cancelled' => 'fa-calendar-times',
 			default => 'fa-sticky-note',
 		};
 	}
@@ -134,6 +140,12 @@ class ActivitiesLog extends Authenticatable
 			'email' => 'text-primary',
 			'document' => 'text-info',
 			'note' => 'text-warning',
+			'financial' => 'text-success',
+			'lead_converted' => 'text-success',
+			'followup_scheduled' => 'text-info',
+			'followup_completed' => 'text-success',
+			'followup_rescheduled' => 'text-warning',
+			'followup_cancelled' => 'text-danger',
 			default => 'text-secondary',
 		};
 	}

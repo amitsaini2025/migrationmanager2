@@ -1808,99 +1808,84 @@ $(document).ready(function() {
 
 
     // Handle pencil icon click to open modal
+    // FIX: Bootstrap dropdown stops event propagation completely
+    // Solution: Use direct event attachment for dropdown buttons, delegated for standalone
 
-    $(document).on('click', '.edit-ledger-entry', function(e) {
-
-        e.preventDefault();
-
-        var $row = $(this).closest('tr');
-
-        var id = $(this).data('id');
-
-        var transDate = $(this).data('trans-date');
-
-        var entryDate = $(this).data('entry-date');
-
-        var type = $(this).data('type');
-
-        var description = $(this).data('description');
-
-        var deposit = $(this).data('deposit');
-
-        var withdraw = $(this).data('withdraw');
-
-
+    // Function to handle edit entry logic
+    function handleEditLedgerEntry(element) {
+        var id = $(element).data('id');
+        var transDate = $(element).data('trans-date');
+        var entryDate = $(element).data('entry-date');
+        var type = $(element).data('type');
+        var description = $(element).data('description');
+        var deposit = $(element).data('deposit');
+        var withdraw = $(element).data('withdraw');
 
         // Populate modal fields
-
         $('#editLedgerModal input[name="id"]').val(id);
-
         $('#editLedgerModal input[name="trans_date"]').val(transDate);
-
         $('#editLedgerModal input[name="entry_date"]').val(entryDate);
-
-        $('#editLedgerModal input[name="client_fund_ledger_type"]').val(type).prop('readonly', true); // Make type readonly
-
+        $('#editLedgerModal input[name="client_fund_ledger_type"]').val(type).prop('readonly', true);
         $('#editLedgerModal input[name="description"]').val(description);
 
-
-
         // Handle Funds In and Funds Out - disable if zero
-
         if (parseFloat(deposit) === 0) {
-
             $('#editLedgerModal input[name="deposit_amount"]').val(deposit).prop('readonly', true);
-
         } else {
-
             $('#editLedgerModal input[name="deposit_amount"]').val(deposit).prop('readonly', false);
-
         }
-
-
 
         if (parseFloat(withdraw) === 0) {
-
             $('#editLedgerModal input[name="withdraw_amount"]').val(withdraw).prop('readonly', true);
-
         } else {
-
             $('#editLedgerModal input[name="withdraw_amount"]').val(withdraw).prop('readonly', false);
-
         }
 
-
-
         // Initialize datepickers
-
         $('#editLedgerModal input[name="trans_date"]').datepicker({
-
             format: 'dd/mm/yyyy',
-
             autoclose: true,
-
             todayHighlight: true
-
         });
-
-
 
         $('#editLedgerModal input[name="entry_date"]').datepicker({
-
             format: 'dd/mm/yyyy',
-
             autoclose: true,
-
             todayHighlight: true
-
         });
 
-
-
         // Show modal
-
         $('#editLedgerModal').modal('show');
+    }
 
+    // Attach direct handlers to dropdown buttons
+    function attachEditLedgerHandlers() {
+        $('.dropdown-menu .edit-ledger-entry').off('click').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleEditLedgerEntry(this);
+        });
+    }
+
+    // Attach on page load
+    setTimeout(function() {
+        attachEditLedgerHandlers();
+    }, 500);
+
+    // Re-attach when dropdowns are shown
+    $(document).on('shown.bs.dropdown', function() {
+        attachEditLedgerHandlers();
+    });
+
+    // Handler for standalone version (regular accounts tab) - uses delegation
+    $(document).on('click', '.edit-ledger-entry', function(e) {
+        // Skip if this is in a dropdown (already handled above)
+        if ($(this).closest('.dropdown-menu').length > 0) {
+            return;
+        }
+
+        e.preventDefault();
+        handleEditLedgerEntry(this);
     });
 
 
@@ -12732,7 +12717,34 @@ Bansal Immigration`;
 
 
 
+        // FIX: Handle updatedraftinvoice for dropdown menus
+        function attachUpdateDraftInvoiceHandlers() {
+            $('.dropdown-menu .updatedraftinvoice').off('click').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                var receiptid = $(this).data('receiptid');
+                $('#function_type').val("edit");
+                getInfoByReceiptId(receiptid);
+            });
+        }
+
+        // Attach on page load
+        setTimeout(function() {
+            attachUpdateDraftInvoiceHandlers();
+        }, 500);
+
+        // Re-attach when dropdowns are shown
+        $(document).on('shown.bs.dropdown', function() {
+            attachUpdateDraftInvoiceHandlers();
+        });
+
+        // Original handler for standalone buttons (non-dropdown)
         $(document).delegate('.updatedraftinvoice', 'click', function(){
+            // Skip if inside dropdown (already handled above)
+            if ($(this).closest('.dropdown-menu').length > 0) {
+                return;
+            }
 
             var receiptid = $(this).data('receiptid');
 
@@ -15483,19 +15495,12 @@ Bansal Immigration`;
 
 
 		// Send to Hubdoc functionality
-
-		$(document).on('click', '.send-to-hubdoc-btn', function() {
-
-			var $btn = $(this);
-
+		// FIX: Extract logic to reusable function for both dropdown and standalone versions
+		function handleSendToHubdoc($btn) {
 			var invoiceId = $btn.data('invoice-id');
 
-			
-
 			// Show loading state
-
 			$btn.html('<i class="fas fa-spinner fa-spin"></i> Sending...');
-
 			$btn.prop('disabled', true);
 
 			
@@ -15583,17 +15588,41 @@ Bansal Immigration`;
 				}
 
 			});
+		}
 
+		// Direct attachment for dropdown buttons
+		function attachSendToHubdocHandlers() {
+			$('.dropdown-menu .send-to-hubdoc-btn').off('click').on('click', function(e) {
+				e.preventDefault();
+				e.stopPropagation();
+				handleSendToHubdoc($(this));
+			});
+		}
+
+		// Attach on page load
+		setTimeout(function() {
+			attachSendToHubdocHandlers();
+		}, 500);
+
+		// Re-attach when dropdowns are shown
+		$(document).on('shown.bs.dropdown', function() {
+			attachSendToHubdocHandlers();
+		});
+
+		// Handler for standalone buttons (non-dropdown)
+		$(document).on('click', '.send-to-hubdoc-btn', function() {
+			// Skip if inside dropdown (already handled above)
+			if ($(this).closest('.dropdown-menu').length > 0) {
+				return;
+			}
+			handleSendToHubdoc($(this));
 		});
 
 
 
 		// Refresh Hubdoc status button
-
-		$(document).on('click', '.refresh-hubdoc-status', function() {
-
-			var $btn = $(this);
-
+		// FIX: Extract logic to reusable function
+		function handleRefreshHubdocStatus($btn) {
 			var invoiceId = $btn.data('invoice-id');
 
 			var $mainBtn = $btn.siblings('.send-to-hubdoc-btn');
@@ -15617,7 +15646,34 @@ Bansal Immigration`;
 				$btn.prop('disabled', false);
 
 			}, 2000);
+		}
 
+		// Direct attachment for dropdown buttons
+		function attachRefreshHubdocHandlers() {
+			$('.dropdown-menu .refresh-hubdoc-status').off('click').on('click', function(e) {
+				e.preventDefault();
+				e.stopPropagation();
+				handleRefreshHubdocStatus($(this));
+			});
+		}
+
+		// Attach on page load
+		setTimeout(function() {
+			attachRefreshHubdocHandlers();
+		}, 500);
+
+		// Re-attach when dropdowns are shown
+		$(document).on('shown.bs.dropdown', function() {
+			attachRefreshHubdocHandlers();
+		});
+
+		// Handler for standalone buttons (non-dropdown)
+		$(document).on('click', '.refresh-hubdoc-status', function() {
+			// Skip if inside dropdown (already handled above)
+			if ($(this).closest('.dropdown-menu').length > 0) {
+				return;
+			}
+			handleRefreshHubdocStatus($(this));
 		});
 
 

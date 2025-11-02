@@ -1443,7 +1443,7 @@ $(document).ready(function() {
             ->first();
         $first_name= $admin->first_name ?? 'N/A';
         
-        $appointmentdata[$appointmentlist->id] = array(
+        $appointmentdata[$appointmentlist->id] = [
             'title' => $appointmentlist->title,
             'time' => date('H:i A', strtotime($appointmentlist->time)),
             'date' => date('d D, M Y', strtotime($appointmentlist->date)),
@@ -1451,7 +1451,7 @@ $(document).ready(function() {
             'createdby' => substr($first_name, 0, 1),
             'createdname' => $first_name,
             'createdemail' => $admin->email ?? 'N/A',
-        );
+        ];
     }
     @endphp
     window.appointmentData = {!! json_encode($appointmentdata, JSON_FORCE_OBJECT) !!};

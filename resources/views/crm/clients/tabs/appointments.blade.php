@@ -18,7 +18,7 @@
                                 $datetime = $appointmentlist->created_at;
                                 $timeago = \App\Http\Controllers\Controller::time_elapsed_string($datetime);
 
-                                $appointmentdata[$appointmentlist->id] = array(
+                                $appointmentdata[$appointmentlist->id] = [
                                     'title' => $appointmentlist->title,
                                     'time' => date('H:i A', strtotime($appointmentlist->time)),
                                     'date' => date('d D, M Y', strtotime($appointmentlist->date)),
@@ -27,7 +27,7 @@
                                     'createdby' => substr($first_name, 0, 1),
                                     'createdname' => $first_name,
                                     'createdemail' => $admin->email ?? 'N/A',
-                                );
+                                ];
                             ?>
 
                             <div class="appointmentdata <?php if($rr == 0){ echo 'active'; } ?>" data-id="<?php echo $appointmentlist->id; ?>">

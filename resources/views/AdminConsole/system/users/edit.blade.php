@@ -165,7 +165,7 @@
                                         if( strpos($fetchedData->permission,",") ){
                                             $permission_arr =  explode(",",$fetchedData->permission);
                                         } else {
-                                            $permission_arr = array($fetchedData->permission);
+                                            $permission_arr = [$fetchedData->permission];
                                         } ?>
 
                                             <br><b>Notes</b>  &nbsp;&nbsp;&nbsp;&nbsp;

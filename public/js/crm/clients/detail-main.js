@@ -5390,6 +5390,8 @@ Bansal Immigration`;
                 var service_id = $("input[name='radioGroup']:checked").val(); //alert(service_id);
 
                 var inperson_address = $("input[name='inperson_address']:checked").attr('data-val'); //alert(inperson_address);
+                
+                var slot_overwrite = $('#slot_overwrite_hidden').val() == 1 ? 1 : 0; // Get slot overwrite value
 
                 $.ajax({
 
@@ -5399,7 +5401,7 @@ Bansal Immigration`;
 
                     type:'POST',
 
-                    data:{id:service_id, enquiry_item:enquiry_item, inperson_address:inperson_address },
+                    data:{id:service_id, enquiry_item:enquiry_item, inperson_address:inperson_address, slot_overwrite:slot_overwrite },
 
                     datatype:'json',
 
@@ -5450,8 +5452,11 @@ Bansal Immigration`;
                                 $('#timeslot_col_date').val(date);
 
 
-
-
+                                // If slot overwrite is enabled, don't fetch/show time slots
+                                if( $('#slot_overwrite_hidden').val() == 1){
+                                    // User will select time from dropdown, not from slots
+                                    return false;
+                                }
 
                                 $('.timeslots').html('');
 
@@ -5467,7 +5472,7 @@ Bansal Immigration`;
 
                                 var enquiry_item  = $('.enquiry_item').val(); //alert(enquiry_item);
 
-                                //var slot_overwrite_hidden = $('#slot_overwrite_hidden').val();
+                                var slot_overwrite = $('#slot_overwrite_hidden').val() == 1 ? 1 : 0; // Get slot overwrite value
 
                                 $.ajax({
 
@@ -5477,7 +5482,7 @@ Bansal Immigration`;
 
                                     type:'POST',
 
-                                    data:{service_id:service_id,sel_date:date, enquiry_item:enquiry_item,inperson_address:inperson_address},
+                                    data:{service_id:service_id,sel_date:date, enquiry_item:enquiry_item,inperson_address:inperson_address,slot_overwrite:slot_overwrite},
 
                                     datatype:'json',
 
@@ -5488,16 +5493,14 @@ Bansal Immigration`;
                                         var obj = JSON.parse(res);
 
                                         if(obj.success){
-
+                                            
+                                            // If slot overwrite is enabled, don't generate time slots
                                             if( $('#slot_overwrite_hidden').val() == 1){
-
-                                                var objdisable = [];
-
-                                            } else {
-
-                                                var objdisable = obj.disabledtimeslotes;
-
+                                                // Slot overwrite enabled - user will use dropdown, don't show time slots
+                                                return false;
                                             }
+
+                                            var objdisable = obj.disabledtimeslotes;
 
                                            
 
@@ -5781,6 +5784,16 @@ Bansal Immigration`;
 
                 $('.slotTimeOverwriteDivCls').hide();
 
+            }
+            
+            // Destroy existing datepicker and reload with new slot_overwrite value
+            $('#datetimepicker').datepicker('destroy');
+            $('.timeslots').html(''); // Clear time slots
+            
+            // Trigger location change to reload calendar with new settings
+            var selectedLocation = $("input[name='inperson_address']:checked").attr('data-val');
+            if(selectedLocation){
+                $("input[name='inperson_address']:checked").trigger('change');
             }
 
         });

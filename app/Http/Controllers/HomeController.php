@@ -199,6 +199,7 @@ class HomeController extends Controller
     public function getdisableddatetime(Request $request)
     {
 		$requestData = $request->all(); //dd($requestData);
+		$slot_overwrite = $request->slot_overwrite ?? 0; // Default to 0 if not provided
 		$date = explode('/', $requestData['sel_date']);
 		$datey = $date[2].'-'.$date[1].'-'.$date[0];
 
@@ -384,24 +385,30 @@ class HomeController extends Controller
             foreach($servicelist as $list){
                 $disabledtimeslotes[] = date('g:i A', strtotime($list->time)); //'H:i A'
 			}
-            $disabled_slot_arr = \App\Models\BookServiceDisableSlot::select('id','slots')->where('book_service_slot_per_person_id', $book_service_slot_per_person_tbl_unique_id)->whereDate('disabledates', $datey)->get();
-            //dd($disabled_slot_arr);
-            if(!empty($disabled_slot_arr) && count($disabled_slot_arr) >0 ){
-                $newArray = explode(",",$disabled_slot_arr[0]->slots); //dd($newArray);
-            } else {
-                $newArray = array();
+            // Query book_service_disable_slots table only if slot_overwrite is not enabled
+            if($slot_overwrite != 1){
+                $disabled_slot_arr = \App\Models\BookServiceDisableSlot::select('id','slots')->where('book_service_slot_per_person_id', $book_service_slot_per_person_tbl_unique_id)->whereDate('disabledates', $datey)->get();
+                //dd($disabled_slot_arr);
+                if(!empty($disabled_slot_arr) && count($disabled_slot_arr) >0 ){
+                    $newArray = explode(",",$disabled_slot_arr[0]->slots); //dd($newArray);
+                } else {
+                    $newArray = array();
+                }
+                $disabledtimeslotes = array_merge($disabledtimeslotes, $newArray); //dd($disabledtimeslotes);
             }
-            $disabledtimeslotes = array_merge($disabledtimeslotes, $newArray); //dd($disabledtimeslotes);
 		    return json_encode(array('success'=>true, 'disabledtimeslotes' =>$disabledtimeslotes));
 	    } else {
-            $disabled_slot_arr = \App\Models\BookServiceDisableSlot::select('id','slots')->where('book_service_slot_per_person_id', $book_service_slot_per_person_tbl_unique_id)->whereDate('disabledates', $datey)->get();
-            //dd($disabled_slot_arr);
-            if(!empty($disabled_slot_arr) && count($disabled_slot_arr) >0 ){
-                $newArray = explode(",",$disabled_slot_arr[0]->slots); //dd($newArray);
-            } else {
-                $newArray = array();
+            // Query book_service_disable_slots table only if slot_overwrite is not enabled
+            if($slot_overwrite != 1){
+                $disabled_slot_arr = \App\Models\BookServiceDisableSlot::select('id','slots')->where('book_service_slot_per_person_id', $book_service_slot_per_person_tbl_unique_id)->whereDate('disabledates', $datey)->get();
+                //dd($disabled_slot_arr);
+                if(!empty($disabled_slot_arr) && count($disabled_slot_arr) >0 ){
+                    $newArray = explode(",",$disabled_slot_arr[0]->slots); //dd($newArray);
+                } else {
+                    $newArray = array();
+                }
+                $disabledtimeslotes = array_merge($disabledtimeslotes, $newArray); //dd($disabledtimeslotes);
             }
-            $disabledtimeslotes = array_merge($disabledtimeslotes, $newArray); //dd($disabledtimeslotes);
 		    return json_encode(array('success'=>true, 'disabledtimeslotes' =>$disabledtimeslotes));
 	    }
     }
@@ -411,16 +418,23 @@ class HomeController extends Controller
     {   //dd($request->all());
         $enquiry_item = $request->enquiry_item;
         $req_service_id = $request->id;
+        $slot_overwrite = $request->slot_overwrite ?? 0; // Default to 0 if not provided
+        \Log::info('getdatetimebackend called with slot_overwrite:', ['slot_overwrite' => $slot_overwrite, 'request' => $request->all()]);
         //echo $enquiry_item."===".$req_service_id; die;
+        
+        $book_service_slot_per_person_tbl_unique_id = null; // Initialize
+        
         if(isset($request->inperson_address) && $request->inperson_address == 1 ) { //Adelaide
             if( $enquiry_item != "" && $req_service_id != "") {
                 if( $req_service_id == 1 ) { //Paid service
                     $person_id = 5; //Adelaide
                     $service_type = $req_service_id; //Paid service
+                    $book_service_slot_per_person_tbl_unique_id = 6;
                 }
                 else if( $req_service_id == 2 ) { //Free service
                     $person_id = 5; //Adelaide
                     $service_type = $req_service_id; //Free service
+                    $book_service_slot_per_person_tbl_unique_id = 8;
                 }
             }
         }
@@ -431,6 +445,7 @@ class HomeController extends Controller
                 if( $req_service_id == 1 ) { //Paid service
                     $person_id = 1; //Ajay
                     $service_type = $req_service_id; //Paid service
+                    $book_service_slot_per_person_tbl_unique_id = 1;
                 }
                 else if( $req_service_id == 2 ) { //Free service
                     if( $enquiry_item == 1 || $enquiry_item == 6 || $enquiry_item == 7 ){
@@ -439,20 +454,24 @@ class HomeController extends Controller
                         //7 => Visa Cancellation/ NOICC/ Visa refusals
                         $person_id = 1; //Ajay
                         $service_type = $req_service_id; //Free service
+                        $book_service_slot_per_person_tbl_unique_id = 2;
                     }
                     else if( $enquiry_item == 2 || $enquiry_item == 3 ){
                         //2 => Temporary Residency Appointment
                         //3 => JRP/Skill Assessment
                         $person_id = 2; //Shubam
                         $service_type = $req_service_id; //Free service
+                        $book_service_slot_per_person_tbl_unique_id = 3;
                     }
                     else if( $enquiry_item == 4 ){ //Tourist Visa
                         $person_id = 3; //Tourist
                         $service_type = $req_service_id; //Free service
+                        $book_service_slot_per_person_tbl_unique_id = 4;
                     }
                     else if( $enquiry_item == 5 ){ //Education/Course Change/Student Visa/Student Dependent Visa (for education selection only)
                         $person_id = 4; //Education
                         $service_type = $req_service_id; //Free service
+                        $book_service_slot_per_person_tbl_unique_id = 5;
                     }
                 }
             }
@@ -462,9 +481,11 @@ class HomeController extends Controller
         $service = \App\Models\BookServiceSlotPerPerson::where('person_id', $person_id)->where('service_type', $service_type)->first();//dd($service);
 	    if( $service ){
 		   $weekendd  =array();
-		    if($service->weekend != ''){
+		   // Skip weekend blocking if slot_overwrite is enabled
+		    if($service->weekend != '' && $slot_overwrite != 1){
 				$weekend = explode(',',$service->weekend);
 				foreach($weekend as $e){
+					$e = trim($e); // Remove whitespace
 					if($e == 'Sun'){
 						$weekendd[] = 0;
 					}else if($e == 'Mon'){
@@ -496,6 +517,22 @@ class HomeController extends Controller
             } else {
                 $disabledatesarray =  array();
             }
+            
+            // Query book_service_disable_slots table to get additional disabled dates
+            // Skip this if slot_overwrite is enabled (allows booking on blocked dates)
+            if(isset($book_service_slot_per_person_tbl_unique_id) && $slot_overwrite != 1){
+                $disabled_dates_from_table = \App\Models\BookServiceDisableSlot::select('disabledates')
+                    ->where('book_service_slot_per_person_id', $book_service_slot_per_person_tbl_unique_id)
+                    ->get();
+                
+                foreach($disabled_dates_from_table as $disabled_date_row){
+                    $formatted_date = date('d/m/Y', strtotime($disabled_date_row->disabledates));
+                    if(!in_array($formatted_date, $disabledatesarray)){
+                        $disabledatesarray[] = $formatted_date;
+                    }
+                }
+            }
+            
             // Add the current date to the array
             //$disabledatesarray[] = date('d/m/Y'); //dd($disabledatesarray);
             if(isset($request->inperson_address) && $request->inperson_address == 1 ) { //Adelaide
@@ -507,6 +544,7 @@ class HomeController extends Controller
                     $duration = $bookservice->duration; //In melbourne case free service = 15
                 }
             }
+            \Log::info('getdatetimebackend response:', ['slot_overwrite' => $slot_overwrite, 'weekendd' => $weekendd, 'disabledatesarray' => $disabledatesarray]);
             return json_encode(array('success'=>true, 'duration' =>$duration,'weeks' => $weekendd,'start_time' =>$start_time,'end_time'=>$end_time,'disabledatesarray'=>$disabledatesarray));
 	    }else{
 		 return json_encode(array('success'=>false, 'duration' =>0));

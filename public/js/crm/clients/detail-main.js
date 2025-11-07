@@ -770,9 +770,6 @@
         
 
     });
-
-
-
     // Alternative vanilla JavaScript version as backup
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -1081,47 +1078,63 @@
 
             radio.addEventListener('change', function () {
 
+                const $modal = $('#createreceiptmodal');
+                const isQuickReceiptMode = $modal.length && $modal.data('quick-receipt-mode');
+
                 forms.forEach(form => form.style.display = 'none');
 
-                const selected = this.value; //alert(selected);
+                const selected = this.value;
 
-                document.getElementById(selected + '_form').style.display = 'block';
+                if (!isQuickReceiptMode) {
+                    // Clear all forms before showing selected one (prevents data leakage between forms)
+                    document.querySelectorAll('.form-type').forEach(form => {
+                        // Clear input fields, but preserve hidden system fields (client_id, matter_id, etc)
+                        form.querySelectorAll('input[type="text"], textarea').forEach(field => {
+                            if (!field.name.includes('client_id') &&
+                                !field.name.includes('matter_id') &&
+                                !field.name.includes('loggedin_userid') &&
+                                !field.name.includes('receipt_type') &&
+                                !field.name.includes('client')) {
+                                field.value = '';
+                            }
+                        });
+                        // Clear select dropdowns except migration agent
+                        form.querySelectorAll('select').forEach(field => {
+                            if (!field.id || !field.id.includes('agent_id')) {
+                                field.selectedIndex = 0;
+                            }
+                        });
+                    });
+                }
 
-                //var selectedMatter = $('#sel_matter_id_client_detail').val();
+                const targetForm = document.getElementById(selected + '_form');
+                if (targetForm) {
+                    targetForm.style.display = 'block';
+                }
 
                 let selectedMatter;
 
                 if ($('.general_matter_checkbox_client_detail').is(':checked')) {
 
-                    // If checkbox is checked, get its value
-
                     selectedMatter = $('.general_matter_checkbox_client_detail').val();
-
-                    //console.log('Checkbox is checked, selected value:', selectedMatter);
 
                 } else {
 
-                    // If checkbox is not checked, get the value from the dropdown
-
                     selectedMatter = $('#sel_matter_id_client_detail').val();
-
-                    //console.log('Checkbox is not checked, selected dropdown value:', selectedMatter);
 
                 }
 
-                //console.log('selectedMatter==='+selectedMatter);
-
                 if(selected == 'office_receipt'){
 
-                    listOfInvoice();
+                    if (!isQuickReceiptMode) {
+                        listOfInvoice();
+                    }
 
                     $('#client_matter_id_office').val(selectedMatter);
 
                 }
 
                 else if(selected == 'invoice_receipt'){
-
-                    //alert('function_type=='+ $('#function_type').val() )
 
                     if($('#function_type').val() == '' || $('#function_type').val() == 'add' ) {
 
@@ -1137,9 +1150,10 @@
 
                 else if(selected == 'client_receipt'){
 
-                    listOfInvoice();
-
-                    clientLedgerBalanceAmount(selectedMatter);
+                    if (!isQuickReceiptMode) {
+                        listOfInvoice();
+                        clientLedgerBalanceAmount(selectedMatter);
+                    }
 
                     $('#client_matter_id_ledger').val(selectedMatter);
 
@@ -1323,15 +1337,111 @@
 
 			success: function(response){
 
-				var obj = (typeof response === 'string') ? $.parseJSON(response) : response;
+				try {
+					var obj = response;
+					if (typeof response === 'string') {
+						obj = $.parseJSON(response);
+					}
 
-				$('.invoice_no_cls').html(obj.record_get);
+					if (!obj || typeof obj !== 'object') {
+						throw new Error('Invalid response structure');
+					}
 
+					$('#office_receipt_form .invoice_no_cls').html(obj.record_get || '<option value="">No invoices found</option>');
+					$('#client_receipt_form .invoice_no_cls').html(obj.record_get || '<option value="">No invoices found</option>');
+				} catch(e) {
+					console.error('❌ Failed to parse JSON response from listOfInvoice:', e);
+					console.error('Response received:', response);
+					$('#office_receipt_form .invoice_no_cls').html('<option value="">Error loading invoices</option>');
+					$('#client_receipt_form .invoice_no_cls').html('<option value="">Error loading invoices</option>');
+				}
+
+			},
+            
+            error: function(xhr, status, error) {
+                console.error('❌ AJAX error in listOfInvoice:');
+                console.error('Status:', status);
+                console.error('Error:', error);
+                console.error('Response:', xhr.responseText);
+                console.error('Status Code:', xhr.status);
+                $('#office_receipt_form .invoice_no_cls').html('<option value="">Failed to load invoices</option>');
+                $('#client_receipt_form .invoice_no_cls').html('<option value="">Failed to load invoices</option>');
             }
 
         });
 
     }
+
+
+    // Helpers for Quick Receipt workflow
+    window.loadInvoicesForQuickReceipt = function(matterId, preSelectInvoice) {
+        return $.ajax({
+            type: 'POST',
+            url: window.ClientDetailConfig.urls.getInvoicesByMatter,
+            data: {
+                client_matter_id: matterId,
+                client_id: window.ClientDetailConfig.clientId,
+                _token: window.ClientDetailConfig.csrfToken
+            }
+        }).done(function(response) {
+            const $dropdown = $('#office_receipt_form .productitem_office tr.clonedrow_office').first().find('select.invoice_no_cls');
+            if (!$dropdown.length) {
+                return;
+            }
+
+            $dropdown.empty();
+            $dropdown.append('<option value="">Select Invoice (Optional)</option>');
+
+            if (response && Array.isArray(response.invoices) && response.invoices.length > 0) {
+                response.invoices.forEach(function(invoice) {
+                    const selected = invoice.trans_no === preSelectInvoice ? 'selected' : '';
+                    $dropdown.append(
+                        '<option value="' + invoice.trans_no + '" ' + selected + '>' +
+                        invoice.trans_no + ' - $' + parseFloat(invoice.balance_amount || 0).toFixed(2) +
+                        ' (' + (invoice.status || '') + ')</option>'
+                    );
+                });
+            }
+        }).fail(function(xhr) {
+            console.error('❌ Failed to load invoices for Quick Receipt:', xhr);
+            $('#office_receipt_form .productitem_office tr.clonedrow_office').first().find('select.invoice_no_cls')
+                .html('<option value="">Error loading invoices</option>');
+        });
+    };
+
+
+    window.populateQuickReceiptOfficeForm = function(invoiceData) {
+        const $modal = $('#createreceiptmodal');
+        if (!$modal.length || !$modal.data('quick-receipt-mode')) {
+            return;
+        }
+
+        $('#client_matter_id_office').val(invoiceData.matterId);
+
+        const today = new Date();
+        const dateStr = ('0' + today.getDate()).slice(-2) + '/' + ('0' + (today.getMonth() + 1)).slice(-2) + '/' + today.getFullYear();
+
+        const $firstRow = $('#office_receipt_form .productitem_office tr.clonedrow_office').first();
+        if (!$firstRow.length) {
+            return;
+        }
+
+        $firstRow.find('input[name="trans_date[]"]').val(dateStr);
+        $firstRow.find('input[name="entry_date[]"]').val(dateStr);
+        $firstRow.find('input[name="deposit_amount[]"]').val(parseFloat(invoiceData.balance || 0).toFixed(2));
+        $firstRow.find('input[name="description[]"]').val('Payment for ' + invoiceData.invoiceNo + ' - ' + (invoiceData.description || ''));
+
+        window.loadInvoicesForQuickReceipt(invoiceData.matterId, invoiceData.invoiceNo)
+            .always(function() {
+                const $modalRef = $('#createreceiptmodal');
+                if ($modalRef.data('quick-receipt-mode')) {
+                    $firstRow.find('select[name="payment_method[]"]').focus();
+                    // Quick Receipt initialization complete; allow normal behaviour again
+                    $modalRef.removeData('quick-receipt-mode');
+                    $modalRef.removeData('quick-receipt-invoice-data');
+                }
+            });
+    };
 
 
 
@@ -1380,7 +1490,6 @@
         document.body.removeChild(link); // Clean up
 
     }
-
 $(document).ready(function() {
 
     
@@ -1724,9 +1833,6 @@ $(document).ready(function() {
         });
 
     }
-
-
-
    // Assuming this is part of the rendering logic for Client Funds Ledger entries
 
     function renderClientFundsLedger(entries) {
@@ -2317,9 +2423,6 @@ $(document).ready(function() {
             }
 
         }
-
-
-
 		/*if( subtabId == 'visaagreementform') {
 
             if(selectedMatter != "" ) {
@@ -2715,9 +2818,6 @@ $(document).ready(function() {
     }
 
 });
-
-
-
     function previewFile(fileType, fileUrl, containerId) {
 
         //console.log('fileType='+fileType);
@@ -3387,11 +3487,6 @@ $(document).ready(function() {
             }
 
         });
-
-
-
-
-
         //Client detail page Select general matter checkbox and assign matter id
 
         $(document).delegate('.general_matter_checkbox_client_detail', 'change', function(){
@@ -4155,13 +4250,6 @@ $(document).ready(function() {
             }
 
         });
-
-
-
-
-
-
-
         function getInfoByReceiptId11(receiptid) {
 
             $.ajax({
@@ -4954,7 +5042,6 @@ $(document).ready(function() {
         //create journal receipt start
 
         $('.report_date_fields_journal').datepicker({ format: 'dd/mm/yyyy', autoclose: true });
-
         $('.report_entry_date_fields_journal').datepicker({ format: 'dd/mm/yyyy',todayHighlight: true,autoclose: true }).datepicker('setDate', new Date());
 
 
@@ -5452,11 +5539,18 @@ Bansal Immigration`;
                                 $('#timeslot_col_date').val(date);
 
 
+
                                 // If slot overwrite is enabled, don't fetch/show time slots
+
                                 if( $('#slot_overwrite_hidden').val() == 1){
+
                                     // User will select time from dropdown, not from slots
+
                                     return false;
+
                                 }
+
+
 
                                 $('.timeslots').html('');
 
@@ -5493,12 +5587,20 @@ Bansal Immigration`;
                                         var obj = JSON.parse(res);
 
                                         if(obj.success){
+
                                             
+
                                             // If slot overwrite is enabled, don't generate time slots
+
                                             if( $('#slot_overwrite_hidden').val() == 1){
+
                                                 // Slot overwrite enabled - user will use dropdown, don't show time slots
+
                                                 return false;
+
                                             }
+
+
 
                                             var objdisable = obj.disabledtimeslotes;
 
@@ -5747,9 +5849,6 @@ Bansal Immigration`;
             $('.showselecteddate').html('');
 
         });
-
-
-
         $('.slot_overwrite_time_dropdown').change(function() {
 
             $('#timeslot_col_time').val("");
@@ -6523,9 +6622,6 @@ Bansal Immigration`;
             $('#form956CreateFormModel').modal('show');
 
         });
-
-
-
         //Get Migration Agent Detail
 
         function getMigrationAgentDetail(client_matter_id) {
@@ -7239,9 +7335,6 @@ Bansal Immigration`;
             });
 
         });
-
-
-
         //Lead Section Start
 
             // Populate agent details when the modal opens
@@ -8031,9 +8124,6 @@ Bansal Immigration`;
             });
 
         });
-
-
-
         function getallnotes(){
 
             $.ajax({
@@ -8729,9 +8819,6 @@ Bansal Immigration`;
             });
 
         });
-
-
-
         $(document).delegate('#confirmModal .accept', 'click', function(){
 
             $('.popuploader').show();
@@ -9461,9 +9548,6 @@ Bansal Immigration`;
             });
 
         });
-
-
-
         //Edit Notes dynamic time
 
         $('.opennoteform').off('click').on('click', function(e) { 
@@ -10227,9 +10311,6 @@ Bansal Immigration`;
 
 
         $(document).delegate('#intrested_workflow', 'change', function(){
-
-
-
 			var v = $('#intrested_workflow option:selected').val();
 
             if(v != ''){
@@ -11021,9 +11102,6 @@ Bansal Immigration`;
             return false;
 
         });
-
-
-
         $(document).on('click', '.persdocumnetlist .btn-danger', function (e) {
 
             e.preventDefault();
@@ -11174,7 +11252,7 @@ Bansal Immigration`;
 
 
 
-                        // ðŸ” Update the Preview & Download links in dropdown
+                        // 🔁 Update the Preview & Download links in dropdown
 
                         var dropdownMenu = $(parent).closest('.drow').find('.dropdown-menu');
 
@@ -11728,7 +11806,7 @@ Bansal Immigration`;
 
                         
 
-                        // ðŸ” Update the Preview & Download links in dropdown
+                        // 🔁 Update the Preview & Download links in dropdown
 
                         var dropdownMenu = $(parent).closest('.drow').find('.dropdown-menu');
 
@@ -11783,9 +11861,6 @@ Bansal Immigration`;
             return false;
 
         });
-
-
-
         //Rename Checklist Name Visa Document
 
         $(document).on('click', '.migdocumnetlist1 .renamechecklist', function (e) {
@@ -12513,12 +12588,9 @@ Bansal Immigration`;
             });
 
         });
-
-
-
         //Account Tab Receipt Popup
 
-        $(document).delegate('.createreceipt', 'click', function(){
+        $(document).delegate('.createreceipt:not([data-test-mode="true"])', 'click', function(){
 
             $('#createreceiptmodal').modal('show');
 
@@ -12527,6 +12599,10 @@ Bansal Immigration`;
             // Wait for the modal to be fully shown to check for the visible form
 
             $('#createreceiptmodal').on('shown.bs.modal', function() {
+
+                if ($(this).data('quick-receipt-mode')) {
+                    return;
+                }
 
                 // Find the visible form inside the modal
 
@@ -12920,9 +12996,6 @@ Bansal Immigration`;
 			$('.totldueamount').html(am.toFixed(2));
 
 		}
-
-
-
         $('.add_payment_field a').on('click', function(){
 
             var clonedval = $('.payment_field .payment_field_row .payment_first_step').html();
@@ -13680,9 +13753,6 @@ Bansal Immigration`;
             $('.checklistdue_date').val(0);
 
         });
-
-
-
         $(document).delegate('.nextstage', 'click', function(){
 
             var appliid = $(this).attr('data-id');
@@ -14176,9 +14246,6 @@ Bansal Immigration`;
             $('body').addClass('modal-open');
 
         });
-
-
-
 	    $(document).delegate('#new_fee_option .fee_option_addbtn a', 'click', function(){
 
 		    var html = '<tr class="add_fee_option cus_fee_option"><td><select data-valid="required" class="form-control course_fee_type" name="course_fee_type[]"><option value="">Select Type</option><option value="Accommodation Fee">Accommodation Fee</option><option value="Administration Fee">Administration Fee</option><option value="Application Fee">Application Fee</option><option value="Bond">Bond</option></select></td><td><input type="number" value="0" class="form-control semester_amount" name="semester_amount[]"></td><td><input type="number" value="1" class="form-control no_semester" name="no_semester[]"></td><td class="total_fee"><span>0.00</span><input type="hidden"  class="form-control total_fee_am" value="0" name="total_fee[]"></td><td><input type="number" value="1" class="form-control claimable_terms" name="claimable_semester[]"></td><td><input type="number" class="form-control commission" name="commission[]"></td><td> <a href="javascript:;" class="removefeetype"><i class="fa fa-trash"></i></a></td></tr>';
@@ -14962,7 +15029,6 @@ Bansal Immigration`;
 
 
     function arcivedAction( id, table ) {
-
 		var conf = confirm('Are you sure, you would like to delete this record. Remember all Related data would be deleted.');
 
 		if(conf){
@@ -15688,9 +15754,6 @@ Bansal Immigration`;
 			}
 			handleRefreshHubdocStatus($(this));
 		});
-
-
-
 		// Function to check Hubdoc status
 
 		function checkHubdocStatus(invoiceId, $btn) {
@@ -16450,4 +16513,3 @@ Bansal Immigration`;
     });
     
 })();
-

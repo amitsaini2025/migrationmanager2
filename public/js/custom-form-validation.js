@@ -175,8 +175,15 @@ function customValidate(formName, savetype = '')
 							contentType: false,
 							data: fd,
 							success: function(response){
-								$('.popuploader').hide();
-								var obj = $.parseJSON(response);
+				$('.popuploader').hide();
+				let obj;
+				try {
+					obj = (typeof response === 'string') ? JSON.parse(response) : response;
+				} catch (error) {
+					console.error('Unable to parse adjust invoice response', response, error);
+					alert('Unexpected server response. Please try again.');
+					return;
+				}
 								if(obj.success){
 									$('#myAddnotes .modal-title').html('');
 									$('#myAddnotes #note_type').html('');
@@ -750,17 +757,17 @@ function customValidate(formName, savetype = '')
 							data: fd,
 							success: function(response){
 								$('.popuploader').hide();
-								var obj = response;
+								let obj = response;
 								if (typeof response === 'string') {
 									try {
 										obj = $.parseJSON(response);
 									} catch (error) {
-										console.error('Invalid JSON response for invoice_receipt_form:', response, error);
-										alert('Unexpected response received while creating the invoice.');
+										console.error('Unable to parse invoice response', response, error);
+										alert('Unexpected server response. Please try again.');
 										return;
 									}
 								}
-                                alert('Invoice No - '+ obj.invoice_no + ' is generated');
+								alert('Invoice No - '+ obj.invoice_no + ' is generated');
 								$('#createreceiptmodal').modal('hide');
                                 localStorage.setItem('activeTab', 'accounts');
                                 location.reload();

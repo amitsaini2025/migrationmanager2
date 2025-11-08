@@ -66,6 +66,9 @@
             </div>
             <a href="{{route('officevisits.waiting')}}" class="icon-btn" title="In Person"><i class="fas fa-user-check"></i></a>
             <a href="{{route('assignee.action')}}" class="icon-btn" title="Action"><i class="fas fa-tasks"></i></a>
+            <a href="{{ route('notifications.broadcasts.index') }}" class="icon-btn" title="Broadcasts">
+                <i class="fas fa-bullhorn"></i>
+            </a>
             <div class="icon-dropdown js-dropdown">
                 <a href="{{route('clients.index')}}" class="icon-btn" title="Clients"><i class="fas fa-users"></i></a>
                 <div class="icon-dropdown-menu">

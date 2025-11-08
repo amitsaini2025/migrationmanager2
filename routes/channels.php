@@ -36,3 +36,9 @@ Broadcast::channel('matter.{matterId}', function ($user, $matterId) {
 
     return $isAssociated || $isSuperAdmin;
 });
+
+// Public broadcast channel (for system-wide broadcasts)
+Broadcast::channel('broadcasts', function () {
+    // Allow all authenticated users to subscribe
+    return true;
+});

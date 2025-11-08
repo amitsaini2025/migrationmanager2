@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\API\ServiceAccountController;
+use App\Http\Controllers\API\BroadcastNotificationController;
 use App\Http\Controllers\API\ClientPortalController;
 use App\Http\Controllers\API\ClientPortalDashboardController;
 use App\Http\Controllers\API\ClientPortalDocumentController;
@@ -68,6 +69,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/messages/unread-count', [ClientPortalMessageController::class, 'getUnreadCount']);
     Route::post('/messages/{id}/read', [ClientPortalMessageController::class, 'markAsRead']);
     Route::get('/messages/{id}', [ClientPortalMessageController::class, 'getMessageDetails']);
+
+    // Broadcast notifications
+    Route::get('/notifications/broadcasts/unread', [BroadcastNotificationController::class, 'unread']);
+    Route::post('/notifications/broadcasts', [BroadcastNotificationController::class, 'store']);
+    Route::get('/notifications/broadcasts', [BroadcastNotificationController::class, 'index']);
+    Route::get('/notifications/broadcasts/{batchUuid}', [BroadcastNotificationController::class, 'show']);
+    Route::post('/notifications/broadcasts/{notificationId}/read', [BroadcastNotificationController::class, 'markAsRead']);
     
 });
 

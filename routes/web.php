@@ -15,6 +15,9 @@ use App\Http\Controllers\CRM\Leads\LeadAnalyticsController;
 use App\Http\Controllers\CRM\DashboardController;
 use App\Http\Controllers\CRM\CRMUtilityController;
 use App\Http\Controllers\CRM\AssigneeController;
+use App\Http\Controllers\CRM\ActiveUserController;
+use App\Http\Controllers\CRM\BroadcastNotificationAjaxController;
+use App\Http\Controllers\CRM\BroadcastController;
 use App\Http\Controllers\CRM\EmailTemplateController;
 use App\Http\Controllers\CRM\AuditLogController;
 use App\Http\Controllers\Auth\AdminLoginController;
@@ -131,6 +134,17 @@ Route::middleware(['auth:admin'])->group(function() {
     Route::get('/getassigneeajax', [CRMUtilityController::class, 'getassigneeajax']);
     Route::get('/getpartnerajax', [CRMUtilityController::class, 'getpartnerajax']);
     Route::get('/checkclientexist', [CRMUtilityController::class, 'checkclientexist']);
+
+    Route::get('/notifications/broadcasts/manage', [BroadcastController::class, 'index'])->name('notifications.broadcasts.index');
+    Route::get('/dashboard/active-users', [ActiveUserController::class, 'index'])->name('dashboard.active-users');
+
+    Route::prefix('notifications/broadcasts')->name('notifications.broadcasts.')->group(function () {
+        Route::post('/send', [BroadcastNotificationAjaxController::class, 'store'])->name('send');
+        Route::get('/history', [BroadcastNotificationAjaxController::class, 'history'])->name('history');
+        Route::get('/{batchUuid}/details', [BroadcastNotificationAjaxController::class, 'details'])->name('details');
+        Route::get('/unread', [BroadcastNotificationAjaxController::class, 'unread'])->name('unread');
+        Route::post('/{notificationId}/read', [BroadcastNotificationAjaxController::class, 'markAsRead'])->name('read');
+    });
 
 	/*---------- CRM & User Management Routes ----------*/
     // All user management routes moved to routes/adminconsole.php

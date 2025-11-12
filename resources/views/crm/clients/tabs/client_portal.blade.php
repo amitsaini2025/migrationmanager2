@@ -486,6 +486,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function handlePortalToggle(toggleElement) {
         const clientId = toggleElement.getAttribute('data-client-id');
         const isChecked = toggleElement.checked;
+        const statusValue = isChecked ? 1 : 0;
         
         // Show loading state
         toggleElement.disabled = true;
@@ -498,7 +499,7 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             body: JSON.stringify({
                 client_id: clientId,
-                status: isChecked
+                status: statusValue
             })
         })
         .then(response => response.json())
@@ -510,8 +511,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const sidebarToggle = document.getElementById('client-portal-toggle');
                 const tabToggle = document.getElementById('client-portal-toggle-tab');
                 
-                if (sidebarToggle) sidebarToggle.checked = isChecked;
-                if (tabToggle) tabToggle.checked = isChecked;
+                if (sidebarToggle) sidebarToggle.checked = !!statusValue;
+                if (tabToggle) tabToggle.checked = !!statusValue;
                 
                 // Show success message
                 alert(data.message);
@@ -580,12 +581,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     body: JSON.stringify({
                         client_id: clientId,
-                        status: false
+                        status: 0
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success) {
+                     if (data.success) {
                         // Now turn it back on with new password
                         return fetch('{{ route("clients.toggleClientPortal") }}', {
                             method: 'POST',
@@ -595,7 +596,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             },
                             body: JSON.stringify({
                                 client_id: clientId,
-                                status: true
+                                status: 1
                             })
                         });
                     } else {
@@ -607,7 +608,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     this.innerHTML = originalText;
                     this.disabled = false;
                     
-                    if (data.success) {
+                     if (data.success) {
                         alert('Password reset successfully! An email with the new credentials has been sent to the client.');
                     } else {
                         throw new Error(data.message || 'Failed to reset password');

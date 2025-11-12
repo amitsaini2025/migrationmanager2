@@ -65,11 +65,10 @@ class Kernel extends ConsoleKernel
         // Lead Follow-up System - Mark overdue follow-ups every 15 minutes
         $schedule->command('followups:mark-overdue')->everyFifteenMinutes();
         
-        // Appointment Sync System - Sync from Bansal website every 10 minutes
-        $schedule->command('booking:sync-appointments --minutes=15')
-            ->everyTenMinutes()
+        // Appointment Sync System - Sync from Bansal website every 5 minutes (look back 24 hours)
+        $schedule->command('booking:sync-appointments --minutes=1440')
+            ->everyFiveMinutes()
             ->withoutOverlapping(5) // Max 5 minutes lock time
-            ->runInBackground()
             ->appendOutputTo(storage_path('logs/appointment-sync.log'));
         
         // Appointment Sync System - Send reminders daily at 9 AM

@@ -147,6 +147,32 @@ class AppointmentApiService
     }
 
     /**
+     * Reschedule appointment using dedicated endpoint.
+     */
+    public function rescheduleAppointment(int $appointmentId, string $date, string $time): array
+    {
+        $this->ensureAuthenticated();
+
+        try {
+            $response = Http::withToken($this->token)
+                ->timeout(30)
+                ->post($this->baseUrl . '/appointments/update-appointment', [
+                    'appointment_id' => $appointmentId,
+                    'appointment_date' => $date,
+                    'appointment_time' => $time,
+                ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            throw new Exception('Failed to reschedule appointment: ' . $response->status());
+        } catch (Exception $e) {
+            throw new Exception('Reschedule appointment error: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Delete appointment
      */
     public function deleteAppointment($id)

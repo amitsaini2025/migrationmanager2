@@ -128,10 +128,17 @@ html, body {
                                         </div>
                                     </div>
                                     @if($appointment->client_id)
+                                    @php
+                                        $clientDetailParams = [base64_encode(convert_uuencode($appointment->client_id))];
+                                        $latestMatterRef = optional($latestClientMatter)->client_unique_matter_no;
+                                        if (!empty($latestMatterRef)) {
+                                            $clientDetailParams[] = $latestMatterRef;
+                                        }
+                                    @endphp
                                     <div class="info-row">
                                         <div class="row">
                                             <div class="col-12">
-                                                <a href="{{ route('clients.detail', $appointment->client_id) }}" class="btn btn-sm btn-info btn-block" target="_blank">
+                                                <a href="{{ route('clients.detail', $clientDetailParams) }}" class="btn btn-sm btn-info btn-block" target="_blank">
                                                     <i class="fas fa-external-link-alt"></i> View Client Profile
                                                 </a>
                                             </div>
@@ -439,7 +446,7 @@ html, body {
                             @endif
                             
                             @if(in_array($appointment->status, ['pending', 'confirmed']))
-                            <button class="btn btn-primary" onclick="updateStatus('completed')">
+                            <button class="btn btn-primary" onclick="markCompleteAppointment()">
                                 <i class="fas fa-check-circle"></i> Mark Completed
                             </button>
                             <button class="btn btn-danger" onclick="cancelAppointment()">
@@ -447,9 +454,9 @@ html, body {
                             </button>
                             @endif
                             
-                            <button class="btn btn-warning" onclick="sendReminder()">
+                            <!--<button class="btn btn-warning" onclick="sendReminder()">
                                 <i class="fas fa-envelope"></i> Send Reminder
-                            </button>
+                            </button>-->
                             
                             <button class="btn btn-info" onclick="sendSMS()">
                                 <i class="fas fa-sms"></i> Send SMS
@@ -511,6 +518,30 @@ function cancelAppointment() {
         },
         error: function() {
             alert('Failed to cancel appointment');
+        }
+    });
+}
+
+function markCompleteAppointment() {
+    if (!confirm('Mark appointment as completed?')) {
+        return;
+    }
+    
+    $.ajax({
+        url: '{{ route("booking.appointments.update-status", $appointment->id) }}',
+        method: 'POST',
+        data: {
+            _token: '{{ csrf_token() }}',
+            status: 'completed'
+        },
+        success: function(response) {
+            if (response.success) {
+                alert('Appointment completed successfully!');
+                window.location.reload();
+            }
+        },
+        error: function() {
+            alert('Failed to complete appointment');
         }
     });
 }

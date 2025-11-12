@@ -5,22 +5,29 @@ namespace App\Http\Controllers\CRM;
 use App\Http\Controllers\Controller;
 use App\Models\BookingAppointment;
 use App\Models\AppointmentConsultant;
+use App\Models\ClientMatter;
 use App\Models\AppointmentSyncLog;
 use App\Models\ActivitiesLog;
 use App\Services\BansalAppointmentSync\AppointmentSyncService;
+use App\Services\BansalAppointmentSync\BansalApiClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
+use Exception;
+use Carbon\Carbon;
 use Yajra\DataTables\Facades\DataTables;
 
 class BookingAppointmentsController extends Controller
 {
     protected AppointmentSyncService $syncService;
+    protected BansalApiClient $bansalApiClient;
 
-    public function __construct(AppointmentSyncService $syncService)
+    public function __construct(AppointmentSyncService $syncService, BansalApiClient $bansalApiClient)
     {
         $this->middleware('auth:admin');
         $this->syncService = $syncService;
+        $this->bansalApiClient = $bansalApiClient;
     }
 
     /**
@@ -47,8 +54,22 @@ class BookingAppointmentsController extends Controller
             $query->whereDate('appointment_datetime', '<=', $request->date_to);
         }
         
-        // Paginate appointments
-        $appointments = $query->latest('appointment_datetime')->paginate(20);
+        // Paginate appointments ordered by latest Bansal appointment ID
+        $appointments = $query->orderByDesc('bansal_appointment_id')->paginate(20);
+
+        // Map latest matter reference for each appointment client
+        $clientMatterRefs = [];
+        $clientIds = $appointments->pluck('client_id')->filter()->unique();
+
+        if ($clientIds->isNotEmpty()) {
+            $clientMatterRefs = ClientMatter::whereIn('client_id', $clientIds)
+                ->select('client_id', 'client_unique_matter_no')
+                ->orderByDesc('id')
+                ->get()
+                ->unique('client_id')
+                ->pluck('client_unique_matter_no', 'client_id')
+                ->toArray();
+        }
         
         // Get consultants for filter
         $consultants = AppointmentConsultant::active()->get();
@@ -61,7 +82,7 @@ class BookingAppointmentsController extends Controller
             'total' => BookingAppointment::count(),
         ];
         
-        return view('crm.booking.appointments.index', compact('appointments', 'consultants', 'stats'));
+        return view('crm.booking.appointments.index', compact('appointments', 'consultants', 'stats', 'clientMatterRefs'));
     }
 
     /**
@@ -101,7 +122,7 @@ class BookingAppointmentsController extends Controller
             $appointments = $query->get();
             
             // Debug logging
-            \Log::info('Calendar API Request', [
+            Log::info('Calendar API Request', [
                 'type' => $request->get('type'),
                 'start' => $request->get('start'),
                 'end' => $request->get('end'),
@@ -131,7 +152,9 @@ class BookingAppointmentsController extends Controller
             ]);
         }
 
-        // Default: Return DataTables format
+        // Default: Return DataTables format ordered by latest Bansal appointment ID
+        $query->orderByDesc('bansal_appointment_id');
+
         return DataTables::of($query)
             ->addColumn('client_info', function ($appointment) {
                 if ($appointment->client_id) {
@@ -183,8 +206,24 @@ class BookingAppointmentsController extends Controller
     {
         $appointment = BookingAppointment::with(['client', 'consultant', 'assignedBy'])->findOrFail($id);
         $consultants = AppointmentConsultant::active()->get();
+        $latestClientMatter = null;
+
+        if ($appointment->client_id) {
+            $latestClientMatter = ClientMatter::where('client_id', $appointment->client_id)
+                ->orderByDesc('id')
+                ->first();
+        }
         
-        return view('crm.booking.appointments.show', compact('appointment', 'consultants'));
+        return view('crm.booking.appointments.show', compact('appointment', 'consultants', 'latestClientMatter'));
+    }
+
+    /**
+     * Show edit appointment form (date & time only).
+     */
+    public function edit($id)
+    {
+        $appointment = BookingAppointment::with(['client', 'consultant'])->findOrFail($id);
+        return view('crm.booking.appointments.edit', compact('appointment'));
     }
 
     /**
@@ -283,6 +322,47 @@ class BookingAppointmentsController extends Controller
 
         $appointment->save();
 
+        $syncError = null;
+        $shouldSyncStatus = in_array($request->status, ['cancelled', 'completed', 'confirmed']);
+
+        if ($shouldSyncStatus) {
+            if ($appointment->bansal_appointment_id) {
+                try {
+                    $this->syncService->pushStatusUpdate(
+                        $appointment,
+                        $request->status,
+                        $request->status === 'cancelled' ? $request->cancellation_reason : null
+                    );
+
+                    $appointment->forceFill([
+                        'last_synced_at' => now(),
+                        'sync_status' => 'synced',
+                        'sync_error' => null,
+                    ])->save();
+                } catch (Exception $e) {
+                    $syncError = $e->getMessage();
+
+                    Log::error('Failed to sync appointment status with Bansal API', [
+                        'appointment_id' => $appointment->id,
+                        'bansal_appointment_id' => $appointment->bansal_appointment_id,
+                        'status' => $request->status,
+                        'error' => $syncError,
+                    ]);
+
+                    $appointment->forceFill([
+                        'sync_status' => 'failed',
+                        'sync_error' => $syncError,
+                    ])->save();
+                }
+            } else {
+                Log::warning('Skipping Bansal sync because appointment is missing bansal_appointment_id', [
+                    'appointment_id' => $appointment->id,
+                    'status' => $request->status,
+                ]);
+                $syncError = 'Missing Bansal appointment identifier.';
+            }
+        }
+
         // Log activity using existing codebase pattern (only if client exists)
         if ($appointment->client_id) {
             $activityLog = new ActivitiesLog;
@@ -294,9 +374,14 @@ class BookingAppointmentsController extends Controller
             $activityLog->save();
         }
 
+        $message = $syncError
+            ? 'Status updated locally. Sync with website failed: ' . $syncError
+            : 'Status updated successfully';
+
         return response()->json([
             'success' => true,
-            'message' => 'Status updated successfully'
+            'message' => $message,
+            'sync_error' => $syncError
         ]);
     }
 
@@ -331,6 +416,124 @@ class BookingAppointmentsController extends Controller
             'success' => true,
             'message' => 'Consultant assigned successfully'
         ]);
+    }
+
+    /**
+     * Update appointment date and time.
+     */
+    public function update(Request $request, $id)
+    {  
+        $appointment = BookingAppointment::findOrFail($id); 
+
+        $request->validate([
+            'appointment_date' => 'required|date',
+            'appointment_time' => 'required|date_format:H:i',
+        ]);
+
+        $oldDatetime = $appointment->appointment_datetime;
+        try {
+            $newDatetime = Carbon::createFromFormat(
+                'Y-m-d H:i',
+                $request->appointment_date . ' ' . $request->appointment_time,
+                config('app.timezone')
+            );
+        } catch (Exception $e) {
+            return $this->handleUpdateError($request, 'Invalid date or time provided.', 422, $e->getMessage());
+        }
+
+        if ($oldDatetime && $oldDatetime->equalTo($newDatetime)) {
+            $message = 'Appointment date and time remain unchanged.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                ]);
+            }
+
+            return redirect()
+                ->back()
+                ->with('success', $message);
+        }
+
+        if (empty($appointment->bansal_appointment_id)) {
+            return $this->handleUpdateError($request, 'Cannot update appointment: missing Bansal appointment ID.', 422);
+        }
+
+        try {
+            $apiResponse = $this->bansalApiClient->rescheduleAppointment(
+                (int) $appointment->bansal_appointment_id,
+                $request->appointment_date,
+                $request->appointment_time
+            );
+        } catch (Exception $e) {
+            return $this->handleUpdateError($request, 'Failed to update appointment on website: ' . $e->getMessage(), 500);
+        }
+
+        if (!($apiResponse['success'] ?? false)) {
+            $message = $apiResponse['message'] ?? 'Failed to update appointment on website.';
+            return $this->handleUpdateError($request, $message, 422, $apiResponse);
+        }
+
+        $appointment->appointment_datetime = $newDatetime;
+        $appointment->timeslot_full = $newDatetime->format('h:i A');
+        $appointment->last_synced_at = now();
+        $appointment->sync_status = 'success';
+        $appointment->sync_error = null;
+        $appointment->save();
+
+        if ($appointment->client_id) {
+            $activityLog = new ActivitiesLog;
+            $activityLog->client_id = $appointment->client_id;
+            $activityLog->created_by = Auth::id();
+            $activityLog->subject = 'Booking appointment rescheduled';
+
+            $from = $oldDatetime ? $oldDatetime->format('d M Y, h:i A') : 'N/A';
+            $to = $newDatetime->format('d M Y, h:i A');
+
+            $activityLog->description = sprintf(
+                '<p><strong>Appointment rescheduled:</strong> %s → %s</p>',
+                e($from),
+                e($to)
+            );
+            $activityLog->save();
+        }
+
+        $message = 'Appointment date and time updated successfully.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'appointment_datetime' => $appointment->appointment_datetime->toIso8601String(),
+            ]);
+        }
+
+        return redirect()
+            ->route('booking.appointments.show', $appointment->id)
+            ->with('success', $message);
+    }
+
+    protected function handleUpdateError(Request $request, string $message, int $status = 422, $context = null)
+    {
+        if ($context) {
+            Log::warning('Booking appointment update failed', [
+                'message' => $message,
+                'context' => $context,
+            ]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => $message,
+            ], $status);
+        }
+
+        return redirect()
+            ->back()
+            ->withInput()
+            ->with('error', $message);
     }
 
     /**

@@ -370,5 +370,61 @@ class AppointmentSyncService
             throw $e;
         }
     }
+
+    /**
+     * Push status update to Bansal API.
+     */
+    public function pushStatusUpdate(BookingAppointment $appointment, string $status, ?string $reason = null): ?array
+    {
+        if (empty($appointment->bansal_appointment_id)) {
+            Log::warning('Skipping Bansal status update: missing bansal_appointment_id', [
+                'appointment_id' => $appointment->id,
+                'status' => $status,
+            ]);
+            return null;
+        }
+
+        $type = match ($status) {
+            'cancelled' => 'cancel',
+            'completed' => 'complete',
+            'confirmed' => 'confirm',
+            default => null,
+        };
+
+        if ($type === null) {
+            Log::warning('Skipping Bansal status update: unsupported status type', [
+                'appointment_id' => $appointment->id,
+                'status' => $status,
+            ]);
+            return null;
+        }
+
+        try {
+            $response = $this->apiClient->updateAppointmentStatus(
+                $appointment->bansal_appointment_id,
+                $type,
+                $reason
+            );
+
+            Log::info('Bansal appointment status updated', [
+                'appointment_id' => $appointment->id,
+                'bansal_appointment_id' => $appointment->bansal_appointment_id,
+                'status' => $status,
+                'response' => $response,
+            ]);
+
+            return $response;
+        } catch (Exception $e) {
+            Log::error('Failed to push status update to Bansal API', [
+                'appointment_id' => $appointment->id,
+                'bansal_appointment_id' => $appointment->bansal_appointment_id,
+                'status' => $status,
+                'reason' => $reason,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
 }
 

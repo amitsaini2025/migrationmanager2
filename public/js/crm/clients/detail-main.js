@@ -13490,13 +13490,13 @@ Bansal Immigration`;
 
 
 
-        $(document).delegate('#application-tab,#stages-tab', 'click', function(){
+        /*$(document).delegate('#application-tab,#stages-tab', 'click', function(){
 
-            $('.if_applicationdetail').show();
+            ('.if_applicationdetail').show();
 
             $('#application-tab').show().html('<h4>Please wait ...</h4>');
 
-        });
+        });*/
 
 
 
@@ -16137,7 +16137,7 @@ Bansal Immigration`;
 
 
 		// Client Portal Toggle Functionality
-
+		
 		$('#client-portal-toggle').on('change', function() {
 
 			var isChecked = $(this).is(':checked');
@@ -16225,6 +16225,7 @@ Bansal Immigration`;
 			});
 
 		});
+		
 
 	});
 

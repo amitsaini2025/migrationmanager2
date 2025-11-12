@@ -178,11 +178,14 @@ html, body {
                     </div>
 
                     <!-- DataTable -->
+                    @php
+                        $clientMatterRefs = $clientMatterRefs ?? [];
+                    @endphp
                     <div class="table-responsive">
                         <table class="table table-striped table-hover" id="appointments-table">
                             <thead>
                                 <tr>
-                                    <th width="50">ID</th>
+                                    <th width="120">Bansal Website Appointment ID</th>
                                     <th>Client</th>
                                     <th>Appointment</th>
                                     <th>Service</th>
@@ -195,11 +198,40 @@ html, body {
                             <tbody>
                                 @forelse($appointments as $appointment)
                                 <tr>
-                                    <td>{{ $appointment->id }}</td>
+                                    <td>{{ $appointment->bansal_appointment_id ?? $appointment->id }}</td>
                                     <td>
-                                        <strong>{{ $appointment->client_name }}</strong><br>
-                                        <small>{{ $appointment->client_email }}</small><br>
+                                        @if($appointment->client_id)
+                                            @php
+                                                $encodedClientId = base64_encode(convert_uuencode($appointment->client_id));
+                                                $latestMatterRef = $clientMatterRefs[$appointment->client_id] ?? null;
+                                                $clientDetailParams = [$encodedClientId];
+
+                                                if (!empty($latestMatterRef)) {
+                                                    $clientDetailParams[] = $latestMatterRef;
+                                                }
+
+                                                $clientDetailUrl = route('clients.detail', $clientDetailParams);
+                                            @endphp
+                                            <strong>
+                                                <a href="{{ $clientDetailUrl }}" target="_blank">
+                                                    {{ $appointment->client_name }}
+                                                </a>
+                                            </strong><br>
+                                            <small>
+                                                <a href="{{ $clientDetailUrl }}" target="_blank">
+                                                    {{ $appointment->client_email }}
+                                                </a>
+                                            </small><br>
+                                        @else
+                                            <strong>{{ $appointment->client_name }}</strong><br>
+                                            <small>{{ $appointment->client_email }}</small><br>
+                                        @endif
                                         <small>{{ $appointment->client_phone }}</small>
+                                        @if($appointment->client && $appointment->client->client_id)
+                                            <div class="mt-2">
+                                                <small class="text-muted">Client ID: {{ $appointment->client->client_id }}</small>
+                                            </div>
+                                        @endif
                                     </td>
                                     <td>
                                         <strong>{{ $appointment->appointment_datetime->format('d M Y') }}</strong><br>
@@ -243,6 +275,12 @@ html, body {
                                         <a href="{{ route('booking.appointments.show', $appointment->id) }}" class="btn btn-sm btn-primary" title="View Details">
                                             <i class="fas fa-eye"></i>
                                         </a>
+                                        <a href="{{ route('booking.appointments.edit', $appointment->id) }}"
+                                            class="btn btn-sm btn-warning"
+                                            title="Edit Date & Time">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        
                                         <button onclick="quickAction('{{ $appointment->id }}')" class="btn btn-sm btn-info" title="Quick Actions">
                                             <i class="fas fa-bolt"></i>
                                         </button>
@@ -267,6 +305,42 @@ html, body {
                         {{ $appointments->links() }}
                     </div>
                     @endif
+
+                    <!-- Edit Date & Time Modal -->
+                    <div class="modal fade" id="editDatetimeModal" tabindex="-1" role="dialog" aria-labelledby="editDatetimeModalLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="editDatetimeModalLabel">Update Appointment Date & Time</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <form id="edit-datetime-form">
+                                    @csrf
+                                    <div class="modal-body">
+                                        <input type="hidden" id="edit-datetime-appointment-id" name="appointment_id">
+                                        <div id="edit-datetime-error" class="alert alert-danger d-none"></div>
+                                        <div class="form-group">
+                                            <label for="edit-appointment-date">Appointment Date</label>
+                                            <input type="date" class="form-control" id="edit-appointment-date" name="appointment_date" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="edit-appointment-time">Appointment Time</label>
+                                            <input type="time" class="form-control" id="edit-appointment-time" name="appointment_time" required>
+                                        </div>
+                                        <p class="text-muted mb-0">
+                                            Changes are saved immediately after submission. Only date and time can be modified here.
+                                        </p>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary" id="edit-datetime-submit">Save Changes</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -345,6 +419,87 @@ function quickAction(appointmentId) {
     // This can open a modal with quick actions
     window.location.href = '{{ url("/booking/appointments") }}/' + appointmentId;
 }
+
+const baseBookingAppointmentUrl = '{{ url("/booking/appointments") }}';
+
+$(document).on('click', '.edit-datetime-btn', function() {
+    const button = $(this);
+    const appointmentId = button.data('id');
+    const appointmentDate = button.data('date');
+    const appointmentTime = button.data('time');
+
+    $('#edit-datetime-appointment-id').val(appointmentId);
+    $('#edit-appointment-date').val(appointmentDate);
+    $('#edit-appointment-time').val(appointmentTime);
+    $('#editDatetimeModalLabel').text('Update Appointment #' + appointmentId + ' Date & Time');
+    $('#edit-datetime-error').addClass('d-none').text('');
+
+    $('#editDatetimeModal').modal('show');
+});
+
+$('#editDatetimeModal').on('hidden.bs.modal', function() {
+    $('#edit-datetime-form')[0].reset();
+    $('#edit-datetime-appointment-id').val('');
+    $('#edit-datetime-error').addClass('d-none').text('');
+    $('#edit-datetime-submit').prop('disabled', false).text('Save Changes');
+});
+
+$('#edit-datetime-form').on('submit', function(event) {
+    event.preventDefault();
+
+    const appointmentId = $('#edit-datetime-appointment-id').val();
+    const appointmentDate = $('#edit-appointment-date').val();
+    const appointmentTime = $('#edit-appointment-time').val();
+    const errorBox = $('#edit-datetime-error');
+    const submitButton = $('#edit-datetime-submit');
+
+    errorBox.addClass('d-none').text('');
+    submitButton.prop('disabled', true).text('Saving...');
+
+    $.ajax({
+        url: baseBookingAppointmentUrl + '/' + appointmentId + '/update-datetime',
+        method: 'POST',
+        data: {
+            _token: '{{ csrf_token() }}',
+            appointment_date: appointmentDate,
+            appointment_time: appointmentTime
+        },
+        success: function(response) {
+            $('#editDatetimeModal').modal('hide');
+
+            const message = response.message || 'Appointment date and time updated successfully.';
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Updated',
+                    text: message
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                alert(message);
+                window.location.reload();
+            }
+        },
+        error: function(xhr) {
+            submitButton.prop('disabled', false).text('Save Changes');
+
+            let message = 'Failed to update appointment date and time.';
+            if (xhr.responseJSON) {
+                if (xhr.responseJSON.errors) {
+                    message = Object.values(xhr.responseJSON.errors).flat().join(' ');
+                } else if (xhr.responseJSON.message) {
+                    message = xhr.responseJSON.message;
+                }
+            }
+
+            errorBox.removeClass('d-none').text(message);
+        },
+        complete: function() {
+            submitButton.prop('disabled', false).text('Save Changes');
+        }
+    });
+});
 
 // Auto-reload every 5 minutes to get latest synced data
 setInterval(function() {

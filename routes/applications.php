@@ -151,6 +151,12 @@ Route::controller(BookingAppointmentsController::class)
         
         // Appointment List & Views
         Route::get('/appointments', 'index')->name('appointments.index');
+        Route::get('/appointments/{id}/edit', 'edit')
+            ->name('appointments.edit')
+            ->whereNumber('id');
+        Route::put('/appointments/{id}', 'update')
+            ->name('appointments.update')
+            ->whereNumber('id');
         
         // Appointment Detail
         Route::get('/appointments/{id}', 'show')
@@ -174,6 +180,10 @@ Route::controller(BookingAppointmentsController::class)
         
         Route::post('/appointments/{id}/update-consultant', 'updateConsultant')
             ->name('appointments.update-consultant')
+            ->whereNumber('id');
+        
+        Route::post('/appointments/{id}/update-datetime', 'update')
+            ->name('appointments.update-datetime')
             ->whereNumber('id');
         
         Route::post('/appointments/{id}/add-note', 'addNote')

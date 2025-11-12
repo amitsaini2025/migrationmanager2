@@ -5,7 +5,7 @@ namespace App\Services\BansalAppointmentSync;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Client\PendingRequest;
-use Illuminate\Http\Client\Response;
+use Illuminate\Http\Client\RequestException;
 use Exception;
 
 class BansalApiClient
@@ -146,6 +146,76 @@ class BansalApiClient
                 'error' => $e->getMessage()
             ]);
             return false;
+        }
+    }
+
+    /**
+     * Update appointment status on Bansal API.
+     */
+    public function updateAppointmentStatus(int $appointmentId, string $type, ?string $reason = null): array
+    {
+        try {
+            $payload = ['type' => $type];
+
+            if (!empty($reason) && $type === 'cancel') {
+                $payload['cancel_reason'] = $reason;
+            }
+
+            $response = $this->client()->post("{$this->baseUrl}/appointments/{$appointmentId}/status", $payload);
+
+            return $response->json();
+        } catch (Exception $e) {
+            Log::error('Bansal API Client Error', [
+                'method' => 'updateAppointmentStatus',
+                'appointment_id' => $appointmentId,
+                'type' => $type,
+                'reason' => $reason,
+                'error' => $e->getMessage()
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Reschedule an appointment on the Bansal API.
+     */
+    public function rescheduleAppointment(int $appointmentId, string $date, string $time): array
+    {
+        try {
+            $response = $this->client()->post("{$this->baseUrl}/appointments/update-appointment", [
+                'appointment_id' => $appointmentId,
+                'appointment_date' => $date,
+                'appointment_time' => $time,
+            ]);
+
+            return $response->json();
+        } catch (RequestException $e) {
+            $response = $e->response;
+            $message = $response?->json('message')
+                ?? $response?->json()['message'] ?? $e->getMessage();
+
+            Log::warning('Bansal API Client Request Error', [
+                'method' => 'rescheduleAppointment',
+                'appointment_id' => $appointmentId,
+                'date' => $date,
+                'time' => $time,
+                'status' => $response?->status(),
+                'body' => $response?->body(),
+                'error' => $message,
+            ]);
+
+            throw new Exception($message, $e->getCode(), $e);
+        } catch (Exception $e) {
+            Log::error('Bansal API Client Error', [
+                'method' => 'rescheduleAppointment',
+                'appointment_id' => $appointmentId,
+                'date' => $date,
+                'time' => $time,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
         }
     }
 }

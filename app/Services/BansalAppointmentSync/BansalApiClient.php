@@ -131,6 +131,61 @@ class BansalApiClient
     }
 
     /**
+     * Create an appointment on the Bansal API.
+     */
+    public function createAppointment(array $payload): array
+    {
+        try {
+            $response = $this->client()->post("{$this->baseUrl}/appointments/add-appointment", $payload);
+            $data = $response->json();
+
+            if (!($data['success'] ?? false)) {
+                $message = $data['message'] ?? 'Unable to create appointment via booking portal. Please try again.';
+
+                Log::warning('Bansal API create appointment returned unsuccessful response', [
+                    'method' => 'createAppointment',
+                    'payload' => $payload,
+                    'response' => $data,
+                ]);
+
+                throw new Exception($message);
+            }
+
+            return $data;
+        } catch (RequestException $e) {
+            $response = $e->response;
+            $responseBody = $response?->json();
+            $message = null;
+
+            if (is_array($responseBody)) {
+                $message = $responseBody['message']
+                    ?? ($responseBody['error']['message'] ?? null);
+            }
+
+            $message = $message ?: $response?->body() ?: $e->getMessage();
+
+            Log::warning('Bansal API Client Request Error', [
+                'method' => 'createAppointment',
+                'payload' => $payload,
+                'status' => $response?->status(),
+                'body' => $response?->body(),
+                'error' => $message,
+            ]);
+
+            throw new Exception($message, $e->getCode(), $e);
+        } catch (Exception $e) {
+            Log::error('Bansal API Client Error', [
+                'method' => 'createAppointment',
+                'payload' => $payload,
+                'error_type' => get_class($e),
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
      * Test API connection
      */
     public function testConnection(): bool

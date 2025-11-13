@@ -15,22 +15,30 @@ use App\Models\ActivitiesLog;
 use App\Models\Admin;
 use App\Models\Branch;
 use App\Models\ApplicationActivitiesLog;
+use App\Models\BookingAppointment;
+use App\Services\BansalAppointmentSync\BansalApiClient;
 use Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Log;
+use Exception;
+use Illuminate\Support\Str;
 
 class AppointmentsController extends Controller
 {
+    protected BansalApiClient $bansalApiClient;
+
     /**
      * Display a listing of the resource.
      *
      * @return \Illuminate\Http\Response
      */
 
-     public function __construct()
+     public function __construct(BansalApiClient $bansalApiClient)
      {
          $this->middleware('auth:admin');
+         $this->bansalApiClient = $bansalApiClient;
      }
 
     public function index(Request $request)
@@ -689,6 +697,299 @@ public function update_apppointment_comment(Request $request){
 
     public function addAppointmentBook(Request $request){
 		$requestData = $request->all(); //dd($requestData);
+
+        $client = Admin::find($request->client_id);
+        $serviceConfig = [
+            1 => [
+                'title' => 'Free Consultation',
+                'duration' => 15,
+                'price' => 0.0,
+                'service_type' => 'free-consultation',
+                'specific_service' => 'Free Consultation',
+            ],
+            2 => [
+                'title' => 'Comprehensive Migration Advice',
+                'duration' => 30,
+                'price' => 150.0,
+                'service_type' => 'paid-consultation',
+                'specific_service' => 'Comprehensive Migration Advice',
+            ],
+            3 => [
+                'title' => 'Overseas Applicant Enquiry',
+                'duration' => 30,
+                'price' => 150.0,
+                'service_type' => 'overseas-enquiry',
+                'specific_service' => 'Overseas Applicant Enquiry',
+            ],
+        ];
+
+        $selectedService = $serviceConfig[$request->service_id] ?? null;
+        $serviceTitle = $selectedService['title'] ?? 'Consultation';
+        $serviceDuration = (int) ($selectedService['duration'] ?? 15);
+        $servicePrice = (float) ($selectedService['price'] ?? 0.0);
+
+        $serviceType = $selectedService['service_type'] ?? match ((int) $request->service_id) {
+            1 => 'free-consultation',
+            2 => 'paid-consultation',
+            3 => 'overseas-enquiry',
+            default => Str::slug($serviceTitle ?? 'consultation'),
+        };
+
+        $specificService = $selectedService['specific_service'] ?? ($serviceTitle ?? Str::headline($serviceType));
+        $isPaid = in_array((int) $request->service_id, [2, 3], true);
+        $amountFormatted = number_format($isPaid ? $servicePrice : 0, 2, '.', '');
+
+        $appointmentDate = null;;
+        $appointmentDateFormatted = null;
+        $appointmentDateTime = null;
+        $appointmentTimeStart24 = null;
+        $timeslotDisplay = $request->appoint_time;
+
+        if (!empty($request->appoint_date)) {
+            try {
+                $appointmentDate = Carbon::createFromFormat('d/m/Y', $request->appoint_date);
+                $appointmentDateFormatted = $appointmentDate->format('Y-m-d');
+            } catch (Exception $e) {
+                Log::warning('Invalid appointment date format supplied', [
+                    'appoint_date' => $request->appoint_date,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if (!empty($timeslotDisplay)) {
+            $timeParts = explode('-', $timeslotDisplay);
+            $startTimeRaw = trim($timeParts[0] ?? '');
+            if (!empty($startTimeRaw)) {
+                try {
+                    $appointmentTimeStart24 = Carbon::createFromFormat('g:i A', $startTimeRaw)->format('H:i:s');
+                } catch (Exception $e) {
+                    Log::warning('Invalid appointment time format supplied', [
+                        'appoint_time' => $timeslotDisplay,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        if ($appointmentDate) {
+            $appointmentDateTime = clone $appointmentDate;
+            if ($appointmentTimeStart24) {
+                $appointmentDateTime->setTimeFromTimeString($appointmentTimeStart24);
+            }
+        }
+
+        $location = match ((int) $request->inperson_address) {
+            1 => 'adelaide',
+            2 => 'melbourne',
+            default => 'melbourne',
+        };
+
+        $natureTitles = [
+            1 => 'permanent-residency',
+            2 => 'temporary-residency',
+            3 => 'jrp-skill-assessment',
+            4 => 'tourist-visa',
+            5 => 'education-visa',
+            6 => 'complex-matters',
+            7 => 'visa-cancellation',
+            8 => 'international-migration',
+        ];
+        $enquiryTitle = $natureTitles[$request->noe_id] ?? null;
+
+        $enquiryTypeApiMap = [
+            1 => 'pr_complex',
+            2 => 'tr',
+            3 => 'tr',
+            4 => 'tourist',
+            5 => 'education',
+            6 => 'pr_complex',
+            7 => 'pr_complex',
+            8 => 'pr_complex',
+        ];
+        $enquiryType = $enquiryTypeApiMap[$request->noe_id] ?? null;
+
+
+        $appointmentTimeForApi = $appointmentTimeStart24
+            ? Carbon::createFromFormat('H:i:s', $appointmentTimeStart24)->format('H:i')
+            : null;
+
+        $apiPayload = [
+            'full_name' => $client?->full_name,
+            'email' => $client?->email,
+            'phone' => $client?->phone,
+            'client_reference' => $request->client_unique_id,
+            'location' => $location,
+            'meeting_type' => $request->appointment_details,
+            'preferred_language' => $request->preferred_language,
+
+            'enquiry_type' => $enquiryType,
+            'enquiry_title' => $enquiryTitle,
+            'service_type' => $enquiryTitle,
+            'specific_service' => $serviceType,
+
+            'enquiry_details' => $request->description,
+            'appointment_date' => $appointmentDateFormatted,
+            'appointment_time' => $appointmentTimeForApi,
+            'timezone' => $request->timezone,
+            'is_paid' => $isPaid,
+            'amount' => $amountFormatted,
+            'duration_minutes' => $serviceDuration,
+            'source' => 'crm',
+        ];
+
+        try {
+            $apiResponse = $this->bansalApiClient->createAppointment($apiPayload); //dd($apiResponse);
+            $apiSuccess = $apiResponse['success'] ?? false;
+            if (!$apiSuccess) {
+                Log::warning('Bansal API create appointment returned unsuccessful response', [
+                    'payload' => $apiPayload,
+                    'response' => $apiResponse,
+                ]);
+                $response['status'] = false;
+                $response['message'] = $apiResponse['message'] ?? 'Unable to create appointment via booking portal. Please try again.';
+                $response['client_id'] = $request->client_id;
+                echo json_encode($response);
+                return;
+            }
+            $apiAppointmentData = $apiResponse['data']['appointment'] ?? $apiResponse['data'] ?? [];
+           
+       
+        } catch (Exception $e) {
+            Log::error('Bansal API create appointment failed', [
+                'payload' => $apiPayload,
+                'error_type' => get_class($e),
+                'error' => $e->getMessage(),
+            ]);
+            $response['status'] = false;
+            $response['message'] = $e->getMessage() ?: 'Unable to create appointment via booking portal. Please try again.';
+            $response['client_id'] = $request->client_id;
+            echo json_encode($response);
+            return;
+        }
+
+        if (!empty($apiAppointmentData['appointment_datetime'])) {
+            try {
+                $appointmentDateTime = Carbon::parse($apiAppointmentData['appointment_datetime']);
+            } catch (Exception $e) {
+                Log::warning('Unable to parse appointment_datetime from API response', [
+                    'appointment_datetime' => $apiAppointmentData['appointment_datetime'] ?? null,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if (!empty($apiAppointmentData['appointment_time']) && empty($appointmentTimeStart24)) {
+            try {
+                $appointmentTimeStart24 = Carbon::createFromFormat('H:i:s', $apiAppointmentData['appointment_time'])->format('H:i:s');
+            } catch (Exception $e) {
+                Log::warning('Unable to parse appointment_time from API response', [
+                    'appointment_time' => $apiAppointmentData['appointment_time'],
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $bansalAppointmentId = $apiAppointmentData['id'] ?? null;
+        $timeslotFull = $apiAppointmentData['appointment_time'];
+        $durationMinutes = $apiAppointmentData['duration_minutes'] ?? $serviceDuration;
+        $location = $apiAppointmentData['location'] ?? $location;
+        $meetingType = $apiAppointmentData['meeting_type'] ?? $request->appointment_details;
+        $preferredLanguage = $apiAppointmentData['preferred_language'] ?? $request->preferred_language;
+        $status = $apiAppointmentData['status'] ?? 'pending';
+        $enquiryType = $apiAppointmentData['enquiry_type'] ?? $enquiryType;
+        $enquiryDetails = $apiAppointmentData['enquiry_details'] ?? $request->description;
+        $serviceTypeFromApi = $apiAppointmentData['service_type'] ?? $serviceType;
+        $discountAmount = $apiAppointmentData['discount_amount'] ?? 0;
+        $amount = $apiAppointmentData['amount'] ?? $servicePrice;
+        $finalAmount = $apiAppointmentData['final_amount'] ?? $amount;
+        $paymentStatus = $apiAppointmentData['payment_status'] ?? ($request->service_id == 1 ? 'pending' : 'not_required');
+        $promoCode = $apiAppointmentData['promo_code'] ?? $request->promocode_used;
+        $paymentMethod = data_get($apiAppointmentData, 'payment.payment_method');
+        $paidAtRaw = data_get($apiAppointmentData, 'payment.paid_at');
+        $paidAt = $paidAtRaw ? Carbon::parse($paidAtRaw) : null;
+
+
+        if ($location === 'adelaide') {
+            $consultant_id = 5;
+        } elseif ($location === 'melbourne') {
+            if ($apiAppointmentData['service_type'] === 'tourist-visa') {
+                $consultant_id = 4;
+            } elseif ($apiAppointmentData['service_type'] === 'education-visa') {
+                $consultant_id = 3;
+            } elseif (in_array($apiAppointmentData['service_type'], ['jrp-skill-assessment', 'temporary-residency'])) {
+                $consultant_id = 2;
+            } else {
+                $consultant_id = 1;
+            }
+        } 
+
+        $bookingAttributes = [
+            'bansal_appointment_id' => $bansalAppointmentId,
+            'order_hash' => $apiAppointmentData['order_hash'] ?? null,
+            'client_id' => $request->client_id,
+            'consultant_id' => $consultant_id,
+            'client_name' => $client?->full_name,
+            'client_email' => $client?->email,
+            'client_phone' => $client?->phone,
+            'client_timezone' => $request->timezone ?? 'Australia/Melbourne',
+            'appointment_datetime' => $appointmentDateTime,
+            'timeslot_full' => $timeslotFull,
+            'duration_minutes' => $durationMinutes,
+            'location' => $location,
+            'inperson_address' => $apiAppointmentData['inperson_address'] ?? $request->inperson_address,
+            'meeting_type' => $meetingType,
+            'preferred_language' => $preferredLanguage,
+            'service_id' => $request->service_id,
+            'noe_id' => $request->noe_id,
+            'enquiry_type' => $enquiryType,
+            'service_type' => $apiAppointmentData['service_type'] ,
+            'enquiry_details' => $enquiryDetails,
+            'status' => $status,
+            'is_paid' => (bool) ($apiAppointmentData['is_paid'] ?? false),
+            'amount' => $amount,
+            'discount_amount' => $discountAmount,
+            'final_amount' => $finalAmount,
+            'promo_code' => $promoCode,
+            'payment_status' => $paymentStatus,
+            'payment_method' => $paymentMethod,
+            'paid_at' => $paidAt,
+            'synced_from_bansal_at' => now(),
+            'last_synced_at' => now(),
+            'sync_status' => 'synced',
+            'slot_overwrite_hidden' => $request->slot_overwrite_hidden,
+            'user_id' => Auth::user()->id
+        ];
+
+        try {
+            if ($bansalAppointmentId) {
+                BookingAppointment::updateOrCreate(
+                    ['bansal_appointment_id' => $bansalAppointmentId],
+                    $bookingAttributes
+                );
+            } else {
+                $uniqueKey = [
+                    'client_id' => $request->client_id,
+                    'service_id' => $request->service_id,
+                    'appointment_datetime' => $appointmentDateTime?->toDateTimeString(),
+                ];
+                BookingAppointment::updateOrCreate(
+                    $uniqueKey,
+                    $bookingAttributes
+                );
+            }
+        } catch (Exception $e) {
+            Log::error('Failed to persist booking appointment record', [
+                'payload' => $bookingAttributes,
+                'error' => $e->getMessage(),
+            ]);
+            $response['status'] = false;
+            $response['message'] = 'Unable to store appointment details locally. Please try again.';
+            $response['client_id'] = $request->client_id;
+            echo json_encode($response);
+            return;
+        }
+
         $obj = new Appointment;
 		$obj->user_id = @Auth::user()->id;
 		$obj->client_id = @$request->client_id;

@@ -4596,8 +4596,9 @@ public function getInvoiceAmount(Request $request)
              }
          }
 
-         // Get client matter
-         $client_matter_no = '';
+        // Get client matter
+        $client_matter_no = '';
+        $client_matter_display = '';
          if( !empty($record_get) && $record_get[0]->client_matter_id != '') {
              $client_info = DB::table('admins')->select('client_id')->where('id',$record_get[0]->client_id)->first();
              if($client_info){
@@ -4606,14 +4607,28 @@ public function getInvoiceAmount(Request $request)
                  $client_unique_id = '';
              }
 
-             $matter_info = DB::table('client_matters')->select('client_unique_matter_no')->where('id',$record_get[0]->client_matter_id)->first();
+            $matter_info = DB::table('client_matters')
+                ->join('matters', 'matters.id', '=', 'client_matters.sel_matter_id')
+                ->select('client_matters.client_unique_matter_no', 'matters.title as matter_name')
+                ->where('client_matters.id',$record_get[0]->client_matter_id)
+                ->first();
              if($matter_info){
                  $client_unique_matter_no = $matter_info->client_unique_matter_no;
                  $client_matter_no = $client_unique_id.'-'.$client_unique_matter_no;
+                $client_matter_name = $matter_info->matter_name ?? '';
+
+                if (!empty($client_matter_name)) {
+                    $client_matter_display = $client_matter_name . ' (' . $client_matter_no . ')';
+                } else {
+                    $client_matter_display = $client_matter_no;
+                }
              } else {
                  $client_unique_matter_no = '';
                  $client_matter_no = '';
+                $client_matter_display = '';
              }
+        } else {
+            $client_matter_display = '';
          }
 
          // Generate PDF with optimized settings

@@ -37,10 +37,15 @@
                                 <div class="col-sm-9">
                                     <select class="form-control enquiry_item" name="noe_id" data-valid="required">
                                         <option value="">Select</option>
-                                        @foreach(\App\Models\NatureOfEnquiry::where('status',1)->get() as $enquiry)
-                                            <option value="{{$enquiry->id}}">{{$enquiry->title}}</option>
-                                        @endforeach
-                                    </select>
+										<option value="1">Permanent Residency Appointment</option>
+										<option value="2">Temporary Residency Appointment</option>
+										<option value="3">JRP/Skill Assessment</option>
+										<option value="4">Tourist Visa</option>
+										<option value="5">Education/Course Change/Student Visa/Student Dependent Visa (for education selection only)</option>
+										<option value="6">Complex matters: AAT, Protection visa, Federal Case</option>
+										<option value="7">Visa Cancellation/ NOICC/ Visa refusals</option>
+										<option value="8">INDIA/UK/CANADA/EUROPE TO AUSTRALIA</option>
+									</select>
                                 </div>
                             </div>
 						</div>
@@ -49,24 +54,59 @@
 							<div class="form-group">
 								<label for="service_id" class="font-weight-bold text-dark mb-3">Services <span class="text-danger">*</span></label>
 								<div class="row">
-									@foreach(\App\Models\BookService::where('status',1)->get() as $bookservices)
+									
 										<div class="col-md-6 mb-3">
-											<div class="service-card-compact" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px; transition: all 0.3s ease; cursor: pointer;" data-service-id="{{$bookservices->id}}">
+											<div class="service-card-compact" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px; transition: all 0.3s ease; cursor: pointer;" data-service-id="1">
 												<div class="d-flex align-items-center">
-													<input type="radio" class="services_item" name="radioGroup" value="{{$bookservices->id}}" id="service_{{$bookservices->id}}">
+													<input type="radio" class="services_item" name="radioGroup" value="1" id="service_1">
 													<div class="ml-3 flex-grow-1">
 														<div class="d-flex justify-content-between align-items-center">
 															<div>
-																<h6 class="mb-1 font-weight-bold text-dark">{{$bookservices->title}}</h6>
-																<small class="text-muted">{{$bookservices->duration}} minutes</small>
+																<h6 class="mb-1 font-weight-bold text-dark">Free Consultation</h6>
+																<small class="text-muted">15 minutes</small>
 															</div>
-															<span class="badge badge-success font-weight-bold">{{$bookservices->price}}</span>
+															<span class="badge badge-success font-weight-bold">Free</span>
 														</div>
 													</div>
 												</div>
 											</div>
 										</div>
-									@endforeach
+
+										<div class="col-md-6 mb-3">
+											<div class="service-card-compact" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px; transition: all 0.3s ease; cursor: pointer;" data-service-id="2">
+												<div class="d-flex align-items-center">
+													<input type="radio" class="services_item" name="radioGroup" value="2" id="service_2">
+													<div class="ml-3 flex-grow-1">
+														<div class="d-flex justify-content-between align-items-center">
+															<div>
+																<h6 class="mb-1 font-weight-bold text-dark">Comprehensive Migration Advice</h6>
+																<small class="text-muted">30 minutes</small>
+															</div>
+															<span class="badge badge-success font-weight-bold">$150</span>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+
+
+										<div class="col-md-6 mb-3">
+											<div class="service-card-compact" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px; transition: all 0.3s ease; cursor: pointer;" data-service-id="3">
+												<div class="d-flex align-items-center">
+													<input type="radio" class="services_item" name="radioGroup" value="3" id="service_3">
+													<div class="ml-3 flex-grow-1">
+														<div class="d-flex justify-content-between align-items-center">
+															<div>
+																<h6 class="mb-1 font-weight-bold text-dark">Overseas Applicant Enquiry</h6>
+																<small class="text-muted">30 minutes</small>
+															</div>
+															<span class="badge badge-success font-weight-bold">$150</span>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+									
 								</div>
                                 <input type="hidden" id="service_id" name="service_id" value="">
                             </div>
@@ -120,27 +160,27 @@
                             </div>
 
                             <div class="form-group row align-items-center appointment_details_cls" style="display: none;">
-								<div class="col-12 col-md-6 col-lg-6">
-									<label for="appointment_details" class="heading_title">Appointment details <span class="span_req">*</span></label>
-									<select class="form-control appointment_item" name="appointment_details" data-valid="required">
-										<option value="">Select</option>
-										<option value="phone"> Phone</option>
-										<option value="in_person">In person</option>
-										<option value="zoom_google_meeting" style="display: none;">Zoom / Google Meeting</option>
-									</select>
-								</div>
+                                <div class="col-12 col-md-6 col-lg-6">
+                                    <label for="appointment_details" class="heading_title">Appointment details <span class="span_req">*</span></label>
+                                    <select class="form-control appointment_item" name="appointment_details" data-valid="required">
+                                        <option value="">Select</option>
+                                        <option value="phone"> Phone</option>
+                                        <option value="in_person">In person</option>
+                                        <option value="zoom_google_meeting" style="display: none;">Zoom / Google Meeting</option>
+                                    </select>
+                                </div>
 
-								<div class="col-12 col-md-6 col-lg-6">
-									<label for="preferred_language" class="heading_title">Preferred Language <span class="span_req">*</span></label>
-									<select class="form-control preferred_language" name="preferred_language" data-valid="required">
-										<option value="">Select</option>
-										<option value="Hindi"> Hindi</option>
-										<option value="English">English</option>
-										<option value="Punjabi">Punjabi</option>
-									</select>
-								</div>
+                                <div class="col-12 col-md-6 col-lg-6">
+                                    <label for="preferred_language" class="heading_title">Preferred Language <span class="span_req">*</span></label>
+                                    <select class="form-control preferred_language" name="preferred_language" data-valid="required">
+                                        <option value="">Select</option>
+                                        <option value="Hindi"> Hindi</option>
+                                        <option value="English">English</option>
+                                        <option value="Punjabi">Punjabi</option>
+                                    </select>
+                                </div>
                             </div>
-						</div>
+                        </div>
 
                         <div class="col-12 col-md-12 col-lg-12 row info_row" id="info" style="display: none;">
 							<div class="tab_body">

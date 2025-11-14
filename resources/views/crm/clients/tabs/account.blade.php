@@ -3,23 +3,17 @@
 <?php use Illuminate\Support\Facades\Storage; ?>
 
 <div class="card full-width">
-    <div class="alert alert-warning">
-        <strong>🧪 ACCOUNT PAGE - Local Development Mode</strong>
-        <p><i class="fas fa-exclamation-triangle"></i> This page has FULL READ/WRITE access to the database. Safe for local testing.</p>
-        <small>All changes made here will affect the actual database tables (account_client_receipts, etc.)</small>
-    </div>
-
     <div style="margin-bottom: 10px;">
         <!-- Create Entry Buttons - Split by Receipt Type -->
         <div style="display: inline-block; margin-right: 20px; padding: 5px; background: #f8f9fa; border-radius: 5px;">
             <strong style="font-size: 12px; color: #666; margin-right: 10px;">Create Entry:</strong>
-            <a class="btn btn-success createreceipt" href="javascript:;" role="button" data-test-mode="true" data-receipt-type="1" style="margin-right: 5px;">
+            <a class="btn btn-success createreceipt" href="javascript:;" role="button" data-account-entry="true" data-receipt-type="1" style="margin-right: 5px;">
                 <i class="fas fa-wallet"></i> Client Funds Ledger
             </a>
-            <a class="btn btn-primary createreceipt" href="javascript:;" role="button" data-test-mode="true" data-receipt-type="2" style="margin-right: 5px;">
+            <a class="btn btn-primary createreceipt" href="javascript:;" role="button" data-account-entry="true" data-receipt-type="2" style="margin-right: 5px;">
                 <i class="fas fa-hand-holding-usd"></i> Direct Office Receipt
             </a>
-            <a class="btn btn-info createreceipt" href="javascript:;" role="button" data-test-mode="true" data-receipt-type="3">
+            <a class="btn btn-info createreceipt" href="javascript:;" role="button" data-account-entry="true" data-receipt-type="3">
                 <i class="fas fa-file-invoice-dollar"></i> Invoice
             </a>
         </div>
@@ -29,7 +23,7 @@
         <!-- Client Funds Ledger Section -->
         <section class="account-section client-account">
             <div class="account-section-header">
-                <h2><i class="fas fa-wallet" style="color: #28a745;"></i> Client Funds Ledger (Test)</h2>
+                <h2><i class="fas fa-wallet" style="color: #28a745;"></i> Client Funds Ledger</h2>
                 <div class="balance-display">
                     <div class="balance-label">Current Funds Held</div>
                     <div class="balance-amount funds-held">
@@ -80,12 +74,11 @@
                 </div>
             </div>
             <p style="font-size: 0.85em; color: #6c757d; margin-top: -15px; margin-bottom: 15px;">
-                🧪 TEST MODE: Funds held in trust/client account on behalf of the client.
+                Funds held in trust/client account on behalf of the client.
             </p>
             
-            <!-- TEST: Add filtering options -->
-            <div class="test-filters" style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
-                <strong>🔍 Test Filters:</strong>
+            <div class="ledger-filters" style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                <strong>🔍 Ledger Filters:</strong>
                 <label style="margin-left: 10px;">
                     <input type="checkbox" id="filter-deposits"> Show Only Deposits
                 </label>
@@ -100,7 +93,7 @@
             </div>
 
             <div class="transaction-table-wrapper">
-                <table class="transaction-table" id="test-client-ledger-table">
+                <table class="transaction-table" id="client-ledger-table">
                     <thead>
                         <tr>
                             <th style="text-align: left;">Date</th>
@@ -306,7 +299,7 @@
         <!-- Invoicing & Office Receipts Section -->
         <section class="account-section office-account">
             <div class="account-section-header">
-                <h2><i class="fas fa-file-invoice-dollar" style="color: #007bff;"></i> Invoicing & Office Receipts (Test)</h2>
+                <h2><i class="fas fa-file-invoice-dollar" style="color: #007bff;"></i> Invoicing & Office Receipts</h2>
                 <div class="balance-display">
                     <div class="balance-label">Outstanding Balance</div>
                     <div class="balance-amount outstanding outstanding-balance">
@@ -335,7 +328,7 @@
                 </div>
             </div>
             <p style="font-size: 0.85em; color: #6c757d; margin-top: -15px; margin-bottom: 15px;">
-                🧪 TEST MODE: Tracks invoices issued and payments received directly by the office.
+                Tracks invoices issued and payments received directly by the office.
             </p>
             <div class="transaction-table-wrapper">
                 <h4 style="margin-top:0; margin-bottom: 10px; font-weight: 600;">Invoices Issued</h4>
@@ -696,13 +689,13 @@
     </div>
 </div>
 
-<!-- Test JavaScript -->
+<!-- Account Tab JavaScript -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Improved Create Receipt Button Click Handler
     // Automatically selects the correct form based on which button was clicked
     // SOLUTION 4: Use namespaced event with higher priority to prevent conflicts
-    $(document).off('click.testmode', '.createreceipt[data-test-mode="true"]').on('click.testmode', '.createreceipt[data-test-mode="true"]', function(e) {
+    $(document).off('click.accountTab', '.createreceipt[data-account-entry="true"]').on('click.accountTab', '.createreceipt[data-account-entry="true"]', function(e) {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation(); // Prevent other handlers from firing
@@ -710,7 +703,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const receiptType = $(this).data('receipt-type');
         const $modal = $('#createreceiptmodal');
         
-        console.log('🎯 Test Mode Button Clicked - Receipt Type:', receiptType);
+        console.log('🎯 Account tab receipt button clicked - type:', receiptType);
         
         // Hide the radio button selection section (not needed since button already indicates type)
         $modal.find('.form-group:has(input[name="receipt_type"])').hide();
@@ -802,11 +795,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 100);
         
-        // Add a badge to indicate test mode
-        if ($(this).data('test-mode')) {
-            $modal.find('.modal-header').prepend('<span class="badge badge-warning" style="margin-right: 10px;">🧪 TEST MODE</span>');
-        }
-        
         // FIX 1: Ensure modal element exists and Bootstrap modal is available
         if ($modal.length === 0) {
             console.error('❌ Modal element #createreceiptmodal not found in DOM');
@@ -831,9 +819,6 @@ document.addEventListener('DOMContentLoaded', function() {
     $('#createreceiptmodal').on('hidden.bs.modal', function() {
         // Show radio buttons again (in case user opens from a different page)
         $(this).find('.form-group:has(input[name="receipt_type"])').show();
-        
-        // Remove test mode badge
-        $(this).find('.badge-warning').remove();
         
         // Reset modal title to default
         $(this).find('.modal-title').html('Create Receipt');
@@ -1987,19 +1972,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Ensure all existing functionality works on this test page
-    console.log('🧪 Account Page loaded - Full Read/Write access enabled');
-    console.log('📊 Client ID: {{ $fetchedData->id }}');
-    console.log('📁 Matter ID: {{ $client_selected_matter_id ?? "N/A" }}');
-    console.log('✅ All modals and forms are functional');
-    console.log('✅ Office Receipt Edit functionality enabled');
-    console.log('✅ Quick Receipt functionality enabled');
-    console.log('✅ Quick Allocate functionality enabled');
-    console.log('✅ Drag & Drop Allocation enabled');
 });
 
-// All existing modal popups and forms work seamlessly with this test page
-// They use class selectors, so all functionality is preserved
 </script>
 
 <style>
@@ -2010,15 +1984,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 #account-tab .transaction-table tbody tr:hover {
     background-color: #f0f8ff !important;
-}
-
-#account-tab .alert-warning {
-    border-left: 4px solid #ffc107;
-}
-
-/* Highlight test mode buttons */
-[data-test-mode="true"] {
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.4);
 }
 
 /* Reference Dropdown Trigger - Clean Text Style */

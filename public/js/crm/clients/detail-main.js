@@ -3627,59 +3627,6 @@ $(document).ready(function() {
 
 
 
-                else if( activeTab == 'conversations' && activeSubTab == 'inbox') {
-
-                    if(selectedMatter != "" ) {
-
-                        $('#inbox-subtab #email-list').find('.email-card').each(function() {
-
-                            if ($(this).data('matterid') == selectedMatter) {
-
-                                $(this).show();
-
-                            } else {
-
-                                $(this).hide();
-
-                            }
-
-                        });
-
-                    }  else {
-
-                        $(this).hide();
-
-                    }
-
-                }
-
-
-
-                else if( activeTab == 'conversations' && activeSubTab == 'sent') {
-
-                    if(selectedMatter != "" ) {
-
-                        $('#sent-subtab #email-list1').find('.email-card').each(function() {
-
-                            if ($(this).data('matterid') == selectedMatter) {
-
-                                $(this).show();
-
-                            } else {
-
-                                $(this).hide();
-
-                            }
-
-                        });
-
-                    }  else {
-
-                        $(this).hide();
-
-                    }
-
-                }
 
             } else {
 
@@ -3847,59 +3794,6 @@ $(document).ready(function() {
 
 
 
-            else if( activeTab == 'conversations' && activeSubTab == 'inbox') {
-
-                if(selectedMatter != "" ) {
-
-                    $('#inbox-subtab #email-list').find('.email-card').each(function() {
-
-                        if ($(this).data('matterid') == selectedMatter) {
-
-                            $(this).show();
-
-                        } else {
-
-                            $(this).hide();
-
-                        }
-
-                    });
-
-                }  else {
-
-                    $(this).hide();
-
-                }
-
-            }
-
-
-
-             else if( activeTab == 'conversations' && activeSubTab == 'sent') {
-
-                if(selectedMatter != "" ) {
-
-                    $('#sent-subtab #email-list1').find('.email-card').each(function() {
-
-                        if ($(this).data('matterid') == selectedMatter) {
-
-                            $(this).show();
-
-                        } else {
-
-                            $(this).hide();
-
-                        }
-
-                    });
-
-                }  else {
-
-                    $(this).hide();
-
-                }
-
-            }
 
 
 
@@ -3914,14 +3808,6 @@ $(document).ready(function() {
             }
 
             else if( activeTab.attr('id') == 'migrationdocuments-tab' ) {
-
-                // Trigger click on the active tab
-
-                activeTab.trigger('click');
-
-            }
-
-            else if( activeTab.attr('id') == 'conversations-tab' ) {
 
                 // Trigger click on the active tab
 
@@ -4065,83 +3951,6 @@ $(document).ready(function() {
 
 
 
-            else if (target === '#conversations') {
-
-                if ($('.general_matter_checkbox_client_detail').is(':checked')) {
-
-                    selectedMatter = $('.general_matter_checkbox_client_detail').val();
-
-                } else {
-
-                    selectedMatter = $('#sel_matter_id_client_detail').val();
-
-                }
-
-                if(target == '#conversations' ){
-
-                    if(selectedMatter != "" ) {
-
-                        //inbox mail
-
-                        $(target).find('.inbox_conversation_list').each(function() {
-
-                            if ($(this).data('matterid') == selectedMatter) {
-
-                                $(this).show();
-
-                            } else {
-
-                                $(this).hide();
-
-                            }
-
-                        });
-
-
-
-                        //sent mail
-
-                        $(target).find('.sent_conversation_list').each(function() {
-
-                            if ($(this).data('matterid') == selectedMatter) {
-
-                                $(this).show();
-
-                            } else {
-
-                                $(this).hide();
-
-                            }
-
-                        });
-
-                    }  else {
-
-                        //alert('Please select matter from matter drop down.');
-
-                        //inbox mail
-
-                        $(target).find('.inbox_conversation_list').each(function() {
-
-                            $(this).hide();
-
-                        });
-
-
-
-                        //sent mail
-
-                        $(target).find('.sent_conversation_list').each(function() {
-
-                            $(this).hide();
-
-                        });
-
-                    }
-
-                }
-
-            }
 
             else if (target === '#clientdetailform') {
 

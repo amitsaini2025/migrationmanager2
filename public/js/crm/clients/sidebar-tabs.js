@@ -214,13 +214,6 @@
             case 'visadocuments':
                 filterVisaDocumentsByMatter(SidebarTabs.selectedMatter);
                 break;
-            case 'conversations':
-                if (activeSubTab === 'inbox') {
-                    filterEmailsByMatter(SidebarTabs.selectedMatter, 'inbox');
-                } else if (activeSubTab === 'sent') {
-                    filterEmailsByMatter(SidebarTabs.selectedMatter, 'sent');
-                }
-                break;
             case 'application':
                 if (typeof showClientMatterApplicationData === 'function') {
                     showClientMatterApplicationData(SidebarTabs.selectedMatter);

@@ -5660,7 +5660,7 @@ class ClientsController extends Controller
                 }
             }
 
-            //Conversations
+            // Email history (mail_reports)
             $conversations = DB::table('mail_reports')->where('client_id', $request->merge_from)->get(); //dd($conversations);
             if(!empty($conversations)){
                 foreach($conversations as $mailkey=>$mailval){

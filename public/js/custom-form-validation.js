@@ -470,7 +470,7 @@ function customValidate(formName, savetype = '')
                                 $('.custom-error-msg').html('');
                                 if (response.status) {
                                     $('#uploadAndFetchMailModel').modal('hide');
-									localStorage.setItem('activeTab', 'conversations');
+									localStorage.setItem('activeTab', 'emailhandling');
                                     location.reload();
                                     $('.custom-error-msg').html('<span class="alert alert-success">' + response.message + '</span>');
                                 } else {
@@ -505,15 +505,7 @@ function customValidate(formName, savetype = '')
                                 $('.custom-error-msg').html('');
                                 if (response.status) {
                                     $('#uploadSentAndFetchMailModel').modal('hide');
-									// 1. Remove 'active' from all subtabs
-									$('.subtab-button[data-subtab="inbox"]').removeClass('active');
-
-									// 2. Add 'active' to the 'Sent' subtab only
-									$('.subtab-button[data-subtab="sent"]').addClass('active');
-
-									// 3. Set localStorage values
-									localStorage.setItem('activeTab', 'conversations');
-									//localStorage.setItem('subactiveTab', 'sent');
+									localStorage.setItem('activeTab', 'emailhandling');
                                     location.reload();
 
                                     $('.custom-error-msg').html('<span class="alert alert-success">' + response.message + '</span>');

@@ -179,9 +179,6 @@
 									<a class="nav-link" data-toggle="tab" id="quotations-tab" href="#quotations" role="tab" aria-controls="quotations" aria-selected="false">Quotations</a>
 								</li>
 								<li class="nav-item">
-									<a class="nav-link" data-toggle="tab" id="conversations-tab" href="#conversations" role="tab" aria-controls="conversations" aria-selected="false">Conversations</a>
-								</li>
-								<li class="nav-item">
 									<a class="nav-link" data-toggle="tab" id="tasks-tab" href="#tasks" role="tab" aria-controls="tasks" aria-selected="false">Tasks</a>
 								</li>
 								<li class="nav-item">
@@ -1130,74 +1127,6 @@
 										</table>
 									</div>
 								</div>
-								<div class="tab-pane fade" id="conversations" role="tabpanel" aria-labelledby="conversations-tab">
-									<div class="conversation_tabs"> 
-										<ul class="nav nav-pills round_tabs" id="client_tabs" role="tablist">
-											<li class="nav-item">
-												<a class="nav-link active" data-toggle="tab" id="email-tab" href="#email" role="tab" aria-controls="email" aria-selected="true">Email</a>
-											</li>
-											<li class="nav-item">
-												<a class="nav-link" data-toggle="tab" id="sms-tab" href="#sms" role="tab" aria-controls="sms" aria-selected="false">SMS</a>
-											</li>
-										</ul>
-										<div class="tab-content" id="conversationContent">
-											<div class="tab-pane fade show active" id="email" role="tabpanel" aria-labelledby="email-tab">
-												<div class="conversation_list">
-													<div class="conversa_item">
-														<div class="ds_flex">
-															<div class="title">
-																<span>hiii</span>
-															</div>
-															<div class="conver_action">
-																<div class="date">
-																	<span>03:54 PM, 29 May, 2022</span>
-																</div>
-																<div class="conver_link">
-																	<a href="javascript:;" ><i class="fas fa-file-alt"></i></a>
-																	<a href="javascript:;" data-toggle="modal" data-target=".create_task"><i class="fas fa-shopping-bag"></i></a>
-																</div> 
-															</div>
-														</div>
-														<div class="email_info">
-															<div class="avatar_img">
-																<span>A</span>
-															</div>
-															<div class="email_content">
-																<span class="email_label">Sent by:</span>
-																<span class="email_sentby"><strong>Test</strong> [test@gmail.com]</span>
-																<span class="label success">Delivered</span>
-																<span class="span_desc">
-																	<span class="email_label">Sent by</span>
-																	<span class="email_sentby"><i class="fa fa-angle-left"></i>santosh@gmail.com<i class="fa fa-angle-right"></i></span>
-																</span>
-															</div>
-														</div>
-														<div class="divider"></div>
-														<div class="email_desc">
-															<p>Hi <b>sds</b>,</p>
-															<p>Congratulation !! We are so glad to inform you that your visa has been granted. Please contact your counselor - <b>Arun</b> for further details.</p>
-															<p>In the meantime, please feel free to contact us, if you need any further help.</p>
-															<p>Best Regards,</p>
-															<p><b>Bansal Education</b> Team</p>
-														</div>
-														<div class="divider"></div>
-														<div class="email_attachment">
-															<span class="attach_label"><i class="fa fa-link"></i> Attachments:</span>
-															<div class="attach_file_list">
-																<div class="attach_col">
-																	<a href="#">quotation_6.pdf</a>
-																</div>
-															</div> 
-														</div>
-													</div>
-												</div>
-											</div>
-											<div class="tab-pane fade" id="sms" role="tabpanel" aria-labelledby="sms-tab">
-												<span>sms</span>
-											</div>
-										</div>
-									</div>
-								</div> 
 								<div class="tab-pane fade" id="tasks" role="tabpanel" aria-labelledby="tasks-tab">
 									<div class="card-header-action text-right" style="padding-bottom:15px;">
 										<a href="javascript:;" data-toggle="modal" data-target=".create_task" class="btn btn-primary"><i class="fa fa-plus"></i> Add</a>

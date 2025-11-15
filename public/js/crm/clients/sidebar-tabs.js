@@ -337,6 +337,11 @@
             tabId = 'account';
         }
         
+        // Legacy support: redirect deprecated "emailhandling" slug to the new "emails" tab
+        if (tabId === 'emailhandling') {
+            tabId = 'emails';
+        }
+        
         if (tabId !== 'personaldetails') {
             // Trigger click on the button for non-default tabs
             const $button = $(`.client-nav-button[data-tab="${tabId}"]`);

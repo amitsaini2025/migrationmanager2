@@ -470,7 +470,7 @@ function customValidate(formName, savetype = '')
                                 $('.custom-error-msg').html('');
                                 if (response.status) {
                                     $('#uploadAndFetchMailModel').modal('hide');
-									localStorage.setItem('activeTab', 'emailhandling');
+									localStorage.setItem('activeTab', 'emails');
                                     location.reload();
                                     $('.custom-error-msg').html('<span class="alert alert-success">' + response.message + '</span>');
                                 } else {
@@ -505,7 +505,7 @@ function customValidate(formName, savetype = '')
                                 $('.custom-error-msg').html('');
                                 if (response.status) {
                                     $('#uploadSentAndFetchMailModel').modal('hide');
-									localStorage.setItem('activeTab', 'emailhandling');
+									localStorage.setItem('activeTab', 'emails');
                                     location.reload();
 
                                     $('.custom-error-msg').html('<span class="alert alert-success">' + response.message + '</span>');

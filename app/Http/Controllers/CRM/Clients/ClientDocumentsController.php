@@ -62,12 +62,15 @@ class ClientDocumentsController extends Controller
                 if($saved)
                 {
                     if($request->type == 'client'){
+                        $checklistCount = count($checklistArray);
                         $subject = 'added personal checklist';
+                        $description = "Added {$checklistCount} personal document checklist items in '{$request->folder_name}' category: " . implode(', ', array_slice($checklistArray, 0, 3)) . ($checklistCount > 3 ? '...' : '');
                         $objs = new ActivitiesLog;
                         $objs->client_id = $clientid;
                         $objs->created_by = Auth::user()->id;
-                        $objs->description = '';
+                        $objs->description = $description;
                         $objs->subject = $subject;
+                        $objs->activity_type = 'document';
                         $objs->save();
                     }
 
@@ -259,11 +262,13 @@ class ClientDocumentsController extends Controller
     
                         if ($saved && $request->type == 'client') {
                             $subject = 'updated personal document';
+                            $description = "Uploaded '{$checklistName}' in '{$request->doccategory}' category";
                             $objs = new ActivitiesLog;
                             $objs->client_id = $clientid;
                             $objs->created_by = Auth::user()->id;
-                            $objs->description = '';
+                            $objs->description = $description;
                             $objs->subject = $subject;
+                            $objs->activity_type = 'document';
                             $objs->save();
                         }
     
@@ -325,12 +330,15 @@ class ClientDocumentsController extends Controller
                 if($saved)
                 {
                     if($request->type == 'client'){
+                        $checklistCount = count($checklistArray);
                         $subject = 'added visa checklist';
+                        $description = "Added {$checklistCount} visa document checklist items: " . implode(', ', array_slice($checklistArray, 0, 3)) . ($checklistCount > 3 ? '...' : '');
                         $objs = new ActivitiesLog;
                         $objs->client_id = $clientid;
                         $objs->created_by = Auth::user()->id;
-                        $objs->description = '';
+                        $objs->description = $description;
                         $objs->subject = $subject;
+                        $objs->activity_type = 'document';
                         $objs->save();
                     }
 
@@ -546,11 +554,13 @@ class ClientDocumentsController extends Controller
                     if($saved){
                         if($request->type == 'client'){
                             $subject = 'updated visa document';
+                            $description = "Uploaded '{$checklistName}' visa document";
                             $objs = new ActivitiesLog;
                             $objs->client_id = $clientid;
                             $objs->created_by = Auth::user()->id;
-                            $objs->description = '';
+                            $objs->description = $description;
                             $objs->subject = $subject;
+                            $objs->activity_type = 'document';
                             $objs->save();
                         }
 
@@ -668,6 +678,19 @@ class ClientDocumentsController extends Controller
             ]);
 
             if($res){
+                // Log activity for document rename
+                $oldName = $doc->file_name;
+                $subject = 'renamed a document';
+                $description = "Renamed {$doc_type} document from '{$oldName}' to '{$filename}'";
+                
+                $objs = new ActivitiesLog;
+                $objs->client_id = $client_id;
+                $objs->created_by = Auth::user()->id;
+                $objs->description = $description;
+                $objs->subject = $subject;
+                $objs->activity_type = 'document';
+                $objs->save();
+                
                 $response['status'] = true;
                 $response['data'] = 'Document saved successfully';
                 $response['Id'] = $id;
@@ -707,13 +730,17 @@ class ClientDocumentsController extends Controller
                 Storage::disk('s3')->delete($admin->client_id.'/'.$data->doc_type.'/'.$data->myfile_key);
             }
             if($res){
+                $documentName = $data->file_name ?? 'unknown';
+                $documentType = $data->doc_type ?? 'document';
                 $subject = 'deleted a document';
+                $description = "Deleted {$documentType} document: {$documentName}";
 
                 $objs = new ActivitiesLog;
                 $objs->client_id = $data->client_id;
                 $objs->created_by = Auth::user()->id;
-                $objs->description = '';
+                $objs->description = $description;
                 $objs->subject = $subject;
+                $objs->activity_type = 'document';
                 $objs->save();
                 $response['status'] 	= 	true;
                 $response['data']	=	'Document removed successfully';

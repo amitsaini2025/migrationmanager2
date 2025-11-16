@@ -500,12 +500,17 @@ class ClientAccountsController extends Controller
             // Log activity
             if ($saved) {
                 $subject = $doc_saved ? 'added client funds ledger with its document. Reference no- ' . $trans_no : 'added client funds ledger. Reference no- ' . $trans_no;
+                $description = "Transaction Date: {$trans_date}, " . ($deposit > 0 ? "Deposit: \${$deposit}" : "Withdrawal: \${$withdraw}") . ", Balance: \${$running_balance}";
                 if ($request->type == 'client') {
                     $objs = new \App\Models\ActivitiesLog;
                     $objs->client_id = $requestData['client_id'];
                     $objs->created_by = Auth::user()->id;
-                    $objs->description = '';
+                    $objs->description = $description;
                     $objs->subject = $subject;
+                    // Only set activity_type to 'document' if document was actually saved
+                    if ($doc_saved) {
+                        $objs->activity_type = 'document';
+                    }
                     $objs->save();
                 }
             }
@@ -1259,12 +1264,17 @@ class ClientAccountsController extends Controller
           // Log activity
           if ($saved) {
            $subject = $doc_saved ? 'added office receipt with its document. Reference no- ' . $trans_no : 'added office receipt. Reference no- ' . $trans_no;
+           $description = "Receipt Date: {$receipt_date}, Amount: \${$deposit}, Balance: \${$balance_amount}";
            if ($request->type == 'client') {
                $objs = new \App\Models\ActivitiesLog;
                $objs->client_id = $requestData['client_id'];
                $objs->created_by = Auth::user()->id;
-               $objs->description = '';
+               $objs->description = $description;
                $objs->subject = $subject;
+               // Only set activity_type to 'document' if document was actually saved
+               if ($doc_saved) {
+                   $objs->activity_type = 'document';
+               }
                $objs->save();
            }
           }
@@ -2082,6 +2092,7 @@ class ClientAccountsController extends Controller
                $objs->created_by = Auth::user()->id;
                $objs->description = '';
                $objs->subject = $subject;
+               $objs->activity_type = 'document';
                $objs->save();
            }
           }
@@ -2584,6 +2595,7 @@ class ClientAccountsController extends Controller
                $objs->created_by = Auth::user()->id;
                $objs->description = '';
                $objs->subject = $subject;
+               $objs->activity_type = 'document';
                $objs->save();
 
            }
@@ -2799,6 +2811,7 @@ class ClientAccountsController extends Controller
                $objs->created_by = Auth::user()->id;
                $objs->description = '';
                $objs->subject = $subject;
+               $objs->activity_type = 'document';
                $objs->save();
 
            }
@@ -3013,6 +3026,7 @@ class ClientAccountsController extends Controller
                $objs->created_by = Auth::user()->id;
                $objs->description = '';
                $objs->subject = $subject;
+               $objs->activity_type = 'document';
                $objs->save();
            }
            $response['status']     =     true;

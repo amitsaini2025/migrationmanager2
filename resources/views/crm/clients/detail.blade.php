@@ -439,123 +439,7 @@ use App\Http\Controllers\Controller;
     </main>
 
     <!-- Activity Feed (Only visible with Personal Details) -->
-    <aside class="activity-feed" id="activity-feed">
-        <div class="activity-feed-header">
-            <h2><i class="fas fa-history"></i> Activity Feed</h2>
-            <label for="increase-activity-feed-width">
-               <input type="checkbox" id="increase-activity-feed-width" title="Expand Width">
-            </label>
-        </div>
-        
-        <!-- Activity Type Filters -->
-        <div class="activity-filters">
-            <button class="activity-filter-btn active" data-filter="all">
-                <i class="fas fa-list"></i> All
-            </button>
-            <button class="activity-filter-btn" data-filter="sms">
-                <i class="fas fa-sms"></i> SMS
-            </button>
-            <button class="activity-filter-btn" data-filter="note">
-                <i class="fas fa-sticky-note"></i> Notes
-            </button>
-            <button class="activity-filter-btn" data-filter="document">
-                <i class="fas fa-file-alt"></i> Documents
-            </button>
-        </div>
-        
-        <ul class="feed-list">
-            <?php
-            if(
-                ( isset($_REQUEST['user']) && $_REQUEST['user'] != "" )
-                ||
-                ( isset($_REQUEST['keyword']) && $_REQUEST['keyword'] != "" )
-            ){
-                $user_search = $_REQUEST['user'];
-                $keyword_search = $_REQUEST['keyword'];
-
-                if($user_search != "" && $keyword_search != "") {
-                    $activities = \App\Models\ActivitiesLog::select('activities_logs.*')
-                    ->leftJoin('admins', 'activities_logs.created_by', '=', 'admins.id')
-                    ->where('activities_logs.client_id', $fetchedData->id)
-                    ->where(function($query) use ($user_search) {
-                        $query->where('admins.first_name', 'like', '%'.$user_search.'%');
-                    })
-                    ->where(function($query) use ($keyword_search) {
-                        $query->where('activities_logs.description', 'like', '%'.$keyword_search.'%');
-                        $query->orWhere('activities_logs.subject', 'like', '%'.$keyword_search.'%');
-                    })
-                    ->orderby('activities_logs.created_at', 'DESC')
-                    ->get();
-                }
-                else if($user_search == "" && $keyword_search != "") {
-                    $activities = \App\Models\ActivitiesLog::select('activities_logs.*')
-                    ->where('activities_logs.client_id', $fetchedData->id)
-                    ->where(function($query) use ($keyword_search) {
-                        $query->where('activities_logs.description', 'like', '%'.$keyword_search.'%');
-                        $query->orWhere('activities_logs.subject', 'like', '%'.$keyword_search.'%');
-                    })
-                    ->orderby('activities_logs.created_at', 'DESC')
-                    ->get();
-                }
-                else if($user_search != "" && $keyword_search == "") {
-                    $activities = \App\Models\ActivitiesLog::select('activities_logs.*','admins.first_name','admins.last_name','admins.email')
-                    ->leftJoin('admins', 'activities_logs.created_by', '=', 'admins.id')
-                    ->where('activities_logs.client_id', $fetchedData->id)
-                    ->where(function($query) use ($user_search) {
-                        $query->where('admins.first_name', 'like', '%'.$user_search.'%');
-                    })
-                    ->orderby('activities_logs.created_at', 'DESC')
-                    ->get();
-                }
-            } else {
-                $activities = \App\Models\ActivitiesLog::where('client_id', $fetchedData->id)
-                ->orderby('created_at', 'DESC')
-                ->get();
-            }
-            //dd($activities);
-            foreach($activities as $activit)
-            {
-                $admin = \App\Models\Admin::where('id', $activit->created_by)->first();
-                ?>
-                <li class="feed-item feed-item--email activity {{ $activit->activity_type ? 'activity-type-' . $activit->activity_type : '' }}" id="activity_{{$activit->id}}">
-                    <span class="feed-icon {{ $activit->activity_type === 'sms' ? 'feed-icon-sms' : '' }}">
-                        <?php
-                        // Determine icon based on activity type
-                        if ($activit->activity_type === 'sms') {
-                            echo '<i class="fas fa-sms"></i>';
-                        } elseif (str_contains($activit->subject, "document")) {
-                            echo '<i class="fas fa-file-alt"></i>';
-                        } else {
-                            echo '<i class="fas fa-sticky-note"></i>';
-                        }?>
-                    </span>
-                    <div class="feed-content">
-                        <p><strong>{{ $admin->first_name ?? 'NA' }}  <?php echo @$activit->subject; ?></strong>
-                            @if(str_contains($activit->subject, 'added a note') || str_contains($activit->subject, 'updated a note'))
-                                <i class="fas fa-ellipsis-v convert-activity-to-note" 
-                                   style="margin-left: 5px; cursor: pointer;" 
-                                   title="Convert to Note"
-                                   data-activity-id="{{ $activit->id }}"
-                                   data-activity-subject="{{ $activit->subject }}"
-                                   data-activity-description="{{ $activit->description }}"
-                                   data-activity-created-by="{{ $activit->created_by }}"
-                                   data-activity-created-at="{{ $activit->created_at }}"
-                                   data-client-id="{{ $fetchedData->id }}"></i>
-                            @endif
-                            -
-                            @if($activit->description != '')
-                                <p>{!!$activit->description!!}</p>
-                            @endif
-                        </p>
-                        <span class="feed-timestamp">{{date('d M Y, H:i A', strtotime($activit->created_at))}}</span>
-                    </div>
-                </li>
-            <?php
-			}
-			?>
-        </ul>
-        <!--<button class="btn btn-secondary btn-block">View Full History</button>-->
-    </aside>
+    @include('crm.clients.tabs.activity_feed')
 </div>
 
 @include('crm.clients.modals.appointment')
@@ -1451,51 +1335,8 @@ $(document).ready(function() {
 <script src="{{URL::asset('js/bootstrap-datepicker.js')}}"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.full.min.js"></script>
 
-{{-- Activity Feed Filters --}}
-<script>
-$(document).ready(function() {
-    // Activity type filter functionality
-    $('.activity-filter-btn').on('click', function() {
-        // Remove active class from all buttons
-        $('.activity-filter-btn').removeClass('active');
-        
-        // Add active class to clicked button
-        $(this).addClass('active');
-        
-        // Get filter type
-        var filterType = $(this).data('filter');
-        
-        // Show/hide activities based on filter
-        if (filterType === 'all') {
-            $('.feed-item.activity').show();
-        } else if (filterType === 'note') {
-            // Show activities that don't have specific types (default notes) or have note type
-            $('.feed-item.activity').each(function() {
-                var $item = $(this);
-                if (!$item.hasClass('activity-type-sms') && !$item.hasClass('activity-type-document')) {
-                    $item.show();
-                } else {
-                    $item.hide();
-                }
-            });
-        } else if (filterType === 'document') {
-            $('.feed-item.activity').hide();
-            // Show document activities
-            $('.feed-item.activity').each(function() {
-                var $item = $(this);
-                var subject = $item.find('.feed-content strong').text().toLowerCase();
-                if (subject.includes('document')) {
-                    $item.show();
-                }
-            });
-        } else {
-            // Show only activities with specific type
-            $('.feed-item.activity').hide();
-            $('.feed-item.activity-type-' + filterType).show();
-        }
-    });
-});
-</script>
+{{-- Activity Feed Functionality --}}
+<script src="{{ URL::asset('js/crm/clients/tabs/activity-feed.js') }}"></script>
 
 {{-- Sidebar Tabs Management - Dedicated file for sidebar navigation --}}
 <script src="{{URL::asset('js/crm/clients/sidebar-tabs.js')}}"></script>
@@ -1642,17 +1483,26 @@ $(document).ready(function() {
                         var activityType = v.activity_type ?? 'note';
                         var subjectIcon;
                         var iconClass = '';
+                        var subject = v.subject ?? '';
+                        var subjectLower = subject.toLowerCase();
                         
                         if (activityType === 'sms') {
                             subjectIcon = '<i class="fas fa-sms"></i>';
                             iconClass = 'feed-icon-sms';
-                        } else if (v.subject && v.subject.toLowerCase().includes("document")) {
+                        } else if (activityType === 'financial' || 
+                                   subjectLower.includes('invoice') || 
+                                   subjectLower.includes('receipt') || 
+                                   subjectLower.includes('ledger') || 
+                                   subjectLower.includes('payment') ||
+                                   subjectLower.includes('account')) {
+                            subjectIcon = '<i class="fas fa-dollar-sign"></i>';
+                            iconClass = activityType === 'financial' ? 'feed-icon-accounting' : '';
+                        } else if (subjectLower.includes('document')) {
                             subjectIcon = '<i class="fas fa-file-alt"></i>';
                         } else {
                             subjectIcon = '<i class="fas fa-sticky-note"></i>';
                         }
 
-                        var subject = v.subject ?? '';
                         var description = v.message ?? '';
                         var taskGroup = v.task_group ?? '';
                         var followupDate = v.followup_date ?? '';

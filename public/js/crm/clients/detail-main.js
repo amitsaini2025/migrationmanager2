@@ -602,41 +602,7 @@
 
 
 
-        // Activity Feed Width Toggle
-
-        $('#increase-activity-feed-width').on('change', function() {
-
-            if ($(this).is(':checked')) {
-
-                $('.activity-feed').addClass('wide-mode');
-
-                $('.main-content').addClass('compact-mode');
-
-            } else {
-
-                $('.activity-feed').removeClass('wide-mode');
-
-                $('.main-content').removeClass('compact-mode');
-
-            }
-
-            
-
-            // Adjust Activity Feed height after layout change
-
-            adjustActivityFeedHeight();
-
-            
-
-            // Force a small delay to ensure CSS transitions complete
-
-            setTimeout(function() {
-
-                adjustActivityFeedHeight();
-
-            }, 150);
-
-        });
+        // Activity Feed Width Toggle - Moved to activity-feed.js
 
 
 

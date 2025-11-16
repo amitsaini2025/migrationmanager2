@@ -81,6 +81,7 @@ class ClientNotesController extends Controller
                 //$objs->mobile_number = $request->mobile_number; // Add this line if needed in the log
                 $objs->description = '<span class="text-semi-bold">'.$request->task_group.'</span><p>'.$request->description.'</p>';
                 $objs->subject = $subject;
+                $objs->task_group = $request->task_group; // Set task_group so manually added notes are classified as "Note" type
                 $objs->save();
 
                 //Update date in client matter table

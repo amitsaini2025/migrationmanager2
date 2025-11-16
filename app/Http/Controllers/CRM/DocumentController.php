@@ -1598,6 +1598,7 @@ class DocumentController extends Controller
                         $objs->created_by = $clientMatterInfo->sel_person_responsible;
                         $objs->description = '';
                         $objs->subject = $subject;
+                        $objs->activity_type = 'document';
                         $objsupd = $objs->save();
                         if($objsupd){
                             //update client matter table

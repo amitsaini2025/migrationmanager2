@@ -870,6 +870,26 @@ input:checked + .toggle-slider:before { transform: translateX(18px); }
     border-radius: 4px;
 }
 
+/* Accounting/Financial Activity Styling */
+.activity-type-financial {
+    border-left: 3px solid #28a745 !important;
+}
+
+.feed-icon-accounting {
+    background: linear-gradient(135deg, #28a745, #20c997) !important;
+    color: #fff !important;
+}
+
+.feed-icon-accounting i {
+    color: #fff !important;
+}
+
+.activity-type-financial .feed-content {
+    background: #f0fdf4;
+    padding: 10px;
+    border-radius: 4px;
+}
+
 /* Provider and Status Badges (in description HTML from UnifiedSmsManager) */
 .badge {
     display: inline-block;

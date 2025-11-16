@@ -34,14 +34,14 @@
 						<div class="col-12 col-md-12 col-lg-12">
 							<div class="form-group">
 								<label for="message">Message <span class="span_req">*</span></label>
-								<textarea data-valid="required" class="summernote-simple selectedmessage" name="message"></textarea>
+								<textarea id="uploadmail_message" data-valid="required" class="tinymce-editor selectedmessage" name="message"></textarea>
 
 							</div>
 						</div>
 
                         <div class="col-4 col-md-4 col-lg-4">
 							<div class="form-group">
-								<button onclick="customValidate('uploadmail')" class="btn btn-info" type="button">Create</button>
+								<button onclick="saveUploadMail()" class="btn btn-info" type="button">Create</button>
 							</div>
 						</div>
 					</div>
@@ -136,7 +136,7 @@
 						<div class="col-12 col-md-12 col-lg-12">
 							<div class="form-group">
 								<label for="message">Message <span class="span_req">*</span></label>
-								<textarea class="summernote-simple selectedmessage" name="message"></textarea>
+								<textarea id="application_email_message" class="tinymce-editor selectedmessage" name="message" data-valid="required"></textarea>
 								@if ($errors->has('message'))
 									<span class="custom-error" role="alert">
 										<strong>{{ @$errors->first('message') }}</strong>
@@ -145,7 +145,7 @@
 							</div>
 						</div>
 						<div class="col-12 col-md-12 col-lg-12">
-							<button onclick="customValidate('appkicationsendmail')" type="button" class="btn btn-primary">Send</button>
+							<button onclick="saveApplicationEmail()" type="button" class="btn btn-primary">Send</button>
 							<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
 						</div>
 					</div>

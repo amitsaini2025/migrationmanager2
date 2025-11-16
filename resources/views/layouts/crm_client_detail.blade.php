@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="{{asset('css/app.min.css')}}">
     <link rel="stylesheet" href="{{asset('css/iziToast.min.css')}}">
     <link rel="stylesheet" href="{{asset('css/fullcalendar.min.css')}}">
-    <link rel="stylesheet" href="{{asset('css/summernote-bs4.css')}}">
+    <!-- TinyMCE is self-hosted and loaded per page as needed -->
     {{-- <link rel="stylesheet" href="{{asset('css/daterangepicker.css')}}"> --}} {{-- ❌ REMOVED: Conflicts with bootstrap-datepicker on client detail --}}
     <link rel="stylesheet" href="{{asset('css/bootstrap-timepicker.min.css')}}">
     <link rel="stylesheet" href="{{asset('css/bootstrap-datepicker.min.css')}}"> {{-- ✅ ONLY datepicker CSS for client detail --}}
@@ -1506,7 +1506,8 @@
     <script src="{{asset('js/datatables.min.js')}}"></script>
     <script src="https://momentjs.com/downloads/moment.js"></script>
     <script src="{{asset('js/dataTables.bootstrap4.js')}}"></script>
-    <script src="{{asset('js/summernote-bs4.js')}}"></script>
+    <!-- TinyMCE is self-hosted and loaded per page as needed -->
+    <script src="{{asset('js/tinymce/js/tinymce/tinymce.min.js')}}"></script>
     {{-- <script src="{{asset('js/daterangepicker.js')}}"></script> --}} {{-- ❌ REMOVED: Conflicts with bootstrap-datepicker on client detail --}}
     <script src="{{asset('js/bootstrap-timepicker.min.js')}}"></script>
     <script src="{{asset('js/bootstrap-datepicker.min.js')}}"></script> {{-- ✅ ONLY datepicker for client detail pages --}}

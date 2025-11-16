@@ -2511,7 +2511,15 @@ function customValidate(formName, savetype = '')
 								    $('#create_note_d input[name="title"]').val('');
 									$("#create_note_d .summernote-simple").val('');
 									$('#create_note_d input[name="noteid"]').val('');
-									$("#create_note_d .summernote-simple").summernote('code','');
+									// Clear TinyMCE editor if initialized
+									if (typeof tinymce !== 'undefined') {
+										$("#create_note_d .summernote-simple").each(function() {
+											var editorId = $(this).attr('id');
+											if (editorId && tinymce.get(editorId)) {
+												tinymce.get(editorId).setContent('');
+											}
+										});
+									}
 									$('#create_note_d').modal('hide');
 									$('.custom-error-msg').html('<span class="alert alert-success">'+obj.message+'</span>');
 

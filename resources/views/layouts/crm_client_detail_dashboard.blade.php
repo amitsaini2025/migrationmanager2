@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="{{asset('css/app.min.css')}}">
     <link rel="stylesheet" href="{{asset('css/iziToast.min.css')}}">
     <link rel="stylesheet" href="{{asset('css/fullcalendar.min.css')}}">
-    <link rel="stylesheet" href="{{asset('css/summernote-bs4.css')}}">
+    <!-- TinyMCE is self-hosted and loaded per page as needed -->
     <link rel="stylesheet" href="{{asset('css/daterangepicker.css')}}">
     <link rel="stylesheet" href="{{asset('css/bootstrap-timepicker.min.css')}}">
     <link rel="stylesheet" href="{{asset('css/select2.min.css')}}">
@@ -522,7 +522,8 @@
     <script src="{{asset('js/datatables.min.js')}}"></script>
     <script src="https://momentjs.com/downloads/moment.js"></script>
     <script src="{{asset('js/dataTables.bootstrap4.js')}}"></script>
-    <script src="{{asset('js/summernote-bs4.js')}}"></script>
+    <!-- TinyMCE is self-hosted and loaded per page as needed -->
+    <script src="{{asset('js/tinymce/js/tinymce/tinymce.min.js')}}"></script>
     <script src="{{asset('js/daterangepicker.js')}}"></script> {{-- ✅ Daterangepicker for leads/dashboard --}}
     <script src="{{asset('js/global-datepicker.js')}}"></script> {{-- ✅ Global DatePicker Helper for NEW code --}}
     <script src="{{asset('js/bootstrap-timepicker.min.js')}}"></script>

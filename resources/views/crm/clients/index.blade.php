@@ -968,9 +968,15 @@ jQuery(document).ready(function($){
             success: function(response){
                 var res = JSON.parse(response);
                 $('.selectedsubject').val(res.subject);
-                $(".summernote-simple").summernote('reset');
-                $(".summernote-simple").summernote('code', res.description);
-                $(".summernote-simple").val(res.description);
+                // Clear and set TinyMCE editor content
+                $(".summernote-simple").each(function() {
+                    var editorId = $(this).attr('id');
+                    if (editorId && typeof tinymce !== 'undefined' && tinymce.get(editorId)) {
+                        tinymce.get(editorId).setContent(res.description || '');
+                    } else {
+                        $(this).val(res.description || '');
+                    }
+                });
             }
         });
     });

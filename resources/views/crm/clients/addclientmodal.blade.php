@@ -269,7 +269,13 @@ $(document).on('click', '.convert-activity-to-note', function() {
         let cleanDescription = processDescription(activityDescription);
         
         // Set value for Summernote editor
-        $('#convert_note_description').summernote('code', cleanDescription);
+        // Set content in TinyMCE editor
+        var editorId = $('#convert_note_description').attr('id');
+        if (editorId && typeof tinymce !== 'undefined' && tinymce.get(editorId)) {
+            tinymce.get(editorId).setContent(cleanDescription || '');
+        } else {
+            $('#convert_note_description').val(cleanDescription || '');
+        }
         
         // Set Type dropdown based on activity subject and description
         setNoteType(activitySubject, activityDescription);

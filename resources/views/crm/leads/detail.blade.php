@@ -456,9 +456,15 @@ $(document).delegate('.selecttemplate', 'change', function(){
 		success: function(response){
 			var res = JSON.parse(response);
 			$('.selectedsubject').val(res.subject);
-			 $("#emailmodal .summernote-simple").summernote('reset');  
-                    $("#emailmodal .summernote-simple").summernote('code', res.description);  
-					$("#emailmodal .summernote-simple").val(res.description); 
+			 // Clear and set TinyMCE editor content
+                    $("#emailmodal .summernote-simple").each(function() {
+                        var editorId = $(this).attr('id');
+                        if (editorId && typeof tinymce !== 'undefined' && tinymce.get(editorId)) {
+                            tinymce.get(editorId).setContent(res.description || '');
+                        } else {
+                            $(this).val(res.description || '');
+                        }
+                    }); 
 			
 		}
 	});

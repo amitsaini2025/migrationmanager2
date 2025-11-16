@@ -665,7 +665,7 @@ use App\Http\Controllers\Controller;
 						<div class="col-12 col-md-12 col-lg-12">
 							<div class="form-group">
 								<label for="message">Message <span class="span_req">*</span></label>
-								<textarea class="summernote-simple selectedmessage" id="compose_email_message" name="message"></textarea>
+								<textarea class="tinymce-editor selectedmessage" id="compose_email_message" name="message" data-valid="required"></textarea>
 								@if ($errors->has('message'))
 									<span class="custom-error" role="alert">
 										<strong>{{ @$errors->first('message') }}</strong>
@@ -702,7 +702,7 @@ use App\Http\Controllers\Controller;
 						</div>
 							</div>
 						<div class="col-12 col-md-12 col-lg-12">
-							<button onclick="customValidate('sendmail')" type="button" class="btn btn-primary">Send</button>
+							<button onclick="saveComposeEmail()" type="button" class="btn btn-primary">Send</button>
 							<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
 						</div>
 					</div>
@@ -732,7 +732,7 @@ use App\Http\Controllers\Controller;
 						<div class="col-12 col-md-12 col-lg-12">
 							<div class="form-group">
 								<label for="message">Message <span class="span_req">*</span></label>
-								<textarea class="summernote-simple selectedmessage" name="message" data-valid="required"></textarea>
+								<textarea id="sendmsg_message" class="tinymce-editor selectedmessage" name="message" data-valid="required"></textarea>
 								@if ($errors->has('message'))
 									<span class="custom-error" role="alert">
 										<strong>{{ @$errors->first('message') }}</strong>
@@ -741,7 +741,7 @@ use App\Http\Controllers\Controller;
 							</div>
 						</div>
                         <div class="col-12 col-md-12 col-lg-12">
-							<button onclick="customValidate('sendmsg')" type="button" class="btn btn-primary">Send</button>
+							<button onclick="saveSendMessage()" type="button" class="btn btn-primary">Send</button>
 							<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
 						</div>
 					</div>
@@ -1305,6 +1305,148 @@ use App\Http\Controllers\Controller;
 
 @endsection
 @push('scripts')
+<!-- TinyMCE Editor -->
+<script src="{{asset('js/tinymce/js/tinymce/tinymce.min.js')}}"></script>
+<script>
+// TinyMCE Configuration for Email Modals
+var tinymceEmailConfig = {
+    height: 300,
+    menubar: false,
+    plugins: ['lists', 'link', 'autolink'],
+    toolbar: 'bold italic underline strikethrough | forecolor | bullist numlist | link',
+    content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }',
+    branding: false,
+    promotion: false,
+    color_map: [
+        "000000", "Black", "333333", "Dark Gray", "666666", "Medium Gray",
+        "999999", "Light Gray", "CCCCCC", "Very Light Gray", "E0E0E0", "Pale Gray",
+        "F5F5F5", "Off White", "FFFFFF", "White", "DC2626", "Red",
+        "EA580C", "Orange", "D97706", "Amber", "059669", "Green",
+        "0891B2", "Cyan", "2563EB", "Blue", "7C3AED", "Purple",
+        "DB2777", "Pink", "EF4444", "Light Red", "F97316", "Light Orange",
+        "F59E0B", "Light Amber", "10B981", "Light Green", "06B6D4", "Light Cyan",
+        "3B82F6", "Light Blue", "8B5CF6", "Light Purple", "EC4899", "Light Pink"
+    ],
+    setup: function(editor) {
+        editor.on('change', function() {
+            editor.save();
+        });
+    }
+};
+
+// Initialize TinyMCE for all email modals
+function initTinyMCEForModals() {
+    // Compose Email Modal
+    if ($('#compose_email_message').length && !tinymce.get('compose_email_message')) {
+        tinymce.init({
+            ...tinymceEmailConfig,
+            selector: '#compose_email_message',
+            init_instance_callback: function(editor) {
+                // Handle modal show event
+                $('#emailmodal').on('shown.bs.modal', function() {
+                    editor.focus();
+                });
+            }
+        });
+    }
+    
+    // Send Message Modal
+    if ($('#sendmsg_message').length && !tinymce.get('sendmsg_message')) {
+        tinymce.init({
+            ...tinymceEmailConfig,
+            selector: '#sendmsg_message',
+            init_instance_callback: function(editor) {
+                $('#sendmsgmodal').on('shown.bs.modal', function() {
+                    editor.focus();
+                });
+            }
+        });
+    }
+    
+    // Application Email Modal
+    if ($('#application_email_message').length && !tinymce.get('application_email_message')) {
+        tinymce.init({
+            ...tinymceEmailConfig,
+            selector: '#application_email_message',
+            init_instance_callback: function(editor) {
+                $('#applicationemailmodal').on('shown.bs.modal', function() {
+                    editor.focus();
+                });
+            }
+        });
+    }
+    
+    // Upload Mail Modal
+    if ($('#uploadmail_message').length && !tinymce.get('uploadmail_message')) {
+        tinymce.init({
+            ...tinymceEmailConfig,
+            selector: '#uploadmail_message',
+            init_instance_callback: function(editor) {
+                $('#uploadmail').on('shown.bs.modal', function() {
+                    editor.focus();
+                });
+            }
+        });
+    }
+}
+
+// Helper functions to save TinyMCE content before form validation
+window.saveComposeEmail = function() {
+    if (tinymce.get('compose_email_message')) {
+        tinymce.get('compose_email_message').save();
+    }
+    customValidate('sendmail');
+};
+
+window.saveSendMessage = function() {
+    if (tinymce.get('sendmsg_message')) {
+        tinymce.get('sendmsg_message').save();
+    }
+    customValidate('sendmsg');
+};
+
+window.saveApplicationEmail = function() {
+    if (tinymce.get('application_email_message')) {
+        tinymce.get('application_email_message').save();
+    }
+    customValidate('appkicationsendmail');
+};
+
+window.saveUploadMail = function() {
+    if (tinymce.get('uploadmail_message')) {
+        tinymce.get('uploadmail_message').save();
+    }
+    customValidate('uploadmail');
+};
+
+// Helper function to set TinyMCE content (can be called from anywhere)
+window.setTinyMCEContent = function(editorId, content) {
+    if (typeof tinymce !== 'undefined' && tinymce.get(editorId)) {
+        tinymce.get(editorId).setContent(content || '');
+    } else {
+        $('#' + editorId).val(content || '');
+        // Try to initialize if not already initialized
+        setTimeout(function() {
+            initTinyMCEForModals();
+            if (tinymce.get(editorId)) {
+                tinymce.get(editorId).setContent(content || '');
+            }
+        }, 200);
+    }
+};
+
+// Initialize TinyMCE when DOM is ready
+$(document).ready(function() {
+    initTinyMCEForModals();
+    
+    // Re-initialize when modals are shown (in case they're dynamically loaded)
+    $('#emailmodal, #sendmsgmodal, #applicationemailmodal, #uploadmail').on('shown.bs.modal', function() {
+        setTimeout(function() {
+            initTinyMCEForModals();
+        }, 100);
+    });
+});
+</script>
 <script src="{{URL::to('/')}}/js/popover.js"></script>
 <script src="{{URL::asset('js/bootstrap-datepicker.js')}}"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.full.min.js"></script>

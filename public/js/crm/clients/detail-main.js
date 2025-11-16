@@ -4,6 +4,59 @@
 
 
 
+    // TinyMCE Helper Functions (replacing Summernote API)
+    function getEditorContent(selector) {
+        var $element = $(selector);
+        var elementId = $element.attr('id');
+        
+        // Try TinyMCE first
+        if (typeof tinymce !== 'undefined' && elementId && tinymce.get(elementId)) {
+            return tinymce.get(elementId).getContent();
+        }
+        
+        // Fallback to regular textarea value
+        return $element.val() || '';
+    }
+
+    function setEditorContent(selector, content) {
+        var $element = $(selector);
+        var elementId = $element.attr('id');
+        
+        // Try TinyMCE first
+        if (typeof tinymce !== 'undefined' && elementId && tinymce.get(elementId)) {
+            tinymce.get(elementId).setContent(content || '');
+        } else {
+            // Fallback to regular textarea value
+            $element.val(content || '');
+            // Try to initialize TinyMCE if element has the class
+            if ($element.hasClass('summernote-simple') || $element.hasClass('tinymce-editor')) {
+                setTimeout(function() {
+                    if (elementId && tinymce.get(elementId)) {
+                        tinymce.get(elementId).setContent(content || '');
+                    }
+                }, 100);
+            }
+        }
+    }
+
+    function clearEditor(selector) {
+        setEditorContent(selector, '');
+    }
+
+    function isEditorInitialized(selector) {
+        var $element = $(selector);
+        var elementId = $element.attr('id');
+        
+        if (typeof tinymce !== 'undefined' && elementId && tinymce.get(elementId)) {
+            return true;
+        }
+        
+        // Check if element has editor classes
+        return $element.hasClass('summernote-simple') || $element.hasClass('tinymce-editor');
+    }
+
+
+
     // Global function for adjusting activity feed height
 
     function adjustActivityFeedHeight() {
@@ -3282,9 +3335,9 @@ $(document).ready(function() {
 
         $(document).delegate('.btn-assignuser, .btn-create-action', 'click', function(){
 
-            // Get the value from the #note_description Summernote editor
+            // Get the value from the #note_description TinyMCE editor
 
-            var note_description = $('#note_description').summernote('code');
+            var note_description = getEditorContent('#note_description');
 
 
 
@@ -3350,11 +3403,11 @@ $(document).ready(function() {
 
             // Transfer the original HTML content to the #assignnote field (preserving formatting)
 
-            // If #assignnote is a Summernote editor, use summernote('code'), otherwise use val()
+            // If #assignnote is a TinyMCE editor, use setEditorContent, otherwise use val()
 
-            if ($('#assignnote').hasClass('summernote-simple') || $('#assignnote').data('summernote')) {
+            if (isEditorInitialized('#assignnote')) {
 
-                $('#assignnote').summernote('code', note_description);
+                setEditorContent('#assignnote', note_description);
 
             } else {
 
@@ -7736,13 +7789,13 @@ Bansal Immigration`;
 
             
 
-            // Check if assignnote field is empty (handle both regular textarea and Summernote)
+            // Check if assignnote field is empty (handle both regular textarea and TinyMCE)
 
             var assignnoteValue = '';
 
-            if ($('#assignnote').hasClass('summernote-simple') || $('#assignnote').data('summernote')) {
+            if (isEditorInitialized('#assignnote')) {
 
-                assignnoteValue = $('#assignnote').summernote('code');
+                assignnoteValue = getEditorContent('#assignnote');
 
             } else {
 
@@ -8954,7 +9007,7 @@ Bansal Immigration`;
 
             //	$('#create_note input[name="noteid"]').val('');
 
-            //	$("#create_note .summernote-simple").summernote('code','');
+            //	clearEditor("#create_note .summernote-simple");
 
 
 
@@ -8996,7 +9049,7 @@ Bansal Immigration`;
 
             $('#create_note input[name="noteid"]').val('');
 
-            $("#create_note .summernote-simple").summernote('code','');
+            clearEditor("#create_note .summernote-simple");
 
             if($(this).attr('datatype') == 'note'){
 
@@ -9332,7 +9385,7 @@ Bansal Immigration`;
 
                         $("#create_note .summernote-simple").val(res.data.description);
 
-                        $("#create_note .summernote-simple").summernote('code',res.data.description);
+                        setEditorContent("#create_note .summernote-simple", res.data.description);
 
                     } else {
 
@@ -9407,7 +9460,7 @@ Bansal Immigration`;
 
                         $("#create_note .summernote-simple").val(res.data.description);
 
-                        $("#create_note .summernote-simple").summernote('code',res.data.description);
+                        setEditorContent("#create_note .summernote-simple", res.data.description);
 
                     } else {
 
@@ -9747,9 +9800,9 @@ Bansal Immigration`;
 
                     $('.selectedsubject').val(res.subject);
 
-                    $("#emailmodal .summernote-simple").summernote('reset');
+                    clearEditor("#emailmodal .summernote-simple");
 
-                    $("#emailmodal .summernote-simple").summernote('code', res.description);
+                    setEditorContent("#emailmodal .summernote-simple", res.description);
 
                     $("#emailmodal .summernote-simple").val(res.description);
 
@@ -9843,9 +9896,9 @@ Bansal Immigration`;
 
 
 
-                    $("#emailmodal .summernote-simple").summernote('reset');
+                    clearEditor("#emailmodal .summernote-simple");
 
-                    //$("#emailmodal .summernote-simple").summernote('code', res.description);
+                    //setEditorContent("#emailmodal .summernote-simple", res.description);
 
                     //$("#emailmodal .summernote-simple").val(res.description);
 
@@ -9885,9 +9938,14 @@ Bansal Immigration`;
 
 
 
-                    $("#emailmodal .summernote-simple").summernote('code', subjct_description);
-
-                    $("#emailmodal .summernote-simple").val(subjct_description);
+                    // Set content in TinyMCE editor
+                    if (typeof setTinyMCEContent === 'function') {
+                        setTinyMCEContent('compose_email_message', subjct_description);
+                    } else if (typeof tinymce !== 'undefined' && tinymce.get('compose_email_message')) {
+                        tinymce.get('compose_email_message').setContent(subjct_description);
+                    } else {
+                        $("#compose_email_message").val(subjct_description);
+                    }
 
                 }
 
@@ -9917,11 +9975,14 @@ Bansal Immigration`;
 
                     $('.selectedappsubject').val(res.subject);
 
-                    $("#applicationemailmodal .summernote-simple").summernote('reset');
-
-                    $("#applicationemailmodal .summernote-simple").summernote('code', res.description);
-
-                    $("#applicationemailmodal .summernote-simple").val(res.description);
+                    // Set content in TinyMCE editor
+                    if (typeof setTinyMCEContent === 'function') {
+                        setTinyMCEContent('application_email_message', res.description);
+                    } else if (typeof tinymce !== 'undefined' && tinymce.get('application_email_message')) {
+                        tinymce.get('application_email_message').setContent(res.description);
+                    } else {
+                        $("#application_email_message").val(res.description);
+                    }
 
                 }
 

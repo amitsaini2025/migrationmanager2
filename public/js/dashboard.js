@@ -27,8 +27,9 @@ $(function () {
     zIndex              : 999999
   }) */
 
-  // bootstrap WYSIHTML5 - text editor
-  $('.textarea').summernote()
+  // TinyMCE - text editor (replacing Summernote)
+  // TinyMCE is initialized in scripts.js for .summernote-simple and .tinymce-editor classes
+  // $('.textarea').summernote() // Removed - using TinyMCE now
 
   $('.daterange').daterangepicker({
     ranges   : {

@@ -1139,22 +1139,22 @@
             subjectInput.value = data.subject;
         }
 
-        // Set message (for Summernote editor)
+        // Set message (for TinyMCE editor)
         const messageTextarea = document.querySelector('#compose_email_message');
         if (messageTextarea && data.message) {
-            // Wait for modal to be fully shown before setting Summernote content
+            // Wait for modal to be fully shown before setting TinyMCE content
             const setMessageContent = () => {
-                // Set the value directly first
-                messageTextarea.value = data.message;
-                
-                // If Summernote is initialized, update it
-                if (typeof jQuery !== 'undefined' && jQuery(messageTextarea).hasClass('summernote-simple')) {
+                // If TinyMCE is initialized, update it
+                if (typeof tinymce !== 'undefined' && tinymce.get('compose_email_message')) {
                     try {
-                        jQuery(messageTextarea).summernote('code', data.message);
+                        tinymce.get('compose_email_message').setContent(data.message);
                     } catch (e) {
-                        // If Summernote not ready, set value directly
+                        // If TinyMCE not ready, set value directly
                         messageTextarea.value = data.message;
                     }
+                } else {
+                    // Set the value directly if TinyMCE not initialized
+                    messageTextarea.value = data.message;
                 }
             };
             

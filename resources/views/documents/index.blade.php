@@ -304,11 +304,12 @@
     </div>
 
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{asset('css/summernote-bs4.css')}}">
+    <!-- TinyMCE is self-hosted and loaded per page as needed -->
     <link rel="stylesheet" href="{{asset('css/dataTables_min_latest.css')}}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
-    <script src="{{asset('js/summernote-bs4.js')}}"></script>
+    <!-- TinyMCE is self-hosted and loaded per page as needed -->
+    <script src="{{asset('js/tinymce/js/tinymce/tinymce.min.js')}}"></script>
 
     <script src="{{asset('js/datatables.min.js')}}"></script>
     <script src="{{asset('js/dataTables.bootstrap4.js')}}"></script>
@@ -397,8 +398,7 @@
 
                     var subjct_message = res.subject.replace('{ApplicantGivenNames}', client_firstname).replace('{ClientID}', client_reference_number);
                     $('.selectedsubject').val(subjct_message);
-                    $("#preview_email_modal .summernote-simple").summernote('reset');
-
+                    // Clear and set TinyMCE editor content
                     var subjct_description = res.description
                     .replace('{ApplicantGivenNames}', client_firstname)
                     .replace('{Company Name}', company_name)
@@ -412,8 +412,14 @@
                     .replace('{PDF_url_for_sign}', '<a href="' + PDF_url_for_sign + '" target="_blank">'+PDF_url_for_sign+'</a>')
                     .replace('{visa_apply}', mattertitle);
 
-                    $("#preview_email_modal .summernote-simple").summernote('code', subjct_description);
-                    $("#preview_email_modal .summernote-simple").val(subjct_description);
+                    $("#preview_email_modal .summernote-simple").each(function() {
+                        var editorId = $(this).attr('id');
+                        if (editorId && typeof tinymce !== 'undefined' && tinymce.get(editorId)) {
+                            tinymce.get(editorId).setContent(subjct_description || '');
+                        } else {
+                            $(this).val(subjct_description || '');
+                        }
+                    });
                 }
             });
         });

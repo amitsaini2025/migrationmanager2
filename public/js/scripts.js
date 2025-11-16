@@ -360,32 +360,173 @@ $(function () {
       });
     });
 
-  if (jQuery().summernote) {
-    $(".summernote").summernote({
-      dialogsInBody: true,
-      minHeight: 250
-    });
-    $(".summernote-simple").summernote({
-      dialogsInBody: true,
-      minHeight: 150,
-      height: 120,
+  // TinyMCE Editor Initialization
+  if (typeof tinymce !== 'undefined') {
+    // Shared color map for both editor configurations
+    var sharedColorMap = [
+      "000000", "Black", "333333", "Dark Gray", "666666", "Medium Gray",
+      "999999", "Light Gray", "CCCCCC", "Very Light Gray", "E0E0E0", "Pale Gray",
+      "F5F5F5", "Off White", "FFFFFF", "White", "DC2626", "Red",
+      "EA580C", "Orange", "D97706", "Amber", "059669", "Green",
+      "0891B2", "Cyan", "2563EB", "Blue", "7C3AED", "Purple",
+      "DB2777", "Pink", "EF4444", "Light Red", "F97316", "Light Orange",
+      "F59E0B", "Light Amber", "10B981", "Light Green", "06B6D4", "Light Cyan",
+      "3B82F6", "Light Blue", "8B5CF6", "Light Purple", "EC4899", "Light Pink"
+    ];
+
+    // Configuration for simple TinyMCE editors (replacing .summernote-simple)
+    // Optimized for quick notes with essential features
+    var tinymceSimpleConfig = {
+      height: 150,
+      min_height: 150,
+      max_height: 400,
+      menubar: false,
+      statusbar: true,  // Show status bar for word count
+      resize: true,     // Allow manual resizing
+      plugins: [
+        'lists',           // List support (bullets, numbers)
+        'link',            // Link insertion/editing
+        'autolink',        // Auto-convert URLs to links
+        'autoresize',      // Auto-adjust height based on content
+        'wordcount',       // Word/character count
+        'searchreplace'    // Find and replace functionality
+      ],
+      toolbar: 'undo redo | bold italic underline strikethrough | forecolor backcolor | bullist numlist | link | removeformat',
       placeholder: 'Write your note here...',
-      toolbar: [
-        ["style", ["bold", "italic", "underline", "strikethrough"]],
-        ["color", ["color"]],
-        ["para", ["ul", "ol"]],
-        ["insert", ["link"]]
+      content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; padding: 12px 15px; }',
+      branding: false,
+      promotion: false,
+      color_map: sharedColorMap,
+      autoresize_bottom_margin: 10,
+      // Paste handling
+      paste_as_text: false,
+      paste_remove_styles_if_webkit: true,
+      smart_paste: true,
+      // Accessibility
+      a11y_advanced_options: true,
+      contextmenu: false,  // Use native context menu
+      setup: function(editor) {
+        editor.on('change', function() {
+          editor.save();
+        });
+      }
+    };
+
+    // Initialize TinyMCE for .summernote-simple (keeping class for backward compatibility during migration)
+    // Also initialize for .tinymce-editor
+    var editorsToInit = '.summernote-simple, .tinymce-editor';
+    
+    // Check if editors exist and initialize them
+    $(editorsToInit).each(function() {
+      var editorId = $(this).attr('id') || 'tinymce_' + Math.random().toString(36).substr(2, 9);
+      if (!$(this).attr('id')) {
+        $(this).attr('id', editorId);
+      }
+      
+      // Only initialize if not already initialized
+      if (tinymce.get(editorId) === null) {
+        tinymce.init({
+          ...tinymceSimpleConfig,
+          selector: '#' + editorId
+        });
+      }
+    });
+
+    // Configuration for full TinyMCE editors (replacing .summernote)
+    // Enhanced for emails, templates, and longer content
+    var tinymceFullConfig = {
+      height: 300,
+      min_height: 300,
+      max_height: 600,
+      menubar: false,
+      statusbar: true,  // Show status bar for word count and element path
+      resize: true,     // Allow manual resizing
+      plugins: [
+        'lists',           // List support (bullets, numbers)
+        'link',            // Link insertion/editing
+        'autolink',        // Auto-convert URLs to links
+        'autoresize',      // Auto-adjust height based on content
+        'wordcount',       // Word/character count
+        'table',           // Table insertion and editing
+        'image',           // Image insertion
+        'searchreplace',   // Find and replace functionality
+        'code',            // View/edit HTML source
+        'fullscreen',      // Distraction-free fullscreen mode
+        'help'             // Built-in help dialog
       ],
-      colors: [
-        ['#000000', '#333333', '#666666', '#999999', '#CCCCCC', '#E0E0E0', '#F5F5F5', '#FFFFFF'],
-        ['#DC2626', '#EA580C', '#D97706', '#059669', '#0891B2', '#2563EB', '#7C3AED', '#DB2777'],
-        ['#EF4444', '#F97316', '#F59E0B', '#10B981', '#06B6D4', '#3B82F6', '#8B5CF6', '#EC4899'],
-        ['#FEE2E2', '#FED7AA', '#FEF3C7', '#D1FAE5', '#CCFBF1', '#DBEAFE', '#EDE9FE', '#FCE7F3']
+      toolbar: 'undo redo | formatselect | bold italic underline strikethrough | forecolor backcolor | \
+                alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | \
+                link image table | removeformat | code fullscreen | help',
+      content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }',
+      branding: false,
+      promotion: false,
+      color_map: sharedColorMap,
+      autoresize_bottom_margin: 10,
+      // Format options
+      block_formats: 'Paragraph=p; Heading 1=h1; Heading 2=h2; Heading 3=h3; Preformatted=pre',
+      style_formats: [
+        {
+          title: 'Headings',
+          items: [
+            { title: 'Heading 1', format: 'h1' },
+            { title: 'Heading 2', format: 'h2' },
+            { title: 'Heading 3', format: 'h3' }
+          ]
+        },
+        {
+          title: 'Inline',
+          items: [
+            { title: 'Bold', format: 'bold' },
+            { title: 'Italic', format: 'italic' },
+            { title: 'Underline', format: 'underline' },
+            { title: 'Strikethrough', format: 'strikethrough' },
+            { title: 'Code', format: 'code' }
+          ]
+        }
       ],
-      popover: {
-        image: [],
-        link: [],
-        air: []
+      // Paste handling
+      paste_as_text: false,
+      paste_data_images: true,  // Allow pasting images
+      paste_remove_styles_if_webkit: true,
+      smart_paste: true,
+      // Image handling (configure with your upload endpoint)
+      // images_upload_url: '/api/upload-editor-image',  // Uncomment and configure your endpoint
+      // automatic_uploads: true,
+      // images_reuse_filename: true,
+      file_picker_types: 'image',
+      images_file_types: 'jpg,jpeg,png,gif,webp',
+      // Table options
+      table_default_attributes: {
+        border: '1'
+      },
+      table_default_styles: {
+        'border-collapse': 'collapse',
+        'width': '100%'
+      },
+      table_resize_bars: true,
+      table_appearance_options: false,
+      // Accessibility
+      a11y_advanced_options: true,
+      contextmenu: false,  // Use native context menu
+      setup: function(editor) {
+        editor.on('change', function() {
+          editor.save();
+        });
+      }
+    };
+
+    // Initialize TinyMCE for .summernote (keeping class for backward compatibility)
+    $('.summernote').each(function() {
+      var editorId = $(this).attr('id') || 'tinymce_' + Math.random().toString(36).substr(2, 9);
+      if (!$(this).attr('id')) {
+        $(this).attr('id', editorId);
+      }
+      
+      if (tinymce.get(editorId) === null) {
+        tinymce.init({
+          ...tinymceFullConfig,
+          selector: '#' + editorId
+        });
       }
     });
   }

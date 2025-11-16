@@ -546,9 +546,15 @@ $(document).delegate('.selecttemplate', 'change', function(){
 		success: function(response){
 			var res = JSON.parse(response);
 			$('.selectedsubject').val(res.subject);
-			 $("#emailmodal .summernote-simple").summernote('reset');  
-                    $("#emailmodal .summernote-simple").summernote('code', res.description);  
-					$("#emailmodal .summernote-simple").val(res.description); 
+			 // Clear and set TinyMCE editor content
+                    $("#emailmodal .summernote-simple").each(function() {
+                        var editorId = $(this).attr('id');
+                        if (editorId && typeof tinymce !== 'undefined' && tinymce.get(editorId)) {
+                            tinymce.get(editorId).setContent(res.description || '');
+                        } else {
+                            $(this).val(res.description || '');
+                        }
+                    }); 
 			
 		}
 	});
@@ -563,15 +569,31 @@ $(document).delegate('.editnote', 'click', function(){
 		data:{id:v},
 		success: function(response){
 		    $('.showeditform').html(response);
-		 $("#myeditnotes .summernote-simple").summernote({
-      dialogsInBody: true,
-      minHeight: 150,
-      toolbar: [
-        ["style", ["bold", "italic", "underline", "clear"]],
-        ["font", ["strikethrough"]],
-        ["para", ["paragraph"]]
-      ]
-    }); 
+		 // Initialize TinyMCE editor (replacing Summernote)
+            if (typeof tinymce !== 'undefined') {
+                $("#myeditnotes .summernote-simple").each(function() {
+                    var editorId = $(this).attr('id') || 'tinymce_' + Math.random().toString(36).substr(2, 9);
+                    if (!$(this).attr('id')) {
+                        $(this).attr('id', editorId);
+                    }
+                    if (!tinymce.get(editorId)) {
+                        tinymce.init({
+                            selector: '#' + editorId,
+                            height: 150,
+                            menubar: false,
+                            plugins: ['lists', 'link', 'autolink'],
+                            toolbar: 'bold italic underline strikethrough | bullist numlist | link',
+                            branding: false,
+                            promotion: false,
+                            setup: function(editor) {
+                                editor.on('change', function() {
+                                    editor.save();
+                                });
+                            }
+                        });
+                    }
+                });
+            } 
 		}
 	});
 });

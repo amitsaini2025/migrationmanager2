@@ -580,6 +580,7 @@ use App\Http\Controllers\Controller;
 				<form method="post" name="sendmail" action="{{route('clients.sendmail')}}" autocomplete="off" enctype="multipart/form-data">
 				@csrf
                     <input type="hidden" name="client_id" value="{{$fetchedData->id}}">
+                    <input type="hidden" name="type" value="client">
                     <input type="hidden" name="mail_type" value="1">
                     <input type="hidden" name="mail_body_type" value="sent">
                     <input type="hidden" name="compose_client_matter_id" id="compose_client_matter_id" value="">

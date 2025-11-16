@@ -125,15 +125,15 @@
         <span>Apply Label</span>
         <i class="fas fa-chevron-right context-menu-arrow"></i>
     </div>
-    <div class="context-menu-item" data-action="reply" style="display: none;">
+    <div class="context-menu-item" data-action="reply">
         <i class="fas fa-reply"></i>
         <span>Reply</span>
     </div>
-    <div class="context-menu-item" data-action="forward" style="display: none;">
+    <div class="context-menu-item" data-action="forward">
         <i class="fas fa-share"></i>
         <span>Forward</span>
     </div>
-    <div class="context-menu-separator" style="display: none;"></div>
+    <div class="context-menu-separator"></div>
     <div class="context-menu-item" data-action="delete" style="display: none;">
         <i class="fas fa-trash"></i>
         <span>Delete</span>
@@ -171,6 +171,31 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Upload area found:', !!uploadArea);
     console.log('File status found:', !!fileStatus);
     
+    // Check if email was just sent successfully - if so, switch to "Sent" tab
+    const successMessages = document.querySelectorAll('.alert-success, .alert.alert-success');
+    let emailSentSuccessfully = false;
+    
+    successMessages.forEach(function(alert) {
+        const text = alert.textContent || alert.innerText;
+        if (text.includes('Email sent successfully') || text.includes('Email Sent Successfully')) {
+            emailSentSuccessfully = true;
+        }
+    });
+    
+    // If email was sent, switch to "Sent" tab
+    if (emailSentSuccessfully) {
+        const mailTypeFilter = document.getElementById('mailTypeFilter');
+        if (mailTypeFilter) {
+            mailTypeFilter.value = 'sent';
+            // Update the module's currentMailType variable if function exists
+            if (typeof window.setEmailMailType === 'function') {
+                window.setEmailMailType('sent');
+            }
+            // Trigger change event to reload emails
+            mailTypeFilter.dispatchEvent(new Event('change'));
+        }
+    }
+    
     // Debug: Check if modules are available
     console.log('initializeUpload available:', typeof window.initializeUpload);
     console.log('initializeSearch available:', typeof window.initializeSearch);
@@ -191,10 +216,13 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Search module not available!');
     }
     
-    // Load emails on page load
+    // Load emails on page load (will use the correct tab based on filter)
     if (typeof window.loadEmails === 'function') {
         console.log('Loading initial emails...');
-        window.loadEmails();
+        // Small delay to ensure filter is set correctly
+        setTimeout(function() {
+            window.loadEmails();
+        }, emailSentSuccessfully ? 100 : 0);
     } else {
         console.error('Load emails function not available!');
     }

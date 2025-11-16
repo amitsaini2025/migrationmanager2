@@ -20,6 +20,15 @@
     let currentSort = 'date';
     let availableLabels = []; // Loaded from API
 
+    // Expose function to set mail type (for external use)
+    window.setEmailMailType = function(type) {
+        currentMailType = type;
+        const mailTypeFilter = document.getElementById('mailTypeFilter');
+        if (mailTypeFilter) {
+            mailTypeFilter.value = type;
+        }
+    };
+
     // =========================================================================
     // Utility Functions
     // =========================================================================
@@ -1019,6 +1028,273 @@
     let currentContextEmail = null; // Store email object for context menu actions
 
     /**
+     * Format reply subject (add "Re:" prefix if not already present)
+     */
+    function formatReplySubject(originalSubject) {
+        if (!originalSubject) return 'Re:';
+        const subject = originalSubject.trim();
+        if (subject.toLowerCase().startsWith('re:')) {
+            return subject;
+        }
+        return 'Re: ' + subject;
+    }
+
+    /**
+     * Format forward subject (add "Fwd:" prefix if not already present)
+     */
+    function formatForwardSubject(originalSubject) {
+        if (!originalSubject) return 'Fwd:';
+        const subject = originalSubject.trim();
+        if (subject.toLowerCase().startsWith('fwd:') || subject.toLowerCase().startsWith('fw:')) {
+            return subject;
+        }
+        return 'Fwd: ' + subject;
+    }
+
+    /**
+     * Format quoted message for reply/forward
+     */
+    function formatQuotedMessage(email, isForward = false) {
+        const from = email.from_mail || 'Unknown';
+        const to = cleanRecipients(email.to_mail) || 'Unknown';
+        const date = formatDate(email.created_at);
+        const subject = email.subject || '(No subject)';
+        const message = email.message || '(No content)';
+        
+        let quotedText = '';
+        
+        if (isForward) {
+            // Forward format with headers
+            quotedText = '\n\n---------- Forwarded message ----------\n';
+            quotedText += 'From: ' + from + '\n';
+            quotedText += 'To: ' + to + '\n';
+            quotedText += 'Date: ' + date + '\n';
+            quotedText += 'Subject: ' + subject + '\n\n';
+        } else {
+            // Reply format (simpler)
+            quotedText = '\n\n';
+        }
+        
+        // Add original message with quote markers
+        quotedText += 'On ' + date + ', ' + from + ' wrote:\n';
+        quotedText += '> ' + message.replace(/\n/g, '\n> ');
+        
+        return quotedText;
+    }
+
+    /**
+     * Extract email address from a string (handles "Name <email@domain.com>" format)
+     */
+    function extractEmailAddress(emailString) {
+        if (!emailString) return '';
+        
+        // Try to extract email from angle brackets
+        const match = emailString.match(/<([^>]+)>/);
+        if (match) {
+            return match[1].trim();
+        }
+        
+        // If no brackets, check if it's a valid email
+        if (emailString.includes('@')) {
+            return emailString.trim();
+        }
+        
+        return emailString.trim();
+    }
+
+    /**
+     * Get current matter ID from the matter dropdown
+     */
+    function getCurrentMatterIdFromDropdown() {
+        const matterDropdown = document.getElementById('sel_matter_id_client_detail');
+        if (matterDropdown && matterDropdown.value) {
+            return matterDropdown.value;
+        }
+        // Fallback: try to get from email interface container
+        return getMatterId();
+    }
+
+    /**
+     * Open compose modal and populate fields
+     */
+    function openComposeModal(data) {
+        const modal = document.getElementById('emailmodal');
+        if (!modal) {
+            showNotification('Compose email modal not found. Please ensure you are on the client detail page.', 'error');
+            return;
+        }
+
+        // Always set matter ID - use provided one or get from dropdown
+        const matterIdInput = document.getElementById('compose_client_matter_id');
+        if (matterIdInput) {
+            const matterId = data.matterId || getCurrentMatterIdFromDropdown();
+            if (matterId) {
+                matterIdInput.value = matterId;
+            }
+        }
+
+        // Set subject
+        const subjectInput = document.getElementById('compose_email_subject');
+        if (subjectInput && data.subject) {
+            subjectInput.value = data.subject;
+        }
+
+        // Set message (for Summernote editor)
+        const messageTextarea = document.querySelector('#compose_email_message');
+        if (messageTextarea && data.message) {
+            // Wait for modal to be fully shown before setting Summernote content
+            const setMessageContent = () => {
+                // Set the value directly first
+                messageTextarea.value = data.message;
+                
+                // If Summernote is initialized, update it
+                if (typeof jQuery !== 'undefined' && jQuery(messageTextarea).hasClass('summernote-simple')) {
+                    try {
+                        jQuery(messageTextarea).summernote('code', data.message);
+                    } catch (e) {
+                        // If Summernote not ready, set value directly
+                        messageTextarea.value = data.message;
+                    }
+                }
+            };
+            
+            // If modal is already shown, set immediately, otherwise wait
+            if (modal.classList.contains('show') || modal.style.display === 'block') {
+                setTimeout(setMessageContent, 200);
+            } else {
+                // Wait for modal to be shown
+                modal.addEventListener('shown.bs.modal', setMessageContent, { once: true });
+                if (typeof jQuery !== 'undefined') {
+                    jQuery(modal).on('shown.bs.modal', setMessageContent);
+                }
+            }
+        }
+
+        // Set "To" field (Select2)
+        if (data.to && data.to.length > 0) {
+            const toSelect = document.querySelector('select[name="email_to[]"]');
+            if (toSelect && typeof jQuery !== 'undefined') {
+                const setToField = () => {
+                    // Wait a bit for Select2 to be initialized
+                    setTimeout(() => {
+                        // Clear existing selections
+                        jQuery(toSelect).val(null).trigger('change');
+                        
+                        // For Select2 AJAX, we need to create options and select them
+                        const emailAddresses = data.to.map(email => extractEmailAddress(email)).filter(addr => addr);
+                        
+                        if (emailAddresses.length > 0) {
+                            // Create options for each email
+                            emailAddresses.forEach(emailAddr => {
+                                // Check if option already exists
+                                let option = Array.from(toSelect.options).find(opt => opt.value === emailAddr || opt.text === emailAddr);
+                                if (!option) {
+                                    // Create new option
+                                    option = new Option(emailAddr, emailAddr, true, true);
+                                    toSelect.add(option);
+                                } else {
+                                    option.selected = true;
+                                }
+                            });
+                            
+                            // Update Select2 with the selected values
+                            jQuery(toSelect).val(emailAddresses).trigger('change');
+                        }
+                    }, 200);
+                };
+                
+                // If modal is already shown, set immediately, otherwise wait
+                if (modal.classList.contains('show') || modal.style.display === 'block') {
+                    setToField();
+                } else {
+                    // Wait for modal to be shown
+                    modal.addEventListener('shown.bs.modal', setToField, { once: true });
+                    if (typeof jQuery !== 'undefined') {
+                        jQuery(modal).on('shown.bs.modal', setToField);
+                    }
+                }
+            }
+        }
+
+        // Open modal using Bootstrap
+        if (typeof jQuery !== 'undefined') {
+            jQuery(modal).modal('show');
+        } else if (typeof bootstrap !== 'undefined') {
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+        } else {
+            // Fallback: just show the modal
+            modal.style.display = 'block';
+            modal.classList.add('show');
+        }
+    }
+
+    /**
+     * Handle Reply action
+     */
+    function handleReply(email) {
+        if (!email) {
+            showNotification('No email selected for reply', 'error');
+            return;
+        }
+
+        // Extract sender email for "To" field
+        const senderEmail = extractEmailAddress(email.from_mail);
+        if (!senderEmail) {
+            showNotification('Could not extract sender email address', 'error');
+            return;
+        }
+
+        // Get matter ID
+        const matterId = getMatterId();
+
+        // Format subject
+        const replySubject = formatReplySubject(email.subject);
+
+        // Format message with quoted original
+        const replyMessage = formatQuotedMessage(email, false);
+
+        // Open compose modal with reply data
+        openComposeModal({
+            to: [senderEmail],
+            subject: replySubject,
+            message: replyMessage,
+            matterId: matterId
+        });
+
+        showNotification('Reply email opened', 'info');
+    }
+
+    /**
+     * Handle Forward action
+     */
+    function handleForward(email) {
+        if (!email) {
+            showNotification('No email selected for forward', 'error');
+            return;
+        }
+
+        // Get matter ID
+        const matterId = getMatterId();
+
+        // Format subject
+        const forwardSubject = formatForwardSubject(email.subject);
+
+        // Format message with forwarded content
+        const forwardMessage = formatQuotedMessage(email, true);
+
+        // Open compose modal with forward data (no "To" pre-filled)
+        openComposeModal({
+            to: [],
+            subject: forwardSubject,
+            message: forwardMessage,
+            matterId: matterId
+        });
+
+        showNotification('Forward email opened', 'info');
+    }
+
+    /**
      * Show context menu at specified coordinates
      */
     function showContextMenu(x, y, email) {
@@ -1188,13 +1464,15 @@
                     showLabelSubmenu();
                     break;
                 case 'reply':
-                    // TODO: Implement reply functionality
-                    console.log('Reply to:', currentContextEmail);
+                    if (currentContextEmail) {
+                        handleReply(currentContextEmail);
+                    }
                     hideContextMenu();
                     break;
                 case 'forward':
-                    // TODO: Implement forward functionality
-                    console.log('Forward:', currentContextEmail);
+                    if (currentContextEmail) {
+                        handleForward(currentContextEmail);
+                    }
                     hideContextMenu();
                     break;
                 case 'delete':
@@ -1502,6 +1780,35 @@
 
         // Initialize attachment handlers
         initializeAttachmentHandlers();
+
+        // Auto-set matter ID when compose modal opens (for all email composes)
+        const composeModal = document.getElementById('emailmodal');
+        if (composeModal) {
+            // Listen for modal show event (Bootstrap 4)
+            if (typeof jQuery !== 'undefined') {
+                jQuery(composeModal).on('show.bs.modal', function() {
+                    const matterIdInput = document.getElementById('compose_client_matter_id');
+                    if (matterIdInput && !matterIdInput.value) {
+                        // Only set if not already set (to preserve reply/forward matter ID)
+                        const matterId = getCurrentMatterIdFromDropdown();
+                        if (matterId) {
+                            matterIdInput.value = matterId;
+                        }
+                    }
+                });
+            }
+            // Also listen for native modal show event
+            composeModal.addEventListener('show.bs.modal', function() {
+                const matterIdInput = document.getElementById('compose_client_matter_id');
+                if (matterIdInput && !matterIdInput.value) {
+                    // Only set if not already set (to preserve reply/forward matter ID)
+                    const matterId = getCurrentMatterIdFromDropdown();
+                    if (matterId) {
+                        matterIdInput.value = matterId;
+                    }
+                }
+            });
+        }
     }
 
     /**

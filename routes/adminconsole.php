@@ -20,6 +20,7 @@ use App\Http\Controllers\AdminConsole\Sms\SmsSendController;
 use App\Http\Controllers\AdminConsole\Sms\SmsTemplateController;
 use App\Http\Controllers\AdminConsole\Sms\SmsWebhookController;
 use App\Http\Controllers\AdminConsole\ESignatureController;
+use App\Http\Controllers\AdminConsole\EmailLabelController;
 
 /*
 |--------------------------------------------------------------------------
@@ -50,6 +51,13 @@ Route::prefix('adminconsole')->name('adminconsole.')->middleware(['auth:admin'])
         Route::post('/tags/store', [TagController::class, 'store'])->name('tags.store');
         Route::get('/tags/edit/{id}', [TagController::class, 'edit'])->name('tags.edit');
         Route::put('/tags/{id}', [TagController::class, 'update'])->name('tags.update');
+        
+        // Email Labels routes
+        Route::get('/email-labels', [EmailLabelController::class, 'index'])->name('emaillabels.index');
+        Route::get('/email-labels/create', [EmailLabelController::class, 'create'])->name('emaillabels.create');
+        Route::post('/email-labels/store', [EmailLabelController::class, 'store'])->name('emaillabels.store');
+        Route::get('/email-labels/edit/{id}', [EmailLabelController::class, 'edit'])->name('emaillabels.edit');
+        Route::put('/email-labels/{id}', [EmailLabelController::class, 'update'])->name('emaillabels.update');
         
         // Workflow routes
         Route::get('/workflow', [WorkflowController::class, 'index'])->name('workflow.index');

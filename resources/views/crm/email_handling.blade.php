@@ -39,13 +39,6 @@
                 <!-- Populated dynamically -->
             </select>
         </div>
-        
-        <div class="control-section action-section">
-            <button class="create-label-btn" id="createLabelBtn">
-                <i class="fas fa-tag"></i> Create Label
-            </button>
-            <button class="apply-btn" id="applyFiltersBtn">Apply</button>
-        </div>
     </div>
 
     <!-- Main Content Area -->
@@ -111,54 +104,6 @@
     </div>
 </div>
 
-<!-- Label Creation Modal -->
-<div id="labelModal" class="label-modal" style="display: none;">
-    <div class="label-modal-content">
-        <div class="label-modal-header">
-            <h3 class="label-modal-title">Create New Label</h3>
-            <button class="label-modal-close" id="closeLabelModal">&times;</button>
-        </div>
-        <div class="label-modal-body">
-            <div class="label-form-group">
-                <label class="label-form-label">Label Name</label>
-                <input type="text" id="labelNameInput" class="label-form-input" placeholder="Enter label name">
-            </div>
-            <div class="label-form-group">
-                <label class="label-form-label">Color</label>
-                <div class="color-picker-container" id="colorPicker">
-                    <div class="color-option" data-color="#3B82F6" style="background: #3B82F6;"></div>
-                    <div class="color-option" data-color="#10B981" style="background: #10B981;"></div>
-                    <div class="color-option" data-color="#EF4444" style="background: #EF4444;"></div>
-                    <div class="color-option" data-color="#F59E0B" style="background: #F59E0B;"></div>
-                    <div class="color-option" data-color="#8B5CF6" style="background: #8B5CF6;"></div>
-                    <div class="color-option" data-color="#EC4899" style="background: #EC4899;"></div>
-                    <div class="color-option" data-color="#14B8A6" style="background: #14B8A6;"></div>
-                    <div class="color-option" data-color="#F97316" style="background: #F97316;"></div>
-                </div>
-                <input type="hidden" id="selectedColor" value="#3B82F6">
-            </div>
-            <div class="label-form-group">
-                <label class="label-form-label">Icon</label>
-                <div class="icon-picker-container" id="iconPicker">
-                    <div class="icon-option" data-icon="fas fa-tag"><i class="fas fa-tag"></i></div>
-                    <div class="icon-option" data-icon="fas fa-star"><i class="fas fa-star"></i></div>
-                    <div class="icon-option" data-icon="fas fa-flag"><i class="fas fa-flag"></i></div>
-                    <div class="icon-option" data-icon="fas fa-bookmark"><i class="fas fa-bookmark"></i></div>
-                    <div class="icon-option" data-icon="fas fa-heart"><i class="fas fa-heart"></i></div>
-                    <div class="icon-option" data-icon="fas fa-bell"><i class="fas fa-bell"></i></div>
-                    <div class="icon-option" data-icon="fas fa-fire"><i class="fas fa-fire"></i></div>
-                    <div class="icon-option" data-icon="fas fa-bolt"><i class="fas fa-bolt"></i></div>
-                </div>
-                <input type="hidden" id="selectedIcon" value="fas fa-tag">
-            </div>
-            <div class="label-form-actions">
-                <button class="label-form-btn label-form-btn-cancel" id="cancelLabelBtn">Cancel</button>
-                <button class="label-form-btn label-form-btn-create" id="saveLabelBtn">Create Label</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Attachment Preview Modal -->
 <div id="attachmentPreviewModal" class="preview-modal" style="display: none;">
     <div class="preview-modal-overlay" id="previewOverlay"></div>
@@ -172,6 +117,42 @@
         </div>
     </div>
 </div>
+
+<!-- Email Context Menu -->
+<div id="emailContextMenu" class="email-context-menu" style="display: none;">
+    <div class="context-menu-item" data-action="apply-label">
+        <i class="fas fa-tag"></i>
+        <span>Apply Label</span>
+        <i class="fas fa-chevron-right context-menu-arrow"></i>
+    </div>
+    <div class="context-menu-item" data-action="reply" style="display: none;">
+        <i class="fas fa-reply"></i>
+        <span>Reply</span>
+    </div>
+    <div class="context-menu-item" data-action="forward" style="display: none;">
+        <i class="fas fa-share"></i>
+        <span>Forward</span>
+    </div>
+    <div class="context-menu-separator" style="display: none;"></div>
+    <div class="context-menu-item" data-action="delete" style="display: none;">
+        <i class="fas fa-trash"></i>
+        <span>Delete</span>
+    </div>
+</div>
+
+<!-- Label Submenu -->
+<div id="labelSubmenu" class="email-context-submenu" style="display: none;">
+    <div class="submenu-header">
+        <i class="fas fa-arrow-left submenu-back"></i>
+        <span>Select Label</span>
+    </div>
+    <div class="submenu-content" id="labelSubmenuContent">
+        <!-- Labels will be populated dynamically -->
+    </div>
+</div>
+
+<!-- Context Menu Overlay (for closing menu on outside click) -->
+<div id="contextMenuOverlay" class="context-menu-overlay" style="display: none;"></div>
 
 <!-- Include necessary CSS and JavaScript -->
 <link rel="stylesheet" href="{{ asset('css/email-handling.css') }}">

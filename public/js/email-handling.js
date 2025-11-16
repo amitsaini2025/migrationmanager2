@@ -516,7 +516,6 @@
 
         const searchInput = document.getElementById('emailSearchInput');
         const labelFilter = document.getElementById('labelFilter');
-        const applyBtn = document.getElementById('applyFiltersBtn');
 
         if (!searchInput) {
             console.warn('Search input not found - skipping search initialization');
@@ -525,10 +524,6 @@
         
         if (!labelFilter) {
             console.warn('Label filter not found - search will work with limited functionality');
-        }
-        
-        if (!applyBtn) {
-            console.warn('Apply button not found - search will work with limited functionality');
         }
 
         // Real-time search (debounced)
@@ -540,19 +535,10 @@
 
         searchInput.addEventListener('input', debouncedSearch);
 
-        // Label filter change
+        // Label filter change - auto-applies when changed
         if (labelFilter) {
             labelFilter.addEventListener('change', function() {
                 currentLabelId = this.value;
-                currentPage = 1;
-                loadEmails();
-            });
-        }
-
-        // Apply button (for immediate search)
-        if (applyBtn) {
-            applyBtn.addEventListener('click', function() {
-                currentSearch = searchInput.value;
                 currentPage = 1;
                 loadEmails();
             });
@@ -751,7 +737,14 @@
         `;
 
         // Add click handler to view email
-        div.addEventListener('click', function() {
+        div.addEventListener('click', function(e) {
+            // Don't trigger if context menu is open (close it first on click)
+            const contextMenu = document.getElementById('emailContextMenu');
+            if (contextMenu && contextMenu.style.display === 'block') {
+                hideContextMenu();
+                return;
+            }
+            
             // Remove selection from other items
             document.querySelectorAll('.email-item').forEach(item => {
                 item.classList.remove('selected');
@@ -762,6 +755,18 @@
             
             // Load email details
             loadEmailDetail(email);
+        });
+
+        // Add right-click handler for context menu
+        div.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Store current email for context menu actions
+            this.dataset.emailData = JSON.stringify(email);
+            
+            // Show context menu at cursor position
+            showContextMenu(e.clientX, e.clientY, email);
         });
 
         return div;
@@ -1008,6 +1013,215 @@
     }
 
     // =========================================================================
+    // Context Menu Management
+    // =========================================================================
+
+    let currentContextEmail = null; // Store email object for context menu actions
+
+    /**
+     * Show context menu at specified coordinates
+     */
+    function showContextMenu(x, y, email) {
+        const contextMenu = document.getElementById('emailContextMenu');
+        const overlay = document.getElementById('contextMenuOverlay');
+        
+        if (!contextMenu || !overlay) return;
+        
+        // Store current email
+        currentContextEmail = email;
+        
+        // Position menu
+        contextMenu.style.display = 'block';
+        contextMenu.style.left = x + 'px';
+        contextMenu.style.top = y + 'px';
+        
+        // Show overlay
+        overlay.style.display = 'block';
+        
+        // Adjust menu position if it goes off-screen
+        setTimeout(() => {
+            const rect = contextMenu.getBoundingClientRect();
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            if (rect.right > windowWidth) {
+                contextMenu.style.left = (x - rect.width) + 'px';
+            }
+            if (rect.bottom > windowHeight) {
+                contextMenu.style.top = (y - rect.height) + 'px';
+            }
+        }, 0);
+    }
+
+    /**
+     * Hide context menu
+     */
+    function hideContextMenu() {
+        const contextMenu = document.getElementById('emailContextMenu');
+        const submenu = document.getElementById('labelSubmenu');
+        const overlay = document.getElementById('contextMenuOverlay');
+        
+        if (contextMenu) contextMenu.style.display = 'none';
+        if (submenu) submenu.style.display = 'none';
+        if (overlay) overlay.style.display = 'none';
+        
+        currentContextEmail = null;
+    }
+
+    /**
+     * Show label submenu
+     */
+    function showLabelSubmenu() {
+        const contextMenu = document.getElementById('emailContextMenu');
+        const submenu = document.getElementById('labelSubmenu');
+        const labelContent = document.getElementById('labelSubmenuContent');
+        
+        if (!submenu || !labelContent || !currentContextEmail) return;
+        
+        // Get context menu position before hiding it
+        const rect = contextMenu.getBoundingClientRect();
+        
+        // Hide main context menu
+        contextMenu.style.display = 'none';
+        
+        // Position submenu next to context menu
+        submenu.style.display = 'block';
+        submenu.style.left = (rect.right + 2) + 'px';
+        submenu.style.top = rect.top + 'px';
+        
+        // Get current email labels
+        const currentLabels = currentContextEmail.labels || [];
+        const currentLabelIds = currentLabels.map(l => l.id);
+        
+        // Filter out already applied labels
+        const filteredLabels = availableLabels.filter(label => {
+            return !currentLabelIds.includes(label.id);
+        });
+        
+        // Build label options HTML
+        if (filteredLabels.length === 0) {
+            labelContent.innerHTML = `
+                <div class="submenu-empty">
+                    <p>All available labels are already applied</p>
+                </div>
+            `;
+        } else {
+            labelContent.innerHTML = filteredLabels.map(label => {
+                const isApplied = currentLabelIds.includes(label.id);
+                const icon = label.icon || 'fas fa-tag';
+                const color = label.color || '#3B82F6';
+                
+                return `
+                    <div class="submenu-item ${isApplied ? 'applied' : ''}" 
+                         data-label-id="${label.id}" 
+                         data-label-name="${escapeHtml(label.name)}">
+                        <span class="submenu-item-badge" style="background-color: ${color}20; border-color: ${color}; color: ${color}">
+                            <i class="${icon}"></i>
+                        </span>
+                        <span class="submenu-item-text">${escapeHtml(label.name)}</span>
+                        ${isApplied ? '<i class="fas fa-check submenu-item-check"></i>' : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            // Add click handlers
+            labelContent.querySelectorAll('.submenu-item').forEach(item => {
+                item.addEventListener('click', async function() {
+                    const labelId = this.dataset.labelId;
+                    const labelName = this.dataset.labelName;
+                    const isApplied = this.classList.contains('applied');
+                    
+                    if (isApplied) {
+                        // Already applied (shouldn't happen due to filter, but handle it)
+                        return;
+                    }
+                    
+                    // Apply label
+                    const success = await applyLabel(currentContextEmail.id, labelId);
+                    if (success) {
+                        // Reload email list to show updated labels
+                        loadEmailsFromServer();
+                        hideContextMenu();
+                    }
+                });
+            });
+        }
+        
+        // Back button handler
+        const backBtn = submenu.querySelector('.submenu-back');
+        if (backBtn) {
+            backBtn.onclick = function() {
+                submenu.style.display = 'none';
+                contextMenu.style.display = 'block';
+            };
+        }
+        
+        // Adjust submenu position if it goes off-screen
+        setTimeout(() => {
+            const submenuRect = submenu.getBoundingClientRect();
+            const windowWidth = window.innerWidth;
+            
+            if (submenuRect.right > windowWidth) {
+                submenu.style.left = (rect.left - submenuRect.width) + 'px';
+            }
+        }, 0);
+    }
+
+    /**
+     * Initialize context menu handlers
+     */
+    function initializeContextMenu() {
+        const contextMenu = document.getElementById('emailContextMenu');
+        const overlay = document.getElementById('contextMenuOverlay');
+        
+        if (!contextMenu || !overlay) return;
+        
+        // Handle menu item clicks
+        contextMenu.addEventListener('click', function(e) {
+            const item = e.target.closest('.context-menu-item');
+            if (!item) return;
+            
+            const action = item.dataset.action;
+            
+            switch (action) {
+                case 'apply-label':
+                    showLabelSubmenu();
+                    break;
+                case 'reply':
+                    // TODO: Implement reply functionality
+                    console.log('Reply to:', currentContextEmail);
+                    hideContextMenu();
+                    break;
+                case 'forward':
+                    // TODO: Implement forward functionality
+                    console.log('Forward:', currentContextEmail);
+                    hideContextMenu();
+                    break;
+                case 'delete':
+                    // TODO: Implement delete functionality
+                    console.log('Delete:', currentContextEmail);
+                    hideContextMenu();
+                    break;
+                default:
+                    hideContextMenu();
+            }
+        });
+        
+        // Close menu when clicking overlay or outside
+        overlay.addEventListener('click', hideContextMenu);
+        
+        // Close menu on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                hideContextMenu();
+            }
+        });
+        
+        // Close menu on scroll
+        document.addEventListener('scroll', hideContextMenu, true);
+    }
+
+    // =========================================================================
     // Label Management
     // =========================================================================
 
@@ -1060,38 +1274,10 @@
     }
 
     /**
-     * Create new label
+     * Label creation removed - labels are now managed in Admin Console
+     * Use /adminconsole/features/email-labels to create/edit labels
+     * Frontend only handles filtering and applying existing labels
      */
-    async function createLabel(name, color, icon) {
-        try {
-            const response = await fetch('/email-labels', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': getCsrfToken()
-                },
-                body: JSON.stringify({ name, color, icon })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            if (data.success) {
-                showNotification('Label created successfully', 'success');
-                await fetchLabels(); // Reload labels
-                return data.label;
-            } else {
-                throw new Error(data.message || 'Failed to create label');
-            }
-        } catch (error) {
-            console.error('Error creating label:', error);
-            showNotification('Error creating label: ' + error.message, 'error');
-            return null;
-        }
-    }
 
     /**
      * Apply label to email
@@ -1276,6 +1462,9 @@
         // Fetch labels on load
         fetchLabels();
 
+        // Initialize context menu
+        initializeContextMenu();
+
         // Mail type filter (Inbox/Sent)
         const mailTypeFilter = document.getElementById('mailTypeFilter');
         if (mailTypeFilter) {
@@ -1293,67 +1482,13 @@
             });
         }
 
-        // Apply filters button
-        const applyFiltersBtn = document.getElementById('applyFiltersBtn');
-        if (applyFiltersBtn) {
-            applyFiltersBtn.addEventListener('click', function() {
-                loadEmailsFromServer();
-            });
-        }
+        // Apply button removed - all filters auto-apply:
+        // - Search auto-applies as you type (debounced)
+        // - Label filter auto-applies on change
+        // - Mail type filter auto-applies on change
 
-        // Create label button
-        const createLabelBtn = document.getElementById('createLabelBtn');
-        if (createLabelBtn) {
-            createLabelBtn.addEventListener('click', function() {
-                showLabelModal();
-            });
-        }
-
-        // Label modal close buttons
-        const closeLabelModal = document.getElementById('closeLabelModal');
-        const cancelLabelBtn = document.getElementById('cancelLabelBtn');
-        if (closeLabelModal) {
-            closeLabelModal.addEventListener('click', hideLabelModal);
-        }
-        if (cancelLabelBtn) {
-            cancelLabelBtn.addEventListener('click', hideLabelModal);
-        }
-
-        // Label modal save button
-        const saveLabelBtn = document.getElementById('saveLabelBtn');
-        if (saveLabelBtn) {
-            saveLabelBtn.addEventListener('click', handleLabelCreate);
-        }
-
-        // Color picker
-        const colorPicker = document.getElementById('colorPicker');
-        if (colorPicker) {
-            colorPicker.querySelectorAll('.color-option').forEach(option => {
-                option.addEventListener('click', function() {
-                    colorPicker.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
-                    this.classList.add('selected');
-                    document.getElementById('selectedColor').value = this.dataset.color;
-                });
-            });
-            // Select first color by default
-            const firstColor = colorPicker.querySelector('.color-option');
-            if (firstColor) firstColor.classList.add('selected');
-        }
-
-        // Icon picker
-        const iconPicker = document.getElementById('iconPicker');
-        if (iconPicker) {
-            iconPicker.querySelectorAll('.icon-option').forEach(option => {
-                option.addEventListener('click', function() {
-                    iconPicker.querySelectorAll('.icon-option').forEach(o => o.classList.remove('selected'));
-                    this.classList.add('selected');
-                    document.getElementById('selectedIcon').value = this.dataset.icon;
-                });
-            });
-            // Select first icon by default
-            const firstIcon = iconPicker.querySelector('.icon-option');
-            if (firstIcon) firstIcon.classList.add('selected');
-        }
+        // Label creation removed - now managed in Admin Console
+        // Labels can only be created via /adminconsole/features/email-labels
 
         // Preview modal close
         const closePreviewBtn = document.getElementById('closePreviewBtn');
@@ -1431,44 +1566,9 @@
     }
 
     /**
-     * Show label creation modal
+     * Label creation functions removed - labels are now managed in Admin Console
+     * Navigate to /adminconsole/features/email-labels to create/edit labels
      */
-    function showLabelModal() {
-        const modal = document.getElementById('labelModal');
-        if (modal) {
-            document.getElementById('labelNameInput').value = '';
-            modal.style.display = 'flex';
-        }
-    }
-
-    /**
-     * Hide label creation modal
-     */
-    function hideLabelModal() {
-        const modal = document.getElementById('labelModal');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-    }
-
-    /**
-     * Handle label creation
-     */
-    async function handleLabelCreate() {
-        const name = document.getElementById('labelNameInput').value.trim();
-        const color = document.getElementById('selectedColor').value;
-        const icon = document.getElementById('selectedIcon').value;
-
-        if (!name) {
-            showNotification('Please enter a label name', 'error');
-            return;
-        }
-
-        const label = await createLabel(name, color, icon);
-        if (label) {
-            hideLabelModal();
-        }
-    }
 
     /**
      * Hide preview modal

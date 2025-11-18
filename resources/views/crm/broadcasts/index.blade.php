@@ -121,109 +121,165 @@
 
                 <!-- Active Users Tab -->
                 <div class="tab-pane fade" id="active-users" role="tabpanel" aria-labelledby="active-users-tab">
-                    <div class="row mt-3">
+                    <div class="row mt-4">
                         <div class="col-12">
-                            <div class="card" id="active-users-card">
-                                <div class="card-header" style="background: linear-gradient(135deg, #5b9fd8 0%, #4285c9 100%) !important; border-bottom: none !important; padding: 1.5rem !important;">
-                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                                        <div>
-                                            <h4 class="mb-0" style="color: #ffffff !important; font-weight: 700; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); font-size: 1.5rem;">Currently Active Users</h4>
-                                            <small style="color: #ffffff !important; font-weight: 500; opacity: 0.95; font-size: 0.875rem;">Presence is calculated from active sessions within the last 5 minutes.</small>
+                            <div class="card shadow-sm border-0 active-users-modern-card" id="active-users-card">
+                                <!-- Modern Header Section -->
+                                <div class="active-users-header">
+                                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center gap-3 mb-2">
+                                                <div class="active-users-icon-wrapper">
+                                                    <i class="fas fa-users"></i>
+                                                </div>
+                                                <div>
+                                                    <h4 class="mb-1 active-users-title">Active Users</h4>
+                                                    <p class="mb-0 active-users-subtitle">Monitor real-time user presence and activity</p>
+                                                </div>
+                                            </div>
+                                            <div class="active-users-stats">
+                                                <span class="badge badge-pill active-users-count-badge" id="active-users-count">
+                                                    <i class="fas fa-circle status-dot-online"></i>
+                                                    <span class="count-text">1</span> online
+                                                </span>
+                                                <small class="text-muted ml-3">
+                                                    <i class="fas fa-info-circle"></i> Presence calculated from active sessions within the last 5 minutes
+                                                </small>
+                                            </div>
                                         </div>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <a href="{{ route('user-login-analytics.index') }}" class="btn btn-outline-light btn-sm" style="background-color: rgba(255, 255, 255, 0.2) !important; border: 2px solid rgba(255, 255, 255, 0.9) !important; color: #ffffff !important; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
-                                                <i class="fas fa-chart-line mr-1"></i> View Analytics
+                                        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                            <a href="{{ route('user-login-analytics.index') }}" class="btn btn-light btn-sm active-users-action-btn">
+                                                <i class="fas fa-chart-line"></i>
+                                                <span class="d-none d-md-inline">Analytics</span>
                                             </a>
-                                            <span class="badge badge-success active-users-badge" id="active-users-count" style="background-color: #28a745 !important; color: #ffffff !important; border: 2px solid rgba(255, 255, 255, 0.95); font-weight: 700; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); padding: 0.5rem 0.75rem; font-size: 0.875rem;">1 online</span>
-                                            <button type="button" class="btn btn-outline-secondary btn-sm" id="active-users-refresh" style="background-color: #ffffff !important; border: 2px solid rgba(255, 255, 255, 0.9) !important; color: #2c5aa0 !important; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
-                                                <i class="fas fa-sync-alt mr-1"></i> Refresh
+                                            <button type="button" class="btn btn-sm active-users-refresh-btn" id="active-users-refresh">
+                                                <i class="fas fa-sync-alt"></i>
+                                                <span class="d-none d-md-inline">Refresh</span>
                                             </button>
                                         </div>
                                     </div>
-                                    <!-- Search and Filters -->
-                                    <div class="row g-2 mb-2">
-                                        <div class="col-md-4">
-                                            <div class="input-group">
-                                                <div class="input-group-prepend">
-                                                    <span class="input-group-text" style="background-color: #ffffff !important; border: 2px solid rgba(255, 255, 255, 0.9) !important; border-right: 1px solid #dee2e6 !important; color: #495057 !important;"><i class="fas fa-search"></i></span>
+                                    
+                                    <!-- Enhanced Search and Filters -->
+                                    <div class="active-users-filters">
+                                        <div class="row g-3">
+                                            <div class="col-md-5 col-lg-4">
+                                                <div class="input-group input-group-sm">
+                                                    <div class="input-group-prepend">
+                                                        <span class="input-group-text bg-white border-right-0">
+                                                            <i class="fas fa-search text-muted"></i>
+                                                        </span>
+                                                    </div>
+                                                    <input type="text" 
+                                                           class="form-control border-left-0 active-users-search-input" 
+                                                           id="active-users-search" 
+                                                           placeholder="Search by name or email...">
                                                 </div>
-                                                <input type="text" class="form-control" id="active-users-search" placeholder="Search by name or email..." style="background-color: #ffffff !important; border: 2px solid rgba(255, 255, 255, 0.9) !important; border-left: 2px solid rgba(255, 255, 255, 0.9) !important; color: #212529 !important; font-weight: 500; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
                                             </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <select class="form-control" id="active-users-role-filter" style="background-color: #ffffff !important; border: 2px solid rgba(255, 255, 255, 0.9) !important; color: #212529 !important; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
-                                                <option value="">All Roles</option>
-                                                @foreach(\App\Models\UserRole::with('usertypedata')->get() as $role)
-                                                    <option value="{{ $role->id }}">{{ $role->usertypedata->name ?? 'Role #' . $role->id }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <select class="form-control" id="active-users-team-filter" style="background-color: #ffffff !important; border: 2px solid rgba(255, 255, 255, 0.9) !important; color: #212529!important; font-weight: 600; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
-                                                <option value="">All Teams</option>
-                                                @foreach(\App\Models\Team::all() as $team)
-                                                    <option value="{{ $team->id }}">{{ $team->name }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <button type="button" class="btn btn-outline-secondary btn-block" id="active-users-clear-filters" style="background-color: #ffffff !important; border: 2px solid rgba(255, 255, 255, 0.9) !important; color: #2c5aa0 !important; font-weight: 700; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
-                                                <i class="fas fa-times mr-1"></i> Clear
-                                            </button>
+                                            <div class="col-md-3 col-lg-2">
+                                                <select class="form-control form-control-sm active-users-filter-select" id="active-users-role-filter">
+                                                    <option value="">All Roles</option>
+                                                    @foreach(\App\Models\UserRole::with('usertypedata')->get() as $role)
+                                                        <option value="{{ $role->id }}">{{ $role->usertypedata->name ?? 'Role #' . $role->id }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3 col-lg-2">
+                                                <select class="form-control form-control-sm active-users-filter-select" id="active-users-team-filter">
+                                                    <option value="">All Teams</option>
+                                                    @foreach(\App\Models\Team::all() as $team)
+                                                        <option value="{{ $team->id }}">{{ $team->name }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-md-1 col-lg-1">
+                                                <button type="button" 
+                                                        class="btn btn-outline-secondary btn-sm btn-block active-users-clear-btn" 
+                                                        id="active-users-clear-filters"
+                                                        title="Clear filters">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+                                
+                                <!-- Modern Table Section -->
                                 <div class="card-body p-0">
                                     <div class="table-responsive">
-                                        <table class="table table-hover mb-0" id="active-users-table">
-                                            <thead class="thead-light">
+                                        <table class="table table-hover mb-0 active-users-table-modern" id="active-users-table">
+                                            <thead>
                                                 <tr>
                                                     <th class="sortable" data-sort="name">
-                                                        <i class="fas fa-user mr-1"></i> User
-                                                        <i class="fas fa-sort sort-icon ml-1"></i>
+                                                        <span class="th-content">
+                                                            <i class="fas fa-user"></i>
+                                                            <span>User</span>
+                                                            <i class="fas fa-sort sort-icon"></i>
+                                                        </span>
                                                     </th>
-                                                    <th class="text-center" style="width: 80px;">
-                                                        <i class="fas fa-circle mr-1"></i> Status
+                                                    <th class="text-center sortable" data-sort="status" style="width: 100px;">
+                                                        <span class="th-content">
+                                                            <i class="fas fa-circle"></i>
+                                                            <span>Status</span>
+                                                        </span>
                                                     </th>
                                                     <th class="sortable" data-sort="role">
-                                                        <i class="fas fa-user-tag mr-1"></i> Role
-                                                        <i class="fas fa-sort sort-icon ml-1"></i>
+                                                        <span class="th-content">
+                                                            <i class="fas fa-user-tag"></i>
+                                                            <span>Role</span>
+                                                            <i class="fas fa-sort sort-icon"></i>
+                                                        </span>
                                                     </th>
                                                     <th class="sortable" data-sort="team">
-                                                        <i class="fas fa-users-cog mr-1"></i> Team
-                                                        <i class="fas fa-sort sort-icon ml-1"></i>
+                                                        <span class="th-content">
+                                                            <i class="fas fa-users-cog"></i>
+                                                            <span>Team</span>
+                                                            <i class="fas fa-sort sort-icon"></i>
+                                                        </span>
                                                     </th>
                                                     <th class="sortable" data-sort="last_activity">
-                                                        <i class="fas fa-clock mr-1"></i> Last Activity
-                                                        <i class="fas fa-sort sort-icon ml-1"></i>
+                                                        <span class="th-content">
+                                                            <i class="fas fa-clock"></i>
+                                                            <span>Last Activity</span>
+                                                            <i class="fas fa-sort sort-icon"></i>
+                                                        </span>
                                                     </th>
                                                     <th>
-                                                        <i class="fas fa-sign-in-alt mr-1"></i> Last Login
+                                                        <span class="th-content">
+                                                            <i class="fas fa-sign-in-alt"></i>
+                                                            <span>Last Login</span>
+                                                        </span>
                                                     </th>
                                                 </tr>
                                             </thead>
                                             <tbody id="active-users-body">
                                                 <tr>
-                                                    <td colspan="6" class="text-center text-muted py-4">
-                                                        <div class="spinner-border spinner-border-sm text-primary mr-2" role="status" id="active-users-loading" style="display: none;">
-                                                            <span class="sr-only">Loading...</span>
+                                                    <td colspan="6" class="text-center py-5">
+                                                        <div class="active-users-empty-state">
+                                                            <div class="spinner-border spinner-border-sm text-primary mb-3" role="status" id="active-users-loading" style="display: none;">
+                                                                <span class="sr-only">Loading...</span>
+                                                            </div>
+                                                            <i class="fas fa-users mb-3 empty-state-icon"></i>
+                                                            <div id="active-users-empty-message" class="empty-state-message">Click the tab to load active users.</div>
                                                         </div>
-                                                        <i class="fas fa-users mb-2" style="font-size: 28px;"></i>
-                                                        <div id="active-users-empty-message">Click the tab to load active users.</div>
                                                     </td>
                                                 </tr>
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
-                                <div class="card-footer d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                    <div class="text-muted small">
-                                        <span id="active-users-info">Refreshing manually will recalculate active sessions in real time.</span>
-                                        <span id="active-users-last-refresh" class="ml-2"></span>
+                                
+                                <!-- Modern Footer -->
+                                <div class="card-footer bg-white border-top active-users-footer">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                                        <div class="text-muted small">
+                                            <i class="fas fa-info-circle text-primary"></i>
+                                            <span id="active-users-info">Refreshing manually will recalculate active sessions in real time.</span>
+                                            <span id="active-users-last-refresh" class="ml-2"></span>
+                                        </div>
+                                        <nav aria-label="Active users pagination" id="active-users-pagination">
+                                            <!-- Pagination will be inserted here by JavaScript -->
+                                        </nav>
                                     </div>
-                                    <nav aria-label="Active users pagination" id="active-users-pagination">
-                                        <!-- Pagination will be inserted here by JavaScript -->
-                                    </nav>
                                 </div>
                             </div>
                         </div>
@@ -459,21 +515,33 @@
 
             if (!data || !data.length) {
                 activeUsersBody.innerHTML = `<tr>
-                    <td colspan="6" class="text-center text-muted py-4">
-                        <i class="fas fa-users mb-2" style="font-size: 28px;"></i>
-                        <div>No active users detected in the last few minutes.</div>
+                    <td colspan="6" class="text-center py-5">
+                        <div class="active-users-empty-state">
+                            <i class="fas fa-users mb-3 empty-state-icon"></i>
+                            <div class="empty-state-message">No active users detected in the last few minutes.</div>
+                        </div>
                     </td>
                 </tr>`;
-                activeUsersCount.textContent = '0 online';
-                activeUsersCount.className = 'badge badge-secondary active-users-badge';
+                const countBadge = activeUsersCount.querySelector('.count-text') || activeUsersCount;
+                if (countBadge.tagName === 'SPAN') {
+                    countBadge.textContent = '0';
+                } else {
+                    activeUsersCount.innerHTML = `<i class="fas fa-circle status-dot-online"></i><span class="count-text">0</span> online`;
+                }
+                activeUsersCount.className = 'badge badge-pill active-users-count-badge';
                 activeUsersEmptyMessage.textContent = 'No active users detected in the last few minutes.';
                 renderPagination(null);
                 return;
             }
 
             const total = meta?.total || data.length;
-            activeUsersCount.textContent = `${total} online`;
-            activeUsersCount.className = 'badge badge-success active-users-badge';
+            const countBadge = activeUsersCount.querySelector('.count-text');
+            if (countBadge) {
+                countBadge.textContent = total;
+            } else {
+                activeUsersCount.innerHTML = `<i class="fas fa-circle status-dot-online"></i><span class="count-text">${total}</span> online`;
+            }
+            activeUsersCount.className = 'badge badge-pill active-users-count-badge';
             activeUsersEmptyMessage.textContent = '';
 
             data.forEach((user) => {
@@ -594,9 +662,13 @@
                 
                 const sortValue = th.getAttribute('data-sort');
                 if (sortValue === activeUsersState.sortBy) {
-                    sortIcon.className = `fas fa-sort-${activeUsersState.sortDir === 'asc' ? 'up' : 'down'} sort-icon ml-1 text-primary`;
+                    th.classList.add('active');
+                    sortIcon.className = `fas fa-sort-${activeUsersState.sortDir === 'asc' ? 'up' : 'down'} sort-icon`;
+                    sortIcon.style.color = '#005792';
                 } else {
-                    sortIcon.className = 'fas fa-sort sort-icon ml-1 text-muted';
+                    th.classList.remove('active');
+                    sortIcon.className = 'fas fa-sort sort-icon';
+                    sortIcon.style.color = '';
                 }
             });
         }
@@ -728,17 +800,21 @@
                     activeUsersState.loading = false;
                     activeUsersLoading.style.display = 'none';
                     activeUsersBody.innerHTML = `<tr>
-                        <td colspan="6" class="text-center text-danger py-4">
-                            <i class="fas fa-exclamation-triangle mb-2"></i>
-                            <div><strong>Failed to load active users</strong></div>
-                            <div class="small mt-2">${error.message || 'Please try again or refresh the page.'}</div>
-                            <button class="btn btn-sm btn-outline-primary mt-2" id="active-users-retry-btn">
-                                <i class="fas fa-redo mr-1"></i> Retry
-                            </button>
+                        <td colspan="6" class="text-center py-5">
+                            <div class="active-users-empty-state">
+                                <i class="fas fa-exclamation-triangle mb-3 empty-state-icon text-warning"></i>
+                                <div class="empty-state-message">
+                                    <strong class="text-danger d-block mb-2">Failed to load active users</strong>
+                                    <span class="text-muted">${error.message || 'Please try again or refresh the page.'}</span>
+                                </div>
+                                <button class="btn btn-sm mt-3" id="active-users-retry-btn">
+                                    <i class="fas fa-redo mr-1"></i> Retry
+                                </button>
+                            </div>
                         </td>
                     </tr>`;
-                    activeUsersCount.textContent = 'Unavailable';
-                    activeUsersCount.className = 'badge badge-warning active-users-badge';
+                    activeUsersCount.innerHTML = `<i class="fas fa-circle status-dot-online"></i><span class="count-text">—</span> unavailable`;
+                    activeUsersCount.className = 'badge badge-pill active-users-count-badge';
                     
                     // Add retry button handler
                     const retryBtn = activeUsersBody.querySelector('#active-users-retry-btn');
@@ -938,33 +1014,219 @@
         color: #4a5568;
     }
 
-     /* Active Users Styling */
-    .active-users-badge {
-        font-size: 0.875rem;
-        padding: 0.35rem 0.65rem;
-        font-weight: 600;
+    /* ============================================
+       MODERN ACTIVE USERS SECTION STYLING
+       ============================================ */
+    
+    /* Card Container */
+    .active-users-modern-card {
+        border-radius: 12px;
+        overflow: hidden;
+        transition: box-shadow 0.3s ease;
     }
 
-    /* Header Section Improvements */
-    #active-users .card > .card-header {
-        background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%) !important;
-        border-bottom: none !important;
-        padding: 1.5rem !important;
+    .active-users-modern-card:hover {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
     }
 
-    #active-users .card-header h4 {
-        color: #ffffff !important;
+    /* Header Section */
+    .active-users-header {
+        background: linear-gradient(135deg, #005792 0%, #00BBF0 100%);
+        padding: 2rem;
+        color: #ffffff;
+    }
+
+    .active-users-icon-wrapper {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .active-users-title {
+        font-size: 1.75rem;
         font-weight: 700;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        color: #ffffff;
+        margin: 0;
+        letter-spacing: -0.5px;
     }
 
-    #active-users .card-header small {
-        color: rgba(255, 255, 255, 0.95) !important;
+    .active-users-subtitle {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 0.9375rem;
         font-weight: 400;
+        margin: 0;
     }
 
-    #active-users .card-header .text-muted {
-        color: rgba(255, 255, 255, 0.95) !important;
+    .active-users-stats {
+        margin-top: 1rem;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .active-users-count-badge {
+        background: rgba(255, 255, 255, 0.95) !important;
+        color: #28a745 !important;
+        font-weight: 600;
+        font-size: 0.875rem;
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .status-dot-online {
+        font-size: 0.5rem;
+        color: #28a745;
+        animation: pulse-dot 2s infinite;
+    }
+
+    @keyframes pulse-dot {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.6;
+        }
+    }
+
+    .count-text {
+        font-weight: 700;
+        font-size: 1rem;
+    }
+
+    .active-users-action-btn,
+    .active-users-refresh-btn {
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        transition: all 0.2s ease;
+        border: none;
+    }
+
+    .active-users-action-btn {
+        background: rgba(255, 255, 255, 0.95);
+        color: #005792;
+    }
+
+    .active-users-action-btn:hover {
+        background: #ffffff;
+        color: #005792;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .active-users-refresh-btn {
+        background: rgba(255, 255, 255, 0.95);
+        color: #005792;
+    }
+
+    .active-users-refresh-btn:hover {
+        background: #ffffff;
+        color: #005792;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .active-users-refresh-btn:active {
+        transform: translateY(0);
+    }
+
+    /* Filters Section */
+    .active-users-filters {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .active-users-search-input,
+    .active-users-filter-select {
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: #ffffff;
+        transition: all 0.2s ease;
+    }
+
+    .active-users-search-input:focus,
+    .active-users-filter-select:focus {
+        border-color: #005792;
+        box-shadow: 0 0 0 3px rgba(0, 87, 146, 0.1);
+        outline: none;
+    }
+
+    .active-users-clear-btn {
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: #ffffff;
+        color: #6c757d;
+        transition: all 0.2s ease;
+    }
+
+    .active-users-clear-btn:hover {
+        background: #f8f9fa;
+        border-color: #dee2e6;
+        color: #495057;
+    }
+
+    /* Table Styling */
+    .active-users-table-modern {
+        margin: 0;
+    }
+
+    .active-users-table-modern thead {
+        background: #f8f9fa;
+    }
+
+    .active-users-table-modern thead th {
+        font-weight: 600;
+        font-size: 0.8125rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #495057;
+        border-bottom: 2px solid #e9ecef;
+        padding: 1rem 1.25rem;
+        vertical-align: middle;
+    }
+
+    .active-users-table-modern thead th .th-content {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .active-users-table-modern thead th .th-content i:first-child {
+        color: #005792;
+        font-size: 0.875rem;
+    }
+
+    .active-users-table-modern tbody td {
+        padding: 1rem 1.25rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f3f5;
+        transition: background-color 0.2s ease;
+    }
+
+    .active-users-table-modern tbody tr {
+        transition: all 0.2s ease;
+    }
+
+    .active-users-table-modern tbody tr:hover {
+        background-color: #f8f9fa;
+        cursor: pointer;
+    }
+
+    .active-users-table-modern tbody tr:last-child td {
+        border-bottom: none;
     }
 
     .status-indicator {
@@ -993,6 +1255,12 @@
         box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.2);
     }
 
+    .status-indicator.offline {
+        background-color: #6c757d;
+        box-shadow: 0 0 0 2px rgba(108, 117, 125, 0.2);
+        animation: none;
+    }
+
     .user-avatar-wrapper {
         position: relative;
         flex-shrink: 0;
@@ -1010,51 +1278,184 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #005792 0%, #00BBF0 100%);
         color: white;
         font-weight: 600;
         font-size: 0.875rem;
     }
 
-    .active-user-row {
-        transition: background-color 0.2s ease;
-    }
-
-    .active-user-row:hover {
-        background-color: #f8f9fa;
-        cursor: pointer;
-    }
-
     .sortable {
         user-select: none;
         position: relative;
+        cursor: pointer;
     }
 
     .sortable:hover {
-        background-color: #f8f9fa;
+        background-color: #f1f3f5;
     }
 
     .sort-icon {
         font-size: 0.75rem;
-        opacity: 0.5;
+        opacity: 0.4;
         transition: opacity 0.2s ease;
+        margin-left: auto;
     }
 
     .sortable:hover .sort-icon {
+        opacity: 0.7;
+    }
+
+    .sortable.active .sort-icon {
         opacity: 1;
+        color: #005792;
     }
 
     .team-badge {
         font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
-        border-radius: 0.25rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: 6px;
+        font-weight: 500;
+        display: inline-block;
+    }
+
+    /* Empty State */
+    .active-users-empty-state {
+        padding: 3rem 1rem;
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        color: #dee2e6;
+        display: block;
+    }
+
+    .empty-state-message {
+        color: #6c757d;
+        font-size: 0.9375rem;
+        margin-top: 0.5rem;
+    }
+
+    #active-users-retry-btn {
+        background-color: #005792 !important;
+        color: #ffffff !important;
+        border-color: #005792 !important;
+    }
+
+    #active-users-retry-btn:hover {
+        background-color: #00BBF0 !important;
+        border-color: #00BBF0 !important;
+        color: #ffffff !important;
+    }
+
+    /* Footer Styling */
+    .active-users-footer {
+        background: #ffffff;
+        border-top: 1px solid #e9ecef;
+        padding: 1rem 1.5rem;
+    }
+
+    .active-users-footer .text-muted {
+        color: #6c757d !important;
+        font-size: 0.875rem;
+    }
+
+    .active-users-footer .text-muted i {
+        margin-right: 0.5rem;
+        color: #005792;
+    }
+
+    /* Pagination Styling */
+    #active-users-pagination .pagination {
+        margin-bottom: 0;
+    }
+
+    #active-users-pagination .page-link {
+        color: #005792;
+        border-color: #dee2e6;
+        border-radius: 6px;
+        margin: 0 2px;
+        padding: 0.5rem 0.75rem;
+        transition: all 0.2s ease;
+    }
+
+    #active-users-pagination .page-item.active .page-link {
+        background-color: #005792;
+        border-color: #005792;
+        color: #ffffff;
+    }
+
+    #active-users-pagination .page-link:hover {
+        color: #00BBF0;
+        background-color: #f8f9fa;
+        border-color: #dee2e6;
+    }
+
+    /* Typography Improvements */
+    .active-users-table-modern strong {
+        font-weight: 600;
+        color: #212529;
+    }
+
+    .active-users-table-modern .text-muted {
+        color: #6c757d !important;
+        font-size: 0.8125rem;
     }
 
     /* Responsive Design */
+    @media (max-width: 992px) {
+        .active-users-header {
+            padding: 1.5rem;
+        }
+
+        .active-users-title {
+            font-size: 1.5rem;
+        }
+
+        .active-users-icon-wrapper {
+            width: 48px;
+            height: 48px;
+            font-size: 1.25rem;
+        }
+    }
+
     @media (max-width: 768px) {
-        .active-users-badge {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
+        .active-users-header {
+            padding: 1.25rem;
+        }
+
+        .active-users-title {
+            font-size: 1.25rem;
+        }
+
+        .active-users-subtitle {
+            font-size: 0.875rem;
+        }
+
+        .active-users-icon-wrapper {
+            width: 40px;
+            height: 40px;
+            font-size: 1rem;
+        }
+
+        .active-users-stats {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .active-users-count-badge {
+            font-size: 0.8125rem;
+            padding: 0.4rem 0.8rem;
+        }
+
+        .active-users-filters .row {
+            margin: 0;
+        }
+
+        .active-users-filters .col-md-5,
+        .active-users-filters .col-md-3,
+        .active-users-filters .col-md-1 {
+            margin-bottom: 0.75rem;
         }
 
         .user-avatar,
@@ -1064,13 +1465,13 @@
             font-size: 0.75rem;
         }
 
-        #active-users-table th,
-        #active-users-table td {
-            padding: 0.5rem;
-            font-size: 0.875rem;
+        .active-users-table-modern thead th,
+        .active-users-table-modern tbody td {
+            padding: 0.75rem 0.5rem;
+            font-size: 0.8125rem;
         }
 
-        #active-users-table th {
+        .active-users-table-modern thead th {
             font-size: 0.75rem;
         }
 
@@ -1078,168 +1479,28 @@
             width: 8px;
             height: 8px;
         }
+
+        .active-users-footer {
+            padding: 0.75rem 1rem;
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 1rem !important;
+        }
     }
 
-    /* Pagination Styling */
-    #active-users-pagination .pagination {
-        margin-bottom: 0;
-    }
+    @media (max-width: 576px) {
+        .active-users-header {
+            padding: 1rem;
+        }
 
-    #active-users-pagination .page-link {
-        color: #667eea;
-        border-color: #dee2e6;
-    }
+        .active-users-filters .row > div {
+            margin-bottom: 0.5rem;
+        }
 
-    #active-users-pagination .page-item.active .page-link {
-        background-color: #667eea;
-        border-color: #667eea;
-    }
-
-    #active-users-pagination .page-link:hover {
-        color: #764ba2;
-        background-color: #f8f9fa;
-    }
-
-    /* Loading State */
-    #active-users-loading {
-        display: inline-block;
-    }
-
-     /* Filter Section */
-    #active-users #active-users-search,
-    #active-users #active-users-role-filter,
-    #active-users #active-users-team-filter {
-        font-size: 0.875rem;
-        background-color: rgba(255, 255, 255, 0.95) !important;
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
-        color: #212529 !important;
-        font-weight: 500;
-    }
-
-    #active-users #active-users-search::placeholder {
-        color: #6c757d !important;
-        opacity: 1;
-    }
-
-    #active-users #active-users-search:focus,
-    #active-users #active-users-role-filter:focus,
-    #active-users #active-users-team-filter:focus {
-        background-color: #ffffff !important;
-        border-color: #ffffff !important;
-        color: #212529 !important;
-        box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.3) !important;
-    }
-
-    #active-users .input-group-text {
-        background-color: rgba(255, 255, 255, 0.95) !important;
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
-        border-right: none !important;
-        color: #495057 !important;
-    }
-
-    #active-users #active-users-search {
-        border-left: none !important;
-    }
-
-    #active-users #active-users-search:focus {
-        border-left: 1px solid #ffffff !important;
-    }
-
-    #active-users #active-users-clear-filters {
-        background-color: rgba(255, 255, 255, 0.95) !important;
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
-        color: #212529 !important;
-        font-weight: 600;
-    }
-
-    #active-users #active-users-clear-filters:hover {
-        background-color: #ffffff !important;
-        border-color: #ffffff !important;
-        color: #212529 !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    #active-users #active-users-refresh {
-        background-color: rgba(255, 255, 255, 0.95) !important;
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
-        color: #212529 !important;
-        font-weight: 600;
-    }
-
-    #active-users #active-users-refresh:hover {
-        background-color: #ffffff !important;
-        border-color: #ffffff !important;
-        color: #212529 !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-     /* Card Header Improvements - General */
-    .card-header {
-        background-color: #f8f9fa;
-        border-bottom: 1px solid #dee2e6;
-    }
-
-    /* Active Users Badge on Blue Background */
-    #active-users .active-users-badge.badge-success {
-        background-color: #28a745 !important;
-        color: #ffffff !important;
-        border: 2px solid rgba(255, 255, 255, 0.9);
-        font-weight: 700;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-    }
-
-    #active-users .active-users-badge.badge-secondary {
-        background-color: rgba(255, 255, 255, 0.95) !important;
-        color: #495057 !important;
-        border: 2px solid rgba(255, 255, 255, 0.9);
-        font-weight: 700;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-    }
-
-    #active-users .active-users-badge.badge-warning {
-        background-color: #ffc107 !important;
-        color: #212529 !important;
-        border: 2px solid rgba(255, 255, 255, 0.9);
-        font-weight: 700;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-    }
-
-    /* Table Improvements */
-    #active-users-table thead th {
-        font-weight: 600;
-        font-size: 0.875rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: #495057;
-        border-bottom: 2px solid #dee2e6;
-    }
-
-    #active-users-table tbody td {
-        vertical-align: middle;
-    }
-
-    /* Typography Improvements */
-    #active-users-table strong {
-        font-weight: 600;
-        color: #212529;
-    }
-
-    #active-users-table .text-muted {
-        color: #6c757d !important;
-        font-size: 0.8125rem;
-    }
-
-    /* Empty State */
-    #active-users-empty-message {
-        color: #6c757d;
-        font-size: 0.9375rem;
-    }
-
-    /* Card Footer */
-    #active-users .card-footer {
-        background-color: #ffffff;
-        border-top: 1px solid #dee2e6;
-        color: #495057;
+        .active-users-action-btn span,
+        .active-users-refresh-btn span {
+            display: none;
+        }
     }
 
     #active-users-last-refresh {

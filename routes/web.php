@@ -141,6 +141,18 @@ Route::middleware(['auth:admin'])->group(function() {
         Route::post('/{notificationId}/read', [BroadcastNotificationAjaxController::class, 'markAsRead'])->name('read');
     });
 
+    // User Login Analytics Routes
+    Route::get('/user-login-analytics', [\App\Http\Controllers\CRM\UserLoginAnalyticsController::class, 'index'])->name('user-login-analytics.index');
+    Route::prefix('api/user-login-analytics')->name('api.user-login-analytics.')->group(function () {
+        Route::get('/daily', [\App\Http\Controllers\CRM\UserLoginAnalyticsController::class, 'daily'])->name('daily');
+        Route::get('/weekly', [\App\Http\Controllers\CRM\UserLoginAnalyticsController::class, 'weekly'])->name('weekly');
+        Route::get('/monthly', [\App\Http\Controllers\CRM\UserLoginAnalyticsController::class, 'monthly'])->name('monthly');
+        Route::get('/hourly', [\App\Http\Controllers\CRM\UserLoginAnalyticsController::class, 'hourly'])->name('hourly');
+        Route::get('/summary', [\App\Http\Controllers\CRM\UserLoginAnalyticsController::class, 'summary'])->name('summary');
+        Route::get('/top-users', [\App\Http\Controllers\CRM\UserLoginAnalyticsController::class, 'topUsers'])->name('top-users');
+        Route::get('/trends', [\App\Http\Controllers\CRM\UserLoginAnalyticsController::class, 'trends'])->name('trends');
+    });
+
 	/*---------- CRM & User Management Routes ----------*/
     // All user management routes moved to routes/adminconsole.php
     // - Staff management: Use adminconsole.system.users routes

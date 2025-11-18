@@ -18,7 +18,7 @@ class Team extends Authenticatable
 	
 	
 	protected $fillable = [
-        'id', 'created_at', 'updated_at'
+        'id', 'name', 'color', 'created_at', 'updated_at'
     ];
    
 	public $sortable = ['id', 'created_at'];

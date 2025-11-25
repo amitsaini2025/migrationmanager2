@@ -283,6 +283,8 @@ Route::post('/clients/getAllUser', 'CRM\ClientsController@getAllUser')->name('cl
 
 /*---------- Client Portal ----------*/
 Route::post('/clients/toggle-client-portal', 'CRM\ClientPortalController@toggleClientPortal')->name('clients.toggleClientPortal');
+Route::post('/api/client-portal-details/approve-audit', 'CRM\ClientPortalController@approveAuditValue')->name('clients.approveAuditValue');
+Route::post('/api/client-portal-details/reject-audit', 'CRM\ClientPortalController@rejectAuditValue')->name('clients.rejectAuditValue');
 
 /*---------- ANZSCO Occupation Search ----------*/
 Route::get('/anzsco/search', [AnzscoOccupationController::class, 'search'])->name('anzsco.search');

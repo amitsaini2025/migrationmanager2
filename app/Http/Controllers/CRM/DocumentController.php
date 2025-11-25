@@ -601,7 +601,7 @@ class DocumentController extends Controller
     }
 
     /**
-     * Count the number of pages in a PDF file using Smalot\PdfParser, with fallback to Spatie\PdfToImage.
+     * Count the number of pages in a PDF file using Smalot\PdfParser.
      */
     protected function countPdfPages($pathToPdf)
     {
@@ -611,16 +611,8 @@ class DocumentController extends Controller
             $pages = $pdf->getPages();
             return count($pages);
         } catch (\Exception $e) {
-            // Log the error and fallback to Spatie\PdfToImage if available
-            \Log::warning('Smalot/PdfParser failed, trying Spatie/pdf-to-image', ['error' => $e->getMessage()]);
-            if (class_exists('Spatie\\PdfToImage\\Pdf')) {
-                try {
-                    $pdf = new \Spatie\PdfToImage\Pdf($pathToPdf);
-                    return $pdf->getNumberOfPages();
-                } catch (\Exception $ex) {
-                    \Log::error('Spatie/pdf-to-image also failed', ['error' => $ex->getMessage()]);
-                }
-            }
+            // Log the error - Smalot\PdfParser failed
+            \Log::warning('Smalot/PdfParser failed to count PDF pages', ['error' => $e->getMessage()]);
             return null;
         }
     }
@@ -1097,7 +1089,7 @@ class DocumentController extends Controller
             }
 
             // Use the improved PDF page counting method
-            $pdfPages = $this->countPdfPages($pdfPath);
+            $pdfPages = $this->countPdfPages($pdfPath) ?: 1;
 
             return view('crm.documents.sign', compact('document', 'signer', 'signatureFields', 'pdfPages'));
         } catch (\Exception $e) {

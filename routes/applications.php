@@ -43,6 +43,15 @@ Route::post('/create-app-note', [ApplicationsController::class, 'addNote']);
 Route::get('/getapplicationnotes', [ApplicationsController::class, 'getapplicationnotes']);
 Route::post('/application-sendmail', [ApplicationsController::class, 'applicationsendmail']);
 
+/*---------- Application Messages (Client Portal) ----------*/
+Route::get('/clients/matter-messages', [ApplicationsController::class, 'getMatterMessages'])->name('clients.matter-messages');
+Route::post('/clients/send-message', [ApplicationsController::class, 'sendMessageToClient'])->name('clients.send-message');
+
+/*---------- Broadcasting Auth ----------*/
+// Broadcasting authentication is handled by Laravel's built-in BroadcastServiceProvider
+// Channel authorization is defined in routes/channels.php
+// The /broadcasting/auth route is automatically registered by Broadcast::routes()
+
 /*---------- Application Updates ----------*/
 Route::get('/application/updateintake', [ApplicationsController::class, 'updateintake']);
 Route::get('/application/updatedates', [ApplicationsController::class, 'updatedates']);
@@ -65,6 +74,9 @@ Route::post('/add-checklists', [ApplicationsController::class, 'addchecklists'])
 Route::post('/application/checklistupload', [ApplicationsController::class, 'checklistupload']);
 Route::get('/deleteapplicationdocs', [ApplicationsController::class, 'deleteapplicationdocs']);
 Route::get('/application/publishdoc', [ApplicationsController::class, 'publishdoc']);
+Route::post('/application/approve-document', [ApplicationsController::class, 'approveDocument']);
+Route::post('/application/reject-document', [ApplicationsController::class, 'rejectDocument']);
+Route::get('/application/download-document', [ApplicationsController::class, 'downloadDocument']);
 
 /*---------- Migration Index ----------*/
 Route::get('/migration', [ApplicationsController::class, 'migrationindex'])->name('migration.index');

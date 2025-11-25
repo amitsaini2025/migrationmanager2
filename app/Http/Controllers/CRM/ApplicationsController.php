@@ -5,7 +5,10 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Broadcast;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 use App\Models\Admin;
@@ -1005,10 +1008,19 @@ class ApplicationsController extends Controller
 	}
 
 	public function deleteapplicationdocs(Request $request){
-		if(\App\Models\ApplicationDocument::where('id', $request->note_id)->exists()){
-			$appdoc = \App\Models\ApplicationDocument::where('id', $request->note_id)->first();
-			$res = \App\Models\ApplicationDocument::where('id', $request->note_id)->delete();
-			if($res){
+		// Check if we're deleting by list_id (new method) or by id (old method for backward compatibility)
+		if($request->has('list_id') && $request->list_id){
+			// Delete all documents with the same list_id
+			$listId = $request->list_id;
+			
+			// Get first document to get application_id for response
+			$appdoc = \App\Models\ApplicationDocument::where('list_id', $listId)->first();
+			
+			if($appdoc){
+				// Delete all documents with this list_id
+				$res = \App\Models\ApplicationDocument::where('list_id', $listId)->delete();
+				
+				if($res){
 				$response['status'] 	= 	true;
 				$response['message'] 	= 	'Record removed successfully';
 
@@ -1072,6 +1084,65 @@ class ApplicationsController extends Controller
 			$checklistdata .= '</tbody></table>';
 		$response['checklistdata']	=	$checklistdata;
 		$response['type']	=	$appdoc->type;
+			}else{
+				$response['status'] 	= 	false;
+				$response['message'] 	= 	'Please try again';
+			}
+			}else{
+				$response['status'] 	= 	false;
+				$response['message'] 	= 	'No Record found with this list_id';
+			}
+			echo json_encode($response);
+			return;
+		}
+		
+		// Backward compatibility: Delete by document id (old method)
+		if(\App\Models\ApplicationDocument::where('id', $request->note_id)->exists()){
+			$appdoc = \App\Models\ApplicationDocument::where('id', $request->note_id)->first();
+			$res = \App\Models\ApplicationDocument::where('id', $request->note_id)->delete();
+			if($res){
+				$response['status'] 	= 	true;
+				$response['message'] 	= 	'Record removed successfully';
+
+				$doclists = \App\Models\ApplicationDocument::where('application_id',$appdoc->application_id)->orderby('created_at','DESC')->get();
+		$doclistdata = '';
+		foreach($doclists as $doclist){
+			$docdata = \App\Models\ApplicationDocumentList::where('id', $doclist->list_id)->first();
+			$doclistdata .= '<tr id="">';
+				$doclistdata .= '<td><i class="fa fa-file"></i> '. $doclist->file_name.'<br>'.@$docdata->document_type.'</td>';
+				$doclistdata .= '<td>';
+				if($doclist->type == 'application'){ $doclistdata .= 'Application'; }else if($doclist->type == 'acceptance'){ $doclistdata .=  'Acceptance'; }else if($doclist->type == 'payment'){ $doclistdata .=  'Payment'; }else if($doclist->type == 'formi20'){ $doclistdata .=  'Form I 20'; }else if($doclist->type == 'visaapplication'){ $doclistdata .=  'Visa Application'; }else if($doclist->type == 'interview'){ $doclistdata .=  'Interview'; }else if($doclist->type == 'enrolment'){ $doclistdata .=  'Enrolment'; }else if($doclist->type == 'courseongoing'){ $doclistdata .=  'Course Ongoing'; }
+				$doclistdata .= '</td>';
+				$admin = \App\Models\Admin::where('id', $doclist->user_id)->first();
+
+			$doclistdata .= '<td><span style="    position: relative;background: rgb(3, 169, 244);font-size: .8rem;height: 24px;line-height: 24px;min-width: 24px;width: 24px;color: #fff;display: block;font-weight: 600;letter-spacing: 1px;text-align: center;border-radius: 50%;overflow: hidden;">'.substr($admin->first_name, 0, 1).'</span>'.$admin->first_name.'</td>';
+			$doclistdata .= '<td>'.date('Y-m-d',strtotime($doclist->created_at)).'</td>';
+			$doclistdata .= '<td>';
+			if($doclist->status == 1){
+				$doclistdata .= '<span class="check"><i class="fa fa-eye"></i></span>';
+			}
+				$doclistdata .= '<div class="dropdown d-inline">
+					<button class="btn btn-primary dropdown-toggle" type="button" id="" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Action</button>
+					<div class="dropdown-menu">
+						<a target="_blank" class="dropdown-item" href="'.\URL::to('/public/img/documents').'/'.$doclist->file_name.'">Preview</a>
+						<a data-id="'.$doclist->id.'" class="dropdown-item deletenote" data-href="deleteapplicationdocs" href="javascript:;">Delete</a>
+						<a download class="dropdown-item" href="'.\URL::to('/public/img/documents').'/'.$doclist->file_name.'">Download</a>';
+						if($doclist->status == 0){
+							$doclistdata .= '<a data-id="'.$doclist->id.'" class="dropdown-item publishdoc" href="javascript:;">Publish Document</a>';
+						}else{
+							$doclistdata .= '<a data-id="'.$doclist->id.'"  class="dropdown-item unpublishdoc" href="javascript:;">Unpublish Document</a>';
+						}
+
+					$doclistdata .= '</div>
+				</div>
+			</td>';
+			$doclistdata .= '</tr>';
+		}
+
+		$response['status'] 	= 	true;
+
+		$response['doclistdata']	=	$doclistdata;
+
 			}else{
 				$response['status'] 	= 	false;
 				$response['message'] 	= 	'Please try again';
@@ -1250,5 +1321,455 @@ class ApplicationsController extends Controller
 			return back()->withErrors('There was a problem uploading the data!');
 		}
 		return back()->withSuccess('Great! Data has been successfully uploaded.');
+	}
+
+	public function approveDocument(Request $request){
+		$response = ['status' => false, 'message' => 'Error approving document.'];
+		
+		try {
+			$documentId = $request->input('document_id');
+			
+			if (!$documentId) {
+				$response['message'] = 'Document ID is required.';
+				return response()->json($response);
+			}
+			
+			// Update document status to 1 (Approved)
+			$updated = DB::table('application_documents')
+				->where('id', $documentId)
+				->update([
+					'status' => 1,
+					'updated_at' => now()
+				]);
+			
+			if ($updated) {
+				$response['status'] = true;
+				$response['message'] = 'Document approved successfully!';
+			} else {
+				$response['message'] = 'Document not found or could not be updated.';
+			}
+		} catch (\Exception $e) {
+			$response['message'] = 'An error occurred: ' . $e->getMessage();
+		}
+		
+		return response()->json($response);
+	}
+
+	public function rejectDocument(Request $request){
+		$response = ['status' => false, 'message' => 'Error rejecting document.'];
+		
+		try {
+			$documentId = $request->input('document_id');
+			$rejectReason = $request->input('reject_reason');
+			
+			if (!$documentId) {
+				$response['message'] = 'Document ID is required.';
+				return response()->json($response);
+			}
+			
+			if (!$rejectReason || trim($rejectReason) === '') {
+				$response['message'] = 'Rejection reason is required.';
+				return response()->json($response);
+			}
+			
+			// Update data with status and rejection reason
+			$updateData = [
+				'status' => 2,
+				'updated_at' => now()
+			];
+			
+			// Update doc_rejection_reason if column exists
+			if (Schema::hasColumn('application_documents', 'doc_rejection_reason')) {
+				$updateData['doc_rejection_reason'] = trim($rejectReason);
+			} elseif (Schema::hasColumn('application_documents', 'reject_reason')) {
+				// Fallback to reject_reason if doc_rejection_reason doesn't exist
+				$updateData['reject_reason'] = trim($rejectReason);
+			}
+			
+			// Update document status to 2 (Rejected)
+			$updated = DB::table('application_documents')
+				->where('id', $documentId)
+				->update($updateData);
+			
+			if ($updated) {
+				$response['status'] = true;
+				$response['message'] = 'Document rejected successfully!';
+			} else {
+				$response['message'] = 'Document not found or could not be updated.';
+			}
+		} catch (\Exception $e) {
+			$response['message'] = 'An error occurred: ' . $e->getMessage();
+		}
+		
+		return response()->json($response);
+	}
+
+	public function downloadDocument(Request $request){
+		$response = ['status' => false, 'message' => 'Error downloading document.'];
+		
+		try {
+			$documentId = $request->input('document_id');
+			
+			if (!$documentId) {
+				$response['message'] = 'Document ID is required.';
+				return response()->json($response);
+			}
+			
+			// Get document from database
+			$document = DB::table('application_documents')
+				->where('id', $documentId)
+				->first();
+			
+			if (!$document || !$document->myfile) {
+				$response['message'] = 'Document not found.';
+				return response()->json($response);
+			}
+			
+			$fileUrl = $document->myfile;
+			$fileName = $document->file_name ?: 'document.pdf';
+			
+			// Fetch file from S3/URL
+			$fileContent = @file_get_contents($fileUrl);
+			
+			if ($fileContent === false) {
+				// Try using cURL if file_get_contents fails
+				$ch = curl_init($fileUrl);
+				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+				curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+				$fileContent = curl_exec($ch);
+				$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+				curl_close($ch);
+				
+				if ($httpCode !== 200 || $fileContent === false) {
+					$response['message'] = 'Failed to fetch file from URL.';
+					return response()->json($response);
+				}
+			}
+			
+			// Determine content type based on file extension or file URL
+			$extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+			
+			// If extension is empty, try to get it from URL
+			if (empty($extension)) {
+				$urlExtension = strtolower(pathinfo(parse_url($fileUrl, PHP_URL_PATH), PATHINFO_EXTENSION));
+				if (!empty($urlExtension)) {
+					$extension = $urlExtension;
+				}
+			}
+			
+			// Default to PDF if extension still empty
+			if (empty($extension)) {
+				$extension = 'pdf';
+			}
+			
+			$contentType = 'application/octet-stream';
+			
+			if ($extension === 'pdf') {
+				$contentType = 'application/pdf';
+			} elseif (in_array($extension, ['jpg', 'jpeg'])) {
+				$contentType = 'image/jpeg';
+			} elseif ($extension === 'png') {
+				$contentType = 'image/png';
+			} elseif ($extension === 'doc') {
+				$contentType = 'application/msword';
+			} elseif ($extension === 'docx') {
+				$contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+			}
+			
+			// Ensure filename has proper extension
+			if (empty(pathinfo($fileName, PATHINFO_EXTENSION))) {
+				$fileName .= '.' . $extension;
+			}
+			
+			// Ensure filename is properly encoded
+			$encodedFileName = rawurlencode($fileName);
+			
+			// Return file as download with proper headers to force download
+			return response($fileContent, 200)
+				->header('Content-Type', $contentType)
+				->header('Content-Disposition', 'attachment; filename="' . addslashes($fileName) . '"; filename*=UTF-8\'\'' . $encodedFileName)
+				->header('Content-Length', strlen($fileContent))
+				->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+				->header('Pragma', 'no-cache')
+				->header('Expires', '0')
+				->header('X-Content-Type-Options', 'nosniff');
+				
+		} catch (\Exception $e) {
+			$response['message'] = 'An error occurred: ' . $e->getMessage();
+			return response()->json($response);
+		}
+	}
+
+	/**
+     * Get Messages for a Client Matter
+     * GET /clients/matter-messages
+     * 
+     * Retrieves all messages for a specific client matter for admin view
+     * Used in the client portal application tab
+     */
+	public function getMatterMessages(Request $request)
+	{
+		try {
+			$request->validate([
+				'client_matter_id' => 'required|integer|min:1'
+			]);
+
+			$clientMatterId = $request->input('client_matter_id');
+			$currentUserId = Auth::guard('admin')->id();
+
+			if (!$currentUserId) {
+				return response()->json([
+					'success' => false,
+					'message' => 'Unauthorized'
+				], 401);
+			}
+
+			// Get all messages for this client matter, ordered by created_at ascending (oldest first)
+			$messages = DB::table('messages')
+				->where('client_matter_id', $clientMatterId)
+				->orderBy('created_at', 'asc')
+				->orderBy('id', 'asc')
+				->get()
+				->map(function ($message) use ($currentUserId) {
+					// Get sender info
+					$sender = null;
+					if ($message->sender_id) {
+						$sender = DB::table('admins')
+							->where('id', $message->sender_id)
+							->select('id', 'first_name', 'last_name', DB::raw("CONCAT(first_name, ' ', last_name) as full_name"))
+							->first();
+					}
+
+					// Get all recipients for this message
+					$recipients = DB::table('message_recipients')
+						->where('message_id', $message->id)
+						->get()
+						->map(function ($recipient) {
+							$recipientUser = DB::table('admins')
+								->where('id', $recipient->recipient_id)
+								->select('id', 'first_name', 'last_name', DB::raw("CONCAT(first_name, ' ', last_name) as full_name"))
+								->first();
+							
+							return [
+								'recipient_id' => $recipient->recipient_id,
+								'recipient_name' => $recipient->recipient,
+								'is_read' => $recipient->is_read,
+								'read_at' => $recipient->read_at,
+								'user' => $recipientUser
+							];
+						});
+
+					// Determine if message is from current user (sent) or to current user (received)
+					$isSent = ($message->sender_id == $currentUserId);
+					
+					// Generate sender initials
+					$senderInitials = '';
+					if ($sender) {
+						$firstInitial = $sender->first_name ? strtoupper(substr($sender->first_name, 0, 1)) : '';
+						$lastInitial = $sender->last_name ? strtoupper(substr($sender->last_name, 0, 1)) : '';
+						$senderInitials = $firstInitial . $lastInitial;
+					}
+
+					// Safely handle attachments property (may not exist in all database schemas)
+					$attachments = null;
+					if (property_exists($message, 'attachments') && $message->attachments) {
+						$attachments = json_decode($message->attachments, true);
+					}
+
+					return [
+						'id' => $message->id,
+						'message' => $message->message,
+						'sender_id' => $message->sender_id,
+						'sender_name' => $message->sender,
+						'sender' => $sender,
+						'sender_initials' => $senderInitials,
+						'sent_at' => $message->sent_at ? $message->sent_at : $message->created_at,
+						'created_at' => $message->created_at,
+						'client_matter_id' => $message->client_matter_id,
+						'recipients' => $recipients,
+						'is_sent' => $isSent,
+						'attachments' => $attachments
+					];
+				});
+
+			return response()->json([
+				'success' => true,
+				'data' => [
+					'messages' => $messages->values(), // Ensure it's a proper array
+					'total' => $messages->count()
+				]
+			], 200);
+
+		} catch (\Illuminate\Validation\ValidationException $e) {
+			return response()->json([
+				'success' => false,
+				'message' => 'Validation failed',
+				'errors' => $e->errors()
+			], 422);
+		} catch (\Exception $e) {
+			Log::error('Get Matter Messages Error: ' . $e->getMessage(), [
+				'client_matter_id' => $request->input('client_matter_id'),
+				'trace' => $e->getTraceAsString()
+			]);
+
+			return response()->json([
+				'success' => false,
+				'message' => 'Failed to fetch messages',
+				'error' => $e->getMessage()
+			], 500);
+		}
+	}
+
+	/**
+     * Send Message to Client (Web Route)
+     * POST /clients/send-message
+     * 
+     * Sends a message to the client associated with the client matter
+     * Uses session-based authentication for web admin users
+     */
+	public function sendMessageToClient(Request $request)
+	{
+		try {
+			$request->validate([
+				'message' => 'required|string|max:5000',
+				'client_matter_id' => 'required|integer|min:1'
+			]);
+
+			$admin = Auth::guard('admin')->user();
+			if (!$admin) {
+				return response()->json([
+					'success' => false,
+					'message' => 'Unauthorized'
+				], 401);
+			}
+
+			$senderId = $admin->id;
+			$message = $request->input('message');
+			$clientMatterId = $request->input('client_matter_id');
+
+			// Get client matter info to find the client_id
+			$clientMatter = DB::table('client_matters')
+				->where('id', $clientMatterId)
+				->first();
+
+			if (!$clientMatter) {
+				return response()->json([
+					'success' => false,
+					'message' => 'Client matter not found'
+				], 404);
+			}
+
+			$clientId = $clientMatter->client_id;
+			
+			if (!$clientId) {
+				return response()->json([
+					'success' => false,
+					'message' => 'No client associated with this matter'
+				], 422);
+			}
+
+			// Get sender information
+			$sender = DB::table('admins')
+				->where('id', $senderId)
+				->select('id', 'first_name', 'last_name', DB::raw("CONCAT(first_name, ' ', last_name) as full_name"))
+				->first();
+
+			$senderName = $sender ? $sender->full_name : 'Admin';
+			$senderInitials = '';
+			if ($sender) {
+				$firstInitial = $sender->first_name ? strtoupper(substr($sender->first_name, 0, 1)) : '';
+				$lastInitial = $sender->last_name ? strtoupper(substr($sender->last_name, 0, 1)) : '';
+				$senderInitials = $firstInitial . $lastInitial;
+			}
+
+			// Get recipient information
+			$recipientUser = DB::table('admins')
+				->where('id', $clientId)
+				->select('id', 'first_name', 'last_name', DB::raw("CONCAT(first_name, ' ', last_name) as full_name"))
+				->first();
+
+			if (!$recipientUser) {
+				return response()->json([
+					'success' => false,
+					'message' => 'Client user not found'
+				], 404);
+			}
+
+			// Create message record
+			$messageData = [
+				'message' => $message,
+				'sender' => $senderName,
+				'sender_id' => $senderId,
+				'sent_at' => now(),
+				'client_matter_id' => $clientMatterId,
+				'created_at' => now(),
+				'updated_at' => now()
+			];
+
+			$messageId = DB::table('messages')->insertGetId($messageData);
+
+			if ($messageId) {
+				// Insert recipient into pivot table
+				DB::table('message_recipients')->insert([
+					'message_id' => $messageId,
+					'recipient_id' => $clientId,
+					'recipient' => $recipientUser->full_name,
+					'is_read' => false,
+					'read_at' => null,
+					'created_at' => now(),
+					'updated_at' => now()
+				]);
+
+				// Broadcast message via Pusher
+				$messageForBroadcast = [
+					'id' => $messageId,
+					'message' => $message,
+					'sender' => $senderName,
+					'sender_id' => $senderId,
+					'sender_initials' => $senderInitials,
+					'sent_at' => now()->toISOString(),
+					'created_at' => now()->toISOString(),
+					'client_matter_id' => $clientMatterId,
+					'recipients' => [[
+						'recipient_id' => $clientId,
+						'recipient' => $recipientUser->full_name
+					]]
+				];
+
+				// Broadcast to client and sender
+				if (class_exists('\App\Events\MessageSent')) {
+					broadcast(new \App\Events\MessageSent($messageForBroadcast, $clientId));
+					broadcast(new \App\Events\MessageSent($messageForBroadcast, $senderId));
+				}
+
+				return response()->json([
+					'success' => true,
+					'message' => 'Message sent successfully',
+					'data' => [
+						'message_id' => $messageId,
+						'message' => $messageForBroadcast
+					]
+				], 201);
+			} else {
+				return response()->json([
+					'success' => false,
+					'message' => 'Failed to send message'
+				], 500);
+			}
+
+		} catch (\Exception $e) {
+			Log::error('Send Message Error: ' . $e->getMessage(), [
+				'user_id' => Auth::guard('admin')->id(),
+				'client_matter_id' => $request->input('client_matter_id'),
+				'trace' => $e->getTraceAsString()
+			]);
+
+			return response()->json([
+				'success' => false,
+				'message' => 'Failed to send message',
+				'error' => $e->getMessage()
+			], 500);
+		}
 	}
 }

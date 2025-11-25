@@ -11,6 +11,7 @@ use App\Http\Controllers\API\ClientPortalDashboardController;
 use App\Http\Controllers\API\ClientPortalDocumentController;
 use App\Http\Controllers\API\ClientPortalWorkflowController;
 use App\Http\Controllers\API\ClientPortalMessageController;
+use App\Http\Controllers\API\ClientPortalPersonalDetailsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,7 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [ClientPortalController::class, 'logout']);
     Route::post('/logout-all', [ClientPortalController::class, 'logoutAll']);
     Route::get('/profile', [ClientPortalController::class, 'getProfile']);
-    Route::put('/profile', [ClientPortalController::class, 'updateProfile']);
+    Route::post('/profile', [ClientPortalController::class, 'updateProfile']);
     Route::post('/update-password', [ClientPortalController::class, 'updatePassword']);
     
     // Dashboard routes
@@ -49,6 +50,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Matters routes
     Route::get('/matters', [ClientPortalDashboardController::class, 'getAllMatters']);
     
+    // Client Personal Details routes
+    Route::get('/get-client-personal-detail', [ClientPortalPersonalDetailsController::class, 'getClientPersonalDetail']);
+    Route::post('/update-client-basic-detail', [ClientPortalPersonalDetailsController::class, 'updateClientBasicDetail']);
+    Route::post('/update-client-phone-detail', [ClientPortalPersonalDetailsController::class, 'updateClientPhoneDetail']);
+    
+
     // Document Management routes
     Route::get('/documents/personal/categories', [ClientPortalDocumentController::class, 'getPersonalDocumentCategories']);
     Route::get('/documents/personal/checklist', [ClientPortalDocumentController::class, 'getPersonalDocumentChecklist']);

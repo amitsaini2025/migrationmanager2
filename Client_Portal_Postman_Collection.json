@@ -671,7 +671,7 @@
 				{
 					"name": "Success Response",
 					"originalRequest": {
-						"method": "PUT",
+						"method": "POST",
 						"header": [
 							{
 								"key": "Content-Type",
@@ -1265,7 +1265,7 @@
 		{
 			"name": "14. Update Profile",
 			"request": {
-				"method": "PUT",
+				"method": "POST",
 				"header": [
 					{
 						"key": "Content-Type",
@@ -2438,9 +2438,899 @@
 							"description": "Required: Client matter ID to get unread count for specific matter"
 						}
 					]
+			},
+			"description": "Get the count of unread messages for the authenticated user for a specific client matter. Counts messages where the current user is the sender and calculates unread count as: Total sent messages - Read messages count. client_matter_id is required."
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/messages/unread-count?client_matter_id=9",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"messages",
+								"unread-count"
+							],
+							"query": [
+								{
+									"key": "client_matter_id",
+									"value": "9"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": true,\n    \"data\": {\n        \"unread_count\": 5\n    }\n}"
+				}
+			]
+		},
+		{
+			"name": "30. Get Client Personal Detail",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}",
+						"description": "Use token from login response"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/get-client-personal-detail?tab=all",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"get-client-personal-detail"
+					],
+					"query": [
+						{
+							"key": "tab",
+							"value": "all",
+							"description": "Filter data by tab. Valid values: all, basic_information, phones, emails, passports, visas, addresses, travels, qualifications, experiences, occupations, test_scores. Default: all",
+							"disabled": false
+						}
+					]
 				},
-				"description": "Get the count of unread messages for the authenticated user for a specific client matter. Counts messages where the current user is the sender and calculates unread count as: Total sent messages - Read messages count. client_matter_id is required."
-			}
+				"description": "Get authenticated client's personal details with tab-based filtering support. Uses the logged-in client's ID from the authentication token.\n\n**Tab Filtering:**\n- Use `?tab=all` (default) to get all data sections\n- Use `?tab=basic_information` to get only basic information\n- Use `?tab=phones` to get only phones array\n- Use `?tab=emails` to get only emails array\n- Use `?tab=passports` to get only passports array\n- Use `?tab=visas` to get only visas array\n- Use `?tab=addresses` to get only addresses array\n- Use `?tab=travels` to get only travels array\n- Use `?tab=qualifications` to get only qualifications array\n- Use `?tab=experiences` to get only experiences array\n- Use `?tab=occupations` to get only occupations array\n- Use `?tab=test_scores` to get only test_scores array\n\n**Data Source Logic:**\n- Basic details: Fetches from `admins` table if not updated, otherwise from `clientportal_details_audit` table\n- Phones: Fetches from `client_contacts` table if not updated, otherwise from `clientportal_details_audit` table\n- Emails: Fetches from `client_emails` table if not updated, otherwise from `clientportal_details_audit` table\n- Passports: Fetches from `client_passport_informations` table if not updated, otherwise from `clientportal_details_audit` table\n- Visas: Fetches from `client_visa_countries` table if not updated, otherwise from `clientportal_details_audit` table\n- Addresses: Fetches from `client_addresses` table if not updated, otherwise from `clientportal_details_audit` table\n- Travels: Fetches from `client_travel_informations` table if not updated, otherwise from `clientportal_details_audit` table\n- Qualifications: Fetches from `client_qualifications` table if not updated, otherwise from `clientportal_details_audit` table\n- Experiences: Fetches from `client_experiences` table if not updated, otherwise from `clientportal_details_audit` table\n- Occupations: Fetches from `client_occupations` table if not updated, otherwise from `clientportal_details_audit` table\n- Test Scores: Fetches from `client_testscore` table if not updated, otherwise from `clientportal_details_audit` table\n\n**Note:** This API does NOT insert records into `clientportal_details` or `clientportal_details_audit` tables. It only fetches data.\n\nPrimary email and phone are determined by type 'Personal' - the email/phone with type 'Personal' (case-insensitive) will have is_primary: true."
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/get-client-personal-detail?tab=all",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"get-client-personal-detail"
+							],
+							"query": [
+								{
+									"key": "tab",
+									"value": "all"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": true,\n    \"message\": \"Client personal details retrieved successfully\",\n    \"data\": {\n        \"basic_information\": {\n            \"first_name\": \"Vipul\",\n            \"last_name\": \"Kumar\",\n            \"name\": \"Vipul Kumar\",\n            \"full_name\": \"Vipul Kumar\",\n            \"client_id\": \"VIPL2400001\",\n            \"internal_client_id\": 36464,\n            \"date_of_birth\": \"22/03/1986\",\n            \"age\": \"39 years 8 months\",\n            \"gender\": \"Male\",\n            \"marital_status\": \"Married\"\n        },\n        \"phones\": [\n            {\n                \"id\": 123,\n                \"phone\": \"9872205642\",\n                \"type\": \"Personal\",\n                \"is_primary\": true,\n                \"country_code\": \"+91\",\n                \"extension\": null\n            },\n            {\n                \"id\": 124,\n                \"phone\": \"415877821\",\n                \"type\": \"Mobile\",\n                \"is_primary\": false,\n                \"country_code\": \"+61\",\n                \"extension\": null\n            }\n        ],\n        \"emails\": [\n            {\n                \"id\": 101,\n                \"email\": \"viplucmca@yahoo.co.in\",\n                \"type\": \"Personal\",\n                \"is_primary\": true\n            },\n            {\n                \"id\": 102,\n                \"email\": \"viplucmca123@yahoo.co.in\",\n                \"type\": \"Work\",\n                \"is_primary\": false\n            }\n        ],\n        \"passports\": [\n            {\n                \"id\": 1,\n                \"passport_number\": \"545546543455\",\n                \"country\": \"Albania\",\n                \"issue_date\": \"03/10/2025\",\n                \"expiry_date\": \"18/10/2025\"\n            },\n            {\n                \"id\": 2,\n                \"passport_number\": \"455454554\",\n                \"country\": \"Australia\",\n                \"issue_date\": \"21/10/2025\",\n                \"expiry_date\": \"25/10/2025\"\n            }\n        ],\n        \"visas\": [\n            {\n                \"id\": 1,\n                \"visa_country\": \"Australia\",\n                \"visa_type\": \"100-Partner Visa (PV 100)\",\n                \"visa_description\": \"Visa Desc75\",\n                \"visa_expiry_date\": \"30/06/2035\",\n                \"visa_grant_date\": \"01/06/2029\"\n            }\n        ],\n        \"addresses\": [\n            {\n                \"id\": 1,\n                \"search_address\": \"Kelly Road, Valley View, SA\",\n                \"address_line_1\": \"Kelly Road\",\n                \"address_line_2\": null,\n                \"suburb\": \"Valley View\",\n                \"state\": \"SA\",\n                \"postcode\": \"5093\",\n                \"country\": \"Australia\",\n                \"regional_code\": \"Regional City SA\",\n                \"start_date\": \"18/10/2023\",\n                \"end_date\": \"16/05/2025\",\n                \"is_current\": false\n            }\n        ],\n        \"travels\": [\n            {\n                \"id\": 1,\n                \"country_visited\": \"India\",\n                \"arrival_date\": \"01/05/2024\",\n                \"departure_date\": \"30/06/2024\",\n                \"purpose\": \"Travel1\"\n            }\n        ],\n        \"qualifications\": [\n            {\n                \"id\": 1,\n                \"level\": \"Masters Degree\",\n                \"name\": \"MCA\",\n                \"college_name\": \"BBDNITM\",\n                \"campus\": \"Lucknow\",\n                \"country\": \"India\",\n                \"state\": null,\n                \"start_date\": \"01/07/2006\",\n                \"finish_date\": \"30/06/2009\",\n                \"relevant_qualification\": true,\n                \"specialist_education\": false,\n                \"stem_qualification\": false,\n                \"regional_study\": false\n            }\n        ],\n        \"experiences\": [\n            {\n                \"id\": 1,\n                \"job_title\": \"Senior Software Engineer\",\n                \"job_code\": \"123456\",\n                \"country\": \"India\",\n                \"start_date\": \"26/12/2024\",\n                \"finish_date\": \"26/12/2027\",\n                \"relevant_experience\": true,\n                \"employer_name\": \"Bansal Immigration\",\n                \"state\": null,\n                \"job_type\": \"Full-time\",\n                \"fte_multiplier\": 1.00\n            }\n        ],\n        \"occupations\": [\n            {\n                \"id\": 1,\n                \"skill_assessment\": \"Yes\",\n                \"nominated_occupation\": \"Statistician\",\n                \"occupation_code\": \"224113\",\n                \"assessing_authority\": \"VETASSESS\",\n                \"visa_subclass\": null,\n                \"assessment_date\": \"17/10/2025\",\n                \"expiry_date\": \"19/10/2028\",\n                \"reference_no\": \"ref_2\",\n                \"relevant_occupation\": true,\n                \"anzsco_occupation_id\": null\n            }\n        ],\n        \"test_scores\": [\n            {\n                \"id\": 1,\n                \"test_type\": \"IELTS Academic\",\n                \"listening\": 8.0,\n                \"reading\": 8.0,\n                \"writing\": 8.0,\n                \"speaking\": 8.0,\n                \"overall_score\": 8.0,\n                \"test_date\": \"10/05/2025\",\n                \"reference_no\": \"ref_2\",\n                \"relevant_test\": true\n            }\n        ]\n    }\n}"
+				},
+				{
+					"name": "Access Denied (Not a Client)",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/get-client-personal-detail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"get-client-personal-detail"
+							]
+						}
+					},
+					"status": "Forbidden",
+					"code": 403,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": false,\n    \"message\": \"Access denied. This endpoint is only available for clients.\"\n}"
+				},
+				{
+					"name": "Unauthorized (No Token)",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/get-client-personal-detail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"get-client-personal-detail"
+							]
+						}
+					},
+					"status": "Unauthorized",
+					"code": 401,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Unauthenticated.\"\n}"
+				},
+				{
+					"name": "Tab Filter - Basic Information Only",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/get-client-personal-detail?tab=basic_information",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"get-client-personal-detail"
+							],
+							"query": [
+								{
+									"key": "tab",
+									"value": "basic_information"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": true,\n    \"message\": \"Client personal details retrieved successfully\",\n    \"data\": {\n        \"basic_information\": {\n            \"first_name\": \"Vipul\",\n            \"last_name\": \"Kumar\",\n            \"name\": \"Vipul Kumar\",\n            \"full_name\": \"Vipul Kumar\",\n            \"client_id\": \"VIPL2400001\",\n            \"internal_client_id\": 36464,\n            \"date_of_birth\": \"22/03/1986\",\n            \"age\": \"39 years 8 months\",\n            \"gender\": \"Male\",\n            \"marital_status\": \"Married\"\n        }\n    }\n}"
+				},
+				{
+					"name": "Tab Filter - Phones Only",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/get-client-personal-detail?tab=phones",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"get-client-personal-detail"
+							],
+							"query": [
+								{
+									"key": "tab",
+									"value": "phones"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": true,\n    \"message\": \"Client personal details retrieved successfully\",\n    \"data\": {\n        \"phones\": [\n            {\n                \"id\": 123,\n                \"phone\": \"9872205642\",\n                \"type\": \"Personal\",\n                \"is_primary\": true,\n                \"country_code\": \"+91\",\n                \"extension\": null\n            },\n            {\n                \"id\": 124,\n                \"phone\": \"415877821\",\n                \"type\": \"Mobile\",\n                \"is_primary\": false,\n                \"country_code\": \"+61\",\n                \"extension\": null\n            }\n        ]\n    }\n}"
+				},
+				{
+					"name": "Tab Filter - Emails Only",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/get-client-personal-detail?tab=emails",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"get-client-personal-detail"
+							],
+							"query": [
+								{
+									"key": "tab",
+									"value": "emails"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": true,\n    \"message\": \"Client personal details retrieved successfully\",\n    \"data\": {\n        \"emails\": [\n            {\n                \"id\": 101,\n                \"email\": \"viplucmca@yahoo.co.in\",\n                \"type\": \"Personal\",\n                \"is_primary\": true\n            },\n            {\n                \"id\": 102,\n                \"email\": \"viplucmca123@yahoo.co.in\",\n                \"type\": \"Work\",\n                \"is_primary\": false\n            }\n        ]\n    }\n}"
+				},
+				{
+					"name": "Invalid Tab Parameter",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/get-client-personal-detail?tab=invalid",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"get-client-personal-detail"
+							],
+							"query": [
+								{
+									"key": "tab",
+									"value": "invalid"
+								}
+							]
+						}
+					},
+					"status": "Unprocessable Entity",
+					"code": 422,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": false,\n    \"message\": \"Invalid tab parameter. Valid values are: all, basic_information, phones, emails, passports, visas, addresses, travels, qualifications, experiences, occupations, test_scores\"\n}"
+				}
+			]
+		},
+		{
+			"name": "31. Update Client Basic Detail",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}",
+						"description": "Use token from login response"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"first_name\": \"Vipul\",\n    \"last_name\": \"Kumar\",\n    \"date_of_birth\": \"22/03/1986\",\n    \"gender\": \"Male\",\n    \"marital_status\": \"Married\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/update-client-basic-detail",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"update-client-basic-detail"
+					]
+				},
+				"description": "Update authenticated client's basic personal details. Allows updating first_name, last_name, date_of_birth (dd/mm/yyyy format), gender, and marital_status. Only updated fields will be saved to `clientportal_details_audit` table. The `clientportal_details` table will NOT be used for these updates. Age is automatically recalculated when date_of_birth is updated. Note: client_id is readonly and cannot be updated - any client_id value in the request will be ignored."
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"first_name\": \"Vipul\",\n    \"last_name\": \"Kumar\",\n    \"date_of_birth\": \"22/03/1986\",\n    \"gender\": \"Male\",\n    \"marital_status\": \"Married\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/update-client-basic-detail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"update-client-basic-detail"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": true,\n    \"message\": \"Client basic details updated successfully\",\n    \"data\": {\n        \"updated_fields\": {\n            \"first_name\": \"Vipul\",\n            \"last_name\": \"Kumar\",\n            \"dob\": \"1986-03-22\",\n            \"age\": \"39 years 8 months\",\n            \"gender\": \"Male\",\n            \"marital_status\": \"Married\"\n        }\n    }\n}"
+				},
+				{
+					"name": "Validation Error",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"first_name\": \"\",\n    \"date_of_birth\": \"invalid-date\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/update-client-basic-detail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"update-client-basic-detail"
+							]
+						}
+					},
+					"status": "Unprocessable Entity",
+					"code": 422,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": false,\n    \"message\": \"Validation failed\",\n    \"errors\": {\n        \"date_of_birth\": [\n            \"The date of birth does not match the format d/m/Y.\"\n        ]\n    }\n}"
+				},
+				{
+					"name": "Access Denied (Not a Client)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/update-client-basic-detail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"update-client-basic-detail"
+							]
+						}
+					},
+					"status": "Forbidden",
+					"code": 403,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": false,\n    \"message\": \"Access denied. This endpoint is only available for clients.\"\n}"
+				},
+				{
+					"name": "Unauthorized (No Token)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/update-client-basic-detail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"update-client-basic-detail"
+							]
+						}
+					},
+					"status": "Unauthorized",
+					"code": 401,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Unauthenticated.\"\n}"
+				}
+			]
+		},
+		{
+			"name": "32. Update Client Phone Detail",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}",
+						"description": "Use token from login response"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"phones\": [\n        {\n            \"id\": 123,\n            \"phone\": \"9872205642\",\n            \"type\": \"Personal\",\n            \"country_code\": \"+91\"\n        },\n        {\n            \"id\": 124,\n            \"phone\": \"415877821\",\n            \"type\": \"Mobile\",\n            \"country_code\": \"+61\"\n        },\n        {\n            \"phone\": \"1234567890\",\n            \"type\": \"Work\",\n            \"country_code\": \"+61\"\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/update-client-phone-detail",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"update-client-phone-detail"
+					]
+				},
+				"description": "Update authenticated client's phone numbers. Allows updating existing phone numbers and adding new ones. Rules: 1) Personal phone number cannot be updated (readonly), 2) Only one Personal phone number is allowed (cannot add another if one exists). Provide phones array with: id (optional, for updating existing), phone (required), type (required: Personal, Mobile, Work, Home, Other), country_code (optional). Phones without id will be created as new entries. Phones not included in the request will be deleted (except Personal phone which is protected)."
+			},
+			"response": [
+				{
+					"name": "Success Response",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phones\": [\n        {\n            \"id\": 123,\n            \"phone\": \"9872205642\",\n            \"type\": \"Personal\",\n            \"country_code\": \"+91\"\n        },\n        {\n            \"id\": 124,\n            \"phone\": \"415877821\",\n            \"type\": \"Mobile\",\n            \"country_code\": \"+61\"\n        },\n        {\n            \"phone\": \"1234567890\",\n            \"type\": \"Work\",\n            \"country_code\": \"+61\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/update-client-phone-detail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"update-client-phone-detail"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": true,\n    \"message\": \"Phone numbers updated successfully\",\n    \"data\": {\n        \"phones\": [\n            {\n                \"id\": 123,\n                \"phone\": \"+919872205642\",\n                \"type\": \"Personal\",\n                \"message\": \"Personal phone number is readonly and was not updated\"\n            },\n            {\n                \"id\": 124,\n                \"phone\": \"+61415877821\",\n                \"type\": \"Mobile\",\n                \"action\": \"updated\"\n            },\n            {\n                \"id\": 125,\n                \"phone\": \"+611234567890\",\n                \"type\": \"Work\",\n                \"action\": \"created\"\n            }\n        ]\n    }\n}"
+				},
+				{
+					"name": "Validation Error",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phones\": [\n        {\n            \"phone\": \"\",\n            \"type\": \"Invalid\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/update-client-phone-detail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"update-client-phone-detail"
+							]
+						}
+					},
+					"status": "Unprocessable Entity",
+					"code": 422,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": false,\n    \"message\": \"Validation failed\",\n    \"errors\": {\n        \"phones.0.phone\": [\n            \"The phones.0.phone field is required.\"\n        ],\n        \"phones.0.type\": [\n            \"The selected phones.0.type is invalid.\"\n        ]\n    }\n}"
+				},
+				{
+					"name": "Cannot Update Personal Phone",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phones\": [\n        {\n            \"id\": 123,\n            \"phone\": \"9999999999\",\n            \"type\": \"Personal\",\n            \"country_code\": \"+91\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/update-client-phone-detail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"update-client-phone-detail"
+							]
+						}
+					},
+					"status": "Unprocessable Entity",
+					"code": 422,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": false,\n    \"message\": \"Personal phone number cannot be updated. It is readonly.\"\n}"
+				},
+				{
+					"name": "Cannot Add Second Personal Phone",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phones\": [\n        {\n            \"phone\": \"9872205642\",\n            \"type\": \"Personal\",\n            \"country_code\": \"+91\"\n        },\n        {\n            \"phone\": \"9999999999\",\n            \"type\": \"Personal\",\n            \"country_code\": \"+91\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/update-client-phone-detail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"update-client-phone-detail"
+							]
+						}
+					},
+					"status": "Unprocessable Entity",
+					"code": 422,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": false,\n    \"message\": \"Cannot add another Personal phone number. Personal phone already exists.\"\n}"
+				},
+				{
+					"name": "Access Denied (Not a Client)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/update-client-phone-detail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"update-client-phone-detail"
+							]
+						}
+					},
+					"status": "Forbidden",
+					"code": 403,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": false,\n    \"message\": \"Access denied. This endpoint is only available for clients.\"\n}"
+				},
+				{
+					"name": "Unauthorized (No Token)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/update-client-phone-detail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"update-client-phone-detail"
+							]
+						}
+					},
+					"status": "Unauthorized",
+					"code": 401,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Unauthenticated.\"\n}"
+				}
+			]
 		}
 	],
 	"event": [

@@ -4851,6 +4851,7 @@ class ClientsController extends Controller
 
             /**
              * 1. Search for composite references (client_id + matter_no format like "SHAL2500295-JRP_1")
+             * Optimized: Use JOIN instead of N+1 queries
              */
             if (strpos($squery, '-') !== false) {
                 $parts = explode('-', $squery, 2);
@@ -4858,68 +4859,77 @@ class ClientsController extends Controller
                     $clientIdPart = $parts[0];
                     $matterNoPart = $parts[1];
                     
-                    // Search for clients with matching client_id
-                    $matchingClients = \App\Models\Admin::where('role', 7)
-                        ->where('client_id', 'LIKE', "%{$clientIdPart}%")
+                    // Optimized: Single query with JOIN instead of nested loops
+                    $matterResults = DB::table('admins')
+                        ->join('client_matters', 'admins.id', '=', 'client_matters.client_id')
+                        ->where('admins.role', 7)
+                        ->whereNull('admins.is_deleted')
+                        ->where('admins.client_id', 'LIKE', "%{$clientIdPart}%")
+                        ->where('client_matters.client_unique_matter_no', 'LIKE', "%{$matterNoPart}%")
+                        ->select(
+                            'admins.id as client_id',
+                            'admins.first_name',
+                            'admins.last_name',
+                            'admins.email',
+                            'admins.is_archived',
+                            'admins.type',
+                            'client_matters.client_unique_matter_no'
+                        )
                         ->get();
                     
-                    foreach ($matchingClients as $client) {
-                        // Find matters for this client with matching matter number
-                        $matters = DB::table('client_matters')
-                            ->where('client_id', $client->id)
-                            ->where('client_unique_matter_no', 'LIKE', "%{$matterNoPart}%")
-                            ->get();
-                        
-                        foreach ($matters as $matter) {
-                            $results[] = [
-                                'id' => base64_encode(convert_uuencode($matter->client_id)) . '/Matter/' . $matter->client_unique_matter_no,
-                                'name' => $client->first_name . ' ' . $client->last_name,
-                                'email' => $client->email,
-                                'status' => $client->is_archived ? 'Archived' : $client->type,
-                                'cid' => $client->id,
-                            ];
-                        }
+                    foreach ($matterResults as $result) {
+                        $results[] = [
+                            'id' => base64_encode(convert_uuencode($result->client_id)) . '/Matter/' . $result->client_unique_matter_no,
+                            'name' => $result->first_name . ' ' . $result->last_name,
+                            'email' => $result->email,
+                            'status' => $result->is_archived ? 'Archived' : $result->type,
+                            'cid' => $result->client_id,
+                        ];
                     }
                 }
             }
             
             /**
              * 2. Search in client_matters by department_reference / other_reference / client_unique_matter_no
+             * Optimized: Use JOIN to fetch client data in single query
              */
             $matterMatches = DB::table('client_matters')
+                ->join('admins', 'client_matters.client_id', '=', 'admins.id')
+                ->where('admins.role', 7)
+                ->whereNull('admins.is_deleted')
                 ->where(function($query) use ($squery) {
-                    $query->where('department_reference', 'LIKE', "%{$squery}%")
-                          ->orWhere('other_reference', 'LIKE', "%{$squery}%")
-                          ->orWhere('client_unique_matter_no', 'LIKE', "%{$squery}%");
+                    $query->where('client_matters.department_reference', 'LIKE', "%{$squery}%")
+                          ->orWhere('client_matters.other_reference', 'LIKE', "%{$squery}%")
+                          ->orWhere('client_matters.client_unique_matter_no', 'LIKE', "%{$squery}%");
                 })
+                ->select(
+                    'admins.id as client_id',
+                    'admins.first_name',
+                    'admins.last_name',
+                    'admins.email',
+                    'admins.is_archived',
+                    'admins.type',
+                    'client_matters.client_unique_matter_no'
+                )
                 ->get();
-
-            // Get all matching client IDs in one go
-            $matterClientIds = $matterMatches->pluck('client_id')->unique()->toArray();
             
             // Log matter matches for debugging
             \Log::info('Matter matches found: ' . count($matterMatches) . ' for query: ' . $squery);
 
-            if (!empty($matterClientIds)) {
-                $matterClients = \App\Models\Admin::whereIn('id', $matterClientIds)->get();
-                $matterClientsMap = $matterClients->keyBy('id');
-
-                foreach ($matterMatches as $matter) {
-                    if (isset($matterClientsMap[$matter->client_id])) {
-                        $clientM = $matterClientsMap[$matter->client_id];
-                        $results[] = [
-                            'id' => base64_encode(convert_uuencode($matter->client_id)) . '/Matter/' . $matter->client_unique_matter_no,
-                            'name' => $clientM->first_name . ' ' . $clientM->last_name,
-                            'email' => $clientM->email,
-                            'status' => $clientM->is_archived ? 'Archived' : $clientM->type,
-                            'cid' => $clientM->id,
-                        ];
-                    }
-                }
+            foreach ($matterMatches as $matter) {
+                $results[] = [
+                    'id' => base64_encode(convert_uuencode($matter->client_id)) . '/Matter/' . $matter->client_unique_matter_no,
+                    'name' => $matter->first_name . ' ' . $matter->last_name,
+                    'email' => $matter->email,
+                    'status' => $matter->is_archived ? 'Archived' : $matter->type,
+                    'cid' => $matter->client_id,
+                ];
             }
 
             /**
-             * 3. Search in admins (clients) with subqueries for phones/emails
+             * 3. Search in admins (clients) - OPTIMIZED VERSION
+             * Replaced correlated subqueries with LEFT JOINs
+             * Replaced IN subqueries with EXISTS or LEFT JOINs
              */
             $d = '';
             if (strstr($squery, '/')) {
@@ -4929,64 +4939,127 @@ class ClientsController extends Controller
                 }
             }
 
-            $clients = \App\Models\Admin::query()
-                ->where('role', 7)
-                ->whereNull('is_deleted')
+            // Optimized: Use LEFT JOINs instead of correlated subqueries
+            // Use EXISTS or LEFT JOINs instead of IN subqueries
+            $clientsQuery = \App\Models\Admin::query()
+                ->where('admins.role', 7)
+                ->whereNull('admins.is_deleted')
+                ->leftJoin('client_contacts', function($join) use ($squery) {
+                    $join->on('client_contacts.client_id', '=', 'admins.id')
+                         ->where('client_contacts.phone', 'LIKE', "%{$squery}%");
+                })
+                ->leftJoin('client_emails', function($join) use ($squery) {
+                    $join->on('client_emails.client_id', '=', 'admins.id')
+                         ->where('client_emails.email', 'LIKE', "%{$squery}%");
+                })
                 ->where(function ($query) use ($squery, $d) {
                     $query->where('admins.email', 'LIKE', "%$squery%")
                         ->orWhere('admins.first_name', 'LIKE', "%$squery%")
                         ->orWhere('admins.last_name', 'LIKE', "%$squery%")
                         ->orWhere('admins.client_id', 'LIKE', "%$squery%")
-                        ->orWhere('admins.att_email', 'LIKE', "%$squery%")
-                        ->orWhere('admins.att_phone', 'LIKE', "%$squery%")
                         ->orWhere('admins.phone', 'LIKE', "%$squery%")
-                        ->orWhere('admins.emergency_contact_no', 'LIKE', "%$squery%")
                         ->orWhere(DB::raw("CONCAT(admins.first_name, ' ', admins.last_name)"), 'LIKE', "%$squery%")
-                        ->orWhereIn('admins.id', function ($sub) use ($squery) {
-                            $sub->select('client_id')
-                                ->from('client_contacts')
-                                ->where('phone', 'LIKE', "%$squery%");
-                        })
-                        ->orWhereIn('admins.id', function ($sub) use ($squery) {
-                            $sub->select('client_id')
-                                ->from('client_emails')
-                                ->where('email', 'LIKE', "%$squery%");
-                        });
+                        ->orWhereNotNull('client_contacts.client_id')  // Matches phone search
+                        ->orWhereNotNull('client_emails.client_id');    // Matches email search
 
                     if ($d != "") {
                         $query->orWhere('admins.dob', '=', $d);
                     }
                 })
                 ->select(
-                    'admins.*',
-                    DB::raw('(SELECT GROUP_CONCAT(DISTINCT phone ORDER BY contact_type SEPARATOR ", ") 
-                            FROM client_contacts 
-                            WHERE client_contacts.client_id = admins.id) as all_phones'),
-                    DB::raw('(SELECT GROUP_CONCAT(DISTINCT email ORDER BY email_type SEPARATOR ", ") 
-                            FROM client_emails 
-                            WHERE client_emails.client_id = admins.id) as all_emails'),
-                    DB::raw('(SELECT client_unique_matter_no 
-                            FROM client_matters 
-                            WHERE client_matters.client_id = admins.id 
-                            AND client_matters.matter_status = 1 
-                            ORDER BY id DESC LIMIT 1) as latest_matter_no')
+                    'admins.*'
                 )
+                ->distinct()
                 ->get();
 
-            foreach ($clients as $client) {
-                $resultFinalId = $client->latest_matter_no
-                    ? base64_encode(convert_uuencode($client->id)) . '/Matter/' . $client->latest_matter_no
-                    : base64_encode(convert_uuencode($client->id)) . '/Client';
+            // Get client IDs for batch loading of related data
+            $clientIds = $clientsQuery->pluck('id')->toArray();
+            
+            if (!empty($clientIds)) {
+                // Optimized: Batch load all phones, emails, and latest matters in separate queries
+                // This is much faster than correlated subqueries
+                
+                // Get all phones grouped by client_id
+                $phonesData = DB::table('client_contacts')
+                    ->whereIn('client_id', $clientIds)
+                    ->select('client_id', 'phone', 'contact_type')
+                    ->orderBy('client_id')
+                    ->orderBy('contact_type')
+                    ->get()
+                    ->groupBy('client_id');
+                
+                // Get all emails grouped by client_id
+                $emailsData = DB::table('client_emails')
+                    ->whereIn('client_id', $clientIds)
+                    ->select('client_id', 'email', 'email_type')
+                    ->orderBy('client_id')
+                    ->orderBy('email_type')
+                    ->get()
+                    ->groupBy('client_id');
+                
+                // Get latest matter for each client (optimized: get max IDs first, then fetch details)
+                $maxMatterIds = DB::table('client_matters')
+                    ->whereIn('client_id', $clientIds)
+                    ->where('matter_status', 1)
+                    ->select('client_id', DB::raw('MAX(id) as max_id'))
+                    ->groupBy('client_id')
+                    ->pluck('max_id', 'client_id')
+                    ->toArray();
+                
+                $latestMatters = [];
+                if (!empty($maxMatterIds)) {
+                    $latestMatters = DB::table('client_matters')
+                        ->whereIn('id', array_values($maxMatterIds))
+                        ->select('client_id', 'client_unique_matter_no')
+                        ->get()
+                        ->keyBy('client_id');
+                }
 
-                $results[] = [
-                    'id' => $resultFinalId,
-                    'name' => $client->first_name . ' ' . $client->last_name,
-                    'email' => $client->email,
-                    'status' => $client->is_archived ? 'Archived' : $client->type,
-                    'cid' => $client->id,
-                    'phones' => $client->all_phones,
-                    'emails' => $client->all_emails,
-                ];
+                // Process results
+                foreach ($clientsQuery as $client) {
+                    // Aggregate phones (ordered by contact_type as in original query)
+                    $allPhones = '';
+                    if (isset($phonesData[$client->id])) {
+                        $phones = $phonesData[$client->id]
+                            ->sortBy('contact_type')
+                            ->pluck('phone')
+                            ->unique()
+                            ->values()
+                            ->toArray();
+                        $allPhones = implode(', ', $phones);
+                    }
+                    
+                    // Aggregate emails (ordered by email_type as in original query)
+                    $allEmails = '';
+                    if (isset($emailsData[$client->id])) {
+                        $emails = $emailsData[$client->id]
+                            ->sortBy('email_type')
+                            ->pluck('email')
+                            ->unique()
+                            ->values()
+                            ->toArray();
+                        $allEmails = implode(', ', $emails);
+                    }
+                    
+                    // Get latest matter
+                    $latestMatterNo = isset($latestMatters[$client->id]) 
+                        ? $latestMatters[$client->id]->client_unique_matter_no 
+                        : null;
+                    
+                    $resultFinalId = $latestMatterNo
+                        ? base64_encode(convert_uuencode($client->id)) . '/Matter/' . $latestMatterNo
+                        : base64_encode(convert_uuencode($client->id)) . '/Client';
+
+                    $results[] = [
+                        'id' => $resultFinalId,
+                        'name' => $client->first_name . ' ' . $client->last_name,
+                        'email' => $client->email,
+                        'status' => $client->is_archived ? 'Archived' : $client->type,
+                        'cid' => $client->id,
+                        'phones' => $allPhones,
+                        'emails' => $allEmails,
+                    ];
+                }
             }
 
             return response()->json(['items' => $results]);

@@ -12,6 +12,7 @@ use App\Http\Controllers\API\ClientPortalDocumentController;
 use App\Http\Controllers\API\ClientPortalWorkflowController;
 use App\Http\Controllers\API\ClientPortalMessageController;
 use App\Http\Controllers\API\ClientPortalPersonalDetailsController;
+use App\Http\Controllers\API\ClientPortalCommonListingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,6 +31,15 @@ Route::post('/admin-login', [ClientPortalController::class, 'adminLogin']);
 Route::post('/refresh', [ClientPortalController::class, 'refresh']);
 Route::post('/forgot-password', [ClientPortalController::class, 'forgotPassword']);
 Route::post('/reset-password', [ClientPortalController::class, 'resetPassword']);
+
+// Countries API (public route)
+Route::get('/countries', [ClientPortalCommonListingController::class, 'getCountries']);
+
+// Visa Types API (public route)
+Route::get('/visa-types', [ClientPortalCommonListingController::class, 'getVisaTypes']);
+
+// Search Occupations API (public route)
+Route::get('/search-occupation', [ClientPortalCommonListingController::class, 'searchOccupationDetail']);
 
 
 // Protected routes (authentication required)
@@ -54,6 +64,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/get-client-personal-detail', [ClientPortalPersonalDetailsController::class, 'getClientPersonalDetail']);
     Route::post('/update-client-basic-detail', [ClientPortalPersonalDetailsController::class, 'updateClientBasicDetail']);
     Route::post('/update-client-phone-detail', [ClientPortalPersonalDetailsController::class, 'updateClientPhoneDetail']);
+    Route::post('/update-client-email-detail', [ClientPortalPersonalDetailsController::class, 'updateClientEmailDetail']);
+    Route::post('/update-client-address-detail', [ClientPortalPersonalDetailsController::class, 'updateClientAddressDetail']);
+    Route::post('/update-client-travel-detail', [ClientPortalPersonalDetailsController::class, 'updateClientTravelDetail']);
+    Route::post('/update-client-qualification-detail', [ClientPortalPersonalDetailsController::class, 'updateClientQualificationDetail']);
+    Route::post('/update-client-experience-detail', [ClientPortalPersonalDetailsController::class, 'updateClientExperienceDetail']);
+    Route::post('/update-client-occupation-detail', [ClientPortalPersonalDetailsController::class, 'updateClientOccupationDetail']);
+    Route::post('/update-client-testscore-detail', [ClientPortalPersonalDetailsController::class, 'updateClientTestScoreDetail']);
+    Route::post('/update-client-passport-detail', [ClientPortalPersonalDetailsController::class, 'updateClientPassportDetail']);
+    Route::post('/delete-client-tab-detail', [ClientPortalPersonalDetailsController::class, 'deleteClientTabDetail']);
+    Route::post('/delete-client-passport-detail', [ClientPortalPersonalDetailsController::class, 'deleteClientPassportDetail']); // Deprecated: Use delete-client-tab-detail instead
+    Route::post('/update-client-visa-detail', [ClientPortalPersonalDetailsController::class, 'updateClientVisaDetail']);
     
 
     // Document Management routes

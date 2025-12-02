@@ -119,14 +119,39 @@ class BookingAppointmentsController extends Controller
 
         // Check if calendar format is requested
         if ($request->get('format') === 'calendar') {
+            // Filter out past appointments - only show future appointments
+            // Always ensure appointments are >= now() to prevent showing past appointments
+            // The 'start' parameter from FullCalendar might be in the past (e.g., start of month),
+            // so we always use now() as the minimum to ensure no past appointments are shown
+            // Use explicit timezone-aware comparison to ensure accuracy
+            $currentDateTime = Carbon::now(config('app.timezone'));
+            
+            // Explicitly filter out all past appointments including today's past times
+            $query->where('appointment_datetime', '>', $currentDateTime);
+            
             $appointments = $query->get();
             
-            // Debug logging
-            Log::info('Calendar API Request', [
+            // Additional client-side filter to double-check (in case of timezone issues)
+            $appointments = $appointments->filter(function($appointment) use ($currentDateTime) {
+                return $appointment->appointment_datetime->gt($currentDateTime);
+            });
+            
+            // Debug logging to verify filter is working
+            Log::info('Calendar API Request - Filtering Past Appointments', [
                 'type' => $request->get('type'),
                 'start' => $request->get('start'),
                 'end' => $request->get('end'),
-                'appointments_count' => $appointments->count()
+                'current_datetime_filter' => $currentDateTime->toDateTimeString(),
+                'current_datetime_timezone' => $currentDateTime->timezone->getName(),
+                'appointments_count_after_filter' => $appointments->count(),
+                'sample_appointment_dates' => $appointments->take(5)->map(function($apt) use ($currentDateTime) {
+                    return [
+                        'id' => $apt->id,
+                        'datetime' => $apt->appointment_datetime->toDateTimeString(),
+                        'is_future' => $apt->appointment_datetime->gt($currentDateTime),
+                        'days_from_now' => $apt->appointment_datetime->diffInDays($currentDateTime, false)
+                    ];
+                })->toArray()
             ]);
             
             return response()->json([
@@ -150,6 +175,7 @@ class BookingAppointmentsController extends Controller
                         'location' => $appointment->location,
                         'meeting_type' => $appointment->meeting_type,
                         'is_paid' => $appointment->is_paid,
+                        'final_amount' => $appointment->final_amount ?? 0,
                         'consultant' => $appointment->consultant ? [
                             'id' => $appointment->consultant->id,
                             'name' => $appointment->consultant->name,
@@ -250,7 +276,7 @@ class BookingAppointmentsController extends Controller
                     $q->where('calendar_type', $type);
                 })->orWhereNull('consultant_id');
             })
-            ->where('appointment_datetime', '>=', now()->subDays(30))
+            ->where('appointment_datetime', '>', Carbon::now(config('app.timezone')))
             ->orderBy('appointment_datetime')
             ->get();
 

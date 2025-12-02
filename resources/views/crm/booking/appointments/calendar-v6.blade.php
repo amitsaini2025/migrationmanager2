@@ -228,15 +228,45 @@ document.addEventListener('DOMContentLoaded', function() {
                         .add(apt.duration_minutes || 15, 'minutes')
                         .toISOString();
                     
+                    // Format meeting_type for display (e.g., 'in_person' -> 'In Person')
+                    const meetingTypeDisplay = apt.meeting_type 
+                        ? apt.meeting_type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+                        : 'N/A';
+                    
+                    // Determine color: If paid, use blue color regardless of status
+                    // Handle different data types: boolean, integer (1/0), string ('1'/'0', 'true'/'false')
+                    // JSON may convert PHP boolean true to integer 1
+                    let isPaid = false;
+                    if (apt.is_paid !== null && apt.is_paid !== undefined && apt.is_paid !== false && apt.is_paid !== 0 && apt.is_paid !== '0' && apt.is_paid !== 'false') {
+                        isPaid = apt.is_paid === true || apt.is_paid === 1 || apt.is_paid === '1' || 
+                                apt.is_paid === 'true' || String(apt.is_paid).toLowerCase() === 'true';
+                    }
+                    
+                    const backgroundColor = isPaid ? '#007bff' : getStatusColor(apt.status);
+                    const borderColor = isPaid ? '#007bff' : getStatusColor(apt.status);
+                    const textColor = isPaid ? '#fff' : getStatusTextColor(apt.status);
+                    
+                    // Temporary debug logging - check browser console
+                    if (apt.is_paid) {
+                        console.log('Paid appointment detected:', {
+                            id: apt.id,
+                            name: apt.client_name,
+                            is_paid_raw: apt.is_paid,
+                            is_paid_type: typeof apt.is_paid,
+                            isPaid_calculated: isPaid,
+                            backgroundColor: backgroundColor
+                        });
+                    }
+                    
                     return {
                         id: apt.id,
-                        title: `${apt.client_name} (${apt.service_type})`,
+                        title: `${apt.client_name} (${meetingTypeDisplay})`,
                         start: apt.appointment_datetime,
                         end: endTime,
-                        backgroundColor: getStatusColor(apt.status),
-                        borderColor: getStatusColor(apt.status),
-                        textColor: getStatusTextColor(apt.status),
-                        classNames: ['event-' + apt.status],
+                        backgroundColor: backgroundColor,
+                        borderColor: borderColor,
+                        textColor: textColor,
+                        classNames: ['event-' + apt.status, isPaid ? 'event-paid' : ''],
                         extendedProps: {
                             client_id: apt.client_id,
                             client_id_encoded: apt.client_id_encoded,
@@ -252,7 +282,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             payment_status: apt.is_paid ? 'Paid' : 'Free',
                             final_amount: apt.final_amount,
                             duration_minutes: apt.duration_minutes || 15,
-                            appointment_datetime: apt.appointment_datetime
+                            appointment_datetime: apt.appointment_datetime,
+                            ...(isPaid && { 'data-paid': 'true' })
                         }
                     };
                 });
@@ -332,7 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <p><strong>Consultant:</strong> ${props.consultant}</p>
                             <p><strong>Status:</strong> <span class="badge badge-${getStatusClass(props.status)}" id="statusBadge">${props.status.toUpperCase()}</span></p>
                             <p><strong>Payment:</strong> <span class="badge badge-${props.is_paid ? 'success' : 'secondary'}">${props.payment_status}</span></p>
-                            ${props.is_paid ? `<p><strong>Amount:</strong> $${props.final_amount}</p>` : ''}
+                            ${props.is_paid ? `<p><strong>Amount:</strong> $${props.final_amount ? parseFloat(props.final_amount).toFixed(2) : '0.00'}</p>` : ''}
                         </div>
                     </div>
                     
@@ -349,9 +380,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="updateAppointmentStatus(${event.id}, 'completed')">
                                     <i class="fas fa-check-circle"></i> Mark as Complete
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="updateAppointmentStatus(${event.id}, 'pending')">
+                                <!-- <button type="button" class="btn btn-sm btn-outline-warning" onclick="updateAppointmentStatus(${event.id}, 'pending')">
                                     <i class="fas fa-clock"></i> Mark as Pending
-                                </button>
+                                </button> -->
                                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="updateAppointmentStatus(${event.id}, 'cancelled')">
                                     <i class="fas fa-times"></i> Mark as Cancelled
                                 </button>
@@ -422,6 +453,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 trigger: 'hover',
                 container: 'body'
             });
+            
+            // Apply blue color with !important for paid appointments
+            if (props.is_paid === true || props.is_paid === 1 || props.is_paid === '1' || 
+                props.is_paid === 'true' || String(props.is_paid).toLowerCase() === 'true') {
+                info.el.style.setProperty('background-color', '#007bff', 'important');
+                info.el.style.setProperty('border-color', '#007bff', 'important');
+                info.el.style.setProperty('color', '#fff', 'important');
+            }
         }
     });
     
@@ -490,7 +529,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     statusBadge.className = `badge badge-${getStatusClass(newStatus)}`;
                 }
                 
-                // Refresh the calendar to show updated status
+                // Close the modal and refresh calendar
+                $('#eventModal').modal('hide');
                 calendar.refetchEvents();
                 
                 // Show success message
@@ -683,6 +723,15 @@ document.addEventListener('DOMContentLoaded', function() {
     width: 20px;
     height: 20px;
     border-radius: 3px;
+}
+
+/* Paid appointment color - blue with !important to override FullCalendar styles */
+.fc-event.event-paid,
+.fc-event[class*="event-paid"],
+.fc-event[data-paid="true"] {
+    background-color: #007bff !important;
+    border-color: #007bff !important;
+    color: #fff !important;
 }
 </style>
 

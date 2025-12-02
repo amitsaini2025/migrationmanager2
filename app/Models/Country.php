@@ -1,14 +1,13 @@
 <?php
 namespace App\Models;
 
-use Illuminate\Notifications\Notifiable;
-use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Model;
 
-class Country extends Authenticatable
+class Country extends Model
 {
-    use Notifiable;
+    protected $table = 'countries';
 
 	protected $fillable = [
-        'id', 'sortname', 'name', 'phonecode', 'created_at', 'updated_at'
+        'id', 'sortname', 'name', 'phonecode', 'status', 'created_at', 'updated_at'
     ];
 }

@@ -136,8 +136,22 @@ class AppointmentSyncService
         // Match or create client
         $client = $this->clientMatcher->findOrCreateClient($appointmentData);
 
-        // Assign consultant
-        $consultant = $this->consultantAssigner->assignConsultant($appointmentData);
+        // Calculate service_id and noe_id BEFORE assigning consultant
+        // These are needed by assignConsultant() to determine calendar type
+        $serviceId = $this->mapServiceId($appointmentData);
+        $noeId = $this->mapNoeId($appointmentData);
+        $location = $appointmentData['location'] ?? null;
+        $inpersonAddress = $location ? $this->mapInpersonAddress($location) : null;
+        
+        // Prepare appointment data with calculated values for consultant assignment
+        $appointmentDataForConsultant = array_merge($appointmentData, [
+            'service_id' => $serviceId,
+            'noe_id' => $noeId,
+            'inperson_address' => $inpersonAddress,
+        ]);
+
+        // Assign consultant (now has access to service_id and noe_id)
+        $consultant = $this->consultantAssigner->assignConsultant($appointmentDataForConsultant);
 
         // Map status
         $status = $this->mapStatus($appointmentData['status'] ?? 'pending');
@@ -159,12 +173,12 @@ class AppointmentSyncService
             'timeslot_full' => $appointmentData['appointment_time'] ?? null,
             'duration_minutes' => $appointmentData['duration_minutes'] ?? 15,
             'location' => $appointmentData['location'],
-            'inperson_address' => $this->mapInpersonAddress($appointmentData['location']),
-            'meeting_type' => $appointmentData['meeting_type'] ?? 'in_person',
+            'inperson_address' => $inpersonAddress,
+            'meeting_type' => $this->mapMeetingType($appointmentData['meeting_type'] ?? null),
             'preferred_language' => $appointmentData['preferred_language'] ?? 'English',
             
-            'service_id' => $this->mapServiceId($appointmentData),
-            'noe_id' => $this->mapNoeId($appointmentData),
+            'service_id' => $serviceId,
+            'noe_id' => $noeId,
             'enquiry_type' => $appointmentData['enquiry_type'] ?? null,
             'service_type' => $appointmentData['service_type'] ?? null,
             'enquiry_details' => $appointmentData['enquiry_details'] ?? null,
@@ -242,6 +256,29 @@ class AppointmentSyncService
             'education' => 5,
             'pr_complex' => 6,
             default => null
+        };
+    }
+
+    /**
+     * Map meeting type from Bansal API to CRM enum values
+     * Handles various formats and normalizes to: 'in_person', 'phone', 'video'
+     */
+    protected function mapMeetingType(?string $meetingType): string
+    {
+        // Handle NULL or empty string
+        if (empty($meetingType)) {
+            return 'in_person'; // Default value
+        }
+
+        // Normalize: convert to lowercase and replace spaces/hyphens with underscores
+        $normalized = strtolower(trim($meetingType));
+        $normalized = str_replace([' ', '-'], '_', $normalized);
+
+        return match($normalized) {
+            'in_person', 'inperson', 'in-person', 'in person', 'office', 'onsite' => 'in_person',
+            'phone', 'telephone', 'call' => 'phone',
+            'video', 'videocall', 'video_call', 'zoom', 'online' => 'video',
+            default => 'in_person' // Default fallback
         };
     }
 

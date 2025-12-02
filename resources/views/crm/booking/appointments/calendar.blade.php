@@ -81,6 +81,13 @@ html, body {
     opacity: 0.7;
 }
 
+/* Paid appointment color - blue (overrides status colors) */
+.event-paid {
+    background-color: #007bff !important;
+    border-color: #007bff !important;
+    color: #fff !important;
+}
+
 .calendar-legend {
     display: flex;
     justify-content: center;
@@ -356,16 +363,29 @@ $(document).ready(function() {
                                 .add(appointment.duration_minutes || 15, 'minutes');
                             
                             // Create a more readable title with proper truncation handling
-                            var serviceType = appointment.service_type || 'Service';
+                            // Format meeting_type for display (e.g., 'in_person' -> 'In Person')
+                            var meetingType = appointment.meeting_type || 'N/A';
+                            var meetingTypeDisplay = meetingType !== 'N/A' 
+                                ? meetingType.split('_').map(function(word) {
+                                    return word.charAt(0).toUpperCase() + word.slice(1);
+                                }).join(' ')
+                                : 'N/A';
                             var clientName = appointment.client_name || 'Unknown Client';
-                            var title = clientName + ' (' + serviceType + ')';
+                            var title = clientName + ' (' + meetingTypeDisplay + ')';
+                            
+                            // Determine className: If paid, add 'event-paid' class
+                            // Handle different data types: boolean, integer (1/0), string ('1'/'0', 'true'/'false')
+                            // JSON may convert PHP boolean true to integer 1
+                            const isPaid = appointment.is_paid === true || appointment.is_paid === 1 || appointment.is_paid === '1' || 
+                                          appointment.is_paid === 'true' || String(appointment.is_paid).toLowerCase() === 'true';
+                            const className = 'event-' + appointment.status + (isPaid ? ' event-paid' : '');
                             
                             return {
                                 id: appointment.id,
                                 title: title,
                                 start: appointment.appointment_datetime,
                                 end: endTime.format('YYYY-MM-DD HH:mm:ss'),
-                                className: 'event-' + appointment.status,
+                                className: className,
                                 client_name: clientName,
                                 client_email: appointment.client_email,
                                 client_phone: appointment.client_phone,
@@ -426,9 +446,9 @@ $(document).ready(function() {
                                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="updateAppointmentStatus(${event.id}, 'completed')">
                                     <i class="fas fa-check-circle"></i> Mark as Complete
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="updateAppointmentStatus(${event.id}, 'pending')">
+                                <!-- <button type="button" class="btn btn-sm btn-outline-warning" onclick="updateAppointmentStatus(${event.id}, 'pending')">
                                     <i class="fas fa-clock"></i> Mark as Pending
-                                </button>
+                                </button> -->
                                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="updateAppointmentStatus(${event.id}, 'cancelled')">
                                     <i class="fas fa-times"></i> Mark as Cancelled
                                 </button>
@@ -509,7 +529,8 @@ $(document).ready(function() {
                         statusBadge.className = `badge badge-${getStatusClass(newStatus)}`;
                     }
                     
-                    // Refresh the calendar to show updated status
+                    // Close the modal and refresh calendar
+                    $('#eventModal').modal('hide');
                     $('#myEvent').fullCalendar('refetchEvents');
                     
                     // Show success message

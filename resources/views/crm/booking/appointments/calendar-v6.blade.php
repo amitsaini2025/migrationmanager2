@@ -277,6 +277,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             status: apt.status,
                             location: apt.location,
                             meeting_type: apt.meeting_type,
+                            preferred_language: apt.preferred_language || 'English',
                             consultant: apt.consultant?.name || 'Not Assigned',
                             is_paid: apt.is_paid,
                             payment_status: apt.is_paid ? 'Paid' : 'Free',
@@ -360,6 +361,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="col-md-6">
                             <p><strong>Location:</strong> ${props.location ? props.location.charAt(0).toUpperCase() + props.location.slice(1) : 'N/A'}</p>
                             <p><strong>Meeting Type:</strong> ${meetingTypeDisplay}</p>
+                            <p><strong>Preferred Language:</strong> ${props.preferred_language ? props.preferred_language.charAt(0).toUpperCase() + props.preferred_language.slice(1).toLowerCase() : 'English'}</p>
                             <p><strong>Consultant:</strong> ${props.consultant}</p>
                             <p><strong>Status:</strong> <span class="badge badge-${getStatusClass(props.status)}" id="statusBadge">${props.status.toUpperCase()}</span></p>
                             <p><strong>Payment:</strong> <span class="badge badge-${props.is_paid ? 'success' : 'secondary'}">${props.payment_status}</span></p>
@@ -571,13 +573,33 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             },
             body: JSON.stringify({
                 consultant_id: consultantId
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            // Check if response is OK
+            if (!response.ok) {
+                // Try to parse JSON error response
+                return response.json().then(errorData => {
+                    throw { status: response.status, data: errorData };
+                }).catch(() => {
+                    // If not JSON, throw with status
+                    throw { status: response.status, message: 'Server error occurred' };
+                });
+            }
+            
+            // Check content type before parsing
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Response is not JSON');
+            }
+            
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 // Close the modal and refresh calendar
@@ -593,7 +615,29 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Error updating consultant:', error);
-            showAlert('danger', 'Failed to update consultant. Please try again.');
+            
+            // Handle different error types
+            if (error.status === 422) {
+                // Validation error
+                const errorMsg = error.data?.message || 'Validation failed';
+                const errors = error.data?.errors || {};
+                showAlert('danger', errorMsg);
+                if (Object.keys(errors).length > 0) {
+                    console.error('Validation errors:', errors);
+                }
+            } else if (error.status === 404) {
+                showAlert('danger', 'Appointment not found');
+            } else if (error.status === 500) {
+                const errorMsg = error.data?.message || 'Server error occurred';
+                showAlert('danger', errorMsg + ' Please try again later.');
+            } else if (error instanceof SyntaxError && error.message.includes('JSON')) {
+                // JSON parsing error - server returned non-JSON response
+                showAlert('danger', 'Server returned invalid response. Please check server logs or try again.');
+                console.error('Server returned non-JSON response. Check network tab.');
+            } else {
+                showAlert('danger', 'Failed to update consultant. Please try again.');
+            }
+            
             select.value = originalValue;
         })
         .finally(() => {

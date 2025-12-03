@@ -5,6 +5,7 @@ namespace App\Http\Controllers\CRM;
 use App\Http\Controllers\Controller;
 use App\Models\BookingAppointment;
 use App\Models\AppointmentConsultant;
+use App\Models\Admin;
 use App\Models\ClientMatter;
 use App\Models\AppointmentSyncLog;
 use App\Models\ActivitiesLog;
@@ -119,35 +120,31 @@ class BookingAppointmentsController extends Controller
 
         // Check if calendar format is requested
         if ($request->get('format') === 'calendar') {
-            // Filter out past appointments - only show future appointments
-            // Always ensure appointments are >= now() to prevent showing past appointments
-            // The 'start' parameter from FullCalendar might be in the past (e.g., start of month),
-            // so we always use now() as the minimum to ensure no past appointments are shown
+            // Show today's appointments (all times) and future appointments
+            // Filter out only past appointments (before today)
             // Use explicit timezone-aware comparison to ensure accuracy
             $currentDateTime = Carbon::now(config('app.timezone'));
+            $startOfToday = Carbon::today(config('app.timezone'));
             
-            // Explicitly filter out all past appointments including today's past times
-            $query->where('appointment_datetime', '>', $currentDateTime);
+            // Show appointments from start of today onwards (includes all of today + future)
+            $query->where('appointment_datetime', '>=', $startOfToday);
             
             $appointments = $query->get();
             
-            // Additional client-side filter to double-check (in case of timezone issues)
-            $appointments = $appointments->filter(function($appointment) use ($currentDateTime) {
-                return $appointment->appointment_datetime->gt($currentDateTime);
-            });
-            
             // Debug logging to verify filter is working
-            Log::info('Calendar API Request - Filtering Past Appointments', [
+            Log::info('Calendar API Request - Showing Today and Future Appointments', [
                 'type' => $request->get('type'),
                 'start' => $request->get('start'),
                 'end' => $request->get('end'),
-                'current_datetime_filter' => $currentDateTime->toDateTimeString(),
-                'current_datetime_timezone' => $currentDateTime->timezone->getName(),
+                'start_of_today_filter' => $startOfToday->toDateTimeString(),
+                'current_datetime' => $currentDateTime->toDateTimeString(),
+                'timezone' => $startOfToday->timezone->getName(),
                 'appointments_count_after_filter' => $appointments->count(),
-                'sample_appointment_dates' => $appointments->take(5)->map(function($apt) use ($currentDateTime) {
+                'sample_appointment_dates' => $appointments->take(5)->map(function($apt) use ($startOfToday, $currentDateTime) {
                     return [
                         'id' => $apt->id,
                         'datetime' => $apt->appointment_datetime->toDateTimeString(),
+                        'is_today' => $apt->appointment_datetime->isToday(),
                         'is_future' => $apt->appointment_datetime->gt($currentDateTime),
                         'days_from_now' => $apt->appointment_datetime->diffInDays($currentDateTime, false)
                     ];
@@ -174,6 +171,7 @@ class BookingAppointmentsController extends Controller
                         'status' => $appointment->status,
                         'location' => $appointment->location,
                         'meeting_type' => $appointment->meeting_type,
+                        'preferred_language' => $appointment->preferred_language ?? 'English',
                         'is_paid' => $appointment->is_paid,
                         'final_amount' => $appointment->final_amount ?? 0,
                         'consultant' => $appointment->consultant ? [
@@ -423,32 +421,119 @@ class BookingAppointmentsController extends Controller
      */
     public function updateConsultant(Request $request, $id)
     {
-        $appointment = BookingAppointment::findOrFail($id);
-        
-        $request->validate([
-            'consultant_id' => 'required|exists:appointment_consultants,id'
-        ]);
+        try {
+            $appointment = BookingAppointment::findOrFail($id);
+            
+            $request->validate([
+                'consultant_id' => 'required|exists:appointment_consultants,id'
+            ]);
 
-        $oldConsultantId = $appointment->consultant_id;
-        $appointment->consultant_id = $request->consultant_id;
-        $appointment->assigned_by_admin_id = Auth::id();
-        $appointment->save();
+            $oldConsultantId = $appointment->consultant_id;
+            $appointment->consultant_id = $request->consultant_id;
+            
+            // Only set assigned_by_admin_id if user is authenticated and exists
+            $adminId = Auth::id();
+            if ($adminId) {
+                // Verify admin exists before assigning (prevents FK constraint violation)
+                $adminExists = Admin::where('id', $adminId)->exists();
+                if ($adminExists) {
+                    $appointment->assigned_by_admin_id = $adminId;
+                }
+                // If admin doesn't exist, leave it as null (column is nullable)
+            }
+            // If Auth::id() is null, leave assigned_by_admin_id as null (column is nullable)
+            
+            $appointment->save();
 
-        // Log activity using existing codebase pattern (only if client exists)
-        if ($appointment->client_id) {
-            $consultant = AppointmentConsultant::find($request->consultant_id);
-            $activityLog = new ActivitiesLog;
-            $activityLog->client_id = $appointment->client_id;
-            $activityLog->created_by = Auth::id();
-            $activityLog->subject = 'Booking appointment consultant reassigned';
-            $activityLog->description = '<p><strong>Consultant assigned:</strong> ' . ($consultant ? e($consultant->name) : 'N/A') . '</p>';
-            $activityLog->save();
+            // Log activity using existing codebase pattern (only if client exists)
+            if ($appointment->client_id) {
+                $consultant = AppointmentConsultant::find($request->consultant_id);
+                $activityLog = new ActivitiesLog;
+                $activityLog->client_id = $appointment->client_id;
+                $activityLog->created_by = Auth::id();
+                $activityLog->subject = 'Booking appointment consultant reassigned';
+                $activityLog->description = '<p><strong>Consultant assigned:</strong> ' . ($consultant ? e($consultant->name) : 'N/A') . '</p>';
+                $activityLog->save();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Consultant assigned successfully'
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Return JSON for validation errors
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Return JSON for not found errors
+            return response()->json([
+                'success' => false,
+                'message' => 'Appointment not found'
+            ], 404);
+            
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Log database-specific errors with more details
+            $errorCode = $e->getCode();
+            $errorMessage = $e->getMessage();
+            
+            Log::error('Database error updating consultant', [
+                'appointment_id' => $id,
+                'error_code' => $errorCode,
+                'error_message' => $errorMessage,
+                'sql_state' => $e->errorInfo[0] ?? null,
+                'sql_code' => $e->errorInfo[1] ?? null,
+                'sql_message' => $e->errorInfo[2] ?? null,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Check for specific database errors
+            if (strpos($errorMessage, 'assigned_by_admin_id') !== false) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error: assigned_by_admin_id column issue. Please check database schema.'
+                ], 500);
+            }
+            
+            if (strpos($errorMessage, 'foreign key constraint') !== false || strpos($errorMessage, 'a foreign key constraint fails') !== false) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Foreign key constraint violation. The admin user may not exist in the system.'
+                ], 500);
+            }
+            
+            if (strpos($errorMessage, "doesn't exist") !== false || strpos($errorMessage, 'Unknown column') !== false) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Database column missing. Please run migrations on production server.'
+                ], 500);
+            }
+            
+            // Return JSON for any other database errors
+            return response()->json([
+                'success' => false,
+                'message' => 'Database error occurred while updating consultant. Please check server logs.'
+            ], 500);
+            
+        } catch (\Exception $e) {
+            // Log the error
+            Log::error('Error updating consultant', [
+                'appointment_id' => $id,
+                'error' => $e->getMessage(),
+                'error_code' => $e->getCode(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Return JSON for any other errors
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while updating consultant. Please try again.'
+            ], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Consultant assigned successfully'
-        ]);
     }
 
     /**

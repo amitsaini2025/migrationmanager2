@@ -31,6 +31,7 @@ html, body {
 
 /* Status badges */
 .badge-pending { background-color: #ffc107; }
+.badge-paid { background-color: #007bff; }
 .badge-confirmed { background-color: #28a745; }
 .badge-completed { background-color: #17a2b8; }
 .badge-cancelled { background-color: #dc3545; }
@@ -42,6 +43,22 @@ html, body {
     padding: 15px;
     border-radius: 5px;
     margin-bottom: 20px;
+}
+
+/* Ensure Client Reference is visible */
+.card .card-body table.table tbody td .text-muted {
+    color: #6c757d !important;
+}
+
+.card .card-body table.table tbody td small.text-muted {
+    color: #6c757d !important;
+}
+
+/* Force Client Reference visibility */
+.card .card-body table.table tbody td small[style*="color"] {
+    color: #495057 !important;
+    display: block !important;
+    visibility: visible !important;
 }
 </style>
 
@@ -69,14 +86,14 @@ html, body {
                 <div class="card-body">
                     <!-- Statistics Cards -->
                     <div class="row mb-4">
-                        <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+                        <div class="col-lg col-md-6 col-sm-6 col-12">
                             <div class="card card-statistic-1">
                                 <div class="card-icon bg-warning">
                                     <i class="fas fa-clock"></i>
                                 </div>
                                 <div class="card-wrap">
                                     <div class="card-header">
-                                        <h4>Pending</h4>
+                                        <h4>Payment Pending</h4>
                                     </div>
                                     <div class="card-body">
                                         {{ $stats['pending'] ?? 0 }}
@@ -84,7 +101,22 @@ html, body {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+                        <div class="col-lg col-md-6 col-sm-6 col-12">
+                            <div class="card card-statistic-1">
+                                <div class="card-icon bg-primary">
+                                    <i class="fas fa-dollar-sign"></i>
+                                </div>
+                                <div class="card-wrap">
+                                    <div class="card-header">
+                                        <h4>Paid</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        {{ $stats['paid'] ?? 0 }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg col-md-6 col-sm-6 col-12">
                             <div class="card card-statistic-1">
                                 <div class="card-icon bg-success">
                                     <i class="fas fa-check-circle"></i>
@@ -99,7 +131,7 @@ html, body {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+                        <div class="col-lg col-md-6 col-sm-6 col-12">
                             <div class="card card-statistic-1">
                                 <div class="card-icon bg-info">
                                     <i class="fas fa-calendar-check"></i>
@@ -114,7 +146,7 @@ html, body {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+                        <div class="col-lg col-md-6 col-sm-6 col-12">
                             <div class="card card-statistic-1">
                                 <div class="card-icon bg-primary">
                                     <i class="fas fa-list"></i>
@@ -134,6 +166,14 @@ html, body {
                     <!-- Filters -->
                     <div class="filter-section">
                         <form method="GET" action="{{ route('booking.appointments.index') }}" id="filter-form">
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <label>Search with Client Reference, Description</label>
+                                    <input type="text" class="form-control" name="search" id="filter-search" 
+                                           value="{{ request('search') }}" 
+                                           placeholder="Search with Client reference, description">
+                                </div>
+                            </div>
                             <div class="row">
                                 <div class="col-md-3">
                                     <label>Status</label>
@@ -168,9 +208,12 @@ html, body {
                                 <div class="col-md-2">
                                     <label>&nbsp;</label>
                                     <div>
-                                        <button type="submit" class="btn btn-primary btn-block">
+                                        <button type="submit" class="btn btn-primary" style="width: calc(50% - 5px); margin-right: 5px;">
                                             <i class="fas fa-filter"></i> Filter
                                         </button>
+                                        <a href="{{ route('booking.appointments.index') }}" class="btn btn-secondary" style="width: calc(50% - 5px);">
+                                            <i class="fas fa-redo"></i> Reset
+                                        </a>
                                     </div>
                                 </div>
                             </div>
@@ -190,6 +233,7 @@ html, body {
                                     <th>Appointment</th>
                                     <th>Service</th>
                                     <th>Consultant</th>
+                                    <th>Description</th>
                                     <th>Status</th>
                                     <th>Payment</th>
                                     <th width="150">Actions</th>
@@ -222,15 +266,16 @@ html, body {
                                                     {{ $appointment->client_email }}
                                                 </a>
                                             </small><br>
-                                        @else
+                                            <small>{{ $appointment->client_phone }}</small>
+                                            @if($appointment->client && $appointment->client->client_id)
+                                                <div class="mt-1">
+                                                    <small style="color: #495057 !important;">{{ $appointment->client->client_id }}</small>
+                                                </div>
+                                            @endif
+                                         @else
                                             <strong>{{ $appointment->client_name }}</strong><br>
                                             <small>{{ $appointment->client_email }}</small><br>
-                                        @endif
-                                        <small>{{ $appointment->client_phone }}</small>
-                                        @if($appointment->client && $appointment->client->client_id)
-                                            <div class="mt-2">
-                                                <small class="text-muted">Client ID: {{ $appointment->client->client_id }}</small>
-                                            </div>
+                                            <small>{{ $appointment->client_phone }}</small>
                                         @endif
                                     </td>
                                     <td>
@@ -250,11 +295,19 @@ html, body {
                                         @endif
                                     </td>
                                     <td>
+                                        @if($appointment->enquiry_details)
+                                            <small>{{ Str::limit($appointment->enquiry_details, 100) }}</small>
+                                        @else
+                                            <span class="text-muted">N/A</span>
+                                        @endif
+                                    </td>
+                                    <td>
                                         @php
                                             $statusClass = 'secondary';
                                             $statusText = ucfirst($appointment->status);
                                             switch($appointment->status) {
                                                 case 'pending': $statusClass = 'warning'; break;
+                                                case 'paid': $statusClass = 'primary'; break;
                                                 case 'confirmed': $statusClass = 'success'; break;
                                                 case 'completed': $statusClass = 'info'; break;
                                                 case 'cancelled': $statusClass = 'danger'; break;
@@ -265,7 +318,7 @@ html, body {
                                     </td>
                                     <td>
                                         @if($appointment->is_paid)
-                                            <span class="badge badge-success">Paid</span><br>
+                                            <span class="badge badge-primary">Paid</span><br>
                                             <small>${{ number_format($appointment->final_amount, 2) }}</small>
                                         @else
                                             <span class="badge badge-secondary">Free</span>

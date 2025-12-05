@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Exception;
 use Carbon\Carbon;
 use Yajra\DataTables\Facades\DataTables;
@@ -55,6 +56,27 @@ class BookingAppointmentsController extends Controller
             $query->whereDate('appointment_datetime', '<=', $request->date_to);
         }
         
+        // Search in Client Reference and Description
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $query->where(function($q) use ($searchTerm) {
+                // Search in enquiry_details
+                $q->where('enquiry_details', 'LIKE', '%' . $searchTerm . '%')
+                  // Search in client_unique_matter_no via ClientMatter
+                  ->orWhereIn('client_id', function($subQuery) use ($searchTerm) {
+                      $subQuery->select('client_id')
+                               ->from('client_matters')
+                               ->where('client_unique_matter_no', 'LIKE', '%' . $searchTerm . '%');
+                  })
+                  // Search in admins.client_id column
+                  ->orWhereIn('client_id', function($subQuery) use ($searchTerm) {
+                      $subQuery->select('id')
+                               ->from('admins')
+                               ->where('client_id', 'LIKE', '%' . $searchTerm . '%');
+                  });
+            });
+        }
+        
         // Paginate appointments ordered by latest Bansal appointment ID
         $appointments = $query->orderByDesc('bansal_appointment_id')->paginate(20);
 
@@ -77,7 +99,8 @@ class BookingAppointmentsController extends Controller
         
         // Calculate statistics
         $stats = [
-            'pending' => BookingAppointment::where('status', 'pending')->count(),
+            'pending' => BookingAppointment::where('status', 'pending')->where('is_paid', 1)->count(),
+            'paid' => BookingAppointment::where('status', 'paid')->where('is_paid', 1)->count(),
             'confirmed' => BookingAppointment::where('status', 'confirmed')->count(),
             'today' => BookingAppointment::whereDate('appointment_datetime', today())->count(),
             'total' => BookingAppointment::count(),
@@ -308,6 +331,13 @@ class BookingAppointmentsController extends Controller
                     $q->where('calendar_type', $type);
                 })
                 ->where('status', 'pending')
+                ->where('is_paid', 1)
+                ->count(),
+            'paid' => BookingAppointment::whereHas('consultant', function ($q) use ($type) {
+                    $q->where('calendar_type', $type);
+                })
+                ->where('status', 'paid')
+                ->where('is_paid', 1)
                 ->count(),
             'no_show' => BookingAppointment::whereHas('consultant', function ($q) use ($type) {
                     $q->where('calendar_type', $type);

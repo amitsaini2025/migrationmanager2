@@ -70,7 +70,11 @@
                         </div>
                         <div class="stat-box">
                             <h3>{{ $stats['pending'] ?? 0 }}</h3>
-                            <p>Pending</p>
+                            <p>Payment Pending</p>
+                        </div>
+                        <div class="stat-box">
+                            <h3>{{ $stats['paid'] ?? 0 }}</h3>
+                            <p>Paid</p>
                         </div>
                         <div class="stat-box">
                             <h3>{{ $stats['no_show'] ?? 0 }}</h3>
@@ -82,7 +86,11 @@
                     <div class="calendar-legend">
                         <div class="legend-item">
                             <div class="legend-color event-pending"></div>
-                            <span>Pending</span>
+                            <span>Payment Pending</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color event-paid"></div>
+                            <span>Paid</span>
                         </div>
                         <div class="legend-item">
                             <div class="legend-color event-confirmed"></div>
@@ -233,27 +241,18 @@ document.addEventListener('DOMContentLoaded', function() {
                         ? apt.meeting_type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
                         : 'N/A';
                     
-                    // Determine color: If paid, use blue color regardless of status
-                    // Handle different data types: boolean, integer (1/0), string ('1'/'0', 'true'/'false')
-                    // JSON may convert PHP boolean true to integer 1
-                    let isPaid = false;
-                    if (apt.is_paid !== null && apt.is_paid !== undefined && apt.is_paid !== false && apt.is_paid !== 0 && apt.is_paid !== '0' && apt.is_paid !== 'false') {
-                        isPaid = apt.is_paid === true || apt.is_paid === 1 || apt.is_paid === '1' || 
-                                apt.is_paid === 'true' || String(apt.is_paid).toLowerCase() === 'true';
-                    }
-                    
-                    const backgroundColor = isPaid ? '#007bff' : getStatusColor(apt.status);
-                    const borderColor = isPaid ? '#007bff' : getStatusColor(apt.status);
-                    const textColor = isPaid ? '#fff' : getStatusTextColor(apt.status);
+                    // Determine color based on status column only
+                    // If status = 'paid' → blue color, if status = 'pending' → pending color, etc.
+                    const backgroundColor = getStatusColor(apt.status);
+                    const borderColor = getStatusColor(apt.status);
+                    const textColor = getStatusTextColor(apt.status);
                     
                     // Temporary debug logging - check browser console
-                    if (apt.is_paid) {
-                        console.log('Paid appointment detected:', {
+                    if (apt.status === 'paid') {
+                        console.log('Paid status appointment detected:', {
                             id: apt.id,
                             name: apt.client_name,
-                            is_paid_raw: apt.is_paid,
-                            is_paid_type: typeof apt.is_paid,
-                            isPaid_calculated: isPaid,
+                            status: apt.status,
                             backgroundColor: backgroundColor
                         });
                     }
@@ -266,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         backgroundColor: backgroundColor,
                         borderColor: borderColor,
                         textColor: textColor,
-                        classNames: ['event-' + apt.status, isPaid ? 'event-paid' : ''],
+                        classNames: ['event-' + apt.status, apt.status === 'paid' ? 'event-paid' : ''],
                         extendedProps: {
                             client_id: apt.client_id,
                             client_id_encoded: apt.client_id_encoded,
@@ -284,7 +283,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             final_amount: apt.final_amount,
                             duration_minutes: apt.duration_minutes || 15,
                             appointment_datetime: apt.appointment_datetime,
-                            ...(isPaid && { 'data-paid': 'true' })
+                            ...(apt.status === 'paid' && { 'data-paid': 'true' })
                         }
                     };
                 });
@@ -456,9 +455,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 container: 'body'
             });
             
-            // Apply blue color with !important for paid appointments
-            if (props.is_paid === true || props.is_paid === 1 || props.is_paid === '1' || 
-                props.is_paid === 'true' || String(props.is_paid).toLowerCase() === 'true') {
+            // Apply blue color with !important for paid status appointments
+            if (props.status === 'paid') {
                 info.el.style.setProperty('background-color', '#007bff', 'important');
                 info.el.style.setProperty('border-color', '#007bff', 'important');
                 info.el.style.setProperty('color', '#fff', 'important');
@@ -474,6 +472,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function getStatusColor(status) {
         const colors = {
             'pending': '#ffc107',
+            'paid': '#007bff',
             'confirmed': '#28a745',
             'completed': '#17a2b8',
             'cancelled': '#dc3545',
@@ -767,6 +766,31 @@ document.addEventListener('DOMContentLoaded', function() {
     width: 20px;
     height: 20px;
     border-radius: 3px;
+}
+
+/* Legend color styles */
+.legend-color.event-pending {
+    background-color: #ffc107;
+}
+
+.legend-color.event-paid {
+    background-color: #007bff;
+}
+
+.legend-color.event-confirmed {
+    background-color: #28a745;
+}
+
+.legend-color.event-completed {
+    background-color: #17a2b8;
+}
+
+.legend-color.event-cancelled {
+    background-color: #dc3545;
+}
+
+.legend-color.event-no-show {
+    background-color: #6c757d;
 }
 
 /* Paid appointment color - blue with !important to override FullCalendar styles */

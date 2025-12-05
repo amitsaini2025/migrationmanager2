@@ -122,6 +122,14 @@ class AppointmentSyncService
      */
     protected function processAppointment(array $appointmentData): string
     {
+        // Debug: Check $appointmentData array
+        Log::info('Processing appointment data', [
+            'full_data' => $appointmentData,
+            'status' => $appointmentData['status'] ?? 'not_set',
+            'is_paid' => $appointmentData['is_paid'] ?? 'not_set',
+            'payment_data' => $appointmentData['payment'] ?? 'not_set'
+        ]);
+        
         $bansalId = $appointmentData['id'];
 
         // Check if already exists
@@ -219,8 +227,7 @@ class AppointmentSyncService
     {
         return match($location) {
             'adelaide' => 1,
-            'melbourne' => 2,
-            default => null
+            'melbourne' => 2
         };
     }
 
@@ -231,11 +238,20 @@ class AppointmentSyncService
     {
         // Check if paid
         if (!empty($appointmentData['is_paid']) && $appointmentData['is_paid'] === true) {
-            return 1; // Paid
+
+            if (!empty($appointmentData['specific_service']) && $appointmentData['specific_service'] === 'overseas-enquiry') {
+                return 3; // Paid Overseas
+            } elseif (!empty($appointmentData['specific_service']) && $appointmentData['specific_service'] === 'paid-consultation') {
+                return 1; // Paid Migration advice
+            } 
         }
         
         if (!empty($appointmentData['final_amount']) && $appointmentData['final_amount'] > 0) {
-            return 1; // Paid
+            if (!empty($appointmentData['specific_service']) && $appointmentData['specific_service'] === 'overseas-enquiry') {
+                return 3; // Paid Overseas
+            } elseif (!empty($appointmentData['specific_service']) && $appointmentData['specific_service'] === 'paid-consultation') {
+                return 1; // Paid Migration advice
+            } 
         }
 
         return 2; // Free
@@ -246,16 +262,17 @@ class AppointmentSyncService
      */
     protected function mapNoeId(array $appointmentData): ?int
     {
-        $enquiryType = $appointmentData['enquiry_type'] ?? null;
+        $serviceType = $appointmentData['service_type'] ?? null;
 
-        return match($enquiryType) {
-            'tr' => 1,
-            'jrp' => 2,
-            'skill_assessment' => 3,
-            'tourist' => 4,
-            'education' => 5,
-            'pr_complex' => 6,
-            default => null
+        return match($serviceType) {
+            'permanent-residency' => 1,
+            'temporary-residency' => 2,
+            'jrp-skill-assessment' => 3,
+            'tourist-visa' => 4,
+            'education-visa' => 5,
+            'complex-matters' => 6,
+            'visa-cancellation' => 7,
+            'international-migration' => 8
         };
     }
 
@@ -289,11 +306,11 @@ class AppointmentSyncService
     {
         return match($bansalStatus) {
             'pending' => 'pending',
+            'paid' => 'paid',
             'confirmed' => 'confirmed',
             'completed' => 'completed',
             'cancelled' => 'cancelled',
-            'no_show' => 'no_show',
-            default => 'pending'
+            'no_show' => 'no_show'
         };
     }
 

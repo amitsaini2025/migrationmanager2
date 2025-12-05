@@ -46,7 +46,7 @@ return new class extends Migration
             $table->text('enquiry_details')->nullable();
             
             // Status & Lifecycle
-            $table->enum('status', ['pending', 'confirmed', 'completed', 'cancelled', 'no_show', 'rescheduled'])->default('pending');
+            $table->enum('status', ['pending', 'paid', 'confirmed', 'completed', 'cancelled', 'no_show', 'rescheduled'])->default('pending');
             $table->dateTime('confirmed_at')->nullable();
             $table->dateTime('completed_at')->nullable();
             $table->dateTime('cancelled_at')->nullable();

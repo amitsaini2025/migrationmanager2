@@ -57,8 +57,8 @@ class ConsultantAssignmentService
         // Melbourne calendars (based on noe_id and service_id)
         if ($location === 'melbourne' || $inpersonAddress == 2 || empty($inpersonAddress)) {
             
-            // Education: noe_id=5, service_id=2 (Free)
-            if ($noeId == 5 && $serviceId == 2) {
+            // Education: noe_id=5, service_id=2 (Free)  OR 1 (Paid) OR 3 (Paid Overseas)
+            if ($noeId == 5 && ($serviceId == 2 || $serviceId == 1 || $serviceId == 3)) {
                 return 'education';
             }
 
@@ -67,15 +67,15 @@ class ConsultantAssignmentService
                 return 'jrp';
             }
 
-            // Tourist: noe_id=4, service_id=2 (Free)
-            if ($noeId == 4 && $serviceId == 2) {
+            // Tourist: noe_id=4, service_id=2 (Free) OR 1 (Paid) OR 3 (Paid Overseas)
+            if ($noeId == 4 && ($serviceId == 2 || $serviceId == 1 || $serviceId == 3)) {
                 return 'tourist';
             }
 
             // Others/Paid:
-            // - service_id=1 (Paid) with any noe_id in [1,2,3,4,5,6,7,8]
+            // - service_id=1 (Paid) or 3 (Paid Overseas) with any noe_id in [1,2,3,6,7,8]
             // - OR service_id=2 (Free) with noe_id in [1,6,7]
-            if ($serviceId == 1 && in_array($noeId, [1, 2, 3, 4, 5, 6, 7, 8])) {
+            if ( ( $serviceId == 1 || $serviceId == 3 )&& in_array($noeId, [1, 2, 3, 6, 7, 8])) {
                 return 'paid';
             }
             if ($serviceId == 2 && in_array($noeId, [1, 6, 7])) {

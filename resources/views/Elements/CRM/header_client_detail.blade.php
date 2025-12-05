@@ -24,7 +24,7 @@
                 <a href="{{ route('booking.appointments.index') }}" class="icon-btn" title="Website Bookings" style="position: relative;">
                     <i class="fas fa-globe"></i>
                     @php
-                        $pendingCount = \App\Models\BookingAppointment::where('status', 'pending')->count();
+                        $pendingCount = \App\Models\BookingAppointment::where('status', 'pending')->where('is_paid', 1)->count();
                     @endphp
                     @if($pendingCount > 0)
                         <span class="badge badge-danger" style="position: absolute; top: -5px; right: -5px; font-size: 10px; padding: 2px 5px; border-radius: 10px;">{{ $pendingCount }}</span>
@@ -35,7 +35,7 @@
                         <i class="fas fa-list mr-2"></i> All Bookings
                     </a>
                     <a class="dropdown-item" href="{{ route('booking.appointments.index', ['status' => 'pending']) }}">
-                        <i class="fas fa-clock mr-2"></i> Pending
+                        <i class="fas fa-clock mr-2"></i> Payment Pending
                         @if($pendingCount > 0)
                             <span class="badge badge-warning ml-1">{{ $pendingCount }}</span>
                         @endif

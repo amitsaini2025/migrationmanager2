@@ -1,3 +1,16 @@
 2025-11-16 13:22:42 - services.pdf_service - INFO - PDF Service initialized
 2025-11-16 22:00:55 - services.pdf_service - INFO - PDF Service initialized
 2025-11-18 16:26:27 - services.pdf_service - INFO - PDF Service initialized
+2025-11-18 11:13:33 - services.pdf_service - INFO - PDF Service initialized
+2025-11-18 11:14:07 - services.pdf_service - INFO - Converting page 1 of C:\xampp\htdocs\migration_manager_crm\storage\app\tmp_691c07a69e3be.pdf at 150 DPI
+2025-11-18 11:14:07 - services.pdf_service - INFO - Successfully converted page 1
+2025-11-18 11:16:47 - services.pdf_service - INFO - Converting page 1 of C:\xampp\htdocs\migration_manager_crm\storage\app\tmp_691c0845dca45.pdf at 72 DPI
+2025-11-18 11:16:47 - services.pdf_service - INFO - Successfully converted page 1
+2025-11-18 11:16:55 - services.pdf_service - INFO - Adding 1 signatures to PDF
+2025-11-18 11:16:55 - services.pdf_service - INFO - Signatures added successfully: C:\xampp\htdocs\migration_manager_crm\storage\app\tmp_691c084f33ef3_signed.pdf
+2025-11-18 13:42:54 - services.pdf_service - INFO - Converting page 1 of C:\xampp\htdocs\migration_manager_crm\storage\app\tmp_691c2a85ab051.pdf at 150 DPI
+2025-11-18 13:42:54 - services.pdf_service - INFO - Successfully converted page 1
+2025-11-18 13:43:54 - services.pdf_service - INFO - Converting page 1 of C:\xampp\htdocs\migration_manager_crm\storage\app\tmp_691c2ac1862e0.pdf at 72 DPI
+2025-11-18 13:43:54 - services.pdf_service - INFO - Successfully converted page 1
+2025-11-18 13:44:05 - services.pdf_service - INFO - Adding 1 signatures to PDF
+2025-11-18 13:44:05 - services.pdf_service - INFO - Signatures added successfully: C:\xampp\htdocs\migration_manager_crm\storage\app\tmp_691c2accb2950_signed.pdf

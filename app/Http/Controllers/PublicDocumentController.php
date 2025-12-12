@@ -9,8 +9,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use setasign\Fpdi\TcpdfFpdi;
-use Smalot\PdfParser\Parser;
 
 /**
  * Public Document Controller
@@ -494,93 +492,21 @@ class PublicDocumentController extends Controller
                         ]);
                         $usedPythonService = true;
                     } else {
-                        Log::warning('Python service returned success but file invalid, falling back to FPDI', [
+                        Log::error('Python service failed to create signed PDF', [
                             'file_exists' => file_exists($outputTmpPath),
                             'file_size' => file_exists($outputTmpPath) ? filesize($outputTmpPath) : 0
                         ]);
+                        
+                        return redirect()->back()
+                            ->with('error', 'Signature processing service is currently unavailable. Please try again later or contact support if the issue persists.')
+                            ->withInput();
                     }
                 } else {
-                    Log::warning('Python PDF service not available, using FPDI fallback');
-                }
-                
-                // ❌ FPDI FALLBACK: Use FPDI if Python service failed or unavailable
-                if (!$usedPythonService) {
-                    try {
-                        Log::info('Creating signed PDF with FPDI');
-                        
-                        $pdf = new TcpdfFpdi('P', 'mm', 'A4', true, 'UTF-8', false);
-                        $pdf->SetAutoPageBreak(false);
-                        $pageCount = $pdf->setSourceFile($tmpPdfPath);
-
-                        for ($page = 1; $page <= $pageCount; $page++) {
-                            $tplIdx = $pdf->importPage($page);
-                            $specs = $pdf->getTemplateSize($tplIdx);
-                            $pdf->AddPage($specs['orientation'], [$specs['width'], $specs['height']]);
-                            $pdf->useTemplate($tplIdx, 0, 0, $specs['width'], $specs['height']);
-
-                            // Add signatures
-                            $fields = $document->signatureFields()->where('page_number', $page)->get();
-                            foreach ($fields as $field) {
-                                if (isset($signaturePositions[$field->id])) {
-                                    $signatureInfo = $signaturePositions[$field->id];
-                                    $signaturePath = $signatureInfo['path'];
-                                    
-                                    $pdfWidth = $specs['width'];
-                                    $pdfHeight = $specs['height'];
-                                    $x_mm = $signatureInfo['x_percent'] * $pdfWidth;
-                                    $y_mm = $signatureInfo['y_percent'] * $pdfHeight;
-                                    $w_mm = max(15, $signatureInfo['w_percent'] * $pdfWidth);
-                                    $h_mm = max(15, $signatureInfo['h_percent'] * $pdfHeight);
-
-                                    // Get signature file (handle both S3 and local)
-                                    $tmpSignaturePath = null;
-                                    
-                                    if (file_exists($signaturePath)) {
-                                        // Local file
-                                        $tmpSignaturePath = $signaturePath;
-                                    } else {
-                                        // Try S3
-                                        try {
-                                            $tmpSignaturePath = storage_path('app/tmp_signature_' . uniqid() . '.png');
-                                            $s3Image = Storage::disk('s3')->get($signaturePath);
-                                            file_put_contents($tmpSignaturePath, $s3Image);
-                                        } catch (\Exception $e) {
-                                            Log::warning('Failed to get signature file', ['path' => $signaturePath, 'error' => $e->getMessage()]);
-                                            $tmpSignaturePath = null;
-                                        }
-                                    }
-
-                                    if ($tmpSignaturePath && file_exists($tmpSignaturePath)) {
-                                        $pdf->Image($tmpSignaturePath, $x_mm, $y_mm, $w_mm, $h_mm, 'PNG');
-                                        // Only delete if it's a temp file (not the original local file)
-                                        if (strpos($tmpSignaturePath, 'tmp_signature_') !== false) {
-                                            @unlink($tmpSignaturePath);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Save signed PDF
-                        $pdf->Output($outputTmpPath, 'F');
-                        
-                        Log::info('Signed PDF created with FPDI fallback', [
-                            'document_id' => $document->id,
-                            'output_size' => file_exists($outputTmpPath) ? filesize($outputTmpPath) : 0
-                        ]);
-                        
-                    } catch (\Exception $e) {
-                        Log::error('FPDI also failed to create signed PDF', [
-                            'document_id' => $document->id,
-                            'error' => $e->getMessage(),
-                            'trace' => $e->getTraceAsString()
-                        ]);
-                        
-                        // If FPDI also fails, return error with helpful message
-                        return redirect()->back()->with('error', 
-                            'Unable to process this PDF document. The document may use an unsupported compression format. ' .
-                            'Please contact support or try converting the PDF to a standard format.');
-                    }
+                    Log::error('Python PDF service not available');
+                    
+                    return redirect()->back()
+                        ->with('error', 'Signature processing service is currently unavailable. Please try again later or contact support if the issue persists.')
+                        ->withInput();
                 }
 
                 if (!file_exists($outputTmpPath) || filesize($outputTmpPath) === 0) {
@@ -849,33 +775,18 @@ class PublicDocumentController extends Controller
                     }
                 }
 
-                // Fallback to Spatie
-                Log::info('Falling back to Spatie for page conversion', [
+                // Python service failed or unavailable
+                Log::error('Python PDF service unavailable for page conversion', [
                     'document_id' => $id,
                     'page' => $page
                 ]);
                 
-                $imagePath = storage_path('app/public/page_' . $id . '_' . $page . '.jpg');
-                (new \Spatie\PdfToImage\Pdf($tmpPdfPath))
-                    ->selectPage($page)
-                    ->resolution(72)
-                    ->save($imagePath);
-
                 // Only delete temp files, not local files
                 if (!$isLocalFile && $tmpPdfPath && strpos($tmpPdfPath, 'tmp_') !== false) {
                     @unlink($tmpPdfPath);
                 }
 
-                if (!file_exists($imagePath)) {
-                    throw new \Exception('Failed to generate page image');
-                }
-
-                // Clear any output buffers before sending file
-                if (ob_get_level()) {
-                    ob_end_clean();
-                }
-
-                return response()->file($imagePath);
+                abort(503, 'PDF processing service unavailable. Please try again later.');
             } catch (\Exception $e) {
                 // Only delete temp files, not local files
                 if (!$isLocalFile && $tmpPdfPath && strpos($tmpPdfPath, 'tmp_') !== false) {
@@ -1145,21 +1056,23 @@ class PublicDocumentController extends Controller
     protected function countPdfPages($pathToPdf)
     {
         try {
-            $parser = new Parser();
-            $pdf = $parser->parseFile($pathToPdf);
-            $pages = $pdf->getPages();
-            return count($pages);
-        } catch (\Exception $e) {
-            Log::warning('PDF page count failed', ['error' => $e->getMessage()]);
-            if (class_exists('Spatie\\PdfToImage\\Pdf')) {
-                try {
-                    $pdf = new \Spatie\PdfToImage\Pdf($pathToPdf);
-                    // Use pageCount() method for Spatie PdfToImage v3.1+ (getNumberOfPages() was removed in v3.0)
-                    return $pdf->pageCount();
-                } catch (\Exception $ex) {
-                    Log::error('Spatie PDF page count also failed', ['error' => $ex->getMessage()]);
-                }
+            $pythonService = app(\App\Services\PythonService::class);
+            
+            if (!$pythonService->isHealthy()) {
+                Log::error('Python service unavailable for PDF page counting');
+                return null;
             }
+            
+            $pdfInfo = $pythonService->getPdfInfo($pathToPdf);
+            
+            if ($pdfInfo && isset($pdfInfo['success']) && $pdfInfo['success'] === true && isset($pdfInfo['page_count'])) {
+                return (int) $pdfInfo['page_count'];
+            }
+            
+            Log::error('Python service failed to get PDF page count', ['pdf_info' => $pdfInfo]);
+            return null;
+        } catch (\Exception $e) {
+            Log::error('Error counting PDF pages', ['error' => $e->getMessage()]);
             return null;
         }
     }

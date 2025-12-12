@@ -7,11 +7,7 @@ use App\Models\Signer;
 use Illuminate\Http\Request;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Illuminate\Support\Str;
-use Spatie\PdfToImage\Pdf;
-use setasign\Fpdi\TcpdfFpdi;
 use Illuminate\Support\Facades\Storage;
-use Smalot\PdfParser\Parser;
-use Smalot\PdfParser\Config as PdfParserConfig;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Models\ActivitiesLog;
@@ -622,211 +618,99 @@ class DocumentController extends Controller
         // Get file size for logging
         $fileSize = filesize($pathToPdf);
         
-        // Try with configured Smalot\PdfParser (with increased memory limit)
+        // Use Python service (primary method)
         try {
-            // Create configuration with increased decode memory limit
-            // Set to 512MB (512 * 1024 * 1024 bytes) to handle complex PDFs
-            $config = new PdfParserConfig();
-            $config->setDecodeMemoryLimit(512 * 1024 * 1024); // 512MB
+            $pythonService = app(\App\Services\PythonService::class);
             
-            // Initialize parser with configuration
-            $parser = new Parser([], $config);
-            
-            // Parse the PDF file
-            $pdf = $parser->parseFile($pathToPdf);
-            
-            // Get pages and count
-            $pages = $pdf->getPages();
-            $pageCount = count($pages);
-            
-            \Log::info('Successfully counted PDF pages using Smalot\PdfParser', [
-                'path' => $pathToPdf,
-                'page_count' => $pageCount,
-                'file_size' => $fileSize
-            ]);
-            
-            return $pageCount;
-            
-        } catch (\Exception $e) {
-            // Store error messages for logging
-            $firstAttemptError = $e->getMessage();
-            $defaultConfigError = null;
-            $lowMemoryError = null;
-            
-            // Check if error is about encrypted/secured PDF
-            $isEncryptedPdf = stripos($firstAttemptError, 'Secured pdf') !== false || 
-                             stripos($firstAttemptError, 'encrypted') !== false ||
-                             stripos($firstAttemptError, 'password') !== false;
-            
-            // Log detailed error information
-            \Log::warning('Smalot/PdfParser failed to count PDF pages (first attempt)', [
-                'error' => $firstAttemptError,
-                'error_type' => get_class($e),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'path' => $pathToPdf,
-                'file_size' => $fileSize,
-                'is_encrypted' => $isEncryptedPdf,
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            // If PDF is encrypted/secured, skip Smalot\PdfParser retries and go directly to Python service
-            if ($isEncryptedPdf) {
-                \Log::info('Detected encrypted/secured PDF - skipping Smalot\PdfParser retries and using Python service fallback');
-            } else {
-                // Retry with default configuration (no custom config) in case config caused issues
-                try {
-                    \Log::info('Retrying PDF page count with default Smalot\PdfParser configuration');
-                    $parser = new Parser();
-                    $pdf = $parser->parseFile($pathToPdf);
-                    $pages = $pdf->getPages();
-                    $pageCount = count($pages);
-                    
-                    \Log::info('Successfully counted PDF pages on retry with default config', [
-                        'path' => $pathToPdf,
-                        'page_count' => $pageCount
-                    ]);
-                    
-                    return $pageCount;
-                    
-                } catch (\Exception $retryException) {
-                    $defaultConfigError = $retryException->getMessage();
-                    \Log::error('Smalot/PdfParser failed on retry with default configuration', [
-                        'error' => $defaultConfigError,
-                        'error_type' => get_class($retryException),
-                        'original_error' => $firstAttemptError,
-                        'path' => $pathToPdf,
-                        'file_size' => $fileSize
-                    ]);
-                }
-                
-                // Try with lower memory limit (256MB) as another fallback
-                try {
-                    \Log::info('Retrying PDF page count with reduced memory limit (256MB)');
-                    $config = new PdfParserConfig();
-                    $config->setDecodeMemoryLimit(256 * 1024 * 1024); // 256MB
-                    
-                    $parser = new Parser([], $config);
-                    $pdf = $parser->parseFile($pathToPdf);
-                    $pages = $pdf->getPages();
-                    $pageCount = count($pages);
-                    
-                    \Log::info('Successfully counted PDF pages with reduced memory limit', [
-                        'path' => $pathToPdf,
-                        'page_count' => $pageCount
-                    ]);
-                    
-                    return $pageCount;
-                    
-                } catch (\Exception $lowMemoryException) {
-                    $lowMemoryError = $lowMemoryException->getMessage();
-                    \Log::error('Smalot/PdfParser failed with all configuration attempts', [
-                        'error' => $lowMemoryError,
-                        'error_type' => get_class($lowMemoryException),
-                        'path' => $pathToPdf,
-                        'file_size' => $fileSize,
-                        'all_attempts' => [
-                            'first_attempt' => $firstAttemptError,
-                            'default_config' => $defaultConfigError ?? 'N/A',
-                            'low_memory' => $lowMemoryError
-                        ]
-                    ]);
-                }
+            if (!$pythonService->isHealthy()) {
+                \Log::error('Python service unavailable for PDF page counting');
+                return null;
             }
             
-            // Fallback: Python service (PyMuPDF/fitz) - can handle encrypted PDFs
-            // Note: PyMuPDF is AGPL licensed - ensure compliance with license requirements
-            try {
-                $pythonService = app(PythonService::class);
+            $pdfInfo = $pythonService->getPdfInfo($pathToPdf);
+            
+            if ($pdfInfo && isset($pdfInfo['success']) && $pdfInfo['success'] === true && isset($pdfInfo['page_count'])) {
+                $pageCount = (int) $pdfInfo['page_count'];
                 
-                if ($pythonService->isHealthy()) {
-                    \Log::info('Attempting to count PDF pages using Python service (PyMuPDF/fitz) - handles encrypted PDFs');
-                    
-                    $pdfInfo = $pythonService->getPdfInfo($pathToPdf);
-                    
-                    if ($pdfInfo && isset($pdfInfo['success']) && $pdfInfo['success'] === true && isset($pdfInfo['page_count'])) {
-                        $pageCount = (int) $pdfInfo['page_count'];
-                        
-                        if ($pageCount > 0) {
-                            \Log::info('Successfully counted PDF pages using Python service (PyMuPDF/fitz)', [
-                                'path' => $pathToPdf,
-                                'page_count' => $pageCount,
-                                'file_size' => $fileSize,
-                                'reason' => 'All PHP libraries failed (encrypted/secured PDF) - PyMuPDF succeeded',
-                                'is_encrypted' => $isEncryptedPdf
-                            ]);
-                            return $pageCount;
-                        } else {
-                            \Log::warning('Python service returned invalid page count', [
-                                'path' => $pathToPdf,
-                                'page_count' => $pageCount,
-                                'pdf_info' => $pdfInfo
-                            ]);
-                        }
-                    } else {
-                        \Log::warning('Python service failed to get PDF info', [
-                            'path' => $pathToPdf,
-                            'pdf_info' => $pdfInfo,
-                            'error' => $pdfInfo['error'] ?? ($pdfInfo ? 'Invalid response format' : 'Service returned null')
-                        ]);
-                    }
+                if ($pageCount > 0) {
+                    \Log::info('Successfully counted PDF pages using Python service', [
+                        'path' => $pathToPdf,
+                        'page_count' => $pageCount,
+                        'file_size' => $fileSize
+                    ]);
+                    return $pageCount;
                 } else {
-                    \Log::warning('Python service is not available/healthy - skipping PyMuPDF fallback', [
-                        'path' => $pathToPdf
+                    \Log::warning('Python service returned invalid page count', [
+                        'path' => $pathToPdf,
+                        'page_count' => $pageCount,
+                        'pdf_info' => $pdfInfo
                     ]);
                 }
-            } catch (\Exception $pythonException) {
-                \Log::error('Python service (PyMuPDF/fitz) fallback also failed to count PDF pages', [
-                    'error' => $pythonException->getMessage(),
-                    'error_type' => get_class($pythonException),
+            } else {
+                \Log::error('Python service failed to get PDF info', [
                     'path' => $pathToPdf,
-                    'file_size' => $fileSize,
-                    'is_encrypted' => $isEncryptedPdf,
-                    'all_previous_errors' => [
-                        'smalot_first' => $firstAttemptError,
-                        'smalot_default' => $defaultConfigError ?? 'N/A',
-                        'smalot_low_memory' => $lowMemoryError ?? 'N/A'
-                    ]
+                    'pdf_info' => $pdfInfo,
+                    'error' => $pdfInfo['error'] ?? ($pdfInfo ? 'Invalid response format' : 'Service returned null')
                 ]);
             }
             
+            return null;
+        } catch (\Exception $e) {
+            \Log::error('Error counting PDF pages with Python service', [
+                'error' => $e->getMessage(),
+                'error_type' => get_class($e),
+                'path' => $pathToPdf,
+                'file_size' => $fileSize
+            ]);
             return null;
         }
     }
 
     /**
-     * Get PDF page dimensions using FPDI
+     * Get PDF page dimensions using Python service
      */
     private function getPdfPageDimensions($pdfPath, $pageCount)
     {
         $pagesDimensions = [];
 
         try {
-            $pdf = new \setasign\Fpdi\TcpdfFpdi('P', 'mm', 'A4', true, 'UTF-8', false);
-            $pdf->setSourceFile($pdfPath);
-
-            for ($pageNum = 1; $pageNum <= $pageCount; $pageNum++) {
-                try {
-                    $tplIdx = $pdf->importPage($pageNum);
-                    $specs = $pdf->getTemplateSize($tplIdx);
-                    $pagesDimensions[$pageNum] = [
-                        'width' => $specs['width'],
-                        'height' => $specs['height'],
-                        'orientation' => $specs['orientation']
-                    ];
-                } catch (\Exception $e) {
-                    // Use defaults for this page
+            $pythonService = app(\App\Services\PythonService::class);
+            
+            if (!$pythonService->isHealthy()) {
+                \Log::warning('Python service unavailable, using A4 defaults');
+                for ($pageNum = 1; $pageNum <= $pageCount; $pageNum++) {
                     $pagesDimensions[$pageNum] = [
                         'width' => 210,
                         'height' => 297,
                         'orientation' => 'P'
                     ];
-                    \Log::warning("Failed to get dimensions for page {$pageNum}", ['error' => $e->getMessage()]);
+                }
+                return $pagesDimensions;
+            }
+            
+            $pdfInfo = $pythonService->getPdfInfo($pdfPath);
+            
+            if ($pdfInfo && isset($pdfInfo['success']) && $pdfInfo['success'] === true && isset($pdfInfo['pages'])) {
+                foreach ($pdfInfo['pages'] as $index => $pageInfo) {
+                    $pageNum = $index + 1;
+                    $pagesDimensions[$pageNum] = [
+                        'width' => $pageInfo['width_mm'] ?? 210,
+                        'height' => $pageInfo['height_mm'] ?? 297,
+                        'orientation' => ($pageInfo['width_mm'] ?? 210) > ($pageInfo['height_mm'] ?? 297) ? 'L' : 'P'
+                    ];
+                }
+            } else {
+                \Log::warning('Python service failed to get PDF dimensions, using A4 defaults');
+                for ($pageNum = 1; $pageNum <= $pageCount; $pageNum++) {
+                    $pagesDimensions[$pageNum] = [
+                        'width' => 210,
+                        'height' => 297,
+                        'orientation' => 'P'
+                    ];
                 }
             }
         } catch (\Exception $e) {
-            \Log::warning('Failed to get page dimensions, using defaults', ['error' => $e->getMessage()]);
-            // Use defaults for all pages
+            \Log::warning('Error getting page dimensions, using defaults', ['error' => $e->getMessage()]);
             for ($pageNum = 1; $pageNum <= $pageCount; $pageNum++) {
                 $pagesDimensions[$pageNum] = [
                     'width' => 210,
@@ -1382,80 +1266,62 @@ class DocumentController extends Controller
                 }
             }
 
-            // PRIORITIZE PYTHON SERVICE - It's working reliably
-            if ($pythonService->isHealthy()) {
-                $result = $pythonService->convertPageToImage($tmpPdfPath, $page, 150);
-                
-                if ($result && ($result['success'] ?? false)) {
-                    // Clean up temp file (only if it was created from S3, not local file)
-                    if ($tmpPdfPath && !$isLocalFile) {
-                        @unlink($tmpPdfPath);
-                    }
-                    
-                    // Clear any output buffers to prevent image corruption
-                    if (ob_get_level()) {
-                        ob_end_clean();
-                    }
-                    
-                    // Decode base64 and return
-                    $imageData = base64_decode(explode(',', $result['image_data'])[1]);
-                    
-                    return response($imageData, 200, [
-                        'Content-Type' => 'image/png',
-                        'Content-Length' => strlen($imageData),
-                        'Cache-Control' => 'public, max-age=3600',
-                    ]);
-                } else {
-                    \Log::warning('Python PDF service failed to convert page', [
-                        'document_id' => $id,
-                        'page' => $page,
-                        'result' => $result
-                    ]);
-                }
-            } else {
-                \Log::warning('Python PDF service is not healthy', [
+            // Use Python service exclusively
+            if (!$pythonService->isHealthy()) {
+                \Log::error('Python PDF service unavailable', [
                     'document_id' => $id,
                     'page' => $page
                 ]);
-            }
-
-            // FALLBACK: Try Spatie PDF-to-Image (may fail due to Ghostscript issues)
-            $imagePath = storage_path('app/public/page_' . $id . '_' . $page . '.jpg');
-
-            try {
-                $image = (new \Spatie\PdfToImage\Pdf($tmpPdfPath))
-                    ->selectPage($page)
-                    ->resolution(72)  // Set to 72 DPI to match PDF positioning standards (prevents scaling shifts)
-                    ->save($imagePath);
-
-                // Clean up temp file (only if it was created from S3, not local file)
-                if ($tmpPdfPath && !$isLocalFile) {
-                    @unlink($tmpPdfPath);
-                }
-
-                if (!file_exists($imagePath)) {
-                    throw new \Exception('Failed to generate page image');
-                }
-
-                return response()->file($imagePath);
-            } catch (\Exception $e) {
+                
                 // Clean up temp file
                 if ($tmpPdfPath && !$isLocalFile) {
                     @unlink($tmpPdfPath);
                 }
                 
-                \Log::error('Error generating PDF page image', [
-                    'context' => 'pdf_page_generation',
+                return response()->json([
+                    'error' => 'PDF processing service unavailable',
+                    'message' => 'Unable to generate page preview. Please try again later.',
+                    'document_id' => $id,
+                    'page' => $page
+                ], 503);
+            }
+            
+            $result = $pythonService->convertPageToImage($tmpPdfPath, $page, 150);
+            
+            if ($result && ($result['success'] ?? false)) {
+                // Clean up temp file (only if it was created from S3, not local file)
+                if ($tmpPdfPath && !$isLocalFile) {
+                    @unlink($tmpPdfPath);
+                }
+                
+                // Clear any output buffers to prevent image corruption
+                if (ob_get_level()) {
+                    ob_end_clean();
+                }
+                
+                // Decode base64 and return
+                $imageData = base64_decode(explode(',', $result['image_data'])[1]);
+                
+                return response($imageData, 200, [
+                    'Content-Type' => 'image/png',
+                    'Content-Length' => strlen($imageData),
+                    'Cache-Control' => 'public, max-age=3600',
+                ]);
+            } else {
+                // Clean up temp file
+                if ($tmpPdfPath && !$isLocalFile) {
+                    @unlink($tmpPdfPath);
+                }
+                
+                \Log::error('Python PDF service failed to convert page', [
                     'document_id' => $id,
                     'page' => $page,
-                    'error' => $e->getMessage(),
-                    'python_service_healthy' => $pythonService->isHealthy()
+                    'result' => $result
                 ]);
                 
-                // Return a placeholder image or error response
                 return response()->json([
-                    'error' => 'Unable to generate page preview',
-                    'message' => 'PDF processing service is currently unavailable. Please try again later.',
+                    'error' => 'Failed to generate page preview',
+                    'message' => 'PDF processing failed. Please try again later.',
                     'document_id' => $id,
                     'page' => $page
                 ], 503);

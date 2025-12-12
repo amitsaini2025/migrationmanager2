@@ -699,6 +699,21 @@ class DocumentController extends Controller
                         'orientation' => ($pageInfo['width_mm'] ?? 210) > ($pageInfo['height_mm'] ?? 297) ? 'L' : 'P'
                     ];
                 }
+                
+                // Ensure all pages from 1 to $pageCount are present
+                // Fill in any missing pages with default values
+                for ($pageNum = 1; $pageNum <= $pageCount; $pageNum++) {
+                    if (!isset($pagesDimensions[$pageNum])) {
+                        // Use dimensions from first available page, or A4 defaults
+                        $defaultWidth = isset($pagesDimensions[1]) ? $pagesDimensions[1]['width'] : 210;
+                        $defaultHeight = isset($pagesDimensions[1]) ? $pagesDimensions[1]['height'] : 297;
+                        $pagesDimensions[$pageNum] = [
+                            'width' => $defaultWidth,
+                            'height' => $defaultHeight,
+                            'orientation' => $defaultWidth > $defaultHeight ? 'L' : 'P'
+                        ];
+                    }
+                }
             } else {
                 \Log::warning('Python service failed to get PDF dimensions, using A4 defaults');
                 for ($pageNum = 1; $pageNum <= $pageCount; $pageNum++) {

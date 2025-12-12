@@ -17,6 +17,7 @@ use App\Models\ClientPassportInformation;
 use App\Models\Matter;
 use Carbon\Carbon;
 use App\Traits\ClientHelpers;
+use App\Services\ClientReferenceService;
 
 class LeadController extends Controller
 {
@@ -358,20 +359,12 @@ class LeadController extends Controller
             DB::beginTransaction();
             
             try {
-                // Generate client_counter and client_id (same logic as ClientsController)
-                $clientCntExist = DB::table('admins')->select('id')->where('role', 7)->count();
-                if ($clientCntExist > 0) {
-                    $clientLatestArr = DB::table('admins')->select('client_counter')->where('role', 7)->latest()->first();
-                    $client_latest_counter = $clientLatestArr ? $clientLatestArr->client_counter : "00000";
-                } else {
-                    $client_latest_counter = "00000";
-                }
-
-                $client_current_counter = $this->getNextCounter($client_latest_counter);
-                $firstFourLetters = strtoupper(strlen($requestData['first_name']) >= 4
-                    ? substr($requestData['first_name'], 0, 4)
-                    : $requestData['first_name']);
-                $client_id = $firstFourLetters . date('y') . $client_current_counter;
+                // Generate client_counter and client_id using centralized service
+                // This prevents race conditions and duplicate references
+                $referenceService = app(ClientReferenceService::class);
+                $reference = $referenceService->generateClientReference($requestData['first_name']);
+                $client_id = $reference['client_id'];
+                $client_current_counter = $reference['client_counter'];
 
 
                 // Create new lead using DB query builder - only fields from simplified form

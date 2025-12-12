@@ -7,6 +7,7 @@ use App\Models\ClientContact;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use App\Services\ClientReferenceService;
 
 class ClientMatchingService
 {
@@ -98,30 +99,17 @@ class ClientMatchingService
         DB::beginTransaction();
 
         try {
-            // Generate client_counter and client_id
-            $clientCntExist = DB::table('admins')->where('role', 7)->count();
-            if ($clientCntExist > 0) {
-                $clientLatestArr = DB::table('admins')
-                    ->select('client_counter')
-                    ->where('role', 7)
-                    ->latest()
-                    ->first();
-                $client_latest_counter = $clientLatestArr ? $clientLatestArr->client_counter : "00000";
-            } else {
-                $client_latest_counter = "00000";
-            }
-
-            $client_current_counter = $this->getNextCounter($client_latest_counter);
-            
             // Parse name
             $nameParts = $this->parseFullName($appointmentData['full_name'] ?? 'Unknown');
             $firstName = $nameParts['first_name'];
             $lastName = $nameParts['last_name'];
 
-            $firstFourLetters = strtoupper(strlen($firstName) >= 4
-                ? substr($firstName, 0, 4)
-                : $firstName);
-            $client_id = $firstFourLetters . date('y') . $client_current_counter;
+            // Generate client_counter and client_id using centralized service
+            // This prevents race conditions and duplicate references
+            $referenceService = app(ClientReferenceService::class);
+            $reference = $referenceService->generateClientReference($firstName);
+            $client_id = $reference['client_id'];
+            $client_current_counter = $reference['client_counter'];
 
             // Create client
             $client = new Admin();
@@ -174,13 +162,6 @@ class ClientMatchingService
     /**
      * Get next counter (copied from ClientsController)
      */
-    protected function getNextCounter(string $lastCounter): string
-    {
-        $numericPart = (int)$lastCounter;
-        $nextNumericPart = $numericPart + 1;
-        return str_pad($nextNumericPart, 5, '0', STR_PAD_LEFT);
-    }
-
     /**
      * Parse full name into first and last name
      */

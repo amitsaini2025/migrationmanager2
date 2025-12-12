@@ -12,6 +12,7 @@ use App\Models\UserRole;
 use App\Models\UserType;
 
 use Auth;
+use App\Services\ClientReferenceService;
 
 class UserController extends Controller
 {
@@ -102,22 +103,13 @@ class UserController extends Controller
 
             //Script start for generate client_id
             if( $requestData['role'] == 7 ) { //if user is of client type
-                if (strlen($requestData['first_name']) >= 4) {
-                    $firstFourLetters = strtoupper(substr($requestData['first_name'], 0, 4));
-                } else {
-                    $firstFourLetters = strtoupper($requestData['first_name']);
-                }
-                $clientLatestArr = DB::table('admins')->select('id','client_counter')->where('role',7)->orderBy('id', 'desc')->first();
-                //dd($clientLatestArr);
-                if($clientLatestArr){
-                    $client_latest_counter = $clientLatestArr->client_counter;
-                } else {
-                    $client_latest_counter = "00000";
-                }
-                $client_current_counter = $this->getNextCounter($client_latest_counter);
-
-                $obj->client_counter = $client_current_counter;
-                $obj->client_id = $firstFourLetters.date('y').$client_current_counter;
+                // Generate client_counter and client_id using centralized service
+                // This prevents race conditions and duplicate references
+                $referenceService = app(ClientReferenceService::class);
+                $reference = $referenceService->generateClientReference($requestData['first_name']);
+                
+                $obj->client_counter = $reference['client_counter'];
+                $obj->client_id = $reference['client_id'];
             }
             //Script end for generate client_id
 
@@ -137,22 +129,6 @@ class UserController extends Controller
 		}
         return view('AdminConsole.system.users.create');
 	}
-
-    public function getNextCounter($currentCounter) {
-        // Convert current counter to an integer
-        $counter = intval($currentCounter);
-
-        // Increment the counter
-        $counter++;
-
-        // If the counter exceeds 99999, reset it to 1
-        if ($counter > 99999) {
-            $counter = 1;
-        }
-
-        // Format the counter as a 5-digit number with leading zeros
-        return str_pad($counter, 5, '0', STR_PAD_LEFT);
-    }
 
 	/**
 	 * Show the form for editing the specified user.

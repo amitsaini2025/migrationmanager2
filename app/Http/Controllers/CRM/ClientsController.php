@@ -28,6 +28,7 @@ use App\Models\ClientMatter;
 use App\Models\FileStatus;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
+use App\Services\ClientReferenceService;
 
 use Hfig\MAPI;
 use Hfig\MAPI\OLE\Pear;
@@ -735,20 +736,12 @@ class ClientsController extends Controller
         DB::beginTransaction();
 
         try {
-            // Generate client_counter and client_id
-            $clientCntExist = DB::table('admins')->select('id')->where('role', 7)->count();
-            if ($clientCntExist > 0) {
-                $clientLatestArr = DB::table('admins')->select('client_counter')->where('role', 7)->latest()->first();
-                $client_latest_counter = $clientLatestArr ? $clientLatestArr->client_counter : "00000";
-            } else {
-                $client_latest_counter = "00000";
-            }
-
-            $client_current_counter = $this->getNextCounter($client_latest_counter);
-            $firstFourLetters = strtoupper(strlen($validated['first_name']) >= 4
-                ? substr($validated['first_name'], 0, 4)
-                : $validated['first_name']);
-            $client_id = $firstFourLetters . date('y') . $client_current_counter;
+            // Generate client_counter and client_id using centralized service
+            // This prevents race conditions and duplicate references
+            $referenceService = app(ClientReferenceService::class);
+            $reference = $referenceService->generateClientReference($validated['first_name']);
+            $client_id = $reference['client_id'];
+            $client_current_counter = $reference['client_counter'];
 
             // Create the main client/lead record in the admins table
             // Use Lead model if type is 'lead', otherwise use Admin model for clients

@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use App\Models\ActivitiesLog;
 use App\Models\ClientMatter;
 use App\Models\Admin;
@@ -53,7 +54,7 @@ class DocumentController extends Controller
             'ip' => request()->ip()
         ], $additionalContext);
 
-        \Log::error("Controller error in {$context}", $logContext);
+        Log::error("Controller error in {$context}", $logContext);
 
         // Return appropriate redirect
         if ($redirectRoute === 'back') {
@@ -72,7 +73,7 @@ class DocumentController extends Controller
      */
     private function handleValidationError($errors, $context = 'validation')
     {
-        \Log::warning("Validation failed in {$context}", [
+        Log::warning("Validation failed in {$context}", [
             'errors' => $errors,
             'user_id' => auth('admin')->id(),
             'input' => request()->except(['password', 'password_confirmation', '_token'])
@@ -137,7 +138,7 @@ class DocumentController extends Controller
     {
         // Check if signature data is string and not empty
         if (!is_string($signatureData) || empty($signatureData)) {
-            \Log::warning('Empty or non-string signature data', ['fieldId' => $fieldId]);
+            Log::warning('Empty or non-string signature data', ['fieldId' => $fieldId]);
             return false;
         }
 
@@ -162,7 +163,7 @@ class DocumentController extends Controller
 
         foreach ($dangerousPatterns as $pattern) {
             if (preg_match($pattern, $signatureData)) {
-                \Log::warning('Dangerous pattern detected in signature data', [
+                Log::warning('Dangerous pattern detected in signature data', [
                     'fieldId' => $fieldId,
                     'pattern' => $pattern
                 ]);
@@ -172,7 +173,7 @@ class DocumentController extends Controller
 
         // Strict validation of base64 image data format
         if (!preg_match('/^data:image\/png;base64,([A-Za-z0-9+\/=]+)$/', $signatureData, $matches)) {
-            \Log::warning('Invalid signature data format', ['fieldId' => $fieldId]);
+            Log::warning('Invalid signature data format', ['fieldId' => $fieldId]);
             return false;
         }
 
@@ -180,26 +181,26 @@ class DocumentController extends Controller
 
         // Validate base64 data length (prevent DoS)
         if (strlen($base64Data) > 500000) { // 500KB limit
-            \Log::warning('Signature data too large', ['fieldId' => $fieldId, 'size' => strlen($base64Data)]);
+            Log::warning('Signature data too large', ['fieldId' => $fieldId, 'size' => strlen($base64Data)]);
             return false;
         }
 
         // Validate base64 format more strictly
         if (!preg_match('/^[A-Za-z0-9+\/]*={0,2}$/', $base64Data)) {
-            \Log::warning('Invalid base64 format', ['fieldId' => $fieldId]);
+            Log::warning('Invalid base64 format', ['fieldId' => $fieldId]);
             return false;
         }
 
         // Decode with strict mode
         $imageData = base64_decode($base64Data, true);
         if ($imageData === false) {
-            \Log::warning('Failed to decode base64 data', ['fieldId' => $fieldId]);
+            Log::warning('Failed to decode base64 data', ['fieldId' => $fieldId]);
             return false;
         }
 
         // Validate decoded data size
         if (strlen($imageData) < 100 || strlen($imageData) > 1000000) { // 100 bytes min, 1MB max
-            \Log::warning('Invalid decoded image size', [
+            Log::warning('Invalid decoded image size', [
                 'fieldId' => $fieldId,
                 'size' => strlen($imageData)
             ]);
@@ -209,13 +210,13 @@ class DocumentController extends Controller
         // Validate PNG file signature (magic bytes)
         $pngSignature = "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A";
         if (substr($imageData, 0, 8) !== $pngSignature) {
-            \Log::warning('Invalid PNG signature', ['fieldId' => $fieldId]);
+            Log::warning('Invalid PNG signature', ['fieldId' => $fieldId]);
             return false;
         }
 
         // Additional PNG structure validation
         if (!$this->validatePngStructure($imageData)) {
-            \Log::warning('Invalid PNG structure', ['fieldId' => $fieldId]);
+            Log::warning('Invalid PNG structure', ['fieldId' => $fieldId]);
             return false;
         }
 
@@ -260,7 +261,7 @@ class DocumentController extends Controller
 
         // Reasonable dimension limits for signatures
         if ($width < 10 || $width > 2000 || $height < 10 || $height > 2000) {
-            \Log::warning('PNG dimensions out of acceptable range', [
+            Log::warning('PNG dimensions out of acceptable range', [
                 'width' => $width,
                 'height' => $height
             ]);
@@ -345,7 +346,7 @@ class DocumentController extends Controller
             // Store uploaded file temporarily
             $tempPath = $uploadedFile->storeAs('tmp', uniqid('pdf_', true) . '.pdf', 'public');
             $tempFullPath = storage_path('app/public/' . $tempPath);
-            \Log::info('After storeAs', ['tempFullPath' => $tempFullPath, 'exists' => file_exists($tempFullPath)]);
+            Log::info('After storeAs', ['tempFullPath' => $tempFullPath, 'exists' => file_exists($tempFullPath)]);
             $normalizedDir = storage_path('app/public/tmp/normalized');
             if (!file_exists($normalizedDir)) {
                 mkdir($normalizedDir, 0777, true);
@@ -355,10 +356,10 @@ class DocumentController extends Controller
             // Normalize PDF with Ghostscript
             if ($this->normalizePdfWithGhostscript($tempFullPath, $normalizedPath)) {
                 $pdfToAdd = $normalizedPath;
-                \Log::info('PDF normalized with Ghostscript', ['original' => $tempFullPath, 'normalized' => $normalizedPath]);
+                Log::info('PDF normalized with Ghostscript', ['original' => $tempFullPath, 'normalized' => $normalizedPath]);
             } else {
                 $pdfToAdd = $tempFullPath;
-                \Log::warning('Ghostscript normalization failed, using original PDF', ['path' => $tempFullPath]);
+                Log::warning('Ghostscript normalization failed, using original PDF', ['path' => $tempFullPath]);
             }
 
             // Upload to S3 instead of local storage
@@ -369,7 +370,9 @@ class DocumentController extends Controller
             
             // Upload to S3
             Storage::disk('s3')->put($s3FilePath, file_get_contents($pdfToAdd));
-            $s3Url = Storage::disk('s3')->url($s3FilePath);
+            /** @var \Illuminate\Filesystem\FilesystemAdapter $s3Disk */
+            $s3Disk = Storage::disk('s3');
+            $s3Url = $s3Disk->url($s3FilePath);
             
             // Update document with S3 file information
             $document->update([
@@ -382,7 +385,7 @@ class DocumentController extends Controller
                 'file_size' => $uploadedFile->getSize(),
             ]);
             
-            \Log::info('Document file uploaded to S3 successfully', [
+            Log::info('Document file uploaded to S3 successfully', [
                 'document_id' => $document->id,
                 's3_url' => $s3Url,
                 's3_path' => $s3FilePath,
@@ -395,7 +398,7 @@ class DocumentController extends Controller
                 @unlink($normalizedPath);
             }
 
-            \Log::info('Document uploaded successfully', [
+            Log::info('Document uploaded successfully', [
                 'document_id' => $document->id,
                 'user_id' => auth('admin')->id(),
                 'filename' => $uploadedFile->getClientOriginalName()
@@ -433,7 +436,7 @@ class DocumentController extends Controller
         // Sanitize and validate document ID
         $documentId = (int) $id;
         if ($documentId <= 0) {
-            \Log::warning('Invalid document ID provided for edit', ['id' => $id]);
+            Log::warning('Invalid document ID provided for edit', ['id' => $id]);
             return redirect()->route('signatures.index')->with('error', 'Invalid document ID.');
         }
 
@@ -459,25 +462,25 @@ class DocumentController extends Controller
                     $s3Key = ltrim(urldecode($parsed['path']), '/');
                 }
                 
-                if (!$s3Key || !\Storage::disk('s3')->exists($s3Key)) {
-                    \Log::error('PDF file not found in S3 for document: ' . $documentId, [
+                if (!$s3Key || !Storage::disk('s3')->exists($s3Key)) {
+                    Log::error('PDF file not found in S3 for document: ' . $documentId, [
                         'url' => $url,
                         's3Key' => $s3Key,
-                        's3_exists' => $s3Key ? \Storage::disk('s3')->exists($s3Key) : 'no_path'
+                        's3_exists' => $s3Key ? Storage::disk('s3')->exists($s3Key) : 'no_path'
                     ]);
                     return redirect()->route('signatures.index')->with('error', 'Document file not found.');
                 }
 
                 // Download PDF from S3 to a temp file
                 $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
-                $pdfStream = \Storage::disk('s3')->get($s3Key);
+                $pdfStream = Storage::disk('s3')->get($s3Key);
                 file_put_contents($tmpPdfPath, $pdfStream);
-                \Log::info('Downloaded S3 file for document edit', ['s3Key' => $s3Key, 'tempPath' => $tmpPdfPath]);
+                Log::info('Downloaded S3 file for document edit', ['s3Key' => $s3Key, 'tempPath' => $tmpPdfPath]);
             } elseif ($url && file_exists(storage_path('app/public/' . $url))) {
                 // This is a local file path and file exists
                 $tmpPdfPath = storage_path('app/public/' . $url);
                 $isLocalFile = true;
-                \Log::info('Using local file for document edit', [
+                Log::info('Using local file for document edit', [
                     'path' => $tmpPdfPath,
                     'exists' => file_exists($tmpPdfPath),
                     'readable' => is_readable($tmpPdfPath),
@@ -486,18 +489,18 @@ class DocumentController extends Controller
             } else {
                 // Try to build S3 key from DB fields as fallback
                 if (!empty($document->myfile_key) && !empty($document->doc_type) && !empty($document->client_id)) {
-                    $admin = \DB::table('admins')->select('client_id')->where('id', $document->client_id)->first();
+                    $admin = DB::table('admins')->select('client_id')->where('id', $document->client_id)->first();
                     if ($admin && $admin->client_id) {
                         $s3Key = $admin->client_id . '/' . $document->doc_type . '/' . $document->myfile_key;
                         
-                        if (\Storage::disk('s3')->exists($s3Key)) {
+                        if (Storage::disk('s3')->exists($s3Key)) {
                             // Download PDF from S3 to a temp file
                             $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
-                            $pdfStream = \Storage::disk('s3')->get($s3Key);
+                            $pdfStream = Storage::disk('s3')->get($s3Key);
                             file_put_contents($tmpPdfPath, $pdfStream);
-                            \Log::info('Downloaded S3 file via fallback for document edit', ['s3Key' => $s3Key, 'tempPath' => $tmpPdfPath]);
+                            Log::info('Downloaded S3 file via fallback for document edit', ['s3Key' => $s3Key, 'tempPath' => $tmpPdfPath]);
                         } else {
-                            \Log::error('PDF file not found in S3 fallback for document: ' . $documentId, [
+                            Log::error('PDF file not found in S3 fallback for document: ' . $documentId, [
                                 'url' => $url,
                                 's3Key' => $s3Key,
                                 'myfile_key' => $document->myfile_key,
@@ -508,7 +511,7 @@ class DocumentController extends Controller
                             return redirect()->route('signatures.index')->with('error', 'Document file not found.');
                         }
                     } else {
-                        \Log::error('PDF file not found - no valid storage method for document: ' . $documentId, [
+                        Log::error('PDF file not found - no valid storage method for document: ' . $documentId, [
                             'url' => $url,
                             'myfile_key' => $document->myfile_key,
                             'doc_type' => $document->doc_type,
@@ -518,7 +521,7 @@ class DocumentController extends Controller
                         return redirect()->route('signatures.index')->with('error', 'Document file not found.');
                     }
                 } else {
-                    \Log::error('PDF file not found - no storage information for document: ' . $documentId, [
+                    Log::error('PDF file not found - no storage information for document: ' . $documentId, [
                         'url' => $url,
                         'myfile_key' => $document->myfile_key,
                         'doc_type' => $document->doc_type,
@@ -533,7 +536,7 @@ class DocumentController extends Controller
             try { 
                 $pdfPages = $this->countPdfPages($tmpPdfPath);
                 if (!$pdfPages || $pdfPages < 1) {
-                   \Log::error('Failed to count PDF pages for document: ' . $documentId, [
+                   Log::error('Failed to count PDF pages for document: ' . $documentId, [
                        'tmpPdfPath' => $tmpPdfPath,
                        'file_exists' => file_exists($tmpPdfPath),
                        'file_size' => file_exists($tmpPdfPath) ? filesize($tmpPdfPath) : 'N/A',
@@ -542,7 +545,7 @@ class DocumentController extends Controller
                    // Don't fail - use default values instead
                    $pdfPages = 1;  
                    $pagesDimensions = [1 => ['width' => 210, 'height' => 297, 'orientation' => 'P']];
-                   \Log::warning('Using default PDF dimensions due to counting failure');
+                   Log::warning('Using default PDF dimensions due to counting failure');
                } else {
                    // Get page dimensions
                    $pagesDimensions = $this->getPdfPageDimensions($tmpPdfPath, $pdfPages);
@@ -552,7 +555,7 @@ class DocumentController extends Controller
                    $pdfHeightMM = $pagesDimensions[1]['height'] ?? 297;
                }
             } catch (\Exception $e) {
-                \Log::error('Error getting PDF pages or size: ' . $e->getMessage());
+                Log::error('Error getting PDF pages or size: ' . $e->getMessage());
                 // Use defaults on error
                 $pdfPages = 1;
                 $pagesDimensions = [1 => ['width' => 210, 'height' => 297, 'orientation' => 'P']];
@@ -567,7 +570,7 @@ class DocumentController extends Controller
             // Count PDF pages using multiple methods for better compatibility
             /*$pdfPages = $this->countPdfPages($pdfPath);
             if (!$pdfPages || $pdfPages < 1) {
-                \Log::error('Failed to count PDF pages for document: ' . $documentId);
+                Log::error('Failed to count PDF pages for document: ' . $documentId);
                 return redirect()->route('signatures.index')->with('error', 'Failed to read PDF file.');
             }*/
 
@@ -583,7 +586,7 @@ class DocumentController extends Controller
             // Use the correct view path for admin documents edit
             return view('crm.documents.edit', compact('document', 'pdfPages', 'pdfWidthMM', 'pdfHeightMM', 'pagesDimensions'));
         } catch (\Exception $e) {
-            \Log::error('Exception in DocumentController@edit', [
+            Log::error('Exception in DocumentController@edit', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'document_id' => $documentId
@@ -606,12 +609,12 @@ class DocumentController extends Controller
     {
         // Validate file exists and is readable
         if (!file_exists($pathToPdf)) {
-            \Log::error('PDF file does not exist for page counting', ['path' => $pathToPdf]);
+            Log::error('PDF file does not exist for page counting', ['path' => $pathToPdf]);
             return null;
         }
         
         if (!is_readable($pathToPdf)) {
-            \Log::error('PDF file is not readable for page counting', ['path' => $pathToPdf]);
+            Log::error('PDF file is not readable for page counting', ['path' => $pathToPdf]);
             return null;
         }
         
@@ -623,7 +626,7 @@ class DocumentController extends Controller
             $pythonService = app(\App\Services\PythonService::class);
             
             if (!$pythonService->isHealthy()) {
-                \Log::error('Python service unavailable for PDF page counting');
+                Log::error('Python service unavailable for PDF page counting');
                 return null;
             }
             
@@ -633,21 +636,21 @@ class DocumentController extends Controller
                 $pageCount = (int) $pdfInfo['page_count'];
                 
                 if ($pageCount > 0) {
-                    \Log::info('Successfully counted PDF pages using Python service', [
+                    Log::info('Successfully counted PDF pages using Python service', [
                         'path' => $pathToPdf,
                         'page_count' => $pageCount,
                         'file_size' => $fileSize
                     ]);
                     return $pageCount;
                 } else {
-                    \Log::warning('Python service returned invalid page count', [
+                    Log::warning('Python service returned invalid page count', [
                         'path' => $pathToPdf,
                         'page_count' => $pageCount,
                         'pdf_info' => $pdfInfo
                     ]);
                 }
             } else {
-                \Log::error('Python service failed to get PDF info', [
+                Log::error('Python service failed to get PDF info', [
                     'path' => $pathToPdf,
                     'pdf_info' => $pdfInfo,
                     'error' => $pdfInfo['error'] ?? ($pdfInfo ? 'Invalid response format' : 'Service returned null')
@@ -656,7 +659,7 @@ class DocumentController extends Controller
             
             return null;
         } catch (\Exception $e) {
-            \Log::error('Error counting PDF pages with Python service', [
+            Log::error('Error counting PDF pages with Python service', [
                 'error' => $e->getMessage(),
                 'error_type' => get_class($e),
                 'path' => $pathToPdf,
@@ -677,7 +680,7 @@ class DocumentController extends Controller
             $pythonService = app(\App\Services\PythonService::class);
             
             if (!$pythonService->isHealthy()) {
-                \Log::warning('Python service unavailable, using A4 defaults');
+                Log::warning('Python service unavailable, using A4 defaults');
                 for ($pageNum = 1; $pageNum <= $pageCount; $pageNum++) {
                     $pagesDimensions[$pageNum] = [
                         'width' => 210,
@@ -715,7 +718,7 @@ class DocumentController extends Controller
                     }
                 }
             } else {
-                \Log::warning('Python service failed to get PDF dimensions, using A4 defaults');
+                Log::warning('Python service failed to get PDF dimensions, using A4 defaults');
                 for ($pageNum = 1; $pageNum <= $pageCount; $pageNum++) {
                     $pagesDimensions[$pageNum] = [
                         'width' => 210,
@@ -725,7 +728,7 @@ class DocumentController extends Controller
                 }
             }
         } catch (\Exception $e) {
-            \Log::warning('Error getting page dimensions, using defaults', ['error' => $e->getMessage()]);
+            Log::warning('Error getting page dimensions, using defaults', ['error' => $e->getMessage()]);
             for ($pageNum = 1; $pageNum <= $pageCount; $pageNum++) {
                 $pagesDimensions[$pageNum] = [
                     'width' => 210,
@@ -788,7 +791,7 @@ class DocumentController extends Controller
                 ]);
             }
 
-            \Log::info('Signature fields updated', [
+            Log::info('Signature fields updated', [
                 'document_id' => $document->id,
                 'fields_count' => count($validatedSignatures),
                 'user_id' => auth('admin')->id()
@@ -1027,7 +1030,7 @@ class DocumentController extends Controller
                         }
                         // Validate required fields before saving
                         if (empty($obj5->from_mail) || empty($obj5->to_mail)) {
-                            \Log::error('MailReport validation failed - missing required fields', [
+                            Log::error('MailReport validation failed - missing required fields', [
                                 'from_mail' => $obj5->from_mail,
                                 'to_mail' => $obj5->to_mail
                             ]);
@@ -1036,7 +1039,7 @@ class DocumentController extends Controller
                                 $saved = $obj5->save();
 
                                 // Log the save result for debugging
-                                \Log::info('MailReport save attempt', [
+                                Log::info('MailReport save attempt', [
                                     'saved' => $saved,
                                     'from_mail' => $obj5->from_mail,
                                     'to_mail' => $obj5->to_mail,
@@ -1045,12 +1048,12 @@ class DocumentController extends Controller
                                 ]);
 
                                 if (!$saved) {
-                                    \Log::error('Failed to save MailReport', [
+                                    Log::error('Failed to save MailReport', [
                                         'data' => $obj5->toArray()
                                     ]);
                                 }
                             } catch (\Exception $e) {
-                                \Log::error('Exception while saving MailReport', [
+                                Log::error('Exception while saving MailReport', [
                                     'error' => $e->getMessage(),
                                     'trace' => $e->getTraceAsString(),
                                     'data' => $obj5->toArray()
@@ -1083,10 +1086,10 @@ class DocumentController extends Controller
                     });
                 }
             } catch (\Exception $e) {
-                \Log::error('Mail sending failed: ' . $e->getMessage());
+                Log::error('Mail sending failed: ' . $e->getMessage());
             }
 
-            \Log::info('Signing link sent', [
+            Log::info('Signing link sent', [
                 'document_id' => $document->id,
                 'signer_email' => $signerEmail,
                 'user_id' => auth('admin')->id()
@@ -1132,30 +1135,30 @@ class DocumentController extends Controller
                     $s3Key = ltrim(urldecode($parsed['path']), '/');
                 }
                 
-                if (!$s3Key || !\Storage::disk('s3')->exists($s3Key)) {
-                    \Log::error('PDF file not found in S3 for document: ' . $id, [
+                if (!$s3Key || !Storage::disk('s3')->exists($s3Key)) {
+                    Log::error('PDF file not found in S3 for document: ' . $id, [
                         'url' => $url,
                         's3Key' => $s3Key,
-                        's3_exists' => $s3Key ? \Storage::disk('s3')->exists($s3Key) : 'no_path'
+                        's3_exists' => $s3Key ? Storage::disk('s3')->exists($s3Key) : 'no_path'
                     ]);
                     return redirect('/')->with('error', 'Document file not found.');
                 }
 
                 // Download PDF from S3 to a temp file
                 $pdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
-                $pdfStream = \Storage::disk('s3')->get($s3Key);
+                $pdfStream = Storage::disk('s3')->get($s3Key);
                 file_put_contents($pdfPath, $pdfStream);
-                \Log::info('Downloaded S3 file for document sign form', ['s3Key' => $s3Key, 'tempPath' => $pdfPath]);
+                Log::info('Downloaded S3 file for document sign form', ['s3Key' => $s3Key, 'tempPath' => $pdfPath]);
             } elseif ($url && file_exists(storage_path('app/public/' . $url))) {
                 // This is a local file path and file exists
                 $pdfPath = storage_path('app/public/' . $url);
-                \Log::info('Using local file for document sign form', ['path' => $pdfPath]);
+                Log::info('Using local file for document sign form', ['path' => $pdfPath]);
             } else {
                 // Try to get from media library (legacy support)
                 $pdfPath = $document->getFirstMediaPath('documents');
                 
                 if (!$pdfPath || !file_exists($pdfPath)) {
-                    \Log::error('PDF file not found for document: ' . $id, [
+                    Log::error('PDF file not found for document: ' . $id, [
                         'url' => $url,
                         'local_exists' => $url ? file_exists(storage_path('app/public/' . $url)) : false,
                         'media_path' => $pdfPath
@@ -1186,7 +1189,7 @@ class DocumentController extends Controller
     public function getPage($id, $page)
     {
         // Log the request for debugging
-        \Log::info('getPage method called', [
+        Log::info('getPage method called', [
             'document_id' => $id,
             'page' => $page,
             'user_id' => auth('admin')->id(),
@@ -1212,41 +1215,41 @@ class DocumentController extends Controller
                     $s3Key = ltrim(urldecode($parsed['path']), '/');
                 }
                 
-                if (!$s3Key || !\Storage::disk('s3')->exists($s3Key)) {
-                    \Log::error('PDF file not found in S3 for document: ' . $id, [
+                if (!$s3Key || !Storage::disk('s3')->exists($s3Key)) {
+                    Log::error('PDF file not found in S3 for document: ' . $id, [
                         'document_id' => $id,
                         's3Key' => $s3Key,
                         'myfile' => $url,
-                        's3_exists' => $s3Key ? \Storage::disk('s3')->exists($s3Key) : 'no_path'
+                        's3_exists' => $s3Key ? Storage::disk('s3')->exists($s3Key) : 'no_path'
                     ]);
                     abort(404, 'Document file not found');
                 }
 
                 // Download PDF from S3 to a temp file
                 $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
-                $pdfStream = \Storage::disk('s3')->get($s3Key);
+                $pdfStream = Storage::disk('s3')->get($s3Key);
                 file_put_contents($tmpPdfPath, $pdfStream);
-                \Log::info('Downloaded S3 file for document page', ['s3Key' => $s3Key, 'tempPath' => $tmpPdfPath]);
+                Log::info('Downloaded S3 file for document page', ['s3Key' => $s3Key, 'tempPath' => $tmpPdfPath]);
             } elseif ($url && file_exists(storage_path('app/public/' . $url))) {
                 // This is a local file path and file exists
                 $tmpPdfPath = storage_path('app/public/' . $url);
                 $isLocalFile = true;
-                \Log::info('Using local file for document page', ['path' => $tmpPdfPath]);
+                Log::info('Using local file for document page', ['path' => $tmpPdfPath]);
             } else {
                 // Try to build S3 key from DB fields as fallback
                 if (!empty($document->myfile_key) && !empty($document->doc_type) && !empty($document->client_id)) {
-                    $admin = \DB::table('admins')->select('client_id')->where('id', $document->client_id)->first();
+                    $admin = DB::table('admins')->select('client_id')->where('id', $document->client_id)->first();
                     if ($admin && $admin->client_id) {
                         $s3Key = $admin->client_id . '/' . $document->doc_type . '/' . $document->myfile_key;
                         
-                        if (\Storage::disk('s3')->exists($s3Key)) {
+                        if (Storage::disk('s3')->exists($s3Key)) {
                             // Download PDF from S3 to a temp file
                             $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
-                            $pdfStream = \Storage::disk('s3')->get($s3Key);
+                            $pdfStream = Storage::disk('s3')->get($s3Key);
                             file_put_contents($tmpPdfPath, $pdfStream);
-                            \Log::info('Downloaded S3 file via fallback for document page', ['s3Key' => $s3Key, 'tempPath' => $tmpPdfPath]);
+                            Log::info('Downloaded S3 file via fallback for document page', ['s3Key' => $s3Key, 'tempPath' => $tmpPdfPath]);
                         } else {
-                            \Log::error('PDF file not found in S3 fallback for document: ' . $id, [
+                            Log::error('PDF file not found in S3 fallback for document: ' . $id, [
                                 'document_id' => $id,
                                 's3Key' => $s3Key,
                                 'myfile' => $url,
@@ -1258,7 +1261,7 @@ class DocumentController extends Controller
                             abort(404, 'Document file not found');
                         }
                     } else {
-                        \Log::error('PDF file not found - no valid storage method for document: ' . $id, [
+                        Log::error('PDF file not found - no valid storage method for document: ' . $id, [
                             'document_id' => $id,
                             'myfile' => $url,
                             'myfile_key' => $document->myfile_key,
@@ -1269,7 +1272,7 @@ class DocumentController extends Controller
                         abort(404, 'Document file not found');
                     }
                 } else {
-                    \Log::error('PDF file not found - no storage information for document: ' . $id, [
+                    Log::error('PDF file not found - no storage information for document: ' . $id, [
                         'document_id' => $id,
                         'myfile' => $url,
                         'myfile_key' => $document->myfile_key,
@@ -1283,7 +1286,7 @@ class DocumentController extends Controller
 
             // Use Python service exclusively
             if (!$pythonService->isHealthy()) {
-                \Log::error('Python PDF service unavailable', [
+                Log::error('Python PDF service unavailable', [
                     'document_id' => $id,
                     'page' => $page
                 ]);
@@ -1328,7 +1331,7 @@ class DocumentController extends Controller
                     @unlink($tmpPdfPath);
                 }
                 
-                \Log::error('Python PDF service failed to convert page', [
+                Log::error('Python PDF service failed to convert page', [
                     'document_id' => $id,
                     'page' => $page,
                     'result' => $result
@@ -1347,7 +1350,7 @@ class DocumentController extends Controller
                 @unlink($tmpPdfPath);
             }
             
-            \Log::error('Error in getPage', [
+            Log::error('Error in getPage', [
                 'context' => 'get_page',
                 'document_id' => $id,
                 'page' => $page,
@@ -1372,7 +1375,7 @@ class DocumentController extends Controller
     public function submitSignatures(Request $request, $id)
     {
         // Input validation - Critical security fix
-        \Log::debug('submitSignatures: incoming request', [
+        Log::debug('submitSignatures: incoming request', [
             'request_all' => $request->all(),
             'signatures_type' => gettype($request->signatures),
             'signature_positions_type' => gettype($request->signature_positions)
@@ -1388,7 +1391,7 @@ class DocumentController extends Controller
         // Sanitize and validate the document ID
         $documentId = (int) $id;
         if ($documentId <= 0) {
-            \Log::warning('Invalid document ID provided', ['id' => $id]);
+            Log::warning('Invalid document ID provided', ['id' => $id]);
             return redirect('/')->with('error', 'Invalid document ID.');
         }
 
@@ -1398,7 +1401,7 @@ class DocumentController extends Controller
 
             // Verify signer belongs to this document
             if ($signer->document_id !== $document->id) {
-                \Log::warning('Signer does not belong to document', [
+                Log::warning('Signer does not belong to document', [
                     'signer_id' => $signer->id,
                     'document_id' => $document->id,
                     'signer_document_id' => $signer->document_id
@@ -1406,7 +1409,7 @@ class DocumentController extends Controller
                 return redirect()->route('signatures.show', $document->id)->with('error', 'Invalid signing attempt.');
             }
 
-            \Log::info("Starting signature submission", [
+            Log::info("Starting signature submission", [
                 'document_id' => $id,
                 'signer_id' => $signer->id,
                 'signer_status' => $signer->status,
@@ -1417,7 +1420,7 @@ class DocumentController extends Controller
                 // S3 path setup
                 $clientId = null;
                 if ($document->client_id) {
-                    $admin = \DB::table('admins')->select('client_id')->where('id', $document->client_id)->first();
+                    $admin = DB::table('admins')->select('client_id')->where('id', $document->client_id)->first();
                     if ($admin && $admin->client_id) {
                         $clientId = $admin->client_id;
                     }
@@ -1427,11 +1430,11 @@ class DocumentController extends Controller
                 $s3Key = $clientId && $docType && $myfileKey ? ($clientId . '/' . $docType . '/' . $myfileKey) : null;
 
                 $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
-                $pdfStream = \Storage::disk('s3')->get($s3Key);
+                $pdfStream = Storage::disk('s3')->get($s3Key);
                 file_put_contents($tmpPdfPath, $pdfStream);
                 $outputTmpPath = storage_path('app/tmp_' . uniqid() . '_signed.pdf');
 
-                \Log::info("PDF paths", [
+                Log::info("PDF paths", [
                     'input' => $tmpPdfPath,
                     'output' => $outputTmpPath
                 ]);
@@ -1444,7 +1447,7 @@ class DocumentController extends Controller
                 $processedCount = 0;
                 $errorMessages = [];
 
-                \Log::debug('submitSignatures: signatures array', [
+                Log::debug('submitSignatures: signatures array', [
                     'signatures' => $request->signatures,
                     'signature_positions' => $request->signature_positions
                 ]);
@@ -1453,7 +1456,7 @@ class DocumentController extends Controller
                     // Validate page number
                     $pageNum = (int) $page;
                     if ($pageNum < 1 || $pageNum > 999) { // Reasonable page limit
-                        \Log::warning('Invalid page number provided', ['page' => $page]);
+                        Log::warning('Invalid page number provided', ['page' => $page]);
                         $errorMessages[] = "Invalid page number: $page";
                         continue;
                     }
@@ -1461,7 +1464,7 @@ class DocumentController extends Controller
                     if ($signaturesJson && $processedCount < $maxSignatures) {
                         // Validate JSON and decode safely
                         if (!is_string($signaturesJson) || strlen($signaturesJson) > 100000) { // 100KB limit
-                            \Log::warning('Invalid signatures JSON data', ['page' => $page]);
+                            Log::warning('Invalid signatures JSON data', ['page' => $page]);
                             $errorMessages[] = "Signature data for page $page is too large or invalid.";
                             continue;
                         }
@@ -1469,7 +1472,7 @@ class DocumentController extends Controller
                         $signatures = json_decode($signaturesJson, true, 10); // Depth limit of 10
                         $positions = json_decode($request->signature_positions[$page] ?? '{}', true, 10);
 
-                        \Log::debug('submitSignatures: decoded signatures and positions', [
+                        Log::debug('submitSignatures: decoded signatures and positions', [
                             'page' => $page,
                             'signatures' => $signatures,
                             'positions' => $positions,
@@ -1478,7 +1481,7 @@ class DocumentController extends Controller
 
                         // Validate JSON decode was successful
                         if (json_last_error() !== JSON_ERROR_NONE || !is_array($signatures)) {
-                            \Log::warning('Failed to decode signatures JSON', [
+                            Log::warning('Failed to decode signatures JSON', [
                                 'page' => $page,
                                 'json_error' => json_last_error_msg()
                             ]);
@@ -1498,7 +1501,7 @@ class DocumentController extends Controller
                             // Validate field ID
                             $sanitizedFieldId = (int) $fieldId;
                             if ($sanitizedFieldId <= 0) {
-                                \Log::warning('Invalid field ID', ['fieldId' => $fieldId]);
+                                Log::warning('Invalid field ID', ['fieldId' => $fieldId]);
                                 $errorMessages[] = "Invalid field ID: $fieldId.";
                                 continue;
                             }
@@ -1507,7 +1510,7 @@ class DocumentController extends Controller
                             $sanitizedSignature = $this->sanitizeSignatureData($signatureData, $sanitizedFieldId);
                             if ($sanitizedSignature === false) {
                                 $errorMessages[] = "Signature for field $fieldId is invalid or corrupted. Please re-sign.";
-                                \Log::warning('Signature sanitization failed', ['fieldId' => $fieldId, 'signatureData' => $signatureData]);
+                                Log::warning('Signature sanitization failed', ['fieldId' => $fieldId, 'signatureData' => $signatureData]);
                                 continue; // Sanitization failed, skip this signature
                             }
 
@@ -1523,8 +1526,8 @@ class DocumentController extends Controller
                             );
                             $s3SignaturePath = $clientId . '/' . $docType . '/signatures/' . $filename;
                             // Upload to S3
-                            \Storage::disk('s3')->put($s3SignaturePath, $imageData);
-                            $s3SignatureUrl = \Storage::disk('s3')->url($s3SignaturePath);
+                            Storage::disk('s3')->put($s3SignaturePath, $imageData);
+                            $s3SignatureUrl = Storage::disk('s3')->url($s3SignaturePath);
 
                             // Use our enhanced position data sanitization
                             $position = $positions[$fieldId] ?? [];
@@ -1540,7 +1543,7 @@ class DocumentController extends Controller
                             ];
                             $signatureLinks[$sanitizedFieldId] = $s3SignatureUrl;
 
-                            \Log::info("Saved signature to S3", [
+                            Log::info("Saved signature to S3", [
                                 'field_id' => $sanitizedFieldId,
                                 's3_path' => $s3SignaturePath,
                                 's3_url' => $s3SignatureUrl,
@@ -1556,7 +1559,7 @@ class DocumentController extends Controller
 
                 if (!$signaturesSaved) {
                     $errorMsg = !empty($errorMessages) ? implode(' ', $errorMessages) : "No signatures provided. Please draw signatures before submitting.";
-                    \Log::warning("No valid signatures provided", ['errorMessages' => $errorMessages]);
+                    Log::warning("No valid signatures provided", ['errorMessages' => $errorMessages]);
                     return redirect('/')->with('error', $errorMsg);
                 }
 
@@ -1566,19 +1569,19 @@ class DocumentController extends Controller
 
                 // Load source PDF
                 if (!file_exists($tmpPdfPath)) {
-                    \Log::error("Source PDF not found", ['path' => $tmpPdfPath]);
+                    Log::error("Source PDF not found", ['path' => $tmpPdfPath]);
                     return redirect('/')->with('error', 'Source PDF not found.');
                 }
                 $pageCount = $pdf->setSourceFile($tmpPdfPath);
-                \Log::info("PDF loaded", ['page_count' => $pageCount]);
+                Log::info("PDF loaded", ['page_count' => $pageCount]);
 
                 // Process each page (unchanged)
                 for ($page = 1; $page <= $pageCount; $page++) {
-                    \Log::info("Processing page {$page}");
+                    Log::info("Processing page {$page}");
                     // Import page
                     $tplIdx = $pdf->importPage($page);
                     $specs = $pdf->getTemplateSize($tplIdx);
-                    \Log::info("Page {$page} dimensions", [
+                    Log::info("Page {$page} dimensions", [
                         'width_mm' => $specs['width'],
                         'height_mm' => $specs['height'],
                         'orientation' => $specs['orientation']
@@ -1588,7 +1591,7 @@ class DocumentController extends Controller
                     $pdf->useTemplate($tplIdx, 0, 0, $specs['width'], $specs['height']);
                     // Get signature fields for this page
                     $fields = $document->signatureFields()->where('page_number', $page)->get();
-                    \Log::info("Found {$fields->count()} signature fields for page {$page}", [
+                    Log::info("Found {$fields->count()} signature fields for page {$page}", [
                         'field_ids' => $fields->pluck('id')->toArray(),
                         'signaturePositions_keys' => array_keys($signaturePositions)
                     ]);
@@ -1608,24 +1611,24 @@ class DocumentController extends Controller
                             $y_mm = max(0, min($y_percent * $pdfHeight, $pdfHeight - $h_mm));
                             // Download signature from S3 to temp file for PDF overlay
                             $tmpSignaturePath = storage_path('app/tmp_signature_' . uniqid() . '.png');
-                            $s3Image = \Storage::disk('s3')->get($s3SignaturePath);
+                            $s3Image = Storage::disk('s3')->get($s3SignaturePath);
                             file_put_contents($tmpSignaturePath, $s3Image);
                             if (file_exists($tmpSignaturePath)) {
                                 $pdf->Image($tmpSignaturePath, $x_mm, $y_mm, $w_mm, $h_mm, 'PNG');
                                 @unlink($tmpSignaturePath);
                             }
                         } else {
-                            \Log::warning("No signature data for field", ['field_id' => $field->id]);
+                            Log::warning("No signature data for field", ['field_id' => $field->id]);
                         }
                     }
                 }
 
                 // Save the final PDF to a temp file
                 try {
-                    \Log::info("Saving PDF", ['path' => $outputTmpPath]);
+                    Log::info("Saving PDF", ['path' => $outputTmpPath]);
                     $pdf->Output($outputTmpPath, 'F');
                     $pdfSaved = file_exists($outputTmpPath) ? filesize($outputTmpPath) : 0;
-                    \Log::info("PDF saved", [
+                    Log::info("PDF saved", [
                         'path' => $outputTmpPath,
                         'size_bytes' => $pdfSaved
                     ]);
@@ -1633,21 +1636,21 @@ class DocumentController extends Controller
                         return redirect('/')->with('error', 'Failed to save the signed PDF. Please contact support.');
                     }
                 } catch (\Exception $e) {
-                    \Log::error("Error saving PDF", ['error' => $e->getMessage()]);
+                    Log::error("Error saving PDF", ['error' => $e->getMessage()]);
                     return redirect('/')->with('error', 'Error saving signed PDF: ' . $e->getMessage());
                 }
 
                 // Generate SHA-256 hash for tamper detection (Phase 7)
                 $signedHash = hash_file('sha256', $outputTmpPath);
-                \Log::info('Generated document hash', [
+                Log::info('Generated document hash', [
                     'document_id' => $document->id,
                     'hash' => $signedHash
                 ]);
 
                 // Upload signed PDF to S3
                 $s3SignedPath = $clientId . '/' . $docType . '/signed/' . $document->id . '_signed.pdf';
-                \Storage::disk('s3')->put($s3SignedPath, fopen($outputTmpPath, 'r'));
-                $s3SignedUrl = \Storage::disk('s3')->url($s3SignedPath);
+                Storage::disk('s3')->put($s3SignedPath, fopen($outputTmpPath, 'r'));
+                $s3SignedUrl = Storage::disk('s3')->url($s3SignedPath);
 
                 // Clean up temp files
                 @unlink($tmpPdfPath);
@@ -1691,7 +1694,7 @@ class DocumentController extends Controller
                     }
                 }
 
-                \Log::info("Document and signer status updated, S3 links saved", [
+                Log::info("Document and signer status updated, S3 links saved", [
                     'signature_doc_link' => $signatureLinks,
                     'signed_doc_link' => $s3SignedUrl
                 ]);
@@ -1700,13 +1703,13 @@ class DocumentController extends Controller
                 return redirect()->route('documents.thankyou', ['id' => $document->id]);
             }
 
-            \Log::warning("Invalid signing attempt", [
+            Log::warning("Invalid signing attempt", [
                 'signer_status' => $signer->status,
                 'has_token' => $signer->token !== null
             ]);
             return redirect('/')->with('error', 'Invalid signing attempt.');
         } catch (\Exception $e) {
-            \Log::error("Unexpected error in submitSignatures", [
+            Log::error("Unexpected error in submitSignatures", [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -1727,7 +1730,7 @@ class DocumentController extends Controller
                 return abort(400, 'Missing signed document link');
             }
             
-            \Log::info('Download signed document attempt', [
+            Log::info('Download signed document attempt', [
                 'document_id' => $id,
                 'signed_doc_link' => $fileUrl
             ]);
@@ -1743,15 +1746,15 @@ class DocumentController extends Controller
                 $parts = explode('/storage/', $urlPath);
                 $relativePath = end($parts);
                 
-                \Log::info('Checking local storage', [
+                Log::info('Checking local storage', [
                     'relativePath' => $relativePath,
                     'fullPath' => storage_path('app/public/' . $relativePath),
-                    'exists' => \Storage::disk('public')->exists($relativePath)
+                    'exists' => Storage::disk('public')->exists($relativePath)
                 ]);
                 
                 // Check if file exists in storage/app/public/
-                if (!\Storage::disk('public')->exists($relativePath)) {
-                    \Log::error('File not found in local storage', [
+                if (!Storage::disk('public')->exists($relativePath)) {
+                    Log::error('File not found in local storage', [
                         'relativePath' => $relativePath,
                         'fullPath' => storage_path('app/public/' . $relativePath)
                     ]);
@@ -1763,17 +1766,17 @@ class DocumentController extends Controller
                 
                 // Verify file exists and get size before output
                 if (!file_exists($filePath)) {
-                    \Log::error('File path does not exist', ['filePath' => $filePath]);
+                    Log::error('File path does not exist', ['filePath' => $filePath]);
                     return abort(404, 'Signed document file not found');
                 }
                 
                 $fileSize = filesize($filePath);
                 if ($fileSize === false || $fileSize === 0) {
-                    \Log::error('Invalid file size', ['filePath' => $filePath, 'size' => $fileSize]);
+                    Log::error('Invalid file size', ['filePath' => $filePath, 'size' => $fileSize]);
                     return abort(404, 'Signed document file is invalid or empty');
                 }
                 
-                \Log::info('Attempting direct PHP file output', [
+                Log::info('Attempting direct PHP file output', [
                     'relativePath' => $relativePath,
                     'filePath' => $filePath,
                     'filename' => $filename,
@@ -1796,7 +1799,7 @@ class DocumentController extends Controller
                 // Output file
                 readfile($filePath);
                 
-                \Log::info('File output completed');
+                Log::info('File output completed');
                 
                 exit;
             }
@@ -1804,9 +1807,10 @@ class DocumentController extends Controller
             // Try S3 storage
             if (isset($parsed['path']) && !empty($parsed['path'])) {
                 $s3Key = ltrim($parsed['path'], '/');
-                $disk = \Storage::disk('s3');
+                /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+                $disk = Storage::disk('s3');
                 
-                \Log::info('Checking S3 storage', [
+                Log::info('Checking S3 storage', [
                     's3Key' => $s3Key,
                     'url' => $fileUrl
                 ]);
@@ -1819,21 +1823,21 @@ class DocumentController extends Controller
                             ['ResponseContentDisposition' => 'attachment; filename="' . $filename . '"']
                         );
                         
-                        \Log::info('S3 temporary URL generated', [
+                        Log::info('S3 temporary URL generated', [
                             's3Key' => $s3Key,
                             'tempUrl' => $tempUrl
                         ]);
                         
                         return redirect($tempUrl);
                     } catch (\Exception $e) {
-                        \Log::error('Failed to generate S3 temporary URL', [
+                        Log::error('Failed to generate S3 temporary URL', [
                             's3Key' => $s3Key,
                             'error' => $e->getMessage()
                         ]);
                         // Fall through to error handling
                     }
                 } else {
-                    \Log::warning('File not found in S3', [
+                    Log::warning('File not found in S3', [
                         's3Key' => $s3Key,
                         'url' => $fileUrl
                     ]);
@@ -1841,7 +1845,7 @@ class DocumentController extends Controller
             }
             
             // If neither local nor S3 worked, return error
-            \Log::error('Unexpected URL format - not a valid storage path', [
+            Log::error('Unexpected URL format - not a valid storage path', [
                 'url' => $fileUrl,
                 'path' => $urlPath,
                 'parsed' => $parsed
@@ -1850,7 +1854,7 @@ class DocumentController extends Controller
             return abort(400, 'Invalid storage URL format or file not found');
             
         } catch (\Exception $e) {
-            \Log::error('Error downloading signed document', [
+            Log::error('Error downloading signed document', [
                 'document_id' => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -1879,7 +1883,7 @@ class DocumentController extends Controller
                     $relativePath = end($parts);
                     
                     // Check if file exists in local storage
-                    if (\Storage::disk('public')->exists($relativePath)) {
+                    if (Storage::disk('public')->exists($relativePath)) {
                         // Generate a temporary download route for local files
                         $downloadUrl = route('documents.download.signed', $document->id);
                     }
@@ -1888,7 +1892,8 @@ class DocumentController extends Controller
                     if (isset($parsed['path'])) {
                         // Remove leading slash
                         $s3Key = ltrim($parsed['path'], '/');
-                        $disk = \Storage::disk('s3');
+                        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+                        $disk = Storage::disk('s3');
                         if ($disk->exists($s3Key)) {
                             $downloadUrl = $disk->temporaryUrl(
                                 $s3Key,
@@ -1927,11 +1932,6 @@ class DocumentController extends Controller
         }
     }
 
-    public function debugSignaturePad()
-    {
-        return view('debug-signature');
-    }
-
     public function thankyou(Request $request, $id = null)
     {
         $downloadUrl = null;
@@ -1941,7 +1941,8 @@ class DocumentController extends Controller
                 $parsed = parse_url($document->signed_doc_link);
                 if (isset($parsed['path'])) {
                     $s3Key = ltrim($parsed['path'], '/');
-                    $disk = \Storage::disk('s3');
+                    /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+                    $disk = Storage::disk('s3');
                     if ($disk->exists($s3Key)) {
                         $downloadUrl = $disk->temporaryUrl(
                             $s3Key,
@@ -1982,7 +1983,7 @@ class DocumentController extends Controller
 
             // Verify signer belongs to this document
             if ($signer->document_id !== $document->id) {
-                \Log::warning('Attempt to send reminder for mismatched signer', [
+                Log::warning('Attempt to send reminder for mismatched signer', [
                     'document_id' => $document->id,
                     'signer_id' => $signer->id,
                     'signer_document_id' => $signer->document_id
@@ -2005,7 +2006,7 @@ class DocumentController extends Controller
 
         // Send reminder email
         $signingUrl = url("/sign/{$document->id}/{$signer->token}");
-        \Mail::raw("This is a reminder to sign your document: " . $signingUrl, function ($message) use ($signer) {
+        Mail::raw("This is a reminder to sign your document: " . $signingUrl, function ($message) use ($signer) {
             $message->to($signer->email, $signer->name)
                     ->subject('Reminder: Please Sign Your Document');
         });
@@ -2036,13 +2037,13 @@ class DocumentController extends Controller
         // Sanitize and validate inputs
         $documentId = (int) $id;
         if ($documentId <= 0) {
-            \Log::warning('Invalid document ID in sign method', ['id' => $id]);
+            Log::warning('Invalid document ID in sign method', ['id' => $id]);
             return redirect()->route('signatures.index')->with('error', 'Invalid document link.');
         }
 
         // Validate token format
         if (!$token || !is_string($token) || strlen($token) < 32 || !preg_match('/^[a-zA-Z0-9]+$/', $token)) {
-            \Log::warning('Invalid token format in sign method', ['token_length' => strlen($token ?? '')]);
+            Log::warning('Invalid token format in sign method', ['token_length' => strlen($token ?? '')]);
             return redirect()->route('signatures.show', $documentId)->with('error', 'Invalid or expired signing link.');
         }
 
@@ -2068,7 +2069,7 @@ class DocumentController extends Controller
             //dd($signer);
 
             if (!$signer || $signer->status === 'signed') {
-                \Log::warning('Invalid signer or already signed', [
+                Log::warning('Invalid signer or already signed', [
                     'document_id' => $documentId,
                     'signer_exists' => !is_null($signer),
                     'signer_status' => $signer ? $signer->status : 'none'
@@ -2095,7 +2096,7 @@ class DocumentController extends Controller
             if ($url && file_exists(storage_path('app/public/' . $url))) {
                 $pdfPath = storage_path('app/public/' . $url);
                 $pdfPages = $this->countPdfPages($pdfPath) ?: 1;
-                \Log::info('Using local file for document sign', ['path' => $pdfPath, 'pages' => $pdfPages]);
+                Log::info('Using local file for document sign', ['path' => $pdfPath, 'pages' => $pdfPages]);
             } else {
                 // Try to extract S3 key from URL if possible
                 if ($url) {
@@ -2106,16 +2107,16 @@ class DocumentController extends Controller
                 }
 
                 if (empty($pdfPath) && !empty($document->myfile_key) && !empty($document->doc_type) && !empty($document->client_id)) {
-                    $admin = \DB::table('admins')->select('client_id')->where('id', $document->client_id)->first();
+                    $admin = DB::table('admins')->select('client_id')->where('id', $document->client_id)->first();
                     if ($admin && $admin->client_id) {
                         $pdfPath = $admin->client_id . '/' . $document->doc_type . '/' . $document->myfile_key;
                     }
                 }
 
                 // Use the improved PDF page counting method
-                if ($pdfPath && \Storage::disk('s3')->exists($pdfPath)) {
+                if ($pdfPath && Storage::disk('s3')->exists($pdfPath)) {
                     $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
-                    $pdfStream = \Storage::disk('s3')->get($pdfPath);
+                    $pdfStream = Storage::disk('s3')->get($pdfPath);
                     file_put_contents($tmpPdfPath, $pdfStream);
                     $pdfPages = $this->countPdfPages($tmpPdfPath) ?: 1;
                     @unlink($tmpPdfPath);

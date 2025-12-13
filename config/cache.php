@@ -17,7 +17,7 @@ return [
     |
     */
 
-    'default' => 'file', // Force file driver - Redis not available
+    'default' => env('CACHE_DRIVER', 'redis'),
 
     /*
     |--------------------------------------------------------------------------
@@ -70,10 +70,10 @@ return [
             ],
         ],
 
-        // 'redis' => [
-        //     'driver' => 'redis',
-        //     'connection' => 'cache',
-        // ],
+        'redis' => [
+            'driver' => 'redis',
+            'connection' => 'cache',
+        ],
 
     ],
 

@@ -16,7 +16,7 @@ return [
     |
     */
 
-    'driver' => 'file', // Force file driver - Redis not available
+    'driver' => env('SESSION_DRIVER', 'redis'),
 
     /*
     |--------------------------------------------------------------------------

@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'default' => 'database', // Force database driver - Redis not available
+    'default' => env('QUEUE_CONNECTION', 'redis'),
 
     /*
     |--------------------------------------------------------------------------
@@ -57,13 +57,13 @@ return [
             'region' => env('SQS_REGION', 'us-east-1'),
         ],
 
-        // 'redis' => [
-        //     'driver' => 'redis',
-        //     'connection' => 'default',
-        //     'queue' => 'default',
-        //     'retry_after' => 90,
-        //     'block_for' => null,
-        // ],
+        'redis' => [
+            'driver' => 'redis',
+            'connection' => 'default',
+            'queue' => 'default',
+            'retry_after' => 90,
+            'block_for' => null,
+        ],
 
     ],
 

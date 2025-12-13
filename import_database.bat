@@ -8,3 +8,4 @@ C:\xampp\mysql\bin\mysql.exe -u root migration_manager_crm < database\migratio_b
 echo Database import completed!
 pause
 
+

@@ -37,6 +37,9 @@ class Kernel extends ConsoleKernel
         // Signature Management System Commands
         '\App\Console\Commands\ArchiveOldDrafts',
         '\App\Console\Commands\SendSignatureReminders',
+        
+        // Client Reference Management Commands
+        '\App\Console\Commands\FixDuplicateClientReferences',
     ];
 
     /**

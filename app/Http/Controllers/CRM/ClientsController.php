@@ -305,7 +305,7 @@ class ClientsController extends Controller
         $mattersByAgent = DB::table('client_matters as cm')
             ->leftJoin('admins as agent', 'agent.id', '=', 'cm.sel_migration_agent')
             ->select(
-                DB::raw("COALESCE(NULLIF(TRIM(COALESCE(agent.first_name, '') || ' ' || COALESCE(agent.last_name, '')), ''), 'Unassigned') as agent_name"),
+                DB::raw("COALESCE(agent.first_name || ' ' || agent.last_name, 'Unassigned') as agent_name"),
                 DB::raw('COUNT(*) as total')
             )
             ->groupBy('agent_name')
@@ -4456,8 +4456,8 @@ class ClientsController extends Controller
                 $clientAddresses = ClientAddress::where('client_id', $id)->orderBy('created_at', 'desc')->get();
                 $clientContacts = ClientContact::where('client_id', $id)->get();
                 $emails = ClientEmail::where('client_id', $id)->get() ?? [];
-                $qualifications = ClientQualification::where('client_id', $id)->orderByRaw('finish_date DESC NULLS FIRST')->get() ?? [];
-                $experiences = ClientExperience::where('client_id', $id)->orderByRaw('job_finish_date DESC NULLS FIRST')->get() ?? [];
+                $qualifications = ClientQualification::where('client_id', $id)->orderByRaw('finish_date DESC NULLS LAST')->get() ?? [];
+                $experiences = ClientExperience::where('client_id', $id)->orderByRaw('job_finish_date DESC NULLS LAST')->get() ?? [];
                 $testScores = ClientTestScore::where('client_id', $id)->get() ?? [];
                 $visaCountries = ClientVisaCountry::where('client_id', $id)->get() ?? [];
                 $clientSpouseDetail = ClientSpouseDetail::where('client_id', $id)->get();
@@ -4495,7 +4495,7 @@ class ClientsController extends Controller
                         ->where('cm.client_id', $id)
                         ->where('cm.matter_status', 1)
                         ->where(function($query) {
-                            $query->whereRaw('LOWER(m.nick_name) = ?', ['eoi'])
+                            $query->where('m.nick_name', 'ILIKE', 'eoi')
                                   ->orWhere('m.title', 'LIKE', '%eoi%')
                                   ->orWhere('m.title', 'LIKE', '%expression of interest%')
                                   ->orWhere('m.title', 'LIKE', '%expression%');

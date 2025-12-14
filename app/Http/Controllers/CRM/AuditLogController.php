@@ -31,7 +31,7 @@ class AuditLogController extends Controller
 	public function index(Request $request)  
 	{		
 	
-		$query 		= UserLog::where('id', '!=', ''); 
+		$query 		= UserLog::query(); 
 		$totalData 	= $query->count();	//for all data
 		$lists		= $query->sortable(['id' => 'desc'])->paginate(20);
 		return view('crm.auditlogs.index', compact(['lists', 'totalData']));

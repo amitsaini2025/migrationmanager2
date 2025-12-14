@@ -54,6 +54,21 @@ return [
             'engine' => null,
         ],
 
+        'mysql_source' => [
+            'driver' => 'mysql',
+            'host' => env('MYSQL_SOURCE_HOST', '127.0.0.1'),
+            'port' => env('MYSQL_SOURCE_PORT', '3306'),
+            'database' => env('MYSQL_SOURCE_DATABASE', ''),
+            'username' => env('MYSQL_SOURCE_USERNAME', 'root'),
+            'password' => env('MYSQL_SOURCE_PASSWORD', ''),
+            'unix_socket' => env('MYSQL_SOURCE_SOCKET', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => false,
+            'engine' => null,
+        ],
+
         'pgsql' => [
             'driver' => 'pgsql',
             'host' => env('DB_HOST', '127.0.0.1'),
@@ -65,6 +80,14 @@ return [
             'prefix' => '',
             'schema' => 'public',
             'sslmode' => 'prefer',
+            
+            // TIER 1 OPTIMIZATION: Performance options for PostgreSQL
+            'options' => extension_loaded('pdo_pgsql') ? [
+                PDO::ATTR_PERSISTENT => env('DB_PERSISTENT', false), // Connection pooling (disable in dev, enable in production)
+                PDO::ATTR_EMULATE_PREPARES => false, // Use native prepared statements
+                PDO::ATTR_TIMEOUT => env('DB_TIMEOUT', 10), // Connection timeout in seconds
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, // Always throw exceptions
+            ] : [],
         ],
 
         'sqlsrv' => [

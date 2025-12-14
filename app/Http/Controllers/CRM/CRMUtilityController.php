@@ -314,7 +314,7 @@ class CRMUtilityController extends Controller
 		}
 		else
 		{
-			$fetchedData = WebsiteSetting::where('id', '!=', '')->first();
+			$fetchedData = WebsiteSetting::first();
 
 			return view('crm.website_setting', compact(['fetchedData']));
 		}

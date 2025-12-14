@@ -39,7 +39,7 @@ class TagController extends Controller
 			} */	
 		//check authorization end 
 	
-		$query 		= Tag::where('id', '!=', '')->with(['createddetail', 'updateddetail']); 
+		$query 		= Tag::with(['createddetail', 'updateddetail']); 
 		 
 		$totalData 	= $query->count();	//for all data
 		

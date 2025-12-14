@@ -55,8 +55,8 @@ class SignatureAnalyticsService
     {
         return Signer::select('email', 'name')
             ->selectRaw('COUNT(*) as total_signed')
-            ->selectRaw('COUNT(CASE WHEN status = "signed" THEN 1 END) as completed_count')
-            ->selectRaw('AVG(CASE WHEN signed_at IS NOT NULL THEN TIMESTAMPDIFF(HOUR, created_at, signed_at) END) as avg_time_hours')
+            ->selectRaw('COUNT(CASE WHEN status = \'signed\' THEN 1 END) as completed_count')
+            ->selectRaw('AVG(CASE WHEN signed_at IS NOT NULL THEN EXTRACT(EPOCH FROM (signed_at - created_at))/3600 END) as avg_time_hours')
             ->groupBy('email', 'name')
             ->orderByDesc('completed_count')
             ->limit($limit)
@@ -76,10 +76,10 @@ class SignatureAnalyticsService
     {
         return Document::select('document_type')
             ->selectRaw('COUNT(*) as total')
-            ->selectRaw('SUM(CASE WHEN status = "signed" THEN 1 ELSE 0 END) as signed')
-            ->selectRaw('SUM(CASE WHEN status = "sent" THEN 1 ELSE 0 END) as pending')
-            ->selectRaw('SUM(CASE WHEN status = "draft" THEN 1 ELSE 0 END) as draft')
-            ->selectRaw('AVG(CASE WHEN status = "signed" AND last_activity_at IS NOT NULL THEN TIMESTAMPDIFF(HOUR, created_at, last_activity_at) END) as avg_time_hours')
+            ->selectRaw('SUM(CASE WHEN status = \'signed\' THEN 1 ELSE 0 END) as signed')
+            ->selectRaw('SUM(CASE WHEN status = \'sent\' THEN 1 ELSE 0 END) as pending')
+            ->selectRaw('SUM(CASE WHEN status = \'draft\' THEN 1 ELSE 0 END) as draft')
+            ->selectRaw('AVG(CASE WHEN status = \'signed\' AND last_activity_at IS NOT NULL THEN EXTRACT(EPOCH FROM (last_activity_at - created_at))/3600 END) as avg_time_hours')
             ->whereNull('archived_at')
             ->groupBy('document_type')
             ->get()
@@ -185,14 +185,14 @@ class SignatureAnalyticsService
     public function getSignatureTrend($startDate, $endDate, $interval = 'day'): array
     {
         $dateFormat = match($interval) {
-            'day' => '%Y-%m-%d',
-            'week' => '%Y-%u',
-            'month' => '%Y-%m',
-            default => '%Y-%m-%d'
+            'day' => 'YYYY-MM-DD',
+            'week' => 'IYYY-IW',
+            'month' => 'YYYY-MM',
+            default => 'YYYY-MM-DD'
         };
         
         $sent = Document::whereBetween('created_at', [$startDate, $endDate])
-            ->selectRaw("DATE_FORMAT(created_at, '{$dateFormat}') as period")
+            ->selectRaw("TO_CHAR(created_at, '{$dateFormat}') as period")
             ->selectRaw('COUNT(*) as count')
             ->groupBy('period')
             ->orderBy('period')
@@ -201,7 +201,7 @@ class SignatureAnalyticsService
         
         $signed = Document::whereBetween('created_at', [$startDate, $endDate])
             ->where('status', 'signed')
-            ->selectRaw("DATE_FORMAT(created_at, '{$dateFormat}') as period")
+            ->selectRaw("TO_CHAR(created_at, '{$dateFormat}') as period")
             ->selectRaw('COUNT(*) as count')
             ->groupBy('period')
             ->orderBy('period')
@@ -282,7 +282,7 @@ class SignatureAnalyticsService
      */
     public function getActivityByHour(): array
     {
-        $created = Document::selectRaw('HOUR(created_at) as hour')
+        $created = Document::selectRaw('EXTRACT(HOUR FROM created_at) as hour')
             ->selectRaw('COUNT(*) as count')
             ->groupBy('hour')
             ->orderBy('hour')
@@ -291,7 +291,7 @@ class SignatureAnalyticsService
         
         $signed = Signer::where('status', 'signed')
             ->whereNotNull('signed_at')
-            ->selectRaw('HOUR(signed_at) as hour')
+            ->selectRaw('EXTRACT(HOUR FROM signed_at) as hour')
             ->selectRaw('COUNT(*) as count')
             ->groupBy('hour')
             ->orderBy('hour')

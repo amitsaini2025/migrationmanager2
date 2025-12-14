@@ -3,9 +3,9 @@ namespace App\Models;
 
 use Illuminate\Notifications\Notifiable;
 use Kyslik\ColumnSortable\Sortable;
-use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Model;
 
-class UserLog extends Authenticatable
+class UserLog extends Model
 {
     use Notifiable;
 	use Sortable;
@@ -18,7 +18,7 @@ class UserLog extends Authenticatable
     protected $table = 'user_logs';
 
 	protected $fillable = [
-        'id', 'level', 'user_id', 'ip_address', 'user_agent', 'message', 'created_at', 'updated_at'
+        'level', 'user_id', 'ip_address', 'user_agent', 'message', 'created_at', 'updated_at'
     ];
 	
 	public $sortable = ['id'];

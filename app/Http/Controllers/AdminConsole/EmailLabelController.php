@@ -28,7 +28,7 @@ class EmailLabelController extends Controller
      */
     public function index(Request $request)
     {
-        $query = EmailLabel::where('id', '!=', '')->with(['user']);
+        $query = EmailLabel::with(['user']);
         
         // Filter by type if provided
         if ($request->has('type') && $request->type != '') {

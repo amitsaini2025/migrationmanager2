@@ -37,7 +37,7 @@ class ThemeController extends Controller
 				return Redirect::to('/dashboard')->with('error',config('constants.unauthorized'));
 			}	
 			
-			$query 		= HolidayTheme::where('id','!=','' );
+			$query 		= HolidayTheme::query();
 		$totalData 	= $query->count();	//for all data
 		if ($request->has('type')) 
 		{

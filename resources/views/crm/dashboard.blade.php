@@ -188,7 +188,7 @@
 
                         <select name="client_stage" class="stage-select">
                             <option value="">All Stages</option>
-                            @foreach(\App\Models\WorkflowStage::where('id','!=','')->orderby('id','ASC')->get() as $stage)
+                            @foreach(\App\Models\WorkflowStage::orderby('id','ASC')->get() as $stage)
                                 <option value="{{ $stage->id }}" {{ (isset($filters['client_stage']) && $filters['client_stage'] == $stage->id) ? 'selected' : '' }}>
                                     {{ $stage->name }}
                                 </option>
@@ -278,7 +278,7 @@
                         <td class="col-person_assisting">{{ $person_assisting && $person_assisting->first_name ? Str::limit($person_assisting->first_name, '50', '...') : config('constants.empty') }} {{ $person_assisting && $person_assisting->last_name ? Str::limit($person_assisting->last_name, '50', '...') : config('constants.empty') }}</td>
                         <td class="col-stage">
                             <select class="form-select stageCls" id="stage_<?php echo $item->id;?>" style="height: 30px;border-color: #e0e0e0;">
-                                @foreach(\App\Models\WorkflowStage::where('id','!=','')->orderby('id','ASC')->get() as $stage)
+                                @foreach(\App\Models\WorkflowStage::orderby('id','ASC')->get() as $stage)
                                 <option value="<?php echo $stage->id; ?>" <?php echo $item->workflow_stage_id == $stage->id ? 'selected' : ''; ?>><?php echo $stage->name; ?></option>
                                 @endforeach
                             </select>

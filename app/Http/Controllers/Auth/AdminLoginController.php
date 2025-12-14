@@ -115,7 +115,7 @@ class AdminLoginController extends Controller
 
             $obj = new \App\Models\UserLog;
             $obj->level = 'info';
-            $obj->user_id = @$user->id;
+            $obj->user_id = $user->id;
             $obj->ip_address = $request->getClientIp();
             $obj->user_agent = $_SERVER['HTTP_USER_AGENT'];
             $obj->message = 'Logged in successfully';
@@ -166,10 +166,10 @@ class AdminLoginController extends Controller
     {
         $errors = [$this->username() => trans('auth.failed')];
 
-        // Load user from database
-        $user = \App\Models\User::where($this->username(), $request->{$this->username()})->first();
+        // Load admin from database (using Admin model, not User)
+        $admin = \App\Models\Admin::where($this->username(), $request->{$this->username()})->first();
 
-        if ($user && !\Hash::check($request->password, $user->password)) {
+        if ($admin && !\Hash::check($request->password, $admin->password)) {
             $errors = ['password' => 'Wrong password'];
         }
 
@@ -178,7 +178,7 @@ class AdminLoginController extends Controller
         }
 		$obj = new \App\Models\UserLog;
 		$obj->level = 'critical';
-		$obj->user_id = @$user;
+		$obj->user_id = $admin ? $admin->id : null;
 		$obj->ip_address = $request->getClientIp();
 		$obj->user_agent = $_SERVER['HTTP_USER_AGENT'];
 		$obj->message = 'Invalid Email or Password !';
@@ -192,7 +192,7 @@ class AdminLoginController extends Controller
 
 		$obj = new \App\Models\UserLog;
 		$obj->level = 'info';
-		$obj->user_id = @$user;
+		$obj->user_id = $user;
 		$obj->ip_address = $request->getClientIp();
 		$obj->user_agent = $_SERVER['HTTP_USER_AGENT'];
 		$obj->message = 'Logged out successfully';

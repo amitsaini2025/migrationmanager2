@@ -38,7 +38,7 @@ class CrmEmailTemplateController extends Controller
 			} */	
 		//check authorization end 
 	
-		$query 		= CrmEmailTemplate::where('id', '!=', ''); 
+		$query 		= CrmEmailTemplate::query(); 
 		 
 		$totalData 	= $query->count();	//for all data
 		

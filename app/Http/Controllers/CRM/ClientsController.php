@@ -280,8 +280,8 @@ class ClientsController extends Controller
 
         $clientMonthlyGrowth = (clone $clientBaseQuery)
             ->select(
-                DB::raw("DATE_FORMAT(created_at, '%Y-%m') as sort_key"),
-                DB::raw("DATE_FORMAT(created_at, '%b %Y') as label"),
+                DB::raw("TO_CHAR(created_at, 'YYYY-MM') as sort_key"),
+                DB::raw("TO_CHAR(created_at, 'Mon YYYY') as label"),
                 DB::raw('COUNT(*) as total')
             )
             ->where('created_at', '>=', $now->copy()->subMonths(5)->startOfMonth())
@@ -350,8 +350,8 @@ class ClientsController extends Controller
 
         $leadMonthlyGrowth = (clone $leadBase)
             ->select(
-                DB::raw("DATE_FORMAT(created_at, '%Y-%m') as sort_key"),
-                DB::raw("DATE_FORMAT(created_at, '%b %Y') as label"),
+                DB::raw("TO_CHAR(created_at, 'YYYY-MM') as sort_key"),
+                DB::raw("TO_CHAR(created_at, 'Mon YYYY') as label"),
                 DB::raw('COUNT(*) as total')
             )
             ->where('created_at', '>=', $now->copy()->subMonths(5)->startOfMonth())
@@ -4800,8 +4800,8 @@ class ClientsController extends Controller
                 })
                 ->select(
                     'admins.*',
-                    DB::raw('GROUP_CONCAT(DISTINCT client_contacts.phone ORDER BY client_contacts.contact_type SEPARATOR ", ") as all_phones'),
-                    DB::raw('GROUP_CONCAT(DISTINCT client_emails.email ORDER BY client_emails.email_type SEPARATOR ", ") as all_emails')
+                    DB::raw('STRING_AGG(DISTINCT client_contacts.phone, \', \' ORDER BY client_contacts.contact_type) as all_phones'),
+                    DB::raw('STRING_AGG(DISTINCT client_emails.email, \', \' ORDER BY client_emails.email_type) as all_emails')
                 )
                 ->groupBy('admins.id')
                 ->get();

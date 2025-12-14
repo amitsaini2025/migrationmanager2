@@ -48,11 +48,11 @@
                         })
                         ->orderByRaw("
                             CASE
-                                WHEN (`client_id` IS NULL AND `client_matter_id` IS NULL) THEN 1
-                                WHEN (`client_id` = ? AND `client_matter_id` = ?) THEN 2
-                                WHEN (`client_id` = ? AND `client_matter_id` IS NULL) THEN 3
+                                WHEN (client_id IS NULL AND client_matter_id IS NULL) THEN 1
+                                WHEN (client_id = ? AND client_matter_id = ?) THEN 2
+                                WHEN (client_id = ? AND client_matter_id IS NULL) THEN 3
                                 ELSE 4
-                            END, `id` ASC
+                            END, id ASC
                         ", [$SelectedClientId, $client_selected_matter_id1, $SelectedClientId])
                         ->get();
 

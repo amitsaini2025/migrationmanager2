@@ -28,11 +28,11 @@ class UserLoginAnalyticsService
         }
 
         return $query->select(
-            DB::raw('DATE(created_at) as date'),
+            DB::raw("DATE(created_at) as date"),
             DB::raw('COUNT(*) as count'),
             DB::raw('COUNT(DISTINCT user_id) as unique_users')
         )
-        ->groupBy(DB::raw('DATE(created_at)'))
+        ->groupBy(DB::raw("DATE(created_at)"))
         ->orderBy('date', 'asc')
         ->get()
         ->map(function ($item) {
@@ -61,13 +61,13 @@ class UserLoginAnalyticsService
         }
 
         return $query->select(
-            DB::raw('YEAR(created_at) as year'),
-            DB::raw('WEEK(created_at, 1) as week'),
+            DB::raw('EXTRACT(YEAR FROM created_at) as year'),
+            DB::raw('EXTRACT(WEEK FROM created_at) as week'),
             DB::raw('MIN(DATE(created_at)) as week_start'),
             DB::raw('COUNT(*) as count'),
             DB::raw('COUNT(DISTINCT user_id) as unique_users')
         )
-        ->groupBy(DB::raw('YEAR(created_at)'), DB::raw('WEEK(created_at, 1)'))
+        ->groupBy(DB::raw('EXTRACT(YEAR FROM created_at)'), DB::raw('EXTRACT(WEEK FROM created_at)'))
         ->orderBy('year', 'asc')
         ->orderBy('week', 'asc')
         ->get()
@@ -100,13 +100,13 @@ class UserLoginAnalyticsService
         }
 
         return $query->select(
-            DB::raw('YEAR(created_at) as year'),
-            DB::raw('MONTH(created_at) as month'),
-            DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month_key'),
+            DB::raw('EXTRACT(YEAR FROM created_at) as year'),
+            DB::raw('EXTRACT(MONTH FROM created_at) as month'),
+            DB::raw("TO_CHAR(created_at, 'YYYY-MM') as month_key"),
             DB::raw('COUNT(*) as count'),
             DB::raw('COUNT(DISTINCT user_id) as unique_users')
         )
-        ->groupBy(DB::raw('YEAR(created_at)'), DB::raw('MONTH(created_at)'))
+        ->groupBy(DB::raw('EXTRACT(YEAR FROM created_at)'), DB::raw('EXTRACT(MONTH FROM created_at)'))
         ->orderBy('year', 'asc')
         ->orderBy('month', 'asc')
         ->get()
@@ -139,10 +139,10 @@ class UserLoginAnalyticsService
         }
 
         return $query->select(
-            DB::raw('HOUR(created_at) as hour'),
+            DB::raw('EXTRACT(HOUR FROM created_at) as hour'),
             DB::raw('COUNT(*) as count')
         )
-        ->groupBy(DB::raw('HOUR(created_at)'))
+        ->groupBy(DB::raw('EXTRACT(HOUR FROM created_at)'))
         ->orderBy('hour', 'asc')
         ->get()
         ->map(function ($item) {
@@ -200,11 +200,11 @@ class UserLoginAnalyticsService
         }
         
         $dayStats = $dayOfWeek->select(
-            DB::raw('DAYOFWEEK(created_at) as day'),
-            DB::raw('DAYNAME(created_at) as day_name'),
+            DB::raw('EXTRACT(DOW FROM created_at) as day'),
+            DB::raw("TO_CHAR(created_at, 'Day') as day_name"),
             DB::raw('COUNT(*) as count')
         )
-        ->groupBy(DB::raw('DAYOFWEEK(created_at)'), DB::raw('DAYNAME(created_at)'))
+        ->groupBy(DB::raw('EXTRACT(DOW FROM created_at)'), DB::raw("TO_CHAR(created_at, 'Day')"))
         ->orderByDesc('count')
         ->first();
 

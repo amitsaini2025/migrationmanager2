@@ -87,8 +87,8 @@ class EmailController extends Controller
 				return Redirect::to('/dashboard')->with('error',config('constants.unauthorized'));
 			} */
 		//check authorization end
-
-		$query 		= Email::where('id', '!=', '');
+	
+		$query 		= Email::query();
 
 		$totalData 	= $query->count();	//for all data
 

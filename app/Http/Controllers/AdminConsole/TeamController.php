@@ -39,7 +39,7 @@ class TeamController extends Controller
 			} */	
 		//check authorization end 
 	
-		$query 		= Team::where('id', '!=', ''); 
+		$query 		= Team::query(); 
 		 
 		$totalData 	= $query->count();	//for all data
 		
@@ -60,7 +60,7 @@ class TeamController extends Controller
 			if(Team::where('id', '=', $id)->exists()) 
 			{
 				$fetchedData = Team::find($id);
-				$query = Team::where('id', '!=', ''); 
+				$query = Team::query(); 
 				$totalData = $query->count();	//for all data
 				$lists = $query->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
 				return view('AdminConsole.system.teams.index', compact(['fetchedData','lists','totalData']));

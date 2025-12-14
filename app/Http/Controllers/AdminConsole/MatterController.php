@@ -26,7 +26,7 @@ class MatterController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Matter::where('id', '!=', '');
+        $query = Matter::query();
         $totalData = $query->count(); // for all data
         //dd($totalData);
         if ($request->has('title')) {

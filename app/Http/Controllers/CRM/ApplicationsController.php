@@ -46,7 +46,7 @@ class ApplicationsController extends Controller
 	    //$allstages = Application::select('stage')->groupBy('stage')->get();
 		//$query 		= Application::where('id', '!=', '')->with(['application_assignee']);
         $allstages = Application::select('stage')->where('status', '!=', 2)->groupBy('stage')->get();
-		$query 		= Application::where('id', '!=', '')->where('status', '!=', 2)->with(['application_assignee']);
+		$query 		= Application::where('status', '!=', 2)->with(['application_assignee']);
 
 		$totalData 	= $query->count();	//for all data
         if ($request->has('partner'))
@@ -1240,7 +1240,7 @@ class ApplicationsController extends Controller
 			} */
 		//check authorization end
 	    $allstages = Application::select('stage')->where('workflow', '=', 5)->groupBy('stage')->get();
-		$query 		= Application::where('id', '!=', '')->where('workflow', 5)->with(['application_assignee']);
+		$query 		= Application::where('workflow', 5)->with(['application_assignee']);
 
 		$totalData 	= $query->count();	//for all data
         if ($request->has('partner'))

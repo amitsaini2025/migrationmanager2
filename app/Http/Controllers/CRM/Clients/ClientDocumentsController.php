@@ -730,7 +730,7 @@ class ClientDocumentsController extends Controller
             $clientMatterInfo = ClientMatter::select('sel_matter_id')->where('id',$request->client_matter_id)->first();
             //dd($clientMatterInfo->sel_matter_id);
             if( isset($clientMatterInfo) ){
-                $visaCheckListInfo = VisaDocChecklist::select('id','name')->whereRaw("FIND_IN_SET($clientMatterInfo->sel_matter_id, matter_id)")->get();
+                $visaCheckListInfo = VisaDocChecklist::select('id','name')->whereRaw("? = ANY(string_to_array(matter_id, ','))", [$clientMatterInfo->sel_matter_id])->get();
                 //dd($visaCheckListInfo);
                 if( !empty($visaCheckListInfo) && count($visaCheckListInfo)>0 ){
                     $response['status'] 	= 	true;

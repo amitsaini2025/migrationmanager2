@@ -36,7 +36,7 @@ class EmailTemplateController extends Controller
 			}	
 		//check authorization end
 		
-		$query 		= EmailTemplate::where('id', '!=', '');
+		$query 		= EmailTemplate::query();
 		
 		$totalData 	= $query->count();	//for all data
 		

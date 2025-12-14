@@ -3114,7 +3114,23 @@ class ClientAccountsController extends Controller
 
   public function invoicelist(Request $request)
   {
-      $query     = AccountClientReceipt::where('receipt_type',3)->groupBy('receipt_id');
+      // Get latest record per receipt_id using subquery (PostgreSQL compatible)
+      // This replaces groupBy which doesn't work with SELECT * in PostgreSQL
+      $query = AccountClientReceipt::whereIn('id', function($subquery) use ($request) {
+          $subquery->select(DB::raw('MAX(id)'))
+                   ->from('account_client_receipts')
+                   ->where('receipt_type', 3)
+                   ->groupBy('receipt_id');
+          
+          // Apply same filters to subquery
+          if ($request->has('client_id') && trim($request->input('client_id')) != '') {
+              $subquery->where('client_id', '=', $request->input('client_id'));
+          }
+          if ($request->has('client_matter_id') && trim($request->input('client_matter_id')) != '') {
+              $subquery->where('client_matter_id', '=', $request->input('client_matter_id'));
+          }
+      })->where('receipt_type', 3);
+      
       // Filter: Client ID
       if ($request->has('client_id') && trim($request->input('client_id')) != '') {
           $query->where('client_id', '=', $request->input('client_id'));
@@ -3642,7 +3658,10 @@ class ClientAccountsController extends Controller
 
   public function journalreceiptlist(Request $request)
   {
-      $query     = AccountClientReceipt::select('id','receipt_id','client_id','user_id','trans_date','entry_date','trans_no', 'invoice_no','payment_method','validate_receipt','voided_or_validated_by', DB::raw('sum(withdraw_amount) as total_withdrawal_amount'))->where('receipt_type',4)->groupBy('receipt_id');
+      // PostgreSQL requires all non-aggregate columns in GROUP BY
+      $query     = AccountClientReceipt::select('id','receipt_id','client_id','user_id','trans_date','entry_date','trans_no', 'invoice_no','payment_method','validate_receipt','voided_or_validated_by', DB::raw('sum(withdraw_amount) as total_withdrawal_amount'))
+          ->where('receipt_type',4)
+          ->groupBy('id','receipt_id','client_id','user_id','trans_date','entry_date','trans_no', 'invoice_no','payment_method','validate_receipt','voided_or_validated_by');
       
       // Enhanced Date Filtering
       $this->applyDateFilters($query, $request);

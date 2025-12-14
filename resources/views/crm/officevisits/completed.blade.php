@@ -204,7 +204,7 @@ body, html {
 						<div class="card-body">
                             <?php
                             if(\Auth::user()->role == 1 || \Auth::user()->role == 14){
-                                $InPersonCount_All_type = \App\Models\CheckinLog::where('id', '!=', '')->orderBy('created_at', 'desc')->count();
+                                $InPersonCount_All_type = \App\Models\CheckinLog::orderBy('created_at', 'desc')->count();
 
                                 $InPersonCount_waiting_type = \App\Models\CheckinLog::where('status',0)->orderBy('created_at', 'desc')->count();
 
@@ -215,7 +215,7 @@ body, html {
                                 $InPersonCount_archived_type = \App\Models\CheckinLog::where('is_archived',1)->orderBy('created_at', 'desc')->count();
 
                             } else {
-                                $InPersonCount_All_type = \App\Models\CheckinLog::where('user_id',Auth::user()->id)->where('id', '!=', '')->orderBy('created_at', 'desc')->count();
+                                $InPersonCount_All_type = \App\Models\CheckinLog::where('user_id',Auth::user()->id)->orderBy('created_at', 'desc')->count();
 
                                 $InPersonCount_waiting_type = \App\Models\CheckinLog::where('user_id',Auth::user()->id)->where('status',0)->orderBy('created_at', 'desc')->count();
 

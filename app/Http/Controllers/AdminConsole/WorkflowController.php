@@ -40,7 +40,7 @@ class WorkflowController extends Controller
 		//check authorization end
 
 		//$query 		= Workflow::where('id', '!=', '');
-        $query 		= WorkflowStage::where('id', '!=', '');
+        $query 		= WorkflowStage::query();
         $totalData 	= $query->count();	//for all data
         $lists		= $query->sortable(['id' => 'asc'])->paginate(config('constants.limit')); //dd($lists);
         return view('AdminConsole.features.workflow.index',compact(['lists', 'totalData']));

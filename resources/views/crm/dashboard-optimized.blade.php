@@ -258,25 +258,33 @@
                     </thead>
                     <tbody>
                         @forelse($data as $matter)
-                            <tr role="row" data-matter-id="{{ $matter->id }}">
+                            @if($matter && $matter->client_id)
+                            <tr role="row" data-matter-id="{{ $matter->id ?? '' }}">
                                 <td class="col-matter" style="white-space: initial;">
-                                    <a href="{{ route('clients.detail', [base64_encode(convert_uuencode($matter->client_id)), $matter->client_unique_matter_no]) }}" class="matter-link">
+                                    <a href="{{ route('clients.detail', [base64_encode(convert_uuencode($matter->client_id)), $matter->client_unique_matter_no ?? '']) }}" class="matter-link">
                                         @if($matter->sel_matter_id == 1)
                                             General matter
                                         @else
                                             {{ $matter->matter->title ?? 'NA' }}
                                         @endif
-                                        ({{ $matter->client_unique_matter_no }})
+                                        ({{ $matter->client_unique_matter_no ?? 'N/A' }})
                                     </a>
                                     @php
-                                        $emailCount = $matter->mailReports()
-                                            ->where('client_id', $matter->client_id)
-                                            ->where('conversion_type', 'conversion_email_fetch')
-                                            ->whereNull('mail_is_read')
-                                            ->where(function($query) {
-                                                $query->orWhere('mail_body_type', 'inbox')
-                                                      ->orWhere('mail_body_type', 'sent');
-                                            })->count();
+                                        $emailCount = 0;
+                                        if($matter && $matter->client_id) {
+                                            try {
+                                                $emailCount = $matter->mailReports()
+                                                    ->where('client_id', $matter->client_id)
+                                                    ->where('conversion_type', 'conversion_email_fetch')
+                                                    ->whereNull('mail_is_read')
+                                                    ->where(function($query) {
+                                                        $query->orWhere('mail_body_type', 'inbox')
+                                                              ->orWhere('mail_body_type', 'sent');
+                                                    })->count();
+                                            } catch (\Exception $e) {
+                                                $emailCount = 0;
+                                            }
+                                        }
                                     @endphp
                                     @if($emailCount > 0)
                                         <span class="badge badge-email" title="{{ $emailCount }} unread emails">
@@ -286,17 +294,28 @@
                                 </td>
                                 <td class="col-client_id">
                                     @php
-                                        $clientDetailParams = [base64_encode(convert_uuencode($matter->client_id))];
-                                        if(!empty($matter->client_unique_matter_no)) {
-                                            $clientDetailParams[] = $matter->client_unique_matter_no;
+                                        $clientDetailParams = [];
+                                        if($matter && $matter->client_id) {
+                                            $clientDetailParams = [base64_encode(convert_uuencode($matter->client_id))];
+                                            if(!empty($matter->client_unique_matter_no)) {
+                                                $clientDetailParams[] = $matter->client_unique_matter_no;
+                                            }
                                         }
                                     @endphp
-                                    <a href="{{ route('clients.detail', $clientDetailParams) }}" class="client-id-link">
-                                        {{ $matter->client->client_id ?: config('constants.empty') }}
-                                    </a>
+                                    @if(!empty($clientDetailParams))
+                                        <a href="{{ route('clients.detail', $clientDetailParams) }}" class="client-id-link">
+                                            {{ ($matter->client && $matter->client->client_id) ? $matter->client->client_id : config('constants.empty') }}
+                                        </a>
+                                    @else
+                                        <span class="text-muted">{{ config('constants.empty') }}</span>
+                                    @endif
                                 </td>
                                 <td class="col-client_name">
-                                    {{ $matter->client->first_name ?: config('constants.empty') }} {{ $matter->client->last_name ?: config('constants.empty') }}
+                                    @if($matter->client)
+                                        {{ ($matter->client->first_name ?? '') ?: config('constants.empty') }} {{ ($matter->client->last_name ?? '') ?: config('constants.empty') }}
+                                    @else
+                                        {{ config('constants.empty') }}
+                                    @endif
                                 </td>
                                 <td class="col-dob">
                                     @if($matter->client && $matter->client->dob)
@@ -351,6 +370,7 @@
                                     </select>
                                 </td>
                             </tr>
+                            @endif
                         @empty
                             <tr>
                                 <td colspan="8" class="empty-state">

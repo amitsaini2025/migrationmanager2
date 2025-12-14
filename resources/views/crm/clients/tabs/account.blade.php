@@ -344,7 +344,15 @@
                     </thead>
                     <tbody class="productitemList_invoice">
                         <?php
-                        $receipts_lists_invoice = DB::table('account_client_receipts')->where('client_matter_id',$client_selected_matter_id)->where('client_id',$fetchedData->id)->where('receipt_type',3)->groupBy('receipt_id')->orderBy('id', 'desc')->get();
+                        // Use DISTINCT ON for PostgreSQL to get latest record per receipt_id
+                        $receipts_lists_invoice = DB::select("
+                            SELECT DISTINCT ON (receipt_id) *
+                            FROM account_client_receipts
+                            WHERE client_matter_id = ? 
+                            AND client_id = ? 
+                            AND receipt_type = 3
+                            ORDER BY receipt_id, id DESC
+                        ", [$client_selected_matter_id, $fetchedData->id]);
                         
                         if(!empty($receipts_lists_invoice) && count($receipts_lists_invoice)>0 )
                         {
@@ -492,7 +500,7 @@
                             ->where('client_matter_id',$client_selected_matter_id)
                             ->where('client_id',$fetchedData->id)
                             ->where('receipt_type',2)
-                            ->orderByRaw('CASE WHEN invoice_no IS NULL OR invoice_no = "" THEN 0 ELSE 1 END')
+                            ->orderByRaw("CASE WHEN invoice_no IS NULL OR invoice_no = '' THEN 0 ELSE 1 END")
                             ->orderBy('id', 'desc')
                             ->get();
                         //dd($receipts_lists_office);

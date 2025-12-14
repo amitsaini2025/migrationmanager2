@@ -31,7 +31,7 @@ class UploadChecklistController extends Controller
 		
 	public function index(Request $request)
 	{
-		$query 		= UploadChecklist::where('id', '!=', ''); 
+		$query 		= UploadChecklist::query(); 
 		$totalData 	= $query->count();	//for all data
 		$lists		= $query->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
 		// Dropdown: Active Matter list

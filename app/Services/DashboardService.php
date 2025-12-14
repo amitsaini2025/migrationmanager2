@@ -46,12 +46,15 @@ class DashboardService
      */
     private function getClientMatters($request, $user)
     {
+        // Load all relationships without column restrictions
+        // Column restrictions can prevent relationships from loading if data doesn't match exactly
         $query = ClientMatter::with([
-            'client:id,first_name,last_name,dob,client_id',
-            'migrationAgent:id,first_name,last_name',
-            'personResponsible:id,first_name,last_name',
-            'personAssisting:id,first_name,last_name',
-            'workflowStage:id,name'
+            'client',           // Load full client record
+            'migrationAgent',  // Load full migration agent record
+            'personResponsible', // Load full person responsible record
+            'personAssisting',  // Load full person assisting record
+            'workflowStage',    // Load workflow stage
+            'matter'            // Load matter type
         ]);
 
         // Apply role-based filtering
@@ -286,8 +289,7 @@ class DashboardService
     private function getWorkflowStages()
     {
         return Cache::remember('workflow_stages', 3600, function () {
-            return WorkflowStage::where('id', '!=', '')
-                ->orderBy('id', 'ASC')
+            return WorkflowStage::orderBy('id', 'ASC')
                 ->get();
         });
     }

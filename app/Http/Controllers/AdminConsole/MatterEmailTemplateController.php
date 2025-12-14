@@ -38,7 +38,7 @@ class MatterEmailTemplateController extends Controller
 			} */	
 		//check authorization end 
 	
-		$query 		= MatterEmailTemplate::where('id', '!=', ''); 
+		$query 		= MatterEmailTemplate::query(); 
 		 
 		$totalData 	= $query->count();	//for all data
 		

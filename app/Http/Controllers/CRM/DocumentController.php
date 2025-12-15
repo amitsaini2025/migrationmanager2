@@ -2000,10 +2000,6 @@ class DocumentController extends Controller
             return redirect()->back()->with('error', 'Maximum reminders already sent.');
         }
 
-        if ($signer->last_reminder_sent_at && $signer->last_reminder_sent_at->diffInHours(now()) < 24) {
-            return redirect()->back()->with('error', 'Please wait 24 hours between reminders.');
-        }
-
         // Send reminder email
         $signingUrl = url("/sign/{$document->id}/{$signer->token}");
         Mail::raw("This is a reminder to sign your document: " . $signingUrl, function ($message) use ($signer) {

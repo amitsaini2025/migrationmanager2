@@ -153,10 +153,6 @@ class SignatureService
                 throw new \Exception('Maximum reminders already sent');
             }
 
-            if ($signer->last_reminder_sent_at && $signer->last_reminder_sent_at->diffInHours(now()) < 24) {
-                throw new \Exception('Please wait 24 hours between reminders');
-            }
-
             // ALWAYS use Zepto email account for signature emails
             $zeptoConfig = $this->emailConfigService->getZeptoAccount();
             

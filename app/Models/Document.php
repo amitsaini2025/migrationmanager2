@@ -141,34 +141,8 @@ class Document extends Model
      */
     public function scopeVisible($query, $user)
     {
-        // Super admins can see everything
-        if ($user->role === 1) {
-            return $query;
-        }
-
-        return $query->where(function($q) use ($user) {
-            // Documents created by the user
-            $q->where('created_by', $user->id)
-              // Documents where user is a signer
-              ->orWhereHas('signers', function($signerQuery) use ($user) {
-                  $signerQuery->where('email', $user->email);
-              })
-              // Documents associated with entities the user owns/manages
-              ->orWhere(function($assocQuery) use ($user) {
-                  $assocQuery->where(function($adminDocs) use ($user) {
-                      // Admin (client) associations
-                      $adminDocs->where('documentable_type', Admin::class)
-                                ->where('documentable_id', $user->id);
-                  })
-                  ->orWhere(function($leadDocs) use ($user) {
-                      // Lead associations where user is the owner
-                      $leadDocs->where('documentable_type', Lead::class)
-                               ->whereHas('documentable', function($leadQuery) use ($user) {
-                                   $leadQuery->where('user_id', $user->id);
-                               });
-                  });
-              });
-        });
+        // Global access - everyone can see all documents
+        return $query;
     }
 
     // Accessors

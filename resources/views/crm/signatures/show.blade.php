@@ -967,7 +967,7 @@
                                 @csrf
                                 <input type="hidden" name="signer_id" value="{{ $signer->id }}">
                                 <button type="submit" class="btn btn-warning" 
-                                        {{ ($signer->reminder_count >= 3 || ($signer->last_reminder_sent_at && $signer->last_reminder_sent_at->diffInHours(now()) < 24)) ? 'disabled' : '' }}>
+                                        {{ $signer->reminder_count >= 3 ? 'disabled' : '' }}>
                                     <i class="fas fa-bell"></i> 
                                     Send Reminder ({{ $signer->reminder_count }}/3)
                                 </button>
@@ -978,11 +978,15 @@
                             </button>
                         </div>
                         
-                        @if($signer->last_reminder_sent_at)
                         <div style="margin-top: 10px; font-size: 12px; color: #6c757d;">
-                            Last reminder sent: {{ $signer->last_reminder_sent_at->diffForHumans() }}
+                            @if($signer->last_reminder_sent_at)
+                                <i class="fas fa-clock"></i> Last reminder sent: 
+                                <strong>{{ $signer->last_reminder_sent_at->format('M d, Y g:i A') }}</strong>
+                                <span style="color: #9ca3af;">({{ $signer->last_reminder_sent_at->diffForHumans() }})</span>
+                            @else
+                                <i class="fas fa-info-circle"></i> No reminders sent yet
+                            @endif
                         </div>
-                        @endif
                         @endif
                     </div>
                     @empty

@@ -70,14 +70,6 @@ class SendSignatureReminders extends Command
                         continue;
                     }
                     
-                    // Check 24-hour cooldown
-                    if ($signer->last_reminder_sent_at && 
-                        $signer->last_reminder_sent_at->diffInHours(now()) < 24) {
-                        $this->comment("  ⏭️  Skipped {$signer->email} (cooldown period)");
-                        $skippedCount++;
-                        continue;
-                    }
-                    
                     // Send reminder
                     if ($signatureService->remind($signer)) {
                         $this->info("  ✅ Sent reminder to {$signer->email} (#{$signer->reminder_count})");

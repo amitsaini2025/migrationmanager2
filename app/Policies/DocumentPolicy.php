@@ -25,48 +25,8 @@ class DocumentPolicy
      */
     public function view(Admin $user, Document $document): bool
     {
-        // Super admin can view all
-        if ($user->role === 1) {
-            return true;
-        }
-
-        // Creator can view
-        if ($document->created_by === $user->id) {
-            return true;
-        }
-
-        // Signer can view
-        if ($document->signers()->where('email', $user->email)->exists()) {
-            return true;
-        }
-
-        // If document is associated with an entity the user owns/manages
-        if ($document->documentable_type && $document->documentable_id) {
-            // For Admin (client) associations
-            if ($document->documentable_type === Admin::class) {
-                // User can view if they're assigned to this client
-                // or if it's their own record
-                if ($document->documentable_id === $user->id) {
-                    return true;
-                }
-                
-                // Check if user is assigned to this client (you may need to adjust based on your assignment logic)
-                // For now, allow if user has appropriate role
-                if (in_array($user->role, [1, 2, 3])) { // Super Admin, Admin, Agent
-                    return true;
-                }
-            }
-
-            // For Lead associations
-            if ($document->documentable_type === Lead::class) {
-                $lead = Lead::find($document->documentable_id);
-                if ($lead && $lead->user_id === $user->id) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        // Global access - everyone can view all documents
+        return true;
     }
 
     /**
@@ -83,17 +43,8 @@ class DocumentPolicy
      */
     public function update(Admin $user, Document $document): bool
     {
-        // Super admin can update all
-        if ($user->role === 1) {
-            return true;
-        }
-
-        // Creator can update their own documents
-        if ($document->created_by === $user->id) {
-            return true;
-        }
-
-        return false;
+        // Global access - everyone can update all documents
+        return true;
     }
 
     /**
@@ -101,17 +52,8 @@ class DocumentPolicy
      */
     public function delete(Admin $user, Document $document): bool
     {
-        // Super admin can delete all
-        if ($user->role === 1) {
-            return true;
-        }
-
-        // Creator can delete their own documents (only if not signed)
-        if ($document->created_by === $user->id && $document->status !== 'signed') {
-            return true;
-        }
-
-        return false;
+        // Global access - everyone can delete documents (only if not signed)
+        return $document->status !== 'signed';
     }
 
     /**
@@ -128,17 +70,8 @@ class DocumentPolicy
      */
     public function sendReminder(Admin $user, Document $document): bool
     {
-        // Super admin can send reminders for any document
-        if ($user->role === 1) {
-            return true;
-        }
-
-        // Creator can send reminders
-        if ($document->created_by === $user->id) {
-            return true;
-        }
-
-        return false;
+        // Global access - everyone can send reminders for any document
+        return true;
     }
 
     /**
@@ -146,17 +79,8 @@ class DocumentPolicy
      */
     public function void(Admin $user, Document $document): bool
     {
-        // Super admin can void any document
-        if ($user->role === 1) {
-            return true;
-        }
-
-        // Creator can void their own documents (only if not signed)
-        if ($document->created_by === $user->id && $document->status !== 'signed') {
-            return true;
-        }
-
-        return false;
+        // Global access - everyone can void documents (only if not signed)
+        return $document->status !== 'signed';
     }
 
     /**
@@ -164,17 +88,8 @@ class DocumentPolicy
      */
     public function associate(Admin $user, Document $document): bool
     {
-        // Super admin can associate any document
-        if ($user->role === 1) {
-            return true;
-        }
-
-        // Creator can associate their own documents
-        if ($document->created_by === $user->id) {
-            return true;
-        }
-
-        return false;
+        // Global access - everyone can associate/detach documents
+        return true;
     }
 }
 

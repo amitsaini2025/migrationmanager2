@@ -270,7 +270,7 @@
             
             <p style="margin-top: 15px; font-size: 11px; color: #9ca3af;">
                 This is an automated reminder. Please do not reply to this email.<br>
-                You will receive up to 3 reminders, with 24 hours between each reminder.
+                You will receive up to 3 reminders.
             </p>
         </div>
     </div>

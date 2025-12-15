@@ -28,18 +28,18 @@ class SignatureDashboardController extends Controller
     {
         $user = Auth::guard('admin')->user();
         
-        // Get documents based on user permissions using visibility scope
+        // Get all documents (global access - everyone can see everything)
         $query = Document::with(['creator', 'signers', 'documentable'])
             ->visible($user)
             ->notArchived()
             ->orderBy('created_at', 'desc');
 
-        // Apply filters based on visibility scope
+        // Apply filters based on scope
         $query->when($request->has('scope'), function ($q) use ($request, $user) {
             return match($request->scope) {
                 'my_documents' => $q->forUser($user->id),
-                'team' => $q, // Already filtered by visible(), just keep it
-                'organization' => $user->role === 1 ? $q : $q->forUser($user->id),
+                'team' => $q, // All documents (global access)
+                'organization' => $q, // All documents (global access)
                 default => $q
             };
         })
@@ -71,25 +71,23 @@ class SignatureDashboardController extends Controller
 
         $documents = $query->paginate(20);
 
-        // Get counts for dashboard cards using visibility scope
+        // Get counts for dashboard cards (global access - all documents)
         $counts = [
             'sent_by_me' => Document::forUser($user->id)->notArchived()->count(),
-            'visible_to_me' => Document::visible($user)->notArchived()->count(),
-            'pending' => Document::visible($user)->byStatus('sent')->notArchived()->count(),
-            'signed' => Document::visible($user)->byStatus('signed')->notArchived()->count(),
+            'visible_to_me' => Document::visible($user)->notArchived()->count(), // All documents (global)
+            'pending' => Document::visible($user)->byStatus('sent')->notArchived()->count(), // All pending (global)
+            'signed' => Document::visible($user)->byStatus('signed')->notArchived()->count(), // All signed (global)
             'overdue' => Document::visible($user)
                 ->whereNotNull('due_at')
                 ->where('due_at', '<', now())
                 ->where('status', '!=', 'signed')
                 ->notArchived()
-                ->count(),
+                ->count(), // All overdue (global)
         ];
 
-        // Add admin counts if user is admin
-        if ($user->role === 1) {
-            $counts['all'] = Document::notArchived()->count();
-            $counts['all_pending'] = Document::byStatus('sent')->notArchived()->count();
-        }
+        // All users see global counts now
+        $counts['all'] = Document::notArchived()->count();
+        $counts['all_pending'] = Document::byStatus('sent')->notArchived()->count();
 
         // Provide errors variable for the layout
         $errors = $request->session()->get('errors') ?? new \Illuminate\Support\MessageBag();

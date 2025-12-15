@@ -29,11 +29,37 @@ class MailReportAttachmentController extends Controller
             // Security: Check user has access to this client's emails (optional - add authorization check)
             $mailReport = $attachment->mailReport;
             
+            // Check if s3_key exists
             if (!$attachment->s3_key) {
-                abort(404, 'Attachment file not found');
+                Log::error('Attachment download failed: No S3 key', [
+                    'id' => $id,
+                    'filename' => $attachment->filename,
+                    'file_path' => $attachment->file_path,
+                    'mail_report_id' => $attachment->mail_report_id
+                ]);
+                abort(404, 'Attachment file not found (no S3 key)');
+            }
+
+            // Check if file exists in S3
+            if (!Storage::disk('s3')->exists($attachment->s3_key)) {
+                Log::error('Attachment download failed: File not found in S3', [
+                    'id' => $id,
+                    's3_key' => $attachment->s3_key,
+                    'filename' => $attachment->filename
+                ]);
+                abort(404, 'Attachment file not found in storage');
             }
 
             $content = Storage::disk('s3')->get($attachment->s3_key);
+            
+            if (empty($content)) {
+                Log::error('Attachment download failed: Empty content', [
+                    'id' => $id,
+                    's3_key' => $attachment->s3_key,
+                    'filename' => $attachment->filename
+                ]);
+                abort(404, 'Attachment file is empty');
+            }
             
             return Response::make($content, 200, [
                 'Content-Type' => $attachment->content_type ?: 'application/octet-stream',
@@ -41,8 +67,12 @@ class MailReportAttachmentController extends Controller
                 'Content-Length' => strlen($content),
             ]);
         } catch (\Exception $e) {
-            Log::error('Attachment download failed', ['id' => $id, 'error' => $e->getMessage()]);
-            abort(404, 'Attachment file not found');
+            Log::error('Attachment download failed', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            abort(404, 'Attachment file not found: ' . $e->getMessage());
         }
     }
 

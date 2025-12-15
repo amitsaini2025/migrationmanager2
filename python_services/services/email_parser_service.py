@@ -8,6 +8,7 @@ Provides comprehensive email data extraction including metadata, content, and at
 import json
 import sys
 import os
+import base64
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
@@ -271,11 +272,19 @@ class EmailParserService:
                         'data': None
                     }
                     
-                    # Only include data if it's not too large (20MB limit)
-                    if attachment.data and len(attachment.data) < 20971520:  # 20MB limit (20 * 1024 * 1024)
+                    # Only include data if it's not too large (30MB limit - matches upload limit)
+                    if attachment.data and len(attachment.data) < 31457280:  # 30MB limit (30 * 1024 * 1024)
                         try:
-                            attachment_data['data'] = self._safe_get(attachment.data)
-                        except:
+                            # Base64 encode binary data for safe JSON transmission
+                            # This preserves binary data integrity (PDFs, images, etc.)
+                            if isinstance(attachment.data, bytes):
+                                attachment_data['data'] = base64.b64encode(attachment.data).decode('ascii')
+                            else:
+                                # If it's already a string, try to encode it
+                                attachment_data['data'] = base64.b64encode(attachment.data.encode('latin-1')).decode('ascii')
+                            logger.debug(f"Encoded attachment {attachment_data['filename']}: {len(attachment_data['data'])} chars (original: {len(attachment.data)} bytes)")
+                        except Exception as e:
+                            logger.error(f"Failed to encode attachment {attachment_data['filename']}: {str(e)}")
                             attachment_data['data'] = None
                     
                     attachments.append(attachment_data)

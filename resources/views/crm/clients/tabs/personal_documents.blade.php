@@ -235,10 +235,18 @@
                         pdfOption.style.display = 'none';
                     }
 
+                    // Measure actual menu dimensions dynamically
+                    // Temporarily show menu to measure it (off-screen)
+                    menu.style.visibility = 'hidden';
+                    menu.style.display = 'block';
+                    const menuWidth = menu.offsetWidth;
+                    const menuHeight = menu.offsetHeight;
+                    menu.style.display = 'none';
+                    menu.style.visibility = 'visible';
 
-                    // Position menu at cursor with edge detection
-                    const MENU_WIDTH = 180;
-                    const MENU_HEIGHT = 350;
+                    // Configuration
+                    const MIN_PADDING = 5; // Minimum distance from viewport edges (reduced for closer positioning)
+                    const CURSOR_OFFSET = 2; // Small offset from cursor position (reduced for closer feel)
                     
                     // Get scroll position
                     const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
@@ -248,24 +256,62 @@
                     const viewportWidth = window.innerWidth;
                     const viewportHeight = window.innerHeight;
                     
-                    // Use clientX/Y for viewport-relative position, then add scroll for document position
-                    let menuLeft = event.clientX + scrollLeft + 5;
-                    let menuTop = event.clientY + scrollTop + 5;
+                    // Get cursor position relative to viewport
+                    const cursorX = event.clientX;
+                    const cursorY = event.clientY;
                     
-                    // Check right edge - if menu would go beyond viewport, show on left
-                    if (event.clientX + MENU_WIDTH + 5 > viewportWidth) {
-                        menuLeft = event.clientX + scrollLeft - MENU_WIDTH - 5;
+                    // Start with cursor position (preferred: right and below)
+                    let menuLeft = cursorX + scrollLeft + CURSOR_OFFSET;
+                    let menuTop = cursorY + scrollTop + CURSOR_OFFSET;
+                    
+                    // Check if menu would overflow right edge - adjust to left of cursor if needed
+                    if (menuLeft + menuWidth > scrollLeft + viewportWidth - MIN_PADDING) {
+                        // Try positioning to the left of cursor
+                        const leftPosition = cursorX + scrollLeft - menuWidth - CURSOR_OFFSET;
+                        // Only use left position if it keeps menu visible
+                        if (leftPosition >= scrollLeft + MIN_PADDING) {
+                            menuLeft = leftPosition;
+                        } else {
+                            // Not enough space on left either - push to right edge with padding
+                            menuLeft = scrollLeft + viewportWidth - menuWidth - MIN_PADDING;
+                        }
                     }
                     
-                    // Check bottom edge - if menu would go beyond viewport, show above
-                    if (event.clientY + MENU_HEIGHT + 5 > viewportHeight) {
-                        menuTop = event.clientY + scrollTop - MENU_HEIGHT - 5;
+                    // Ensure menu doesn't go off left edge (minimal adjustment)
+                    if (menuLeft < scrollLeft + MIN_PADDING) {
+                        menuLeft = scrollLeft + MIN_PADDING;
+                    }
+                    
+                    // Check if menu would overflow bottom edge - adjust above cursor if needed
+                    if (menuTop + menuHeight > scrollTop + viewportHeight - MIN_PADDING) {
+                        // Try positioning above cursor
+                        const topPosition = cursorY + scrollTop - menuHeight - CURSOR_OFFSET;
+                        // Only use top position if it keeps menu visible
+                        if (topPosition >= scrollTop + MIN_PADDING) {
+                            menuTop = topPosition;
+                        } else {
+                            // Not enough space above either - push to bottom edge with padding
+                            menuTop = scrollTop + viewportHeight - menuHeight - MIN_PADDING;
+                        }
+                    }
+                    
+                    // Ensure menu doesn't go off top edge (minimal adjustment)
+                    if (menuTop < scrollTop + MIN_PADDING) {
+                        menuTop = scrollTop + MIN_PADDING;
+                    }
+                    
+                    // Final safety check: ensure menu stays fully within viewport bounds
+                    // These checks ensure the menu is always fully visible
+                    if (menuLeft + menuWidth > scrollLeft + viewportWidth - MIN_PADDING) {
+                        menuLeft = scrollLeft + viewportWidth - menuWidth - MIN_PADDING;
+                    }
+                    if (menuTop + menuHeight > scrollTop + viewportHeight - MIN_PADDING) {
+                        menuTop = scrollTop + viewportHeight - menuHeight - MIN_PADDING;
                     }
                     
                     // Apply position
                     menu.style.left = menuLeft + 'px';
                     menu.style.top = menuTop + 'px';
-
                     menu.style.display = 'block';
 
                     // Hide menu when clicking elsewhere

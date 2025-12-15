@@ -19,9 +19,9 @@ DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 RELOAD = os.getenv('RELOAD', 'False').lower() == 'true'
 
 # File upload limits
-MAX_FILE_SIZE_MB = int(os.getenv('MAX_FILE_SIZE_MB', '20'))
+MAX_FILE_SIZE_MB = int(os.getenv('MAX_FILE_SIZE_MB', '30'))
 ALLOWED_PDF_SIZE_MB = int(os.getenv('ALLOWED_PDF_SIZE_MB', '50'))
-ALLOWED_EMAIL_SIZE_MB = int(os.getenv('ALLOWED_EMAIL_SIZE_MB', '20'))
+ALLOWED_EMAIL_SIZE_MB = int(os.getenv('ALLOWED_EMAIL_SIZE_MB', '30'))
 
 # PDF processing configuration
 PDF_MAX_DPI = int(os.getenv('PDF_MAX_DPI', '300'))

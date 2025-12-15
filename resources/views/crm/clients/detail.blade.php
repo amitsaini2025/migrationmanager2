@@ -1205,6 +1205,7 @@ use App\Http\Controllers\Controller;
 <script>
 // TinyMCE Configuration for Email Modals
 var tinymceEmailConfig = {
+    license_key: 'gpl',
     height: 300,
     menubar: false,
     plugins: ['lists', 'link', 'autolink'],

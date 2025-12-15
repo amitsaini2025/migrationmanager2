@@ -92,6 +92,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     tinymce.init({
         selector: '#email_template_description',
+        license_key: 'gpl',
         height: 300,
         menubar: false,
         plugins: [

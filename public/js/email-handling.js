@@ -114,11 +114,35 @@
 
     /**
      * Format date to readable string
+     * Handles both ISO date strings and formatted strings like "d/m/Y h:i a"
      */
     function formatDate(dateString) {
         if (!dateString) return 'Unknown';
         try {
+            // Check if it's already in formatted format (d/m/Y h:i a)
+            if (typeof dateString === 'string' && dateString.match(/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2} (am|pm)$/i)) {
+                // Parse formatted date: "dd/mm/yyyy hh:mm am/pm"
+                const parts = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}) (am|pm)$/i);
+                if (parts) {
+                    const [, day, month, year, hour, minute, ampm] = parts;
+                    let hour24 = parseInt(hour);
+                    if (ampm.toLowerCase() === 'pm' && hour24 !== 12) hour24 += 12;
+                    if (ampm.toLowerCase() === 'am' && hour24 === 12) hour24 = 0;
+                    const date = new Date(year, month - 1, day, hour24, minute);
+                    return date.toLocaleString('en-AU', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+            }
+            // Try parsing as ISO date string
             const date = new Date(dateString);
+            if (isNaN(date.getTime())) {
+                return dateString; // Return as-is if can't parse
+            }
             return date.toLocaleString('en-AU', {
                 year: 'numeric',
                 month: 'short',
@@ -129,6 +153,22 @@
         } catch (e) {
             return dateString;
         }
+    }
+
+    /**
+     * Get the email date to display (prefers sent date over upload date)
+     */
+    function getEmailDate(email) {
+        // Prefer fetch_mail_sent_time (email's original sent date)
+        if (email.fetch_mail_sent_time) {
+            return email.fetch_mail_sent_time;
+        }
+        // Fallback to received_date if available
+        if (email.received_date) {
+            return email.received_date;
+        }
+        // Last resort: use created_at (upload time)
+        return getEmailDate(email);
     }
 
     /**
@@ -670,8 +710,26 @@
                     return (a.from_mail || '').localeCompare(b.from_mail || '');
                 case 'date':
                 default:
-                    const dateA = new Date(a.created_at || 0);
-                    const dateB = new Date(b.created_at || 0);
+                    // Use sent date for sorting, fallback to created_at
+                    const getDateForSort = (email) => {
+                        if (email.fetch_mail_sent_time) {
+                            // Parse formatted date: "dd/mm/yyyy hh:mm am/pm"
+                            const parts = email.fetch_mail_sent_time.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}) (am|pm)$/i);
+                            if (parts) {
+                                const [, day, month, year, hour, minute, ampm] = parts;
+                                let hour24 = parseInt(hour);
+                                if (ampm.toLowerCase() === 'pm' && hour24 !== 12) hour24 += 12;
+                                if (ampm.toLowerCase() === 'am' && hour24 === 12) hour24 = 0;
+                                return new Date(year, month - 1, day, hour24, minute);
+                            }
+                        }
+                        if (email.received_date) {
+                            return new Date(email.received_date);
+                        }
+                        return new Date(email.created_at || 0);
+                    };
+                    const dateA = getDateForSort(a);
+                    const dateB = getDateForSort(b);
                     return dateB - dateA; // Newest first
             }
         });
@@ -712,7 +770,7 @@
         const subject = email.subject || '(No subject)';
         const from = email.from_mail || 'Unknown sender';
         const to = cleanRecipients(email.to_mail) || 'Unknown recipient';
-        const date = formatDate(email.created_at);
+        const date = formatDate(getEmailDate(email));
         const isRead = email.mail_is_read == 1;
 
         // NEW: Attachment indicator
@@ -852,7 +910,7 @@
         const subject = email.subject || '(No subject)';
         const from = email.from_mail || 'Unknown';
         const to = cleanRecipients(email.to_mail) || 'Unknown';
-        const date = formatDate(email.created_at);
+        const date = formatDate(getEmailDate(email));
         const message = email.message || '(No content)';
 
         // Get regular (non-inline) attachments
@@ -1057,7 +1115,7 @@
     function formatQuotedMessage(email, isForward = false) {
         const from = email.from_mail || 'Unknown';
         const to = cleanRecipients(email.to_mail) || 'Unknown';
-        const date = formatDate(email.created_at);
+        const date = formatDate(getEmailDate(email));
         const subject = email.subject || '(No subject)';
         const message = email.message || '(No content)';
         

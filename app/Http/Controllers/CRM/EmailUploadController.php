@@ -45,7 +45,7 @@ class EmailUploadController extends Controller
             // Validate file input
             $validator = Validator::make($request->all(), [
                 'email_files' => 'required',
-                'email_files.*' => 'mimes:msg|max:20480', // 20MB max
+                'email_files.*' => 'mimes:msg|max:30720', // 30MB max
                 'client_id' => 'required',
                 'type' => 'required|in:client,lead'
             ]);
@@ -131,7 +131,7 @@ class EmailUploadController extends Controller
             // Validate file input
             $validator = Validator::make($request->all(), [
                 'email_files' => 'required',
-                'email_files.*' => 'mimes:msg|max:20480',
+                'email_files.*' => 'mimes:msg|max:30720', // 30MB max
                 'client_id' => 'required',
                 'type' => 'required|in:client,lead'
             ]);

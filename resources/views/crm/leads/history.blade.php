@@ -579,6 +579,7 @@ $(document).delegate('.editnote', 'click', function(){
                     if (!tinymce.get(editorId)) {
                         tinymce.init({
                             selector: '#' + editorId,
+                            license_key: 'gpl',
                             height: 150,
                             menubar: false,
                             plugins: ['lists', 'link', 'autolink'],

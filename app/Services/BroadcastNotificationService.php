@@ -22,16 +22,31 @@ class BroadcastNotificationService
      */
     public function createBroadcast(array $payload): array
     {
+        \Log::info('🚀 BroadcastNotificationService::createBroadcast started');
+        
         $sender = $payload['sender'] ?? Auth::user();
 
         if (!$sender) {
+            \Log::error('❌ No sender found for broadcast');
             throw new \RuntimeException('A valid sender is required to create a broadcast.');
         }
 
         $scope = $payload['scope'] ?? 'all';
         $messageBody = trim((string) ($payload['message'] ?? ''));
         $title = isset($payload['title']) ? trim((string) $payload['title']) : null;
+        
+        \Log::info('📋 Resolving recipients', [
+            'scope' => $scope,
+            'sender_id' => $sender->id,
+            'provided_recipient_ids' => $payload['recipient_ids'] ?? []
+        ]);
+        
         $recipientIds = $this->resolveRecipients($scope, (array) ($payload['recipient_ids'] ?? []), (int) $sender->id);
+        
+        \Log::info('✅ Recipients resolved', [
+            'count' => $recipientIds->count(),
+            'ids' => $recipientIds->take(10)->toArray() // Show first 10
+        ]);
 
         if ($recipientIds->isEmpty()) {
             throw new \InvalidArgumentException('Unable to resolve any recipients for the broadcast.');
@@ -70,6 +85,13 @@ class BroadcastNotificationService
         $recipientIdsForChannels = $recipientIds->all();
         $recipientIdsForPayload = $recipientCount <= 50 ? $recipientIdsForChannels : [];
 
+        \Log::info('📡 Broadcasting BroadcastNotificationCreated event', [
+            'batch_uuid' => $batchUuid,
+            'recipient_count' => $recipientCount,
+            'scope' => $scope,
+            'channel_count' => count($recipientIdsForChannels)
+        ]);
+        
         broadcast(new BroadcastNotificationCreated(
             batchUuid: $batchUuid,
             message: $messageBody,
@@ -82,6 +104,8 @@ class BroadcastNotificationService
             scope: $scope,
             sentAt: $sentAt
         ));
+        
+        \Log::info('✅ Broadcast event dispatched successfully');
 
         return [
             'batch_uuid' => $batchUuid,
@@ -291,7 +315,7 @@ class BroadcastNotificationService
     {
         $adminIds = Admin::query()
             ->where('role', '!=', 7)  // Exclude clients (role=7)
-            ->where('status', 1)
+            ->where('status', 1)  // Only active users
             ->pluck('id')
             ->map(fn ($id) => (int) $id);
 

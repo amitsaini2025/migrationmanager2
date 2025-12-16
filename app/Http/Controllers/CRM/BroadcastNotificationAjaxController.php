@@ -24,6 +24,11 @@ class BroadcastNotificationAjaxController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        \Log::info('📢 Broadcast send request received', [
+            'user_id' => $this->sender($request)?->id,
+            'payload' => $request->except(['_token'])
+        ]);
+
         $validated = $request->validate([
             'message' => ['required', 'string', 'max:1000'],
             'title' => ['nullable', 'string', 'max:255'],
@@ -31,6 +36,8 @@ class BroadcastNotificationAjaxController extends Controller
             'recipient_ids' => ['required_if:scope,specific', 'array'],
             'recipient_ids.*' => ['integer'],
         ]);
+
+        \Log::info('✅ Broadcast validation passed', ['validated' => $validated]);
 
         try {
             $result = $this->broadcasts->createBroadcast([
@@ -40,7 +47,16 @@ class BroadcastNotificationAjaxController extends Controller
                 'scope' => $validated['scope'],
                 'recipient_ids' => $validated['recipient_ids'] ?? [],
             ]);
+            
+            \Log::info('✅ Broadcast created successfully', [
+                'batch_uuid' => $result['batch_uuid'],
+                'recipient_count' => $result['recipient_count']
+            ]);
         } catch (\InvalidArgumentException $exception) {
+            \Log::error('❌ Broadcast creation failed', [
+                'error' => $exception->getMessage()
+            ]);
+            
             return response()->json([
                 'message' => $exception->getMessage(),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);

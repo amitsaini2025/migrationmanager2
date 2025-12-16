@@ -386,6 +386,15 @@
 
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
+        // Setup CSRF token for all AJAX requests (including Select2)
+        if (typeof $ !== 'undefined' && $.ajaxSetup) {
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken
+                }
+            });
+        }
+
         function toggleRecipientsVisibility() {
             if (scopeSelect.value === 'specific') {
                 recipientGroup.classList.remove('d-none');
@@ -974,32 +983,107 @@
             });
         });
 
-        scopeSelect.addEventListener('change', toggleRecipientsVisibility);
-
-        recipientSelect.select2({
-            width: '100%',
-            placeholder: recipientSelect.data('placeholder') || 'Select recipients',
-            minimumInputLength: 1,
-            ajax: {
-                url: '/getassigneeajax',
-                dataType: 'json',
-                delay: 250,
-                data(params) {
-                    return {
-                        likevalue: params.term || '',
-                    };
-                },
-                processResults(data) {
-                    return {
-                        results: (data || []).map((item) => ({
-                            id: item.id,
-                            text: item.assignee || item.agent_id || `User #${item.id}`,
-                        })),
-                    };
-                },
-                cache: true,
-            },
+        scopeSelect.addEventListener('change', function() {
+            toggleRecipientsVisibility();
+            
+            // Re-initialize Select2 when dropdown becomes visible to fix width/position issues
+            if (scopeSelect.value === 'specific' && !recipientSelect.data('select2-initialized')) {
+                initializeRecipientSelect();
+            }
         });
+
+        function initializeRecipientSelect() {
+            console.log('🔧 Initializing recipient Select2 dropdown...');
+            
+            recipientSelect.select2({
+                width: '100%',
+                placeholder: recipientSelect.data('placeholder') || 'Select recipients',
+                minimumInputLength: 0,  // Allow showing all users when clicking dropdown
+                ajax: {
+                    url: '/getassigneeajax',
+                    dataType: 'json',
+                    delay: 250,
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    data(params) {
+                        return {
+                            likevalue: params.term || '',
+                        };
+                    },
+                    processResults(data, params) {
+                        // Handle both array and object responses with error handling
+                        let items = [];
+                        
+                        if (Array.isArray(data)) {
+                            items = data;
+                        } else if (data && Array.isArray(data.data)) {
+                            items = data.data;
+                        } else if (data && data.error) {
+                            console.error('Error loading recipients:', data.error);
+                            return { results: [] };
+                        } else {
+                            console.warn('Unexpected response format:', data);
+                            return { results: [] };
+                        }
+                        
+                        return {
+                            results: items.map((item) => ({
+                                id: item.id,
+                                text: item.assignee || item.agent_id || `User #${item.id}`,
+                            })),
+                        };
+                    },
+                    transport: function(params, success, failure) {
+                        // Custom transport to handle authentication and errors properly
+                        const requestParams = params.data;
+                        const url = params.url + '?' + new URLSearchParams(requestParams).toString();
+                        
+                        fetch(url, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            credentials: 'include',
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                if (response.status === 419) {
+                                    throw new Error('CSRF token mismatch. Please refresh the page.');
+                                } else if (response.status === 401) {
+                                    throw new Error('Authentication required. Please log in again.');
+                                } else {
+                                    throw new Error(`HTTP ${response.status}: Unable to load staff list.`);
+                                }
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('✅ Recipients loaded:', data);
+                            success(data);
+                        })
+                        .catch(error => {
+                            console.error('❌ Failed to load recipients:', error);
+                            failure();
+                            
+                            // Show user-friendly error
+                            if (error.message.includes('CSRF')) {
+                                showFeedback('danger', 'Session expired. Please refresh the page.');
+                            } else if (error.message.includes('Authentication')) {
+                                showFeedback('danger', 'Please log in again to continue.');
+                            }
+                        });
+                        
+                        return { abort: () => {} };
+                    },
+                    cache: true,
+                },
+            });
+            
+            recipientSelect.data('select2-initialized', true);
+        }
 
         toggleRecipientsVisibility();
         loadHistory();

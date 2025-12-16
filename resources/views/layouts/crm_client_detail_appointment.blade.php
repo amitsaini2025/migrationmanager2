@@ -8,6 +8,7 @@
     <meta name="author" content="">
     <meta name="keyword" content="CRM">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="current-user-id" content="{{ optional(auth('admin')->user())->id }}">
     <title>CRM | Client Details</title>
     <link rel="icon" type="image/png" href="{{asset('img/favicon.png')}}">
     <link rel="stylesheet" href="{{asset('css/app.min.css')}}">
@@ -213,10 +214,112 @@
             .main-footer { position: relative; }
         }
         .sidebar-mini .main-content { padding-left: 25px !important; }
+        
+        .broadcast-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1100;
+            display: none;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #0f172a, #1d4ed8);
+            color: #ffffff;
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.25);
+        }
+
+        .broadcast-banner.is-visible {
+            display: flex;
+        }
+
+        .broadcast-banner__content {
+            flex: 1 1 auto;
+            min-width: 220px;
+        }
+
+        .broadcast-banner__title {
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 6px;
+        }
+
+        .broadcast-banner__title:not(.has-title) {
+            display: none;
+        }
+
+        .broadcast-banner__message {
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 4px;
+        }
+
+        .broadcast-banner__meta {
+            font-size: 12px;
+            opacity: 0.85;
+        }
+
+        .broadcast-banner__actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .broadcast-banner__btn {
+            border: 0;
+            border-radius: 999px;
+            padding: 6px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease, color 0.2s ease;
+            background: rgba(255, 255, 255, 0.9);
+            color: #0f172a;
+        }
+
+        .broadcast-banner__btn:hover {
+            background: #ffffff;
+        }
+
+        .broadcast-banner__btn--ghost {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            color: #ffffff;
+        }
+
+        .broadcast-banner__btn--ghost:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        @media (max-width: 768px) {
+            .broadcast-banner {
+                top: auto;
+                bottom: 0;
+                border-radius: 12px 12px 0 0;
+            }
+
+            .broadcast-banner__actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
     </style>
     @yield('styles')
 </head>
 <body class="sidebar-mini">
+    <div class="broadcast-banner" data-broadcast-banner>
+        <div class="broadcast-banner__content">
+            <div class="broadcast-banner__title" data-broadcast-title></div>
+            <div class="broadcast-banner__message" data-broadcast-message></div>
+            <div class="broadcast-banner__meta" data-broadcast-meta></div>
+        </div>
+        <div class="broadcast-banner__actions">
+            <button type="button" class="broadcast-banner__btn" data-action="mark-read">Mark as read</button>
+            <button type="button" class="broadcast-banner__btn broadcast-banner__btn--ghost" data-action="dismiss">Dismiss</button>
+        </div>
+    </div>
     <div class="loader"></div>
     <div class="popuploader" style="display: none;"></div>
     <div id="app">
@@ -1161,5 +1264,38 @@
 	</div>
 </div>
     @stack('scripts')
+    
+    {{-- Vite: Load Laravel Echo with Reverb for real-time WebSocket notifications --}}
+    {{-- Must load BEFORE broadcasts.js so window.Echo is available --}}
+    @vite(['resources/js/app.js'])
+    
+    {{-- Wait for Echo to be available before loading broadcasts.js --}}
+    <script>
+        // Poll for window.Echo to be available (Vite modules load asynchronously)
+        let echoCheckAttempts = 0;
+        const maxAttempts = 50; // 5 seconds max wait
+        
+        const waitForEcho = setInterval(() => {
+            echoCheckAttempts++;
+            
+            if (typeof window.Echo !== 'undefined') {
+                console.log('✅ window.Echo detected, loading broadcasts.js...');
+                clearInterval(waitForEcho);
+                
+                // Dynamically load broadcasts.js now that Echo is ready
+                const script = document.createElement('script');
+                script.src = '{{asset('js/broadcasts.js')}}';
+                document.body.appendChild(script);
+            } else if (echoCheckAttempts >= maxAttempts) {
+                console.warn('⚠️ window.Echo not available after waiting, broadcasts.js will use polling fallback');
+                clearInterval(waitForEcho);
+                
+                // Load broadcasts.js anyway (it has fallback to polling)
+                const script = document.createElement('script');
+                script.src = '{{asset('js/broadcasts.js')}}';
+                document.body.appendChild(script);
+            }
+        }, 100); // Check every 100ms
+    </script>
 </body>
 </html>

@@ -50,15 +50,26 @@ class BroadcastNotificationCreated implements ShouldBroadcastNow
      */
     public function broadcastOn(): array
     {
+        \Log::info('📡 BroadcastNotificationCreated::broadcastOn called', [
+            'scope' => $this->scope,
+            'channel_recipient_count' => count($this->channelRecipientIds)
+        ]);
+        
         $channels = [];
 
         if ($this->scope === 'all') {
             $channels[] = new Channel('broadcasts');
+            \Log::info('✅ Added public "broadcasts" channel');
         }
 
         foreach ($this->channelRecipientIds as $recipientId) {
             $channels[] = new PrivateChannel("user.{$recipientId}");
         }
+        
+        \Log::info('✅ Total channels created', [
+            'count' => count($channels),
+            'first_5' => array_slice(array_map(fn($c) => $c->name ?? 'broadcasts', $channels), 0, 5)
+        ]);
 
         return $channels;
     }

@@ -1045,6 +1045,445 @@
 
 
 
+
+        // ============================================================================
+        // DRAG AND DROP FUNCTIONALITY FOR CLIENT FUNDS LEDGER FORM
+        // ============================================================================
+
+        // Drag and Drop Zone Event Handlers for Ledger Form
+        $(document).on('dragover', '#ledgerDragDropZone', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).addClass('drag_over');
+            return false;
+        });
+        
+        $(document).on('dragleave', '#ledgerDragDropZone', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).removeClass('drag_over');
+            return false;
+        });
+        
+        $(document).on('drop', '#ledgerDragDropZone', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).removeClass('drag_over');
+            
+            var files = e.originalEvent.dataTransfer.files;
+            if (files && files.length > 0) {
+                handleLedgerFilesDrop(files);
+            }
+            return false;
+        });
+        
+        // Click to browse
+        $(document).on('click', '#ledgerDragDropZone', function(e) {
+            e.preventDefault();
+            if (!$(e.target).closest('.remove-file, .remove-all-files').length) {
+                $('.docclientreceiptupload').click();
+            }
+        });
+        
+        // File input change handler (for when user clicks to browse) - enhanced
+        $(document).on('change', '.docclientreceiptupload', function() {
+            var files = this.files;
+            if (files && files.length > 0) {
+                displayLedgerSelectedFiles(files);
+                updateFileSelectionHint(files);
+            } else {
+                clearLedgerFiles();
+            }
+        });
+        
+        // Remove individual file
+        $(document).on('click', '.ledger-remove-file', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var fileIndex = $(this).data('file-index');
+            removeLedgerFile(fileIndex);
+        });
+        
+        // Remove all files
+        $(document).on('click', '.remove-all-files', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            clearLedgerFiles();
+        });
+        
+        // Function to handle dropped files
+        function handleLedgerFilesDrop(files) {
+            var validFiles = [];
+            var fileInput = $('.docclientreceiptupload')[0];
+            var existingFiles = fileInput.files ? Array.from(fileInput.files) : [];
+            
+            // Validate each file
+            for (var i = 0; i < files.length; i++) {
+                if (validateLedgerFile(files[i])) {
+                    validFiles.push(files[i]);
+                }
+            }
+            
+            if (validFiles.length === 0) {
+                return false;
+            }
+            
+            // Combine with existing files
+            var allFiles = existingFiles.concat(validFiles);
+            
+            // Create new FileList using DataTransfer
+            var dataTransfer = new DataTransfer();
+            allFiles.forEach(function(file) {
+                dataTransfer.items.add(file);
+            });
+            
+            fileInput.files = dataTransfer.files;
+            
+            // Display selected files
+            displayLedgerSelectedFiles(fileInput.files);
+            
+            // Update file-selection-hint for compatibility
+            updateFileSelectionHint(fileInput.files);
+        }
+        
+        // Function to validate file
+        function validateLedgerFile(file) {
+            var allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
+            var fileExtension = file.name.split('.').pop().toLowerCase();
+            
+            if (!allowedExtensions.includes(fileExtension)) {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error('Invalid file type: ' + file.name + '. Please upload PDF, JPG, PNG, DOC, or DOCX files only.');
+                } else {
+                    alert('Invalid file type: ' + file.name + '. Please upload PDF, JPG, PNG, DOC, or DOCX files only.');
+                }
+                return false;
+            }
+            
+            // Validate file size (10MB max)
+            var maxSize = 10 * 1024 * 1024;
+            if (file.size > maxSize) {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error('File too large: ' + file.name + '. Maximum size is 10MB.');
+                } else {
+                    alert('File too large: ' + file.name + '. Maximum size is 10MB.');
+                }
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // Function to display selected files
+        function displayLedgerSelectedFiles(files) {
+            var filesList = $('#ledger-files-list');
+            filesList.empty();
+            
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                var fileItem = $('<div class="file-item">' +
+                    '<i class="fas fa-file-alt"></i>' +
+                    '<span class="file-name">' + file.name + ' (' + formatLedgerFileSize(file.size) + ')</span>' +
+                    '<a href="javascript:;" class="ledger-remove-file" data-file-index="' + i + '" title="Remove file">' +
+                        '<i class="fas fa-times"></i>' +
+                    '</a>' +
+                '</div>');
+                filesList.append(fileItem);
+            }
+            
+            $('#ledger-selected-files-display').show();
+            $('#ledgerDragDropZone').addClass('file-selected');
+        }
+        
+        // Function to remove a specific file
+        function removeLedgerFile(fileIndex) {
+            var fileInput = $('.docclientreceiptupload')[0];
+            var files = Array.from(fileInput.files);
+            files.splice(fileIndex, 1);
+            
+            var dataTransfer = new DataTransfer();
+            files.forEach(function(file) {
+                dataTransfer.items.add(file);
+            });
+            
+            fileInput.files = dataTransfer.files;
+            
+            if (files.length > 0) {
+                displayLedgerSelectedFiles(fileInput.files);
+            } else {
+                clearLedgerFiles();
+            }
+            
+            updateFileSelectionHint(fileInput.files);
+        }
+        
+        // Function to clear all files
+        function clearLedgerFiles() {
+            $('.docclientreceiptupload').val('');
+            $('#ledger-selected-files-display').hide();
+            $('#ledger-files-list').empty();
+            $('#ledgerDragDropZone').removeClass('file-selected');
+            $('.file-selection-hint').text('');
+        }
+        
+        // Function to format file size
+        function formatLedgerFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            var k = 1024;
+            var sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            var i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+        
+        // Function to update file selection hint (for compatibility with existing code)
+        function updateFileSelectionHint(files) {
+            var hintElement = $('.file-selection-hint');
+            if (files.length > 0) {
+                if (files.length === 1) {
+                    hintElement.text(files[0].name + ' selected');
+                } else {
+                    hintElement.text(files.length + ' Files selected');
+                }
+            } else {
+                hintElement.text('');
+            }
+        }
+        
+        // Reset when modal is closed
+        $('#createreceiptmodal').on('hidden.bs.modal', function() {
+            clearLedgerFiles();
+            $('#ledgerDragDropZone').removeClass('drag_over');
+            clearOfficeFiles();
+            $('.office-drag-drop-zone').removeClass('drag_over');
+        });
+
+
+
+
+        // ============================================================================
+        // DRAG AND DROP FUNCTIONALITY FOR OFFICE RECEIPT FORM
+        // ============================================================================
+
+        // Drag and Drop Zone Event Handlers for Office Receipt Form
+        $(document).on('dragover', '.office-drag-drop-zone', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).addClass('drag_over');
+            return false;
+        });
+        
+        $(document).on('dragleave', '.office-drag-drop-zone', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).removeClass('drag_over');
+            return false;
+        });
+        
+        $(document).on('drop', '.office-drag-drop-zone', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).removeClass('drag_over');
+            
+            var files = e.originalEvent.dataTransfer.files;
+            if (files && files.length > 0) {
+                var zoneId = $(this).attr('id');
+                handleOfficeFilesDrop(files, zoneId);
+            }
+            return false;
+        });
+        
+        // Click to browse
+        $(document).on('click', '.office-drag-drop-zone', function(e) {
+            e.preventDefault();
+            if (!$(e.target).closest('.remove-file, .remove-all-files-office').length) {
+                $('.docofficereceiptupload').click();
+            }
+        });
+        
+        // File input change handler (for when user clicks to browse) - enhanced
+        $(document).on('change', '.docofficereceiptupload', function() {
+            var files = this.files;
+            var zoneId = $(this).closest('.upload_office_receipt_document').find('.office-drag-drop-zone').attr('id');
+            if (files && files.length > 0) {
+                displayOfficeSelectedFiles(files, zoneId);
+                updateOfficeFileSelectionHint(files);
+            } else {
+                clearOfficeFiles(zoneId);
+            }
+        });
+        
+        // Remove individual file
+        $(document).on('click', '.office-remove-file', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var fileIndex = $(this).data('file-index');
+            var zoneId = $(this).closest('.ledger-selected-files-display').attr('id').replace('office-selected-files-display', '').replace('office-selected-files-display2', '');
+            zoneId = zoneId ? 'officeDragDropZone' + zoneId : 'officeDragDropZone';
+            removeOfficeFile(fileIndex, zoneId);
+        });
+        
+        // Remove all files
+        $(document).on('click', '.remove-all-files-office', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var zoneId = $(this).closest('.ledger-selected-files-display').attr('id').replace('office-selected-files-display', '').replace('office-selected-files-display2', '');
+            zoneId = zoneId ? 'officeDragDropZone' + zoneId : 'officeDragDropZone';
+            clearOfficeFiles(zoneId);
+        });
+        
+        // Function to handle dropped files
+        function handleOfficeFilesDrop(files, zoneId) {
+            var validFiles = [];
+            var fileInput = $('.docofficereceiptupload')[0];
+            var existingFiles = fileInput.files ? Array.from(fileInput.files) : [];
+            
+            // Validate each file
+            for (var i = 0; i < files.length; i++) {
+                if (validateOfficeFile(files[i])) {
+                    validFiles.push(files[i]);
+                }
+            }
+            
+            if (validFiles.length === 0) {
+                return false;
+            }
+            
+            // Combine with existing files
+            var allFiles = existingFiles.concat(validFiles);
+            
+            // Create new FileList using DataTransfer
+            var dataTransfer = new DataTransfer();
+            allFiles.forEach(function(file) {
+                dataTransfer.items.add(file);
+            });
+            
+            fileInput.files = dataTransfer.files;
+            
+            // Display selected files
+            displayOfficeSelectedFiles(fileInput.files, zoneId);
+            
+            // Update file-selection-hint for compatibility
+            updateOfficeFileSelectionHint(fileInput.files);
+        }
+        
+        // Function to validate file
+        function validateOfficeFile(file) {
+            var allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
+            var fileExtension = file.name.split('.').pop().toLowerCase();
+            
+            if (!allowedExtensions.includes(fileExtension)) {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error('Invalid file type: ' + file.name + '. Please upload PDF, JPG, PNG, DOC, or DOCX files only.');
+                } else {
+                    alert('Invalid file type: ' + file.name + '. Please upload PDF, JPG, PNG, DOC, or DOCX files only.');
+                }
+                return false;
+            }
+            
+            // Validate file size (10MB max)
+            var maxSize = 10 * 1024 * 1024;
+            if (file.size > maxSize) {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error('File too large: ' + file.name + '. Maximum size is 10MB.');
+                } else {
+                    alert('File too large: ' + file.name + '. Maximum size is 10MB.');
+                }
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // Function to display selected files
+        function displayOfficeSelectedFiles(files, zoneId) {
+            var displayId = zoneId === 'officeDragDropZone2' ? 'office-selected-files-display2' : 'office-selected-files-display';
+            var listId = zoneId === 'officeDragDropZone2' ? 'office-files-list2' : 'office-files-list';
+            var filesList = $('#' + listId);
+            filesList.empty();
+            
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                var fileItem = $('<div class="file-item">' +
+                    '<i class="fas fa-file-alt"></i>' +
+                    '<span class="file-name">' + file.name + ' (' + formatOfficeFileSize(file.size) + ')</span>' +
+                    '<a href="javascript:;" class="office-remove-file" data-file-index="' + i + '" title="Remove file">' +
+                        '<i class="fas fa-times"></i>' +
+                    '</a>' +
+                '</div>');
+                filesList.append(fileItem);
+            }
+            
+            $('#' + displayId).show();
+            $('#' + zoneId).addClass('file-selected');
+        }
+        
+        // Function to remove a specific file
+        function removeOfficeFile(fileIndex, zoneId) {
+            var fileInput = $('.docofficereceiptupload')[0];
+            var files = Array.from(fileInput.files);
+            files.splice(fileIndex, 1);
+            
+            var dataTransfer = new DataTransfer();
+            files.forEach(function(file) {
+                dataTransfer.items.add(file);
+            });
+            
+            fileInput.files = dataTransfer.files;
+            
+            if (files.length > 0) {
+                displayOfficeSelectedFiles(fileInput.files, zoneId);
+            } else {
+                clearOfficeFiles(zoneId);
+            }
+            
+            updateOfficeFileSelectionHint(fileInput.files);
+        }
+        
+        // Function to clear all files
+        function clearOfficeFiles(zoneId) {
+            if (!zoneId) {
+                // Clear all office files
+                $('.docofficereceiptupload').val('');
+                $('#office-selected-files-display, #office-selected-files-display2').hide();
+                $('#office-files-list, #office-files-list2').empty();
+                $('.office-drag-drop-zone').removeClass('file-selected');
+                $('.file-selection-hint1').text('');
+            } else {
+                var displayId = zoneId === 'officeDragDropZone2' ? 'office-selected-files-display2' : 'office-selected-files-display';
+                var listId = zoneId === 'officeDragDropZone2' ? 'office-files-list2' : 'office-files-list';
+                $('.docofficereceiptupload').val('');
+                $('#' + displayId).hide();
+                $('#' + listId).empty();
+                $('#' + zoneId).removeClass('file-selected');
+                $('.file-selection-hint1').text('');
+            }
+        }
+        
+        // Function to format file size
+        function formatOfficeFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            var k = 1024;
+            var sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            var i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+        
+        // Function to update file selection hint (for compatibility with existing code)
+        function updateOfficeFileSelectionHint(files) {
+            var hintElement = $('.file-selection-hint1');
+            if (files.length > 0) {
+                if (files.length === 1) {
+                    hintElement.text(files[0].name + ' selected');
+                } else {
+                    hintElement.text(files.length + ' Files selected');
+                }
+            } else {
+                hintElement.text('');
+            }
+        }
+
+
+
         // Show file selection hint when files are selected
 
         document.querySelector('.docofficereceiptupload').addEventListener('change', function(e) {
@@ -10478,6 +10917,246 @@ Bansal Immigration`;
             $(this).val(''); // Clear input after upload
 
         });
+
+
+
+
+        // ============================================================================
+        // DRAG AND DROP FUNCTIONALITY FOR PERSONAL & VISA DOCUMENTS
+        // ============================================================================
+
+        // -------------------------------------------------------------------------
+        // PERSONAL DOCUMENTS - Drag and Drop Handlers
+        // -------------------------------------------------------------------------
+        
+        $(document).delegate('.personal-doc-drag-zone', 'dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).addClass('drag_over');
+            return false;
+        });
+        
+        $(document).delegate('.personal-doc-drag-zone', 'dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).removeClass('drag_over');
+            return false;
+        });
+        
+        $(document).delegate('.personal-doc-drag-zone', 'drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).removeClass('drag_over');
+            
+            var files = e.originalEvent.dataTransfer.files;
+            if (files && files.length > 0) {
+                handlePersonalDocDragDrop($(this), files[0]);
+            }
+            return false;
+        });
+        
+        $(document).delegate('.personal-doc-drag-zone', 'click', function(e) {
+            e.preventDefault();
+            var fileid = $(this).data('fileid');
+            var fileInput = $('#upload_form_' + fileid).find('.docupload');
+            fileInput.click();
+        });
+        
+        // -------------------------------------------------------------------------
+        // VISA DOCUMENTS - Drag and Drop Handlers
+        // -------------------------------------------------------------------------
+        
+        $(document).delegate('.visa-doc-drag-zone', 'dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).addClass('drag_over');
+            return false;
+        });
+        
+        $(document).delegate('.visa-doc-drag-zone', 'dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).removeClass('drag_over');
+            return false;
+        });
+        
+        $(document).delegate('.visa-doc-drag-zone', 'drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).removeClass('drag_over');
+            
+            var files = e.originalEvent.dataTransfer.files;
+            if (files && files.length > 0) {
+                handleVisaDocDragDrop($(this), files[0]);
+            }
+            return false;
+        });
+        
+        $(document).delegate('.visa-doc-drag-zone', 'click', function(e) {
+            e.preventDefault();
+            var fileid = $(this).data('fileid');
+            var fileInput = $('#mig_upload_form_' + fileid).find('.migdocupload');
+            fileInput.click();
+        });
+        
+        // -------------------------------------------------------------------------
+        // PERSONAL DOCUMENTS - Upload Handler
+        // -------------------------------------------------------------------------
+        
+        function handlePersonalDocDragDrop(dragZone, file) {
+            var fileid = dragZone.data('fileid');
+            var doccategory = dragZone.data('doccategory');
+            var formId = dragZone.data('formid');
+            var form = $('#' + formId);
+            
+            // Validate filename
+            var validNameRegex = /^[a-zA-Z0-9_\-\.\s\$]+$/;
+            if (!validNameRegex.test(file.name)) {
+                alert("File name can only contain letters, numbers, dashes (-), underscores (_), spaces, dots (.), and dollar signs ($). Please rename the file and try again.");
+                return false;
+            }
+            
+            // Create FormData with all form fields
+            var formData = new FormData(form[0]);
+            
+            // Override the file input with dragged file
+            formData.set('document_upload', file);
+            
+            // Visual feedback
+            dragZone.addClass('uploading');
+            $('.custom-error-msg').html('<span class="alert alert-info"><i class="fa fa-clock-o"></i> Uploading document...</span>');
+            
+            // Upload via AJAX
+            $.ajax({
+                url: site_url + '/documents/upload-edu-document',
+                type: 'POST',
+                dataType: 'json',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(ress) {
+                    dragZone.removeClass('uploading');
+                    
+                    if (ress.status) {
+                        $('.custom-error-msg').html('<span class="alert alert-success">' + ress.message + '</span>');
+                        
+                        var row = $('#id_' + fileid);
+                        var docNameWithoutExt = ress.filename.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_").toLowerCase();
+                        
+                        // Replace upload TD content (Column 1 = File Name)
+                        var uploadTd = row.find('td').eq(1);
+                        uploadTd.html(
+                            '<div data-id="' + fileid + '" data-name="' + docNameWithoutExt + '" class="doc-row" title="Uploaded by: Admin" oncontextmenu="showFileContextMenu(event, ' + fileid + ', \'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'' + doccategory + '\', \'' + (ress.status_value || 'draft') + '\'); return false;">' +
+                                '<a href="javascript:void(0);" onclick="previewFile(\'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'preview-container-' + doccategory + '\')">' +
+                                    '<i class="fas fa-file-image"></i> <span>' + ress.filename + '</span>' +
+                                '</a>' +
+                            '</div>'
+                        );
+                        
+                        // Add hidden elements for context menu actions (Column 2 = Actions)
+                        var actionTd = row.find('td').eq(2);
+                        actionTd.html(
+                            '<a class="renamechecklist" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
+                            '<a class="renamedoc" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
+                            '<a class="download-file" data-filelink="' + ress.fileurl + '" data-filename="' + ress.filekey + '" href="#" style="display: none;"></a>' +
+                            '<a class="notuseddoc" data-id="' + fileid + '" data-doctype="' + ress.doctype + '" data-href="notuseddoc" href="javascript:;" style="display: none;"></a>'
+                        );
+                        
+                        row.addClass('drow');
+                    } else {
+                        $('.custom-error-msg').html('<span class="alert alert-danger">' + ress.message + '</span>');
+                    }
+                    
+                    getallactivities();
+                },
+                error: function(xhr, status, error) {
+                    dragZone.removeClass('uploading');
+                    $('.custom-error-msg').html('<span class="alert alert-danger">Upload failed. Please try again.</span>');
+                    console.error('Personal doc upload error:', error);
+                }
+            });
+        }
+        
+        // -------------------------------------------------------------------------
+        // VISA DOCUMENTS - Upload Handler
+        // -------------------------------------------------------------------------
+        
+        function handleVisaDocDragDrop(dragZone, file) {
+            var fileid = dragZone.data('fileid');
+            var visa_doc_cat = dragZone.data('doccategory');
+            var formId = dragZone.data('formid');
+            var form = $('#' + formId);
+            
+            // Validate filename
+            var validNameRegex = /^[a-zA-Z0-9_\-\.\s\$]+$/;
+            if (!validNameRegex.test(file.name)) {
+                alert("File name can only contain letters, numbers, dashes (-), underscores (_), spaces, dots (.), and dollar signs ($). Please rename the file and try again.");
+                return false;
+            }
+            
+            // Create FormData with all form fields
+            var formData = new FormData(form[0]);
+            
+            // Override the file input with dragged file
+            formData.set('document_upload', file);
+            
+            // Add extra data
+            formData.append('visa_doc_cat', visa_doc_cat);
+            
+            // Visual feedback
+            dragZone.addClass('uploading');
+            $('.custom-error-msg').html('<span class="alert alert-info"><i class="fa fa-clock-o"></i> Uploading document...</span>');
+            
+            // Upload via AJAX
+            $.ajax({
+                url: site_url + '/documents/upload-visa-document',
+                type: 'POST',
+                dataType: 'json',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(ress) {
+                    dragZone.removeClass('uploading');
+                    
+                    if (ress.status) {
+                        $('.custom-error-msg').html('<span class="alert alert-success">' + ress.message + '</span>');
+                        
+                        var row = $('#id_' + fileid);
+                        var docNameWithoutExt = ress.filename.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_").toLowerCase();
+                        
+                        // Replace upload TD content (Column 1 = File Name)
+                        var uploadTd = row.find('td').eq(1);
+                        uploadTd.html(
+                            '<div data-id="' + fileid + '" data-name="' + docNameWithoutExt + '" class="doc-row" title="Uploaded by: Admin" oncontextmenu="showVisaFileContextMenu(event, ' + fileid + ', \'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'' + visa_doc_cat + '\', \'' + (ress.status_value || 'draft') + '\'); return false;">' +
+                                '<a href="javascript:void(0);" onclick="previewFile(\'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'preview-container-migdocumnetlist\')">' +
+                                    '<i class="fas fa-file-image"></i> <span>' + ress.filename + '</span>' +
+                                '</a>' +
+                            '</div>'
+                        );
+                        
+                        // Add hidden elements for context menu actions (Column 2 = Actions)
+                        var actionTd = row.find('td').eq(2);
+                        actionTd.html(
+                            '<a class="renamechecklist" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
+                            '<a class="renamedoc" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
+                            '<a class="download-file" data-filelink="' + ress.fileurl + '" data-filename="' + ress.filekey + '" href="#" style="display: none;"></a>' +
+                            '<a class="notuseddoc" data-id="' + fileid + '" data-doctype="visa" data-href="notuseddoc" href="javascript:;" style="display: none;"></a>'
+                        );
+                        
+                        row.addClass('drow');
+                    } else {
+                        $('.custom-error-msg').html('<span class="alert alert-danger">' + ress.message + '</span>');
+                    }
+                    
+                    getallactivities();
+                },
+                error: function(xhr, status, error) {
+                    dragZone.removeClass('uploading');
+                    $('.custom-error-msg').html('<span class="alert alert-danger">Upload failed. Please try again.</span>');
+                    console.error('Visa doc upload error:', error);
+                }
+            });
+        }
 
 
 

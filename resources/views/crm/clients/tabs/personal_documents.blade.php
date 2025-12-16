@@ -128,8 +128,24 @@
                                                                         <input type="hidden" name="doctype" value="personal">
                                                                         <input type="hidden" name="doccategory" value="<?= $catVal->title ?>">
 
-                                                                        <a href="javascript:;" class="btn btn-primary add-document" data-fileid="<?= $fetch->id ?>"><i class="fa fa-plus"></i> Add Document</a>
-				                                                        <input class="docupload" data-fileid="<?= $fetch->id ?>" data-doccategory="<?= $id ?>" type="file" name="document_upload"/>
+                                                                        <!-- Drag and Drop Zone -->
+                                                                        <div class="document-drag-drop-zone personal-doc-drag-zone" 
+                                                                             data-fileid="<?= $fetch->id ?>" 
+                                                                             data-doccategory="<?= $id ?>"
+                                                                             data-formid="upload_form_<?= $fetch->id ?>">
+                                                                            <div class="drag-zone-inner">
+                                                                                <i class="fas fa-cloud-upload-alt"></i>
+                                                                                <span class="drag-zone-text">Drag file here or <strong>click to browse</strong></span>
+                                                                            </div>
+                                                                        </div>
+                                                                        
+                                                                        <!-- Keep existing file input (hidden, used as fallback) -->
+                                                                        <input class="docupload d-none" 
+                                                                               data-fileid="<?= $fetch->id ?>" 
+                                                                               data-doccategory="<?= $id ?>" 
+                                                                               type="file" 
+                                                                               name="document_upload" 
+                                                                               style="display: none;"/>
                                                                     </form>
                                                                 </div>
                                                             <?php endif; ?>
@@ -376,6 +392,60 @@
             <style>
                 .context-menu-item:hover {
                     background-color: #f8f9fa;
+                }
+
+                /* Drag and Drop Zone Styles */
+                .document-drag-drop-zone {
+                    border: 2px dashed #ccc;
+                    border-radius: 4px;
+                    padding: 15px 20px;
+                    text-align: center;
+                    background-color: #f9f9f9;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    min-height: 60px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 5px 0;
+                }
+
+                .document-drag-drop-zone:hover {
+                    border-color: #007bff;
+                    background-color: #f0f8ff;
+                }
+
+                .document-drag-drop-zone.drag_over {
+                    border-color: #28a745;
+                    background-color: #e8f5e9;
+                    border-width: 3px;
+                }
+
+                .drag-zone-inner {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    color: #666;
+                }
+
+                .drag-zone-inner i {
+                    font-size: 20px;
+                    color: #007bff;
+                }
+
+                .drag-zone-text {
+                    font-size: 14px;
+                }
+
+                .document-drag-drop-zone.uploading {
+                    pointer-events: none;
+                    opacity: 0.6;
+                }
+
+                .document-drag-drop-zone.uploading .drag-zone-text::after {
+                    content: ' Uploading...';
+                    font-weight: bold;
+                    color: #007bff;
                 }
             </style>
 

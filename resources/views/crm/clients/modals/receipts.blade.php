@@ -4,6 +4,141 @@
     Total: 6 large modals for comprehensive financial management
     ======================================== --}}
 
+<style>
+/* ============================================================================
+   CLIENT FUNDS LEDGER - DRAG AND DROP ZONE STYLES
+   ============================================================================ */
+
+.ledger-drag-drop-zone {
+    border: 2px dashed #ccc;
+    border-radius: 6px;
+    padding: 15px 12px;
+    text-align: center;
+    background-color: #f9f9f9;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0;
+    width: auto;
+    min-width: 250px;
+    max-width: 300px;
+}
+
+.ledger-drag-drop-zone:hover {
+    border-color: #007bff;
+    background-color: #f0f8ff;
+    transform: translateY(-2px);
+}
+
+.ledger-drag-drop-zone.drag_over {
+    border-color: #28a745;
+    background-color: #e8f5e9;
+    border-width: 3px;
+    box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
+}
+
+.ledger-drag-drop-zone .drag-zone-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.ledger-drag-drop-zone .drag-zone-inner i {
+    font-size: 28px;
+    color: #007bff;
+    transition: all 0.3s ease;
+}
+
+.ledger-drag-drop-zone:hover .drag-zone-inner i {
+    transform: scale(1.1);
+    color: #0056b3;
+}
+
+.ledger-drag-drop-zone .drag-zone-content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.ledger-drag-drop-zone .drag-zone-text {
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+    margin: 0;
+    line-height: 1.3;
+}
+
+.ledger-drag-drop-zone .drag-zone-formats {
+    font-size: 11px;
+    color: #666;
+    line-height: 1.2;
+}
+
+.ledger-drag-drop-zone.file-selected {
+    border-color: #28a745;
+    background-color: #f0fff4;
+}
+
+/* Selected Files Display */
+.ledger-selected-files-display {
+    padding: 8px;
+    background-color: #e8f5e9;
+    border-radius: 6px;
+    border: 1px solid #c3e6cb;
+    margin-bottom: 10px;
+    max-width: 350px;
+}
+
+.ledger-selected-files-display .files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 8px;
+}
+
+.ledger-selected-files-display .file-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    background-color: white;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.ledger-selected-files-display .file-item i {
+    color: #28a745;
+}
+
+.ledger-selected-files-display .file-item .file-name {
+    flex: 1;
+    color: #155724;
+    word-break: break-word;
+}
+
+.ledger-selected-files-display .file-item .remove-file {
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+    color: #dc3545;
+    cursor: pointer;
+}
+
+.ledger-selected-files-display .file-item .remove-file:hover {
+    opacity: 0.8;
+}
+
+.ledger-selected-files-display .remove-all-files {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+</style>
+
 {{-- 1. Create Receipt Modal (Multi-Type: Client Funds Ledger, Invoice, Office Receipt) --}}
 <div class="modal fade custom_modal" id="createreceiptmodal" tabindex="-1" role="dialog" aria-labelledby="receiptModalLabel" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
@@ -126,15 +261,36 @@
                             <a href="javascript:;" class="openproductrinfo"><i class="fa fa-plus"></i> Add New Line</a>
                         </div>
 
-						<div class="col-9 col-md-9 col-lg-9 text-right">
+						<div class="col-9 col-md-9 col-lg-9 text-right" style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
 
                             <div class="upload_client_receipt_document" style="display:inline-block;">
                                 <input type="hidden" name="type" value="client">
                                 <input type="hidden" name="doctype" value="client_receipt">
+                                
+                                <!-- NEW: Drag and Drop Zone -->
+                                <div class="ledger-drag-drop-zone" id="ledgerDragDropZone">
+                                    <div class="drag-zone-inner">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        <div class="drag-zone-content">
+                                            <p class="drag-zone-text">Drag files here or <strong>click to browse</strong></p>
+                                            <small class="drag-zone-formats">Accepted: PDF, JPG, PNG, DOC, DOCX (Multiple files allowed)</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Keep existing file input (hidden, used as fallback) -->
+                                <input class="docclientreceiptupload d-none" type="file" name="document_upload[]" multiple style="display: none;">
+                                
+                                <!-- File selection display (shown after files are selected) -->
+                                <div id="ledger-selected-files-display" class="ledger-selected-files-display" style="display: none;">
+                                    <div id="ledger-files-list" class="files-list"></div>
+                                    <button type="button" class="btn btn-sm btn-link text-danger remove-all-files" title="Remove all files">
+                                        <i class="fas fa-times"></i> Clear All
+                                    </button>
+                                </div>
+                                
+                                <!-- Keep existing file-selection-hint for compatibility -->
                                 <span class="file-selection-hint" style="margin-left: 10px; color: #34395e;"></span>
-                                <a href="javascript:;" class="btn btn-primary add-document-btn"><i class="fa fa-plus"></i> Add Document</a>
-                                <input class="docclientreceiptupload" type="file" name="document_upload[]"/>
-
                             </div>
 							<button onclick="customValidate('client_receipt_form')" type="button" class="btn btn-primary" style="margin:0px !important;">Save Entry</button>
 							<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -361,13 +517,35 @@
                             <a href="javascript:;" class="openproductrinfo_office"><i class="fa fa-plus"></i> Add New Line</a>
                         </div>
 
-						<div class="col-9 col-md-9 col-lg-9 text-right">
+						<div class="col-9 col-md-9 col-lg-9 text-right" style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
                             <div class="upload_office_receipt_document" style="display:inline-block;">
                                 <input type="hidden" name="type" value="client">
                                 <input type="hidden" name="doctype" value="office_receipt">
+                                
+                                <!-- NEW: Drag and Drop Zone -->
+                                <div class="ledger-drag-drop-zone office-drag-drop-zone" id="officeDragDropZone">
+                                    <div class="drag-zone-inner">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        <div class="drag-zone-content">
+                                            <p class="drag-zone-text">Drag files here or <strong>click to browse</strong></p>
+                                            <small class="drag-zone-formats">Accepted: PDF, JPG, PNG, DOC, DOCX (Multiple files allowed)</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Keep existing file input (hidden, used as fallback) -->
+                                <input class="docofficereceiptupload d-none" type="file" name="document_upload[]" multiple style="display: none;">
+                                
+                                <!-- File selection display (shown after files are selected) -->
+                                <div id="office-selected-files-display" class="ledger-selected-files-display" style="display: none;">
+                                    <div id="office-files-list" class="files-list"></div>
+                                    <button type="button" class="btn btn-sm btn-link text-danger remove-all-files-office" title="Remove all files">
+                                        <i class="fas fa-times"></i> Clear All
+                                    </button>
+                                </div>
+                                
+                                <!-- Keep existing file-selection-hint for compatibility -->
                                 <span class="file-selection-hint1" style="margin-right: 10px; color: #34395e;"></span>
-                                <a href="javascript:;" class="btn btn-primary add-document-btn1"><i class="fa fa-plus"></i> Add Document</a>
-                                <input class="docofficereceiptupload"  type="file" name="document_upload[]"/>
                             </div>
 
                             <button onclick="customValidate('office_receipt_form','draft')" type="button" class="btn btn-secondary" style="margin: 0px !important;"><i class="fas fa-save"></i> Save Draft</button>
@@ -882,12 +1060,32 @@
                             <a href="javascript:;" class="openproductrinfo_office"><i class="fa fa-plus"></i> Add New Line</a>
                         </div>
 
-						<div class="col-9 col-md-9 col-lg-9 text-right">
+						<div class="col-9 col-md-9 col-lg-9 text-right" style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
                             <div class="upload_office_receipt_document" style="display:inline-block;">
                                 <input type="hidden" name="type" value="client">
                                 <input type="hidden" name="doctype" value="office_receipt">
-                                <a href="javascript:;" class="btn btn-primary"><i class="fa fa-plus"></i> Add Document</a>
-                                <input class="docofficereceiptupload"  type="file" name="document_upload[]"/>
+                                
+                                <!-- NEW: Drag and Drop Zone -->
+                                <div class="ledger-drag-drop-zone office-drag-drop-zone" id="officeDragDropZone2">
+                                    <div class="drag-zone-inner">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        <div class="drag-zone-content">
+                                            <p class="drag-zone-text">Drag files here or <strong>click to browse</strong></p>
+                                            <small class="drag-zone-formats">Accepted: PDF, JPG, PNG, DOC, DOCX (Multiple files allowed)</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Keep existing file input (hidden, used as fallback) -->
+                                <input class="docofficereceiptupload d-none" type="file" name="document_upload[]" multiple style="display: none;">
+                                
+                                <!-- File selection display (shown after files are selected) -->
+                                <div id="office-selected-files-display2" class="ledger-selected-files-display" style="display: none;">
+                                    <div id="office-files-list2" class="files-list"></div>
+                                    <button type="button" class="btn btn-sm btn-link text-danger remove-all-files-office" title="Remove all files">
+                                        <i class="fas fa-times"></i> Clear All
+                                    </button>
+                                </div>
                             </div>
 
                             <button onclick="customValidate('create_office_receipt')" type="button" class="btn btn-primary" style="margin: 0px !important;">Save Entry</button>

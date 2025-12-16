@@ -2326,11 +2326,153 @@ tr.unallocated-receipt[draggable="true"]::after {
 tr.unallocated-receipt[draggable="true"]:hover::after {
     opacity: 1;
 }
+
+/* ============================================================================
+   RECEIPT UPLOAD MODAL - DRAG AND DROP ZONE STYLES
+   ============================================================================ */
+
+.receipt-drag-drop-zone {
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 40px 20px;
+    text-align: center;
+    background-color: #f9f9f9;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.receipt-drag-drop-zone:hover {
+    border-color: #007bff;
+    background-color: #f0f8ff;
+    transform: translateY(-2px);
+}
+
+.receipt-drag-drop-zone.drag_over {
+    border-color: #28a745;
+    background-color: #e8f5e9;
+    border-width: 3px;
+    box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
+}
+
+.receipt-drag-drop-zone .drag-zone-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+}
+
+.receipt-drag-drop-zone .drag-zone-inner i {
+    font-size: 48px;
+    color: #007bff;
+    transition: all 0.3s ease;
+}
+
+.receipt-drag-drop-zone:hover .drag-zone-inner i {
+    transform: scale(1.1);
+    color: #0056b3;
+}
+
+.receipt-drag-drop-zone .drag-zone-content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.receipt-drag-drop-zone .drag-zone-text {
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+    margin: 0;
+}
+
+.receipt-drag-drop-zone .drag-zone-formats {
+    font-size: 13px;
+    color: #666;
+}
+
+.receipt-drag-drop-zone.uploading {
+    pointer-events: none;
+    opacity: 0.6;
+    border-color: #007bff;
+}
+
+.receipt-drag-drop-zone.uploading .drag-zone-text {
+    color: #007bff;
+}
+
+.receipt-drag-drop-zone.uploading .drag-zone-text::after {
+    content: ' - Uploading...';
+    font-weight: bold;
+}
+
+.receipt-drag-drop-zone.file-selected {
+    border-color: #28a745;
+    background-color: #f0fff4;
+}
+
+/* Selected File Display */
+.selected-file-display {
+    padding: 12px 15px;
+    background-color: #e8f5e9;
+    border-radius: 6px;
+    border: 1px solid #c3e6cb;
+    margin-bottom: 15px;
+}
+
+.selected-file-display .file-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.selected-file-display .file-info i {
+    font-size: 20px;
+}
+
+.selected-file-display .file-name {
+    flex: 1;
+    font-weight: 500;
+    color: #155724;
+    word-break: break-word;
+}
+
+.selected-file-display .remove-file {
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+}
+
+.selected-file-display .remove-file:hover {
+    text-decoration: none;
+    opacity: 0.8;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+    .receipt-drag-drop-zone {
+        padding: 30px 15px;
+        min-height: 120px;
+    }
+    
+    .receipt-drag-drop-zone .drag-zone-inner i {
+        font-size: 36px;
+    }
+    
+    .receipt-drag-drop-zone .drag-zone-text {
+        font-size: 14px;
+    }
+}
 </style>
 
 <!-- Upload Receipt Document Modal -->
 <div class="modal fade" id="uploadReceiptDocModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
@@ -2351,9 +2493,32 @@ tr.unallocated-receipt[draggable="true"]:hover::after {
                     
                     <div class="form-group">
                         <label>Select Receipt Document <span class="text-danger">*</span></label>
-                        <input type="file" class="form-control" name="document_upload" id="receipt_document_upload" required 
-                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
-                        <small class="text-muted">Accepted formats: PDF, JPG, PNG, DOC, DOCX</small>
+                        
+                        <!-- NEW: Drag and Drop Zone -->
+                        <div class="receipt-drag-drop-zone" id="receiptDragDropZone">
+                            <div class="drag-zone-inner">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <div class="drag-zone-content">
+                                    <p class="drag-zone-text">Drag file here or <strong>click to browse</strong></p>
+                                    <small class="drag-zone-formats">Accepted: PDF, JPG, PNG, DOC, DOCX (Max 10MB)</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Keep existing file input (hidden, used as fallback) -->
+                        <input type="file" class="d-none" name="document_upload" id="receipt_document_upload" 
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display: none;">
+                        
+                        <!-- File name display (shown after selection) -->
+                        <div id="selected-file-display" class="selected-file-display" style="display: none;">
+                            <div class="file-info">
+                                <i class="fas fa-file-alt text-success"></i>
+                                <span id="selected-file-name" class="file-name"></span>
+                                <button type="button" class="btn btn-sm btn-link text-danger remove-file" title="Remove file">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="alert alert-info">
@@ -2546,9 +2711,166 @@ $(document).ready(function() {
         }
     });
     
+    // ============================================================================
+    // DRAG AND DROP FUNCTIONALITY FOR RECEIPT DOCUMENT UPLOAD MODAL
+    // ============================================================================
+
+    // Prevent default drag behaviors on the modal to avoid interference
+    $(document).on('dragover dragenter', '#uploadReceiptDocModal', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    });
+
+    // Drag and Drop Zone Event Handlers
+    $(document).on('dragover', '#receiptDragDropZone', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $(this).addClass('drag_over');
+        return false;
+    });
+
+    $(document).on('dragleave', '#receiptDragDropZone', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $(this).removeClass('drag_over');
+        return false;
+    });
+
+    $(document).on('drop', '#receiptDragDropZone', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $(this).removeClass('drag_over');
+        
+        var files = e.originalEvent.dataTransfer.files;
+        if (files && files.length > 0) {
+            handleReceiptFileDrop(files[0]);
+        }
+        return false;
+    });
+
+    // Click to browse
+    $(document).on('click', '#receiptDragDropZone', function(e) {
+        e.preventDefault();
+        // Don't trigger if user is clicking the remove button
+        if (!$(e.target).closest('.remove-file').length) {
+            $('#receipt_document_upload').click();
+        }
+    });
+
+    // File input change handler (for when user clicks to browse)
+    $(document).on('change', '#receipt_document_upload', function() {
+        var file = this.files[0];
+        if (file) {
+            if (validateReceiptFile(file)) {
+                displaySelectedReceiptFile(file);
+            } else {
+                // Clear the input
+                $(this).val('');
+            }
+        }
+    });
+
+    // Remove file button handler
+    $(document).on('click', '.remove-file', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        clearSelectedReceiptFile();
+    });
+
+    // Function to handle dropped file
+    function handleReceiptFileDrop(file) {
+        if (validateReceiptFile(file)) {
+            // Set file to input using DataTransfer API
+            var dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            $('#receipt_document_upload')[0].files = dataTransfer.files;
+            
+            // Display selected file
+            displaySelectedReceiptFile(file);
+        }
+    }
+
+    // Function to validate file
+    function validateReceiptFile(file) {
+        // Validate file type
+        var allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
+        var fileExtension = file.name.split('.').pop().toLowerCase();
+        
+        if (!allowedExtensions.includes(fileExtension)) {
+            if (typeof toastr !== 'undefined') {
+                toastr.error('Invalid file type. Please upload PDF, JPG, PNG, DOC, or DOCX files only.');
+            } else {
+                alert('Invalid file type. Please upload PDF, JPG, PNG, DOC, or DOCX files only.');
+            }
+            return false;
+        }
+        
+        // Validate file size (10MB max)
+        var maxSize = 10 * 1024 * 1024; // 10MB in bytes
+        if (file.size > maxSize) {
+            if (typeof toastr !== 'undefined') {
+                toastr.error('File size exceeds 10MB limit. Please choose a smaller file.');
+            } else {
+                alert('File size exceeds 10MB limit. Please choose a smaller file.');
+            }
+            return false;
+        }
+        
+        return true;
+    }
+
+    // Function to display selected file name
+    function displaySelectedReceiptFile(file) {
+        var fileName = file.name;
+        var fileSize = formatFileSize(file.size);
+        
+        $('#selected-file-name').text(fileName + ' (' + fileSize + ')');
+        $('#selected-file-display').show();
+        $('#receiptDragDropZone').addClass('file-selected').hide();
+    }
+
+    // Function to clear selected file
+    function clearSelectedReceiptFile() {
+        $('#receipt_document_upload').val('');
+        $('#selected-file-display').hide();
+        $('#selected-file-name').text('');
+        $('#receiptDragDropZone').removeClass('file-selected').show();
+    }
+
+    // Function to format file size
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        var k = 1024;
+        var sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        var i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    // Reset drag zone when modal is opened
+    $('#uploadReceiptDocModal').on('show.bs.modal', function() {
+        clearSelectedReceiptFile();
+    });
+
+    // Reset drag zone when modal is closed
+    $('#uploadReceiptDocModal').on('hidden.bs.modal', function() {
+        $('#receiptDragDropZone').removeClass('drag_over uploading file-selected');
+        clearSelectedReceiptFile();
+    });
+    
     // Handle form submission
     $('#uploadReceiptDocForm').on('submit', function(e) {
         e.preventDefault();
+        
+        // Validate file is selected
+        var fileInput = $('#receipt_document_upload')[0];
+        if (!fileInput.files || fileInput.files.length === 0) {
+            if (typeof toastr !== 'undefined') {
+                toastr.error('Please select a file to upload.');
+            } else {
+                alert('Please select a file to upload.');
+            }
+            return false;
+        }
         
         let receiptType = $('#upload_receipt_type').val();
         let formData = new FormData(this);
@@ -2561,9 +2883,23 @@ $(document).ready(function() {
             uploadUrl = '{{ route("clients.uploadofficereceiptdocument") }}';
         } else if (receiptType === 'journal') {
             uploadUrl = '{{ route("clients.uploadjournalreceiptdocument") }}';
+        } else {
+            if (typeof toastr !== 'undefined') {
+                toastr.error('Invalid receipt type.');
+            } else {
+                alert('Invalid receipt type.');
+            }
+            return false;
         }
         
-        // Show loading state
+        // Show loading state on file display (if visible) or drag zone
+        if ($('#selected-file-display').is(':visible')) {
+            $('#selected-file-display').css('opacity', '0.6');
+        } else {
+            $('#receiptDragDropZone').addClass('uploading');
+        }
+        
+        // Show loading state on submit button
         let submitBtn = $(this).find('button[type="submit"]');
         let originalText = submitBtn.html();
         submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Uploading...');
@@ -2587,6 +2923,7 @@ $(document).ready(function() {
                     }
                     $('#uploadReceiptDocModal').modal('hide');
                     $('#uploadReceiptDocForm')[0].reset();
+                    clearSelectedReceiptFile();
                     
                     // Reload the page to show the uploaded document
                     setTimeout(function() {
@@ -2602,21 +2939,32 @@ $(document).ready(function() {
             },
             error: function(xhr) {
                 console.error('Upload error:', xhr);
+                let errorMessage = 'An error occurred while uploading the document';
+                
+                // Try to extract error message from response
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                }
+                
                 if (typeof toastr !== 'undefined') {
-                    toastr.error('An error occurred while uploading the document');
+                    toastr.error(errorMessage);
                 } else {
-                    alert('Error: An error occurred while uploading the document');
+                    alert('Error: ' + errorMessage);
                 }
             },
             complete: function() {
+                // Remove loading states
+                $('#selected-file-display').css('opacity', '1');
+                $('#receiptDragDropZone').removeClass('uploading');
                 submitBtn.prop('disabled', false).html(originalText);
             }
         });
     });
     
-    // Reset form when modal is closed
+    // Reset form when modal is closed (additional handler for form reset)
     $('#uploadReceiptDocModal').on('hidden.bs.modal', function() {
         $('#uploadReceiptDocForm')[0].reset();
+        // clearSelectedReceiptFile() is already called in the handler above
     });
 });
 </script>

@@ -77,10 +77,11 @@ use App\Services\Sms\UnifiedSmsManager;
 use App\Traits\ClientAuthorization;
 use App\Traits\ClientHelpers;
 use App\Traits\ClientQueries;
+use App\Traits\LogsClientActivity;
 
 class ClientsController extends Controller
 {
-    use ClientAuthorization, ClientHelpers, ClientQueries;
+    use ClientAuthorization, ClientHelpers, ClientQueries, LogsClientActivity;
     
     protected $openAiClient;
     protected $smsManager;
@@ -3929,6 +3930,14 @@ class ClientsController extends Controller
             $client->gender = $validated['gender'] ?? null;
             $client->marital_status = $maritalStatus;
             $client->save();
+
+            // Log activity for basic information update
+            $this->logClientActivity(
+                $client->id,
+                'updated basic information',
+                'Updated basic client information',
+                'activity'
+            );
 
             return response()->json([
                 'success' => true,

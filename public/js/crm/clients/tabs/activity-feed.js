@@ -35,17 +35,22 @@
 
     /**
      * Filter activities based on type
-     * @param {string} filterType - The type of filter to apply (all, sms, note, document, accounting)
+     * @param {string} filterType - The type of filter to apply (all, activity, note, document, accounting)
      */
     function filterActivities(filterType) {
         if (filterType === 'all') {
             $('.feed-item.activity').show();
+        } else if (filterType === 'activity') {
+            // Show both activity-type-activity AND activity-type-sms (merged)
+            $('.feed-item.activity').hide();
+            $('.feed-item.activity-type-activity, .feed-item.activity-type-sms').show();
         } else if (filterType === 'note') {
-            // Show activities that don't have specific types (default notes) or have note type
+            // Show only actual notes (exclude activity edits, SMS, documents, and accounting)
             $('.feed-item.activity').each(function() {
                 var $item = $(this);
-                // Hide SMS, document, and accounting activities, show everything else (notes)
+                // Hide Activity edits, SMS, document, and accounting activities, show everything else (notes)
                 if (!$item.hasClass('activity-type-sms') && 
+                    !$item.hasClass('activity-type-activity') &&
                     !$item.hasClass('activity-type-document') && 
                     !$item.hasClass('activity-type-financial')) {
                     $item.show();
@@ -162,7 +167,7 @@
                 }
             });
         } else {
-            // Show only activities with specific type (e.g., sms)
+            // Show only activities with specific type (for other filters like document, accounting)
             $('.feed-item.activity').hide();
             $('.feed-item.activity-type-' + filterType).show();
         }

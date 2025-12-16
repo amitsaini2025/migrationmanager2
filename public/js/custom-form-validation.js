@@ -2985,6 +2985,12 @@ function getallactivities(client_id){
 			if (activityType === 'sms') {
 				subjectIcon = '<i class="fas fa-sms"></i>';
 				iconClass = 'feed-icon-sms';
+			} else if (activityType === 'activity') {
+				subjectIcon = '<i class="fas fa-bolt"></i>';
+				iconClass = 'feed-icon-activity';
+			} else if (activityType === 'financial') {
+				subjectIcon = '<i class="fas fa-dollar-sign"></i>';
+				iconClass = 'feed-icon-accounting';
 			} else if (v.subject && v.subject.toLowerCase().includes("document")) {
 				subjectIcon = '<i class="fas fa-file-alt"></i>';
 			} else {

@@ -1,7 +1,9 @@
 <li class="feed-item feed-item--email activity {{ $activity->activity_type ? 'activity-type-' . $activity->activity_type : '' }}" id="activity_{{ $activity->id }}">
-    <span class="feed-icon {{ $activity->activity_type === 'sms' ? 'feed-icon-sms' : '' }} {{ $activity->activity_type === 'financial' ? 'feed-icon-accounting' : '' }}">
+    <span class="feed-icon {{ $activity->activity_type === 'sms' ? 'feed-icon-sms' : '' }} {{ $activity->activity_type === 'activity' ? 'feed-icon-activity' : '' }} {{ $activity->activity_type === 'financial' ? 'feed-icon-accounting' : '' }}">
         @if($activity->activity_type === 'sms')
             <i class="fas fa-sms"></i>
+        @elseif($activity->activity_type === 'activity')
+            <i class="fas fa-bolt"></i>
         @elseif($activity->activity_type === 'financial')
             <i class="fas fa-dollar-sign"></i>
         @elseif(str_contains(strtolower($activity->subject ?? ''), "invoice") || 

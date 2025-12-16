@@ -1507,6 +1507,9 @@ $(document).ready(function() {
                         if (activityType === 'sms') {
                             subjectIcon = '<i class="fas fa-sms"></i>';
                             iconClass = 'feed-icon-sms';
+                        } else if (activityType === 'activity') {
+                            subjectIcon = '<i class="fas fa-bolt"></i>';
+                            iconClass = 'feed-icon-activity';
                         } else if (activityType === 'financial' || 
                                    subjectLower.includes('invoice') || 
                                    subjectLower.includes('receipt') || 

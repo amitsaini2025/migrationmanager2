@@ -890,6 +890,26 @@ input:checked + .toggle-slider:before { transform: translateX(18px); }
     border-radius: 4px;
 }
 
+/* Activity Type Styling (Client edits) */
+.activity-type-activity {
+    border-left: 3px solid #007bff !important;
+}
+
+.feed-icon-activity {
+    background: linear-gradient(135deg, #007bff, #0056b3) !important;
+    color: #fff !important;
+}
+
+.feed-icon-activity i {
+    color: #fff !important;
+}
+
+.activity-type-activity .feed-content {
+    background: #f0f4ff;
+    padding: 10px;
+    border-radius: 4px;
+}
+
 /* Provider and Status Badges (in description HTML from UnifiedSmsManager) */
 .badge {
     display: inline-block;

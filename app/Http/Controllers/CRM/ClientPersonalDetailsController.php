@@ -29,6 +29,7 @@ use App\Models\ClientMatter;
 use App\Models\ActivitiesLog;
 use App\Models\ClientPartner;
 use Illuminate\Support\Facades\Log;
+use App\Traits\LogsClientActivity;
 use Auth;
 
 /**
@@ -41,6 +42,7 @@ use Auth;
  */
 class ClientPersonalDetailsController extends Controller
 {
+    use LogsClientActivity;
     /**
      * Create a new controller instance.
      *
@@ -1598,6 +1600,14 @@ class ClientPersonalDetailsController extends Controller
                 ->orderByDesc('id')
                 ->first();
 
+            // Log activity for personal information update
+            $this->logClientActivity(
+                $clientId,
+                'updated personal information',
+                'Updated personal details including name, DOB, gender, marital status, and contact information',
+                'activity'
+            );
+
             $redirectUrl = $latestMatter
                 ? '/clients/detail/'.$encodedId.'/'.$latestMatter->client_unique_matter_no
                 : '/clients/detail/'.$encodedId;
@@ -1746,6 +1756,14 @@ class ClientPersonalDetailsController extends Controller
             $client->marital_status = $maritalStatus;
             $client->save();
 
+            // Log activity for basic information update
+            $this->logClientActivity(
+                $client->id,
+                'updated basic information',
+                'Updated basic client information',
+                'activity'
+            );
+
             return response()->json([
                 'success' => true,
                 'message' => 'Basic information updated successfully'
@@ -1891,6 +1909,15 @@ class ClientPersonalDetailsController extends Controller
                 $client->save();
             }
 
+            // Log activity for phone numbers update
+            $phoneCount = count($processedPhones);
+            $this->logClientActivity(
+                $client->id,
+                'updated phone numbers',
+                "Updated {$phoneCount} phone number(s)",
+                'activity'
+            );
+
             return response()->json([
                 'success' => true,
                 'message' => 'Phone numbers updated successfully'
@@ -1945,6 +1972,15 @@ class ClientPersonalDetailsController extends Controller
                 $client->email_type = $primaryEmailType;
                 $client->save();
             }
+
+            // Log activity for email addresses update
+            $emailCount = count(array_filter($emails, function($e) { return !empty($e['email']); }));
+            $this->logClientActivity(
+                $client->id,
+                'updated email addresses',
+                "Updated {$emailCount} email address(es)",
+                'activity'
+            );
 
             return response()->json([
                 'success' => true,
@@ -2012,6 +2048,17 @@ class ClientPersonalDetailsController extends Controller
                 }
             }
 
+            // Log activity for passport information update
+            $passportCount = count(array_filter($passports, function($p) { 
+                return !empty($p['passport_number']) || !empty($p['passport_country']); 
+            }));
+            $this->logClientActivity(
+                $client->id,
+                'updated passport information',
+                "Updated {$passportCount} passport record(s)",
+                'activity'
+            );
+
             return response()->json([
                 'success' => true,
                 'message' => 'Passport information updated successfully'
@@ -2078,6 +2125,17 @@ class ClientPersonalDetailsController extends Controller
                     ]);
                 }
             }
+
+            // Log activity for visa information update
+            $visaCount = count(array_filter($visas, function($v) { 
+                return !empty($v['visa_type_hidden']); 
+            }));
+            $this->logClientActivity(
+                $client->id,
+                'updated visa information',
+                "Updated {$visaCount} visa record(s)",
+                'activity'
+            );
 
             return response()->json([
                 'success' => true,
@@ -2179,6 +2237,17 @@ class ClientPersonalDetailsController extends Controller
                 }
             }
             
+            // Log activity for address information update
+            $addressCount = isset($requestData['zip']) && is_array($requestData['zip']) 
+                ? count(array_filter($requestData['zip'], function($zip) { return !empty($zip); }))
+                : 0;
+            $this->logClientActivity(
+                $client->id,
+                'updated address information',
+                "Updated {$addressCount} address record(s)",
+                'activity'
+            );
+
             return response()->json([
                 'success' => true,
                 'message' => 'Address information updated successfully'

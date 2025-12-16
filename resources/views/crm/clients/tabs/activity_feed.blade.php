@@ -12,8 +12,8 @@
         <button class="activity-filter-btn active" data-filter="all">
             <i class="fas fa-list"></i> All
         </button>
-        <button class="activity-filter-btn" data-filter="sms">
-            <i class="fas fa-sms"></i> SMS
+        <button class="activity-filter-btn" data-filter="activity">
+            <i class="fas fa-bolt"></i> Activity
         </button>
         <button class="activity-filter-btn" data-filter="note">
             <i class="fas fa-sticky-note"></i> Notes

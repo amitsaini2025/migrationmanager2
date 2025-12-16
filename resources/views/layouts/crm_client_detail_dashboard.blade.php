@@ -479,35 +479,83 @@
             text-overflow: ellipsis !important;
             flex: 1 !important;
         }
+        /* Broadcast Notification Box - Top Right Corner */
         .broadcast-banner {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
+            top: 20px;
+            right: 20px;
             z-index: 1100;
+            max-width: 380px;
+            min-width: 320px;
             display: none;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 12px;
-            padding: 14px 20px;
-            background: linear-gradient(135deg, #0f172a, #1d4ed8);
-            color: #ffffff;
-            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.25);
+            background: linear-gradient(135deg, #005792 0%, #00BBF0 100%);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            transform: translateX(450px);
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.3s ease;
+            opacity: 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .broadcast-banner.is-visible {
+            display: block;
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .broadcast-banner__header {
             display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.15);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .broadcast-banner__header-title {
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            margin: 0;
+        }
+
+        .broadcast-banner__header-title i {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+
+        .broadcast-banner__close-btn {
+            background: none;
+            border: none;
+            color: #ffffff;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background-color 0.2s ease;
+            font-size: 16px;
+            line-height: 1;
+            opacity: 0.9;
+        }
+
+        .broadcast-banner__close-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            opacity: 1;
         }
 
         .broadcast-banner__content {
-            flex: 1 1 auto;
-            min-width: 220px;
+            padding: 18px;
+            color: #ffffff;
         }
 
         .broadcast-banner__title {
             font-weight: 600;
-            font-size: 15px;
-            margin-bottom: 6px;
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #ffffff;
+            line-height: 1.4;
         }
 
         .broadcast-banner__title:not(.has-title) {
@@ -516,57 +564,70 @@
 
         .broadcast-banner__message {
             font-size: 14px;
-            line-height: 1.5;
-            margin-bottom: 4px;
+            line-height: 1.6;
+            margin-bottom: 12px;
+            color: rgba(255, 255, 255, 0.95);
         }
 
         .broadcast-banner__meta {
             font-size: 12px;
             opacity: 0.85;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .broadcast-banner__meta i {
+            font-size: 11px;
         }
 
         .broadcast-banner__actions {
             display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .broadcast-banner__btn {
             border: 0;
-            border-radius: 999px;
-            padding: 6px 16px;
+            border-radius: 8px;
+            padding: 8px 16px;
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s ease, color 0.2s ease;
-            background: rgba(255, 255, 255, 0.9);
-            color: #0f172a;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.95);
+            color: #005792;
+            flex: 1;
         }
 
         .broadcast-banner__btn:hover {
             background: #ffffff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         .broadcast-banner__btn--ghost {
             background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.6);
             color: #ffffff;
         }
 
         .broadcast-banner__btn--ghost:hover {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.9);
         }
 
         @media (max-width: 768px) {
             .broadcast-banner {
-                top: auto;
-                bottom: 0;
-                border-radius: 12px 12px 0 0;
-            }
-
-            .broadcast-banner__actions {
-                width: 100%;
-                justify-content: flex-end;
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
+                min-width: auto;
             }
         }
     </style>
@@ -574,14 +635,26 @@
 </head>
 <body class="sidebar-mini">
     <div class="broadcast-banner" data-broadcast-banner>
+        <div class="broadcast-banner__header">
+            <h5 class="broadcast-banner__header-title">
+                <i class="fas fa-bullhorn"></i>
+                Broadcast Message
+            </h5>
+            <button type="button" class="broadcast-banner__close-btn" data-action="dismiss" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
         <div class="broadcast-banner__content">
             <div class="broadcast-banner__title" data-broadcast-title></div>
             <div class="broadcast-banner__message" data-broadcast-message></div>
-            <div class="broadcast-banner__meta" data-broadcast-meta></div>
-        </div>
-        <div class="broadcast-banner__actions">
-            <button type="button" class="broadcast-banner__btn" data-action="mark-read">Mark as read</button>
-            <button type="button" class="broadcast-banner__btn broadcast-banner__btn--ghost" data-action="dismiss">Dismiss</button>
+            <div class="broadcast-banner__meta" data-broadcast-meta>
+                <i class="fas fa-info-circle"></i>
+                <span data-broadcast-meta-text></span>
+            </div>
+            <div class="broadcast-banner__actions">
+                <button type="button" class="broadcast-banner__btn" data-action="mark-read">Mark as read</button>
+                <button type="button" class="broadcast-banner__btn broadcast-banner__btn--ghost" data-action="dismiss">Dismiss</button>
+            </div>
         </div>
     </div>
     <div class="loader"></div>

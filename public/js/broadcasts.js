@@ -3,6 +3,7 @@
     const titleSelector = '[data-broadcast-title]';
     const messageSelector = '[data-broadcast-message]';
     const metaSelector = '[data-broadcast-meta]';
+    const metaTextSelector = '[data-broadcast-meta-text]';
     const markReadSelector = '[data-action="mark-read"]';
     const dismissSelector = '[data-action="dismiss"]';
 
@@ -26,8 +27,9 @@
     const titleEl = bannerEl.querySelector(titleSelector);
     const messageEl = bannerEl.querySelector(messageSelector);
     const metaEl = bannerEl.querySelector(metaSelector);
+    const metaTextEl = bannerEl.querySelector(metaTextSelector);
     const markReadBtn = bannerEl.querySelector(markReadSelector);
-    const dismissBtn = bannerEl.querySelector(dismissSelector);
+    const dismissBtn = bannerEl.querySelectorAll(dismissSelector);
 
     const endpoints = {
         unread: '/notifications/broadcasts/unread',
@@ -71,13 +73,13 @@
         if (!broadcast) {
             titleEl && (titleEl.textContent = '');
             messageEl && (messageEl.textContent = '');
-            metaEl && (metaEl.textContent = '');
+            metaTextEl && (metaTextEl.textContent = '');
             setBannerVisible(false);
             return;
         }
 
         if (titleEl) {
-            titleEl.textContent = broadcast.title || 'Broadcast';
+            titleEl.textContent = broadcast.title || '';
             titleEl.classList.toggle('has-title', Boolean(broadcast.title));
         }
 
@@ -85,7 +87,7 @@
             messageEl.textContent = broadcast.message || '';
         }
 
-        if (metaEl) {
+        if (metaTextEl) {
             const parts = [];
 
             if (broadcast.sender_name) {
@@ -97,7 +99,7 @@
                 parts.push(formatted);
             }
 
-            metaEl.textContent = parts.join(' • ');
+            metaTextEl.textContent = parts.join(' • ');
         }
 
         setBannerVisible(true);
@@ -336,8 +338,10 @@
             markReadBtn.addEventListener('click', markActiveAsRead);
         }
 
-        if (dismissBtn) {
-            dismissBtn.addEventListener('click', dismissActiveBroadcast);
+        if (dismissBtn && dismissBtn.length > 0) {
+            dismissBtn.forEach(btn => {
+                btn.addEventListener('click', dismissActiveBroadcast);
+            });
         }
     }
 

@@ -451,6 +451,15 @@ function customValidate(formName, savetype = '')
 									$('.custom-error-msg').html('<span class="alert alert-success">'+obj.message+'</span>');
 									$('.documnetlist_'+doccategory).html(obj.data);
 									$('.griddata_'+doccategory).html(obj.griddata);
+									
+									// Re-initialize drag and drop for newly added checklist items
+									// Use setTimeout to ensure DOM is fully updated before initialization
+									setTimeout(function() {
+										if (typeof initPersonalDocDragDrop === 'function') {
+											console.log('🔄 Re-initializing drag and drop after adding checklist...');
+											initPersonalDocDragDrop();
+										}
+									}, 100);
 								}else{
 									$('.custom-error-msg').html('<span class="alert alert-danger">'+obj.message+'</span>');
 								}

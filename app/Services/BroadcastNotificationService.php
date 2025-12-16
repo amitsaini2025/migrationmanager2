@@ -59,7 +59,12 @@ class BroadcastNotificationService
             ];
         });
 
-        DB::table('notifications')->insert($notificationRows->all());
+        // Chunk inserts to avoid "too many placeholders" error
+        // MySQL has a limit of ~65,535 placeholders per statement
+        // With 11 columns per row, we can safely insert ~500 rows per batch
+        $notificationRows->chunk(500)->each(function ($chunk) {
+            DB::table('notifications')->insert($chunk->all());
+        });
 
         $recipientCount = $recipientIds->count();
         $recipientIdsForChannels = $recipientIds->all();
@@ -280,15 +285,17 @@ class BroadcastNotificationService
 
     /**
      * Fetch every available recipient excluding the sender.
+     * Only includes Admin users (staff), NOT clients (role=7 are clients).
      */
     protected function allRecipients(int $senderId): Collection
     {
-        $adminIds = Admin::query()->pluck('id')->map(fn ($id) => (int) $id);
-        $portalUserIds = $this->portalUsers()->pluck('id')->map(fn ($id) => (int) $id);
+        $adminIds = Admin::query()
+            ->where('role', '!=', 7)  // Exclude clients (role=7)
+            ->where('status', 1)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
 
         return $adminIds
-            ->merge($portalUserIds)
-            ->unique()
             ->reject(fn (int $id) => $id === $senderId)
             ->values();
     }
@@ -331,14 +338,13 @@ class BroadcastNotificationService
 
     /**
      * @return \Illuminate\Support\Collection<int,\App\Models\User>
+     * @deprecated No longer used - clients are excluded from broadcasts
      */
     protected function portalUsers(): Collection
     {
-        if (!class_exists(User::class)) {
-            return collect();
-        }
-
-        return User::query()->select('id')->get();
+        // This method is deprecated - clients (User model) should not receive broadcasts
+        // Only Admin users with role != 7 (staff) should receive broadcasts
+        return collect();
     }
 }
 

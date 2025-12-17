@@ -2105,12 +2105,19 @@ window.savePhoneNumbers = function() {
                 // Check if it's a placeholder number
                 const isPlaceholder = isPlaceholderNumber(phone.phone);
                 
-                // For newly saved numbers, show verify button for +61 numbers (excluding placeholders)
-                // The actual verification status will be loaded from the server on page refresh
-                const verificationButton = (phone.country_code === '+61' && !isPlaceholder) ? 
-                    `<button type="button" class="btn-verify-phone" onclick="sendOTP('${phone.id || 'pending'}', '${phone.phone}', '${phone.country_code}')" data-contact-id="${phone.id || 'pending'}">
-                        <i class="fas fa-lock"></i> Verify
-                     </button>` : '';
+                // Show verify button only for saved Australian numbers (not placeholders, not unsaved)
+                let verificationButton = '';
+                if (phone.country_code === '+61' && !isPlaceholder) {
+                    if (phone.id && phone.id !== 'pending') {
+                        verificationButton = `<button type="button" class="btn-verify-phone" onclick="sendOTP('${phone.id}', '${phone.phone}', '${phone.country_code}')" data-contact-id="${phone.id}">
+                            <i class="fas fa-lock"></i> Verify
+                         </button>`;
+                    } else {
+                        verificationButton = `<span class="text-muted" style="font-size: 12px;" title="Save the phone first to enable verification">
+                            <i class="fas fa-info-circle"></i> Save to verify
+                         </span>`;
+                    }
+                }
                 
                 return `
                     <div class="summary-item">
@@ -2167,14 +2174,21 @@ window.saveEmailAddresses = function() {
         
         if (emails.length > 0) {
             summaryGrid.innerHTML = emails.map((email, index) => {
-                // For newly saved emails, show verify button
-                const verificationButton = !email.is_verified ? 
-                    `<button type="button" class="btn-verify-email" onclick="sendEmailVerification('${email.email_id || 'pending'}', '${email.email}')" data-email-id="${email.email_id || 'pending'}">
-                        <i class="fas fa-lock"></i> Verify
-                     </button>` : 
-                    `<span class="verified-badge">
+                // Show verify button only for saved emails with valid ID
+                let verificationButton = '';
+                if (email.is_verified) {
+                    verificationButton = `<span class="verified-badge">
                         <i class="fas fa-check-circle"></i> Verified
                      </span>`;
+                } else if (email.email_id && email.email_id !== 'pending') {
+                    verificationButton = `<button type="button" class="btn-verify-email" onclick="sendEmailVerification('${email.email_id}', '${email.email}')" data-email-id="${email.email_id}">
+                        <i class="fas fa-lock"></i> Verify
+                     </button>`;
+                } else {
+                    verificationButton = `<span class="text-muted" style="font-size: 12px;" title="Save the email first to enable verification">
+                        <i class="fas fa-info-circle"></i> Save to verify
+                     </span>`;
+                }
                 
                 return `
                     <div class="summary-item">
@@ -4358,6 +4372,12 @@ $(document).ready(function() {
      * Send OTP to phone number
      */
     window.sendOTP = function(contactId, phone, countryCode) {
+        // Validate contact ID
+        if (!contactId || contactId === 'pending') {
+            alert('Please save the phone number first before verifying');
+            return;
+        }
+        
         currentContactId = contactId;
         const fullPhone = countryCode + phone;
         
@@ -4373,6 +4393,11 @@ $(document).ready(function() {
         
         // Disable verify button initially
         document.getElementById('verifyOTPBtn').disabled = true;
+        
+        // Focus first input
+        setTimeout(() => {
+            document.querySelector('.otp-digit[data-index="0"]').focus();
+        }, 100);
         
         // Send OTP request
         fetch('/clients/phone/send-otp', {
@@ -4405,7 +4430,9 @@ $(document).ready(function() {
      * Verify OTP
      */
     window.verifyOTP = function() {
+        console.log('[OTP Verify] Function called');
         const otpCode = getOTPCode();
+        console.log('[OTP Verify] Code:', otpCode, 'Length:', otpCode.length);
         
         if (otpCode.length !== 6) {
             showOTPErrorMessage('Please enter all 6 digits');
@@ -4509,10 +4536,23 @@ $(document).ready(function() {
     function getOTPCode() {
         let otpCode = '';
         for (let i = 0; i < 6; i++) {
-            const digit = document.querySelector(`.otp-digit[data-index="${i}"]`).value;
-            otpCode += digit || '';
+            const digit = document.querySelector(`.otp-digit[data-index="${i}"]`)?.value || '';
+            otpCode += digit;
         }
         return otpCode;
+    }
+    
+    /**
+     * Check if OTP is complete and enable/disable verify button
+     */
+    function checkOTPComplete() {
+        const otpCode = getOTPCode();
+        const verifyBtn = document.getElementById('verifyOTPBtn');
+        console.log('[OTP Check] Code:', otpCode, 'Length:', otpCode.length, 'Button found:', !!verifyBtn);
+        if (verifyBtn) {
+            verifyBtn.disabled = otpCode.length !== 6;
+            console.log('[OTP Check] Button disabled:', verifyBtn.disabled);
+        }
     }
 
     /**
@@ -4556,11 +4596,11 @@ $(document).ready(function() {
     function startResendTimer(seconds) {
         let timeLeft = seconds;
         const resendBtn = document.getElementById('resendOTPBtn');
-        const resendTimer = document.getElementById('resendTimer');
+        const resendTimerDisplay = document.getElementById('resendTimer');
         const countdownElement = document.getElementById('resendCountdown');
         
         resendBtn.disabled = true;
-        resendTimer.style.display = 'inline';
+        resendTimerDisplay.style.display = 'inline';
         
         resendTimer = setInterval(() => {
             countdownElement.textContent = timeLeft;
@@ -4568,7 +4608,7 @@ $(document).ready(function() {
             if (timeLeft <= 0) {
                 clearInterval(resendTimer);
                 resendBtn.disabled = false;
-                resendTimer.style.display = 'none';
+                resendTimerDisplay.style.display = 'none';
             }
             
             timeLeft--;
@@ -4638,31 +4678,38 @@ $(document).ready(function() {
     }
 
     // OTP Input Event Listeners
-    document.addEventListener('DOMContentLoaded', function() {
+    // Run immediately if DOM already loaded, otherwise wait for DOMContentLoaded
+    function initializeOTPListeners() {
+        console.log('[OTP] Event listeners initialized');
+        
         // Handle OTP input auto-focus and validation
         document.addEventListener('input', function(e) {
             if (e.target.classList.contains('otp-digit')) {
                 const index = parseInt(e.target.dataset.index);
-                const value = e.target.value;
+                let value = e.target.value;
+                console.log('[OTP Input] Index:', index, 'Value:', value);
+                
+                // Allow only digits
+                value = value.replace(/[^0-9]/g, '');
+                e.target.value = value;
                 
                 // Add filled class for styling
                 if (value) {
                     e.target.classList.add('filled');
+                    
+                    // Auto-focus next input
+                    if (index < 5) {
+                        const nextInput = document.querySelector(`.otp-digit[data-index="${index + 1}"]`);
+                        if (nextInput) {
+                            nextInput.focus();
+                        }
+                    }
                 } else {
                     e.target.classList.remove('filled');
                 }
                 
-                // Auto-focus next input
-                if (value && index < 5) {
-                    const nextInput = document.querySelector(`.otp-digit[data-index="${index + 1}"]`);
-                    if (nextInput) {
-                        nextInput.focus();
-                    }
-                }
-                
-                // Enable verify button when all digits are entered
-                const otpCode = getOTPCode();
-                document.getElementById('verifyOTPBtn').disabled = otpCode.length !== 6;
+                // Enable/disable verify button based on completion
+                checkOTPComplete();
             }
         });
         
@@ -4681,13 +4728,59 @@ $(document).ready(function() {
             }
         });
         
+        // Handle paste event
+        document.addEventListener('paste', function(e) {
+            if (e.target.classList.contains('otp-digit')) {
+                e.preventDefault();
+                const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '');
+                
+                if (pastedData.length > 0) {
+                    const startIndex = parseInt(e.target.dataset.index);
+                    for (let i = 0; i < pastedData.length && (startIndex + i) < 6; i++) {
+                        const input = document.querySelector(`.otp-digit[data-index="${startIndex + i}"]`);
+                        if (input) {
+                            input.value = pastedData[i];
+                            input.classList.add('filled');
+                        }
+                    }
+                    checkOTPComplete();
+                    
+                    // Focus last filled input or first empty one
+                    const lastIndex = Math.min(startIndex + pastedData.length - 1, 5);
+                    const nextEmptyIndex = Math.min(startIndex + pastedData.length, 5);
+                    const focusInput = document.querySelector(`.otp-digit[data-index="${nextEmptyIndex}"]`);
+                    if (focusInput) {
+                        focusInput.focus();
+                    }
+                }
+            }
+        });
+        
+        // Handle Enter key to submit
+        document.addEventListener('keydown', function(e) {
+            if (e.target.classList.contains('otp-digit') && e.key === 'Enter') {
+                const otpCode = getOTPCode();
+                if (otpCode.length === 6) {
+                    verifyOTP();
+                }
+            }
+        });
+        
         // Close modal on escape key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && document.getElementById('otpVerificationModal').style.display === 'block') {
                 closeOTPModal();
             }
         });
-    });
+    }
+    
+    // Initialize OTP listeners immediately or on DOMContentLoaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeOTPListeners);
+    } else {
+        // DOM already loaded, run immediately
+        initializeOTPListeners();
+    }
 
     // Add event listeners for real-time validation and form submission (emails)
     const emailAddressesContainer = document.getElementById('emailAddressesContainer');
@@ -4887,8 +4980,9 @@ window.goBackWithRefresh = function() {
 
 // Send email verification
 window.sendEmailVerification = function(emailId, emailAddress) {
-    if (!emailId || !emailAddress) {
-        alert('Invalid email information');
+    // Validate email ID
+    if (!emailId || emailId === 'pending' || !emailAddress) {
+        alert('Please save the email first before verifying');
         return;
     }
 
@@ -4939,6 +5033,12 @@ window.sendEmailVerification = function(emailId, emailAddress) {
 
 // Resend email verification
 function resendEmailVerification(emailId, emailAddress) {
+    // Validate email ID
+    if (!emailId || emailId === 'pending') {
+        alert('Please save the email first before verifying');
+        return;
+    }
+    
     if (!confirm(`Resend verification email to ${emailAddress}?`)) {
         return;
     }

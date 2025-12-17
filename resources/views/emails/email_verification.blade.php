@@ -6,83 +6,146 @@
     <title>Verify Your Email</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
-            color: #333;
+            color: #2d3748;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
         }
         .email-container {
             max-width: 600px;
             margin: 40px auto;
             background: white;
-            border-radius: 8px;
+            border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
         .email-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 30px;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            padding: 40px 30px;
             text-align: center;
             color: white;
+            position: relative;
+        }
+        .email-header::before {
+            content: '✉️';
+            font-size: 60px;
+            display: block;
+            margin-bottom: 15px;
         }
         .email-header h1 {
             margin: 0;
-            font-size: 24px;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
         }
         .email-body {
-            padding: 40px 30px;
+            padding: 45px 35px;
         }
         .email-body p {
             margin-bottom: 20px;
             font-size: 16px;
+            color: #4a5568;
+        }
+        .email-highlight {
+            color: #4f46e5;
+            font-weight: 600;
         }
         .verify-button {
             display: inline-block;
-            padding: 15px 40px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 18px 45px;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
             color: white !important;
             text-decoration: none;
-            border-radius: 50px;
-            font-weight: bold;
-            font-size: 16px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 17px;
             text-align: center;
-            margin: 20px 0;
-            transition: transform 0.2s;
+            margin: 25px 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
         }
         .verify-button:hover {
-            transform: scale(1.05);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5);
         }
         .button-container {
             text-align: center;
-            margin: 30px 0;
+            margin: 35px 0;
         }
         .alternative-link {
-            margin-top: 30px;
+            margin-top: 35px;
             padding: 20px;
-            background: #f8f9fa;
-            border-radius: 4px;
-            font-size: 12px;
+            background: #f7fafc;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            font-size: 13px;
             word-break: break-all;
         }
+        .alternative-link p {
+            margin: 0 0 10px 0;
+            color: #4a5568;
+            font-weight: 600;
+        }
+        .alternative-link a {
+            color: #4f46e5;
+            text-decoration: none;
+        }
         .email-footer {
-            padding: 20px 30px;
-            background: #f8f9fa;
+            padding: 25px 35px;
+            background: #f7fafc;
             text-align: center;
             font-size: 14px;
-            color: #666;
+            color: #718096;
+            border-top: 1px solid #e2e8f0;
         }
-        .warning-text {
-            color: #dc3545;
+        .warning-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 16px 20px;
+            margin-top: 30px;
+            border-radius: 8px;
+        }
+        .warning-box p {
+            margin: 0;
+            color: #92400e;
             font-size: 14px;
-            margin-top: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .warning-icon {
+            font-size: 20px;
+            flex-shrink: 0;
         }
         .info-box {
-            background: #e7f3ff;
-            border-left: 4px solid #2196F3;
-            padding: 15px;
-            margin: 20px 0;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+        .info-box p {
+            margin: 0 0 12px 0;
+            color: #1e40af;
+            font-weight: 700;
+            font-size: 15px;
+        }
+        .info-box ul {
+            margin: 0;
+            padding-left: 22px;
+            color: #1e3a8a;
+        }
+        .info-box li {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .info-box li strong {
+            color: #1e40af;
+            font-weight: 700;
         }
     </style>
 </head>
@@ -95,7 +158,7 @@
         <div class="email-body">
             <p>Hello,</p>
             
-            <p>Thank you for providing your email address <strong>{{ $clientEmail->email }}</strong> to <strong>{{ config('app.name') }}</strong>.</p>
+            <p>Thank you for providing your email address <strong class="email-highlight">{{ $clientEmail->email }}</strong> to <strong>Bansal Immigration</strong>.</p>
             
             <p>To complete your email verification and ensure we can communicate with you effectively, please click the button below:</p>
             
@@ -116,19 +179,22 @@
             
             <div class="alternative-link">
                 <p><strong>If the button doesn't work, copy and paste this link into your browser:</strong></p>
-                <p><a href="{{ $verificationUrl }}" style="color: #667eea;">{{ $verificationUrl }}</a></p>
+                <p><a href="{{ $verificationUrl }}" style="color: #4f46e5;">{{ $verificationUrl }}</a></p>
             </div>
             
-            <p class="warning-text">
-                ⚠️ Never share this link with anyone. Our staff will never ask you for this link.
-            </p>
+            <div class="warning-box">
+                <p>
+                    <span class="warning-icon">⚠️</span>
+                    <span>Never share this link with anyone. Our staff will never ask you for this link.</span>
+                </p>
+            </div>
         </div>
         
         <div class="email-footer">
-            <p>This is an automated email from {{ config('app.name') }}.</p>
+            <p>This is an automated email from <strong>Bansal Immigration</strong>.</p>
             <p>If you have any questions, please contact our office.</p>
             <p style="margin-top: 15px; font-size: 12px;">
-                © {{ date('Y') }} {{ config('app.name') }}. All rights reserved.
+                © {{ date('Y') }} Bansal Immigration. All rights reserved.
             </p>
         </div>
     </div>

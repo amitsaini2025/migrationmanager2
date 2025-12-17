@@ -322,3 +322,5 @@ require __DIR__ . '/documents.php';
 |--------------------------------------------------*/
 // Public email verification route loaded from clients.php
 
+// Public email verification route - no authentication required
+Route::get('/verify-email/{token}', [EmailVerificationController::class, 'verifyEmail'])->name('clients.email.verify');

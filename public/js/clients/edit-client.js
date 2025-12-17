@@ -778,13 +778,8 @@ function addPassportDetail() {
 function addAnotherAddress() {
     console.log('🚀 addAnotherAddress called from edit-client.js');
     
-    // Check if we're in summary mode, if so switch to edit mode first
-    const summaryView = document.getElementById('addressInfoSummary');
-    const editView = document.getElementById('addressInfoEdit');
-    
-    if (summaryView && editView && summaryView.style.display !== 'none') {
-        toggleEditMode('addressInfo');
-    }
+    // Note: Mode switching is handled by addAddress() when called from header button
+    // This function should only add a new address entry to the container
     
     const container = document.getElementById('addresses-container');
     if (!container) {
@@ -946,9 +941,17 @@ function addAddress() {
     
     if (summaryView && editView && summaryView.style.display !== 'none') {
         toggleEditMode('addressInfo');
+        
+        // Wait for edit mode to be fully visible before adding address
+        setTimeout(function() {
+            if (typeof addAnotherAddress === 'function') {
+                addAnotherAddress();
+            }
+        }, 150);
+        return;
     }
     
-    // Use the new component-compatible function
+    // If already in edit mode, add immediately
     if (typeof addAnotherAddress === 'function') {
         addAnotherAddress();
         return;
@@ -4354,7 +4357,7 @@ $(document).ready(function() {
     /**
      * Send OTP to phone number
      */
-    function sendOTP(contactId, phone, countryCode) {
+    window.sendOTP = function(contactId, phone, countryCode) {
         currentContactId = contactId;
         const fullPhone = countryCode + phone;
         
@@ -4401,7 +4404,7 @@ $(document).ready(function() {
     /**
      * Verify OTP
      */
-    function verifyOTP() {
+    window.verifyOTP = function() {
         const otpCode = getOTPCode();
         
         if (otpCode.length !== 6) {
@@ -4454,7 +4457,7 @@ $(document).ready(function() {
     /**
      * Resend OTP
      */
-    function resendOTP() {
+    window.resendOTP = function() {
         if (!currentContactId) return;
         
         // Disable resend button temporarily
@@ -4492,7 +4495,7 @@ $(document).ready(function() {
     /**
      * Close OTP modal
      */
-    function closeOTPModal() {
+    window.closeOTPModal = function() {
         document.getElementById('otpVerificationModal').style.display = 'none';
         currentContactId = null;
         clearOTPTimers();

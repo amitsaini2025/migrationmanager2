@@ -2781,5 +2781,7 @@
             }
         }, 100); // Check every 100ms
     </script>
+
+    @yield('scripts')
 </body>
 </html>

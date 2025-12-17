@@ -13,7 +13,8 @@ class EmailVerificationController extends Controller
 
     public function __construct(EmailVerificationService $verificationService)
     {
-        $this->middleware('auth:admin');
+        // Exclude verifyEmail from auth middleware (public access for clients)
+        $this->middleware('auth:admin')->except(['verifyEmail']);
         $this->verificationService = $verificationService;
     }
 

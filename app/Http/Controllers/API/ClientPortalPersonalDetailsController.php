@@ -1579,6 +1579,24 @@ class ClientPortalPersonalDetailsController extends Controller
             }
         }
         
+        // Case 6: Add audit passports with action='update' that weren't processed in first loop
+        // These are passports that exist in audit table but don't exist in source table
+        foreach ($auditPassports as $auditPassport) {
+            $passportId = $auditPassport['id'] ?? null;
+            $action = $auditPassport['action'] ?? 'update';
+            
+            // Case 4: Skip if this passport is deleted
+            if ($action === 'delete' || ($passportId !== null && in_array($passportId, $deletedIds))) {
+                continue;
+            }
+            
+            // Case 6: Add if action is 'update' and not already processed (not in source table)
+            if ($action === 'update' && !in_array($passportId, $processedIds)) {
+                $mergedPassports[] = $auditPassport;
+                $processedIds[] = $passportId;
+            }
+        }
+        
         return $mergedPassports;
     }
 
@@ -3924,6 +3942,11 @@ class ClientPortalPersonalDetailsController extends Controller
                     }
                 }
 
+                // Get the highest existing meta_order BEFORE deleting (to ensure unique values for new passports)
+                $maxMetaOrder = ClientPortalDetailAudit::where('client_id', $clientId)
+                    ->whereIn('meta_key', ['passport', 'passport_country', 'passport_issue_date', 'passport_expiry_date'])
+                    ->max('meta_order') ?? -1;
+
                 // Get meta_order values for existing passports BEFORE deleting (if IDs provided)
                 if (!empty($passportIdsToUpdate)) {
                     $existingAuditEntries = ClientPortalDetailAudit::where('client_id', $clientId)
@@ -3949,10 +3972,8 @@ class ClientPortalPersonalDetailsController extends Controller
                 }
                 // Note: If all passports have id: null (new passports), no deletion happens - safe behavior
 
-                // Get the highest existing meta_order to continue from there for new passports
-                $maxMetaOrder = ClientPortalDetailAudit::where('client_id', $clientId)
-                    ->whereIn('meta_key', ['passport', 'passport_country', 'passport_issue_date', 'passport_expiry_date'])
-                    ->max('meta_order') ?? -1;
+                // Track which meta_order values are being reused (to avoid conflicts with new passports)
+                $usedMetaOrders = array_values($passportIdToMetaOrderMap);
 
                 // Process each passport
                 foreach ($passports as $index => $passportData) {
@@ -3983,8 +4004,13 @@ class ClientPortalPersonalDetailsController extends Controller
                         // Use existing meta_order for this passport
                         $metaOrder = $passportIdToMetaOrderMap[$passportId];
                     } else {
-                        // New passport - use next available meta_order
-                        $metaOrder = ++$maxMetaOrder;
+                        // New passport - use next available meta_order that doesn't conflict with reused values
+                        do {
+                            $maxMetaOrder++;
+                            $metaOrder = $maxMetaOrder;
+                        } while (in_array($metaOrder, $usedMetaOrders));
+                        // Track this meta_order as used to avoid conflicts with subsequent new passports
+                        $usedMetaOrders[] = $metaOrder;
                     }
 
                     // Convert dates from dd/mm/yyyy to Y-m-d format

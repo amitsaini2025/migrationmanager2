@@ -155,8 +155,8 @@
 <div id="contextMenuOverlay" class="context-menu-overlay" style="display: none;"></div>
 
 <!-- Include necessary CSS and JavaScript -->
-<link rel="stylesheet" href="{{ asset('css/email-handling.css') }}">
-<script src="{{ asset('js/email-handling.js') }}"></script>
+<link rel="stylesheet" href="{{ asset('css/emails.css') }}">
+<script src="{{ asset('js/emails.js') }}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

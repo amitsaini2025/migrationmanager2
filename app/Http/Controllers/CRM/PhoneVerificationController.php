@@ -43,24 +43,39 @@ class PhoneVerificationController extends Controller
      */
     public function verifyOTP(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'contact_id' => 'required|exists:client_contacts,id',
-            'otp_code' => 'required|string|size:6'
-        ]);
+        try {
+            $validator = Validator::make($request->all(), [
+                'contact_id' => 'required|exists:client_contacts,id',
+                'otp_code' => 'required|string|size:6'
+            ]);
 
-        if ($validator->fails()) {
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $validator->errors()->first()
+                ], 422);
+            }
+
+            $result = $this->verificationService->verifyOTP(
+                $request->contact_id,
+                $request->otp_code
+            );
+
+            return response()->json($result, $result['success'] ? 200 : 400);
+        } catch (\Exception $e) {
+            \Log::error('OTP Verification Error', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
-                'message' => $validator->errors()->first()
-            ], 422);
+                'message' => 'An error occurred during verification. Please try again.',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         }
-
-        $result = $this->verificationService->verifyOTP(
-            $request->contact_id,
-            $request->otp_code
-        );
-
-        return response()->json($result, $result['success'] ? 200 : 400);
     }
 
     /**

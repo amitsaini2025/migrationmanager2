@@ -626,13 +626,9 @@
      */
     
     /**
-     * Remove address entry
+     * Note: removeAddressEntry function is now handled by edit-client.js
+     * This function has been removed to avoid conflicts with the main implementation
      */
-    window.removeAddressEntry = function(button) {
-        if (confirm('Are you sure you want to remove this address?')) {
-            $(button).closest('.address-entry-wrapper').remove();
-        }
-    };
     
 })();
 

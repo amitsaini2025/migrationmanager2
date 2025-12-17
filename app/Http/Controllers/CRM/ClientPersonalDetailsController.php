@@ -2393,6 +2393,10 @@ class ClientPersonalDetailsController extends Controller
                 }
             }
 
+            // Track which records were actually modified
+            $actuallyModifiedCount = 0;
+            $newRecordsCount = 0;
+            
             // Handle qualification data
             if (isset($requestData['level']) && is_array($requestData['level'])) {
                 foreach ($requestData['level'] as $key => $level) {
@@ -2440,6 +2444,22 @@ class ClientPersonalDetailsController extends Controller
                             // Update existing qualification
                             $existingQualification = ClientQualification::find($qualificationId);
                             if ($existingQualification && $existingQualification->client_id == $client->id) {
+                                // Check if any field actually changed
+                                $hasChanges = false;
+                                if ($existingQualification->level != $level) $hasChanges = true;
+                                if ($existingQualification->name != $name) $hasChanges = true;
+                                if ($existingQualification->qual_college_name != $qual_college_name) $hasChanges = true;
+                                if ($existingQualification->qual_campus != $qual_campus) $hasChanges = true;
+                                if ($existingQualification->country != $country) $hasChanges = true;
+                                if ($existingQualification->qual_state != $qual_state) $hasChanges = true;
+                                if ($existingQualification->start_date != $formatted_start_date) $hasChanges = true;
+                                if ($existingQualification->finish_date != $formatted_finish_date) $hasChanges = true;
+                                if ($existingQualification->relevant_qualification != $relevant_qualification) $hasChanges = true;
+                                
+                                if ($hasChanges) {
+                                    $actuallyModifiedCount++;
+                                }
+                                
                                 $existingQualification->update([
                                     'admin_id' => Auth::user()->id,
                                     'level' => $level,
@@ -2468,6 +2488,7 @@ class ClientPersonalDetailsController extends Controller
                                 'finish_date' => $formatted_finish_date,
                                 'relevant_qualification' => $relevant_qualification
                             ]);
+                            $newRecordsCount++;
                         }
                     }
                 }
@@ -2492,21 +2513,31 @@ class ClientPersonalDetailsController extends Controller
             }
 
             // Log activity for educational qualifications update
-            $qualificationCount = 0;
-            if (isset($requestData['level']) && is_array($requestData['level'])) {
-                foreach ($requestData['level'] as $key => $level) {
-                    $name = $requestData['name'][$key] ?? null;
-                    if (!empty($level) || !empty($name)) {
-                        $qualificationCount++;
-                    }
+            // Only log if there were actual changes or deletions or new records
+            $totalChanges = $actuallyModifiedCount + $newRecordsCount;
+            $deletedCount = isset($requestData['delete_qualification_ids']) ? count($requestData['delete_qualification_ids']) : 0;
+            
+            if ($totalChanges > 0 || $deletedCount > 0) {
+                $activityParts = [];
+                if ($actuallyModifiedCount > 0) {
+                    $activityParts[] = "updated {$actuallyModifiedCount} qualification record(s)";
                 }
+                if ($newRecordsCount > 0) {
+                    $activityParts[] = "added {$newRecordsCount} new qualification record(s)";
+                }
+                if ($deletedCount > 0) {
+                    $activityParts[] = "deleted {$deletedCount} qualification record(s)";
+                }
+                
+                $description = ucfirst(implode(', ', $activityParts));
+                
+                $this->logClientActivity(
+                    $client->id,
+                    'updated educational qualifications',
+                    $description,
+                    'activity'
+                );
             }
-            $this->logClientActivity(
-                $client->id,
-                'updated educational qualifications',
-                "Updated {$qualificationCount} qualification record(s)",
-                'activity'
-            );
 
             return response()->json([
                 'success' => true,

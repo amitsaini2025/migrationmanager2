@@ -202,6 +202,10 @@
                                             <i class="fas fa-download"></i> Download PDF
                                         </a>
                                         <div class="dropdown-divider"></div>
+                                        <a class="dropdown-item send-client-fund-receipt-to-client" href="javascript:;" data-receipt-id="<?php echo $rec_val->id; ?>" data-receipt-no="<?php echo $rec_val->trans_no; ?>">
+                                            <i class="fas fa-envelope"></i> Send to Client
+                                        </a>
+                                        <div class="dropdown-divider"></div>
                                         <?php if(!empty($rec_val->uploaded_doc_id)) { 
                                             $uploadedDoc = \App\Models\Document::find($rec_val->uploaded_doc_id);
                                             if($uploadedDoc && !empty($uploadedDoc->myfile)) { 
@@ -233,6 +237,10 @@
                                             data-client-id="<?php echo $fetchedData->id; ?>"
                                             data-matter-id="<?php echo $rec_val->client_matter_id; ?>">
                                             <i class="fas fa-upload"></i> <?php echo !empty($rec_val->uploaded_doc_id) ? 'Replace' : 'Upload'; ?> Receipt Document
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        <a class="dropdown-item send-client-fund-receipt-to-client" href="javascript:;" data-receipt-id="<?php echo $rec_val->id; ?>" data-receipt-no="<?php echo $rec_val->trans_no; ?>">
+                                            <i class="fas fa-envelope"></i> Send to Client
                                         </a>
                                         <?php if($rec_val->client_fund_ledger_type !== 'Fee Transfer'){ ?>
                                         <div class="dropdown-divider"></div>
@@ -378,6 +386,10 @@
                                                 </a>
                                                 <a class="dropdown-item" href="{{URL::to('/clients/genInvoice')}}/{{$inc_val->receipt_id}}?download=1">
                                                     <i class="fas fa-download"></i> Download PDF
+                                                </a>
+                                                <div class="dropdown-divider"></div>
+                                                <a class="dropdown-item send-invoice-to-client" href="javascript:;" data-invoice-id="<?php echo $inc_val->receipt_id; ?>" data-invoice-no="<?php echo $inc_val->trans_no; ?>">
+                                                    <i class="fas fa-envelope"></i> Send to Client
                                                 </a>
                                                 <?php } ?>
                                                 <?php if($inc_val->save_type == 'draft'){ ?>
@@ -589,6 +601,10 @@
                                             </a>
                                             <a class="dropdown-item" href="{{URL::to('/clients/genOfficeReceipt')}}/{{$off_val->id}}?download=1">
                                                 <i class="fas fa-download"></i> Download PDF
+                                            </a>
+                                            <div class="dropdown-divider"></div>
+                                            <a class="dropdown-item send-office-receipt-to-client" href="javascript:;" data-receipt-id="<?php echo $off_val->id; ?>" data-receipt-no="<?php echo $off_val->trans_no; ?>">
+                                                <i class="fas fa-envelope"></i> Send to Client
                                             </a>
                                             <?php } ?>
                                             <div class="dropdown-divider"></div>

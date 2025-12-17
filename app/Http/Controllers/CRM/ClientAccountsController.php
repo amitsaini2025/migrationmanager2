@@ -4983,4 +4983,395 @@ public function getInvoiceAmount(Request $request)
         }
     }
 
+    /**
+     * ================================================================
+     * SEND TO CLIENT FUNCTIONALITY
+     * ================================================================
+     */
+
+    /**
+     * Send Invoice to Client via Email
+     */
+    public function sendInvoiceToClient(Request $request, $id)
+    {
+        try {
+            // Get invoice record
+            $record_get = DB::table('account_all_invoice_receipts')
+                ->where('receipt_type', 3)
+                ->where('receipt_id', $id)
+                ->first();
+
+            if (!$record_get) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invoice not found'
+                ], 404);
+            }
+
+            // Get receipt entry
+            $receipt_entry = DB::table('account_client_receipts')
+                ->where('receipt_id', $id)
+                ->where('receipt_type', 3)
+                ->first();
+
+            if (!$receipt_entry) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invoice receipt not found'
+                ], 404);
+            }
+
+            // Get client info
+            $clientname = DB::table('admins')
+                ->where('id', $record_get->client_id)
+                ->first();
+
+            if (!$clientname || empty($clientname->primary_email)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Client email not found'
+                ], 404);
+            }
+
+            // Generate PDF (reuse existing logic from genInvoice)
+            $invoiceUrl = url('/clients/genInvoice/' . $id);
+            
+            // Get or generate PDF
+            $pdfUrl = null;
+            if (!empty($receipt_entry->pdf_document_id)) {
+                $existingPdf = DB::table('documents')
+                    ->where('id', $receipt_entry->pdf_document_id)
+                    ->first();
+                
+                if ($existingPdf && !empty($existingPdf->myfile)) {
+                    $pdfUrl = $existingPdf->myfile;
+                }
+            }
+
+            if (!$pdfUrl) {
+                // Generate PDF if not exists
+                $genRequest = new Request();
+                $response = $this->genInvoice($genRequest, $id);
+                
+                // Get the newly created PDF
+                $receipt_entry = DB::table('account_client_receipts')
+                    ->where('receipt_id', $id)
+                    ->where('receipt_type', 3)
+                    ->first();
+                
+                if (!empty($receipt_entry->pdf_document_id)) {
+                    $existingPdf = DB::table('documents')
+                        ->where('id', $receipt_entry->pdf_document_id)
+                        ->first();
+                    
+                    if ($existingPdf && !empty($existingPdf->myfile)) {
+                        $pdfUrl = $existingPdf->myfile;
+                    }
+                }
+            }
+
+            if (!$pdfUrl) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to generate PDF'
+                ], 500);
+            }
+
+            // Prepare email data
+            $clientFullName = trim(($clientname->first_name ?? '') . ' ' . ($clientname->last_name ?? ''));
+            $invoiceNo = $receipt_entry->invoice_no ?? $id;
+            
+            $subject = 'Invoice #' . $invoiceNo . ' from Bansal Immigration';
+            $emailContent = "Dear " . $clientFullName . ",<br><br>" .
+                "Please find attached your invoice #" . $invoiceNo . ".<br><br>" .
+                "If you have any questions, please don't hesitate to contact us.<br><br>" .
+                "Best regards,<br>Bansal Immigration";
+
+            // Download PDF from S3 to temporary file
+            $pdfContent = file_get_contents($pdfUrl);
+            $tempFilePath = storage_path('app/temp_invoice_' . $id . '.pdf');
+            file_put_contents($tempFilePath, $pdfContent);
+
+            // Send email using InvoiceEmailManager
+            $invoiceArray = [
+                'view' => 'emails.invoice',
+                'from' => 'invoice@bansalimmigration.com.au',
+                'name' => 'Bansal Immigration',
+                'subject' => $subject,
+                'file' => $tempFilePath,
+                'file_name' => 'Invoice-' . $invoiceNo . '.pdf',
+                'content' => $emailContent
+            ];
+
+            Mail::to($clientname->primary_email)->queue(new \App\Mail\InvoiceEmailManager($invoiceArray));
+
+            // Log activity
+            $objs = new ActivitiesLog;
+            $objs->client_id = $record_get->client_id;
+            $objs->created_by = Auth::user()->id;
+            $objs->description = 'Invoice #' . $invoiceNo . ' sent to client email: ' . $clientname->primary_email;
+            $objs->subject = 'Invoice sent to client';
+            $objs->save();
+
+            // Clean up temp file after a delay (queued job will handle sending)
+            // The file will be cleaned up by Laravel's temp file cleanup
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Invoice sent successfully to ' . $clientname->primary_email
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error sending invoice to client: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to send invoice: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Send Client Fund Receipt to Client via Email
+     */
+    public function sendClientFundReceiptToClient(Request $request, $id)
+    {
+        try {
+            // Get receipt record
+            $record_get = DB::table('account_client_receipts')
+                ->where('receipt_type', 1)
+                ->where('id', $id)
+                ->first();
+
+            if (!$record_get) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Client fund receipt not found'
+                ], 404);
+            }
+
+            // Get client info
+            $clientname = DB::table('admins')
+                ->where('id', $record_get->client_id)
+                ->first();
+
+            if (!$clientname || empty($clientname->primary_email)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Client email not found'
+                ], 404);
+            }
+
+            // Get or generate PDF
+            $pdfUrl = null;
+            if (!empty($record_get->pdf_document_id)) {
+                $existingPdf = DB::table('documents')
+                    ->where('id', $record_get->pdf_document_id)
+                    ->first();
+                
+                if ($existingPdf && !empty($existingPdf->myfile)) {
+                    $pdfUrl = $existingPdf->myfile;
+                }
+            }
+
+            if (!$pdfUrl) {
+                // Generate PDF if not exists
+                $genRequest = new Request();
+                $response = $this->genClientFundReceipt($genRequest, $id);
+                
+                // Get the newly created PDF
+                $record_get = DB::table('account_client_receipts')
+                    ->where('receipt_type', 1)
+                    ->where('id', $id)
+                    ->first();
+                
+                if (!empty($record_get->pdf_document_id)) {
+                    $existingPdf = DB::table('documents')
+                        ->where('id', $record_get->pdf_document_id)
+                        ->first();
+                    
+                    if ($existingPdf && !empty($existingPdf->myfile)) {
+                        $pdfUrl = $existingPdf->myfile;
+                    }
+                }
+            }
+
+            if (!$pdfUrl) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to generate PDF'
+                ], 500);
+            }
+
+            // Prepare email data
+            $clientFullName = trim(($clientname->first_name ?? '') . ' ' . ($clientname->last_name ?? ''));
+            $receiptNo = $record_get->trans_no ?? $id;
+            
+            $subject = 'Client Fund Receipt #' . $receiptNo . ' from Bansal Immigration';
+            $emailContent = "Dear " . $clientFullName . ",<br><br>" .
+                "Please find attached your client fund receipt #" . $receiptNo . ".<br><br>" .
+                "If you have any questions, please don't hesitate to contact us.<br><br>" .
+                "Best regards,<br>Bansal Immigration";
+
+            // Download PDF from S3 to temporary file
+            $pdfContent = file_get_contents($pdfUrl);
+            $tempFilePath = storage_path('app/temp_client_receipt_' . $id . '.pdf');
+            file_put_contents($tempFilePath, $pdfContent);
+
+            // Send email using InvoiceEmailManager
+            $invoiceArray = [
+                'view' => 'emails.invoice',
+                'from' => 'invoice@bansalimmigration.com.au',
+                'name' => 'Bansal Immigration',
+                'subject' => $subject,
+                'file' => $tempFilePath,
+                'file_name' => 'Receipt-' . $receiptNo . '.pdf',
+                'content' => $emailContent
+            ];
+
+            Mail::to($clientname->primary_email)->queue(new \App\Mail\InvoiceEmailManager($invoiceArray));
+
+            // Log activity
+            $objs = new ActivitiesLog;
+            $objs->client_id = $record_get->client_id;
+            $objs->created_by = Auth::user()->id;
+            $objs->description = 'Client fund receipt #' . $receiptNo . ' sent to client email: ' . $clientname->primary_email;
+            $objs->subject = 'Client fund receipt sent to client';
+            $objs->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Client fund receipt sent successfully to ' . $clientname->primary_email
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error sending client fund receipt to client: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to send receipt: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Send Office Receipt to Client via Email
+     */
+    public function sendOfficeReceiptToClient(Request $request, $id)
+    {
+        try {
+            // Get receipt record
+            $record_get = DB::table('account_client_receipts')
+                ->where('receipt_type', 2)
+                ->where('id', $id)
+                ->first();
+
+            if (!$record_get) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Office receipt not found'
+                ], 404);
+            }
+
+            // Get client info
+            $clientname = DB::table('admins')
+                ->where('id', $record_get->client_id)
+                ->first();
+
+            if (!$clientname || empty($clientname->primary_email)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Client email not found'
+                ], 404);
+            }
+
+            // Get or generate PDF
+            $pdfUrl = null;
+            if (!empty($record_get->pdf_document_id)) {
+                $existingPdf = DB::table('documents')
+                    ->where('id', $record_get->pdf_document_id)
+                    ->first();
+                
+                if ($existingPdf && !empty($existingPdf->myfile)) {
+                    $pdfUrl = $existingPdf->myfile;
+                }
+            }
+
+            if (!$pdfUrl) {
+                // Generate PDF if not exists
+                $genRequest = new Request();
+                $response = $this->genofficereceiptInvoice($genRequest, $id);
+                
+                // Get the newly created PDF
+                $record_get = DB::table('account_client_receipts')
+                    ->where('receipt_type', 2)
+                    ->where('id', $id)
+                    ->first();
+                
+                if (!empty($record_get->pdf_document_id)) {
+                    $existingPdf = DB::table('documents')
+                        ->where('id', $record_get->pdf_document_id)
+                        ->first();
+                    
+                    if ($existingPdf && !empty($existingPdf->myfile)) {
+                        $pdfUrl = $existingPdf->myfile;
+                    }
+                }
+            }
+
+            if (!$pdfUrl) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to generate PDF'
+                ], 500);
+            }
+
+            // Prepare email data
+            $clientFullName = trim(($clientname->first_name ?? '') . ' ' . ($clientname->last_name ?? ''));
+            $receiptNo = $record_get->trans_no ?? $id;
+            
+            $subject = 'Office Receipt #' . $receiptNo . ' from Bansal Immigration';
+            $emailContent = "Dear " . $clientFullName . ",<br><br>" .
+                "Please find attached your office receipt #" . $receiptNo . ".<br><br>" .
+                "If you have any questions, please don't hesitate to contact us.<br><br>" .
+                "Best regards,<br>Bansal Immigration";
+
+            // Download PDF from S3 to temporary file
+            $pdfContent = file_get_contents($pdfUrl);
+            $tempFilePath = storage_path('app/temp_office_receipt_' . $id . '.pdf');
+            file_put_contents($tempFilePath, $pdfContent);
+
+            // Send email using InvoiceEmailManager
+            $invoiceArray = [
+                'view' => 'emails.invoice',
+                'from' => 'invoice@bansalimmigration.com.au',
+                'name' => 'Bansal Immigration',
+                'subject' => $subject,
+                'file' => $tempFilePath,
+                'file_name' => 'Office-Receipt-' . $receiptNo . '.pdf',
+                'content' => $emailContent
+            ];
+
+            Mail::to($clientname->primary_email)->queue(new \App\Mail\InvoiceEmailManager($invoiceArray));
+
+            // Log activity
+            $objs = new ActivitiesLog;
+            $objs->client_id = $record_get->client_id;
+            $objs->created_by = Auth::user()->id;
+            $objs->description = 'Office receipt #' . $receiptNo . ' sent to client email: ' . $clientname->primary_email;
+            $objs->subject = 'Office receipt sent to client';
+            $objs->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Office receipt sent successfully to ' . $clientname->primary_email
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error sending office receipt to client: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to send receipt: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 }

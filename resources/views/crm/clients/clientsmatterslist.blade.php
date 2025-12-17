@@ -506,6 +506,7 @@
                                             Created At {!! $sortIcon('cm.created_at') !!}
                                         </a>
                                     </th>
+                                    <th class="thCls">Office</th>
                                     @if(Auth::user()->role == 1)
                                     <th class="thCls">Action</th>
                                     @endif
@@ -519,6 +520,7 @@
                                         $mig_agent_info = \App\Models\Admin::select('first_name','last_name')->where('id', $list->sel_migration_agent)->first();
                                         $person_responsible = \App\Models\Admin::select('first_name','last_name')->where('id', $list->sel_person_responsible)->first();
                                         $person_assisting = \App\Models\Admin::select('first_name','last_name')->where('id', $list->sel_person_assisting)->first();
+                                        $matter_office = $list->office_id ? \App\Models\Branch::find($list->office_id) : null;
                                         ?>
                                         <tr id="id_{{@$list->id}}">
                                             <td class="tdCls"><a href="{{URL::to('/clients/detail/'.base64_encode(convert_uuencode(@$list->client_id)).'/'.$list->client_unique_matter_no )}}">{{ @$list->title == "" ? config('constants.empty') : Str::limit(@$list->title, '50', '...') }} ({{ @$list->client_unique_matter_no == "" ? config('constants.empty') : Str::limit(@$list->client_unique_matter_no, '50', '...') }}) </a></td>
@@ -529,6 +531,34 @@
                                             <td class="tdCls">{{ @$person_responsible->first_name == "" ? config('constants.empty') : Str::limit(@$person_responsible->first_name, '50', '...') }} {{ @$person_responsible->last_name == "" ? config('constants.empty') : Str::limit(@$person_responsible->last_name, '50', '...') }}</td>
                                             <td class="tdCls">{{ @$person_assisting->first_name == "" ? config('constants.empty') : Str::limit(@$person_assisting->first_name, '50', '...') }} {{ @$person_assisting->last_name == "" ? config('constants.empty') : Str::limit(@$person_assisting->last_name, '50', '...') }}</td>
                                             <td class="tdCls">{{date('d/m/Y', strtotime($list->created_at))}}</td>
+                                            <td class="tdCls">
+                                                @if($matter_office)
+                                                    <span class="badge badge-info" style="font-size: 12px;">
+                                                        <i class="fas fa-building"></i> {{ $matter_office->office_name }}
+                                                    </span>
+                                                    <br>
+                                                    <a href="javascript:;" class="btn btn-sm btn-outline-primary mt-1 edit-office-btn" 
+                                                       data-matter-id="{{ $list->id }}" 
+                                                       data-matter-no="{{ $list->client_unique_matter_no }}"
+                                                       data-matter-title="{{ $list->title }}"
+                                                       data-office-id="{{ $list->office_id }}"
+                                                       title="Change Office">
+                                                        <i class="fas fa-edit"></i> Change
+                                                    </a>
+                                                @else
+                                                    <span class="badge badge-warning" style="font-size: 11px;">
+                                                        <i class="fas fa-exclamation-triangle"></i> Not Assigned
+                                                    </span>
+                                                    <br>
+                                                    <a href="javascript:;" class="btn btn-sm btn-success mt-1 assign-office-btn" 
+                                                       data-matter-id="{{ $list->id }}" 
+                                                       data-matter-no="{{ $list->client_unique_matter_no }}"
+                                                       data-matter-title="{{ $list->title }}"
+                                                       title="Assign Office">
+                                                        <i class="fas fa-plus"></i> Assign
+                                                    </a>
+                                                @endif
+                                            </td>
                                             @if(Auth::user()->role == 1)
                                             <td class="tdCls">
                                                 <div class="dropdown d-inline">
@@ -544,7 +574,7 @@
                                     @endforeach
                                 @else
                                     <tr>
-                                        <td colspan="{{ Auth::user()->role == 1 ? '9' : '8' }}" style="text-align: center; padding: 20px;">
+                                        <td colspan="{{ Auth::user()->role == 1 ? '10' : '9' }}" style="text-align: center; padding: 20px;">
                                             No Record Found
                                         </td>
                                     </tr>
@@ -562,6 +592,10 @@
         </div>
     </section>
 </div>
+
+{{-- Include Office Assignment Modal --}}
+@include('crm.clients.modals.edit-matter-office')
+
 @endsection
 @push('scripts')
 <script>
@@ -786,6 +820,89 @@ jQuery(document).ready(function($){
     function formatRepoSelection (repo) {
     return repo.name || repo.text;
     }
+
+    // ============================================
+    // MATTER OFFICE ASSIGNMENT HANDLERS
+    // ============================================
+    
+    // Handle Assign Office button click
+    $(document).on('click', '.assign-office-btn, .edit-office-btn', function(e) {
+        e.preventDefault();
+        
+        var matterId = $(this).data('matter-id');
+        var matterNo = $(this).data('matter-no');
+        var matterTitle = $(this).data('matter-title');
+        var officeId = $(this).data('office-id') || '';
+        
+        // Populate modal
+        $('#edit_matter_id').val(matterId);
+        $('#modal_matter_number').text(matterNo);
+        $('#modal_matter_title').text(matterTitle || 'N/A');
+        $('#edit_office_id').val(officeId).trigger('change');
+        
+        // Show modal
+        $('#editMatterOfficeModal').modal('show');
+    });
+    
+    // Handle form submission
+    $('#editMatterOfficeForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        var formData = $(this).serialize();
+        var submitBtn = $(this).find('button[type="submit"]');
+        var originalText = submitBtn.html();
+        
+        // Disable button and show loading
+        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+        
+        $.ajax({
+            url: '{{ route("matters.update-office") }}',
+            method: 'POST',
+            data: formData,
+            dataType: 'json',
+            success: function(response) {
+                if(response.success) {
+                    // Show success message
+                    swal({
+                        title: "Success!",
+                        text: response.message,
+                        icon: "success",
+                        button: "OK",
+                    }).then(function() {
+                        // Reload page to show updated office
+                        location.reload();
+                    });
+                } else {
+                    swal({
+                        title: "Error!",
+                        text: response.message || 'Failed to update office',
+                        icon: "error",
+                        button: "OK",
+                    });
+                    submitBtn.prop('disabled', false).html(originalText);
+                }
+            },
+            error: function(xhr) {
+                var errorMsg = 'An error occurred. Please try again.';
+                if(xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                swal({
+                    title: "Error!",
+                    text: errorMsg,
+                    icon: "error",
+                    button: "OK",
+                });
+                submitBtn.prop('disabled', false).html(originalText);
+            }
+        });
+    });
+    
+    // Reset form when modal is closed
+    $('#editMatterOfficeModal').on('hidden.bs.modal', function() {
+        $('#editMatterOfficeForm')[0].reset();
+        $('#edit_office_id').val('').trigger('change');
+    });
 });
 </script>
 @endpush

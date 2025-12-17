@@ -212,6 +212,12 @@ Route::post('/delete_receipt','CRM\ClientAccountsController@delete_receipt');
 
 Route::get('/clients/genClientFundReceipt/{id}', 'CRM\ClientAccountsController@genClientFundReceipt');
 Route::get('/clients/genOfficeReceipt/{id}', 'CRM\ClientAccountsController@genofficereceiptInvoice');
+
+// Send to client routes
+Route::post('/clients/send-invoice-to-client/{id}', 'CRM\ClientAccountsController@sendInvoiceToClient')->name('clients.sendInvoiceToClient');
+Route::post('/clients/send-client-fund-receipt-to-client/{id}', 'CRM\ClientAccountsController@sendClientFundReceiptToClient')->name('clients.sendClientFundReceiptToClient');
+Route::post('/clients/send-office-receipt-to-client/{id}', 'CRM\ClientAccountsController@sendOfficeReceiptToClient')->name('clients.sendOfficeReceiptToClient');
+
 Route::post('/update-client-funds-ledger', 'CRM\ClientAccountsController@updateClientFundsLedger')->name('clients.update-client-funds-ledger');
 Route::post('/update-office-receipt', 'CRM\ClientAccountsController@updateOfficeReceipt')->name('clients.updateOfficeReceipt');
 Route::post('/get-invoices-by-matter', 'CRM\ClientAccountsController@getInvoicesByMatter')->name('clients.getInvoicesByMatter');
@@ -304,8 +310,4 @@ Route::post('/send-webhook', 'CRM\ClientsController@sendToWebhook')->name('send-
 
 /*---------- Visa Expiry Messages ----------*/
 Route::get('/fetch-visa_expiry_messages', 'CRM\CRMUtilityController@fetchvisaexpirymessages');
-
-/*---------- Public Email Verification (No Auth Required) ----------*/
-// This route is outside admin middleware for public access
-Route::get('/verify-email/{token}', [EmailVerificationController::class, 'verifyEmail'])->name('clients.email.verify');
 

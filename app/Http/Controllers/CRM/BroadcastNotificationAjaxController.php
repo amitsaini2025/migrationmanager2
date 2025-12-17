@@ -70,11 +70,37 @@ class BroadcastNotificationAjaxController extends Controller
 
     public function history(Request $request): JsonResponse
     {
+        // CHANGED: Now returns ALL broadcasts globally, not just sender's broadcasts
+        $history = $this->broadcasts->getAllBroadcastHistory();
+        $currentUserId = (int) $this->sender($request)->id;
+        $isSuperAdmin = $this->sender($request)->role == 1;
+
+        return response()->json([
+            'data' => $history,
+            'current_user_id' => $currentUserId,
+            'is_super_admin' => $isSuperAdmin,
+        ]);
+    }
+
+    public function myHistory(Request $request): JsonResponse
+    {
+        // Get only broadcasts sent by the current user
         $senderId = (int) $this->sender($request)->id;
         $history = $this->broadcasts->getBroadcastHistory($senderId);
 
         return response()->json([
             'data' => $history,
+        ]);
+    }
+
+    public function readHistory(Request $request): JsonResponse
+    {
+        // Get broadcasts that the user has already read
+        $receiverId = (int) $this->sender($request)->id;
+        $readBroadcasts = $this->broadcasts->getReadBroadcasts($receiverId);
+
+        return response()->json([
+            'data' => $readBroadcasts,
         ]);
     }
 
@@ -115,6 +141,61 @@ class BroadcastNotificationAjaxController extends Controller
         return response()->json([
             'status' => 'ok',
         ]);
+    }
+
+    public function delete(Request $request, string $batchUuid): JsonResponse
+    {
+        $sender = $this->sender($request);
+        
+        // Check if user is super admin (role == 1)
+        if ($sender->role != 1) {
+            \Log::warning('❌ Non-super admin attempted to delete broadcast', [
+                'user_id' => $sender->id,
+                'role' => $sender->role,
+                'batch_uuid' => $batchUuid
+            ]);
+            
+            return response()->json([
+                'message' => 'Only super administrators can delete broadcasts.',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
+        // Validate UUID format
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $batchUuid)) {
+            return response()->json([
+                'message' => 'Invalid broadcast ID format.',
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $deleted = $this->broadcasts->deleteBroadcast($batchUuid, (int) $sender->id);
+            
+            if (!$deleted) {
+                return response()->json([
+                    'message' => 'Broadcast not found.',
+                ], Response::HTTP_NOT_FOUND);
+            }
+
+            \Log::info('✅ Broadcast deleted successfully', [
+                'batch_uuid' => $batchUuid,
+                'deleted_by' => $sender->id,
+                'deleted_by_name' => trim("{$sender->first_name} {$sender->last_name}")
+            ]);
+
+            return response()->json([
+                'status' => 'deleted',
+                'message' => 'Broadcast deleted successfully.',
+            ]);
+        } catch (\Exception $exception) {
+            \Log::error('❌ Error deleting broadcast', [
+                'batch_uuid' => $batchUuid,
+                'error' => $exception->getMessage()
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to delete broadcast. Please try again.',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 }
 

@@ -200,64 +200,113 @@
                     <div class="card">
                         <h3><i class="fas fa-passport"></i>Visa</h3>
                         <?php
-                        $visa_Info = App\Models\ClientVisaCountry::select('visa_country','visa_type','visa_expiry_date','visa_grant_date','visa_description')->where('client_id', $fetchedData->id)->orderBy('visa_expiry_date', 'desc')->first();
+                        // Get visa with latest expiry date
+                        $visa_Info_with_expiry = App\Models\ClientVisaCountry::select('visa_country','visa_type','visa_expiry_date','visa_grant_date','visa_description')
+                            ->where('client_id', $fetchedData->id)
+                            ->whereNotNull('visa_expiry_date')
+                            ->where('visa_expiry_date', '!=', '0000-00-00')
+                            ->orderBy('visa_expiry_date', 'desc')
+                            ->first();
+                        
+                        // Get all visas without expiry date
+                        $visas_without_expiry = App\Models\ClientVisaCountry::select('visa_country','visa_type','visa_expiry_date','visa_grant_date','visa_description')
+                            ->where('client_id', $fetchedData->id)
+                            ->where(function($query) {
+                                $query->whereNull('visa_expiry_date')
+                                      ->orWhere('visa_expiry_date', '0000-00-00');
+                            })
+                            ->get();
+                        
+                        // Combine both: visa with expiry first, then visas without expiry
+                        $all_visas_to_display = collect();
+                        if($visa_Info_with_expiry) {
+                            $all_visas_to_display->push($visa_Info_with_expiry);
+                        }
+                        $all_visas_to_display = $all_visas_to_display->merge($visas_without_expiry);
                         ?>
-                        <div class="field-group">
-                            <span class="field-label">Visa Type</span>
-                            <span class="field-value">
-                                <?php
-                                if( $visa_Info && $visa_Info->visa_type != "" ){
-                                    $Matter_get = App\Models\Matter::select('id','title','nick_name')->where('id',$visa_Info->visa_type)->first();
-                                    if(!empty($Matter_get)){
-                                        echo $Matter_get->title.'('.$Matter_get->nick_name.')';
-                                    } else {
-                                        echo 'N/A';
-                                    }
-                                } else { echo 'N/A'; }
-                                ?>
-                            </span>
-                        </div>
-                        <div class="field-group">
-                            <span class="field-label">Visa Expiry Date</span>
-                            <span class="field-value">
-                                <?php
-                                if( $visa_Info && $visa_Info->visa_expiry_date != "" ){
-                                    if( $visa_Info->visa_expiry_date == '0000-00-00'){
-                                        echo 'N/A';
-                                    } else {
-                                        $verifiedVisa = \App\Models\Admin::where('id',$fetchedData->id)->whereNotNull('visa_expiry_verified_at')->first();
-                                        if ( $verifiedVisa) {
-                                            $verifiedVisaTick = '<i class="fas fa-check-circle verified-icon fa-lg"></i>';
-                                        } else {
-                                            $verifiedVisaTick = '<i class="far fa-circle unverified-icon fa-lg"></i>';
+                        
+                        <?php if($all_visas_to_display->count() > 0): ?>
+                            <?php foreach($all_visas_to_display as $visaIndex => $visa_Info): ?>
+                                <?php if($visaIndex > 0): ?>
+                                    <hr style="margin: 15px 0; border-top: 1px solid #dee2e6;">
+                                <?php endif; ?>
+                                
+                                <div class="field-group">
+                                    <span class="field-label">Visa Type</span>
+                                    <span class="field-value">
+                                        <?php
+                                        if( $visa_Info && $visa_Info->visa_type != "" ){
+                                            $Matter_get = App\Models\Matter::select('id','title','nick_name')->where('id',$visa_Info->visa_type)->first();
+                                            if(!empty($Matter_get)){
+                                                echo $Matter_get->title.'('.$Matter_get->nick_name.')';
+                                            } else {
+                                                echo 'N/A';
+                                            }
+                                        } else { echo 'N/A'; }
+                                        ?>
+                                    </span>
+                                </div>
+                                <div class="field-group">
+                                    <span class="field-label">Visa Expiry Date</span>
+                                    <span class="field-value">
+                                        <?php
+                                        if( $visa_Info && $visa_Info->visa_expiry_date != "" && $visa_Info->visa_expiry_date != '0000-00-00'){
+                                            $verifiedVisa = \App\Models\Admin::where('id',$fetchedData->id)->whereNotNull('visa_expiry_verified_at')->first();
+                                            if ( $verifiedVisa) {
+                                                $verifiedVisaTick = '<i class="fas fa-check-circle verified-icon fa-lg"></i>';
+                                            } else {
+                                                $verifiedVisaTick = '<i class="far fa-circle unverified-icon fa-lg"></i>';
+                                            }
+                                            
+                                            // Check if visa is expiring within 7 days
+                                            $expiryDate = \Carbon\Carbon::parse($visa_Info->visa_expiry_date);
+                                            $today = \Carbon\Carbon::now();
+                                            $daysUntilExpiry = $today->diffInDays($expiryDate, false);
+                                            
+                                            $expiryClass = '';
+                                            $expiryWarning = '';
+                                            if ($daysUntilExpiry <= 7 && $daysUntilExpiry >= 0) {
+                                                $expiryClass = ' style="color: #dc3545; font-weight: bold;"';
+                                                $expiryWarning = ' data-expiry-warning="true" data-days-left="' . $daysUntilExpiry . '"';
+                                            }
+                                            
+                                            echo '<span' . $expiryClass . $expiryWarning . '>' . $expiryDate->format('d/m/Y') . '</span> ' . $verifiedVisaTick;
+                                        } else { 
+                                            echo 'No Expiry Date'; 
                                         }
-                                        
-                                        // Check if visa is expiring within 7 days
-                                        $expiryDate = \Carbon\Carbon::parse($visa_Info->visa_expiry_date);
-                                        $today = \Carbon\Carbon::now();
-                                        $daysUntilExpiry = $today->diffInDays($expiryDate, false);
-                                        
-                                        $expiryClass = '';
-                                        $expiryWarning = '';
-                                        if ($daysUntilExpiry <= 7 && $daysUntilExpiry >= 0) {
-                                            $expiryClass = ' style="color: #dc3545; font-weight: bold;"';
-                                            $expiryWarning = ' data-expiry-warning="true" data-days-left="' . $daysUntilExpiry . '"';
-                                        }
-                                        
-                                        echo '<span' . $expiryClass . $expiryWarning . '>' . $expiryDate->format('d/m/Y') . '</span> ' . $verifiedVisaTick;
-                                    }
-                                } else { echo 'N/A'; }
-                                ?>
-                            </span>
-                        </div>
-                        @if($visa_Info && $visa_Info->visa_description != "")
-                        <div class="field-group">
-                            <span class="field-label">Visa Description</span>
-                            <span class="field-value">
-                                <?php echo $visa_Info->visa_description; ?>
-                            </span>
-                        </div>
-                        @endif
+                                        ?>
+                                    </span>
+                                </div>
+                                @if($visa_Info->visa_grant_date && $visa_Info->visa_grant_date != '0000-00-00')
+                                <div class="field-group">
+                                    <span class="field-label">Visa Grant Date</span>
+                                    <span class="field-value">
+                                        <?php 
+                                        $grantDate = \Carbon\Carbon::parse($visa_Info->visa_grant_date);
+                                        echo $grantDate->format('d/m/Y'); 
+                                        ?>
+                                    </span>
+                                </div>
+                                @endif
+                                @if($visa_Info->visa_description != "")
+                                <div class="field-group">
+                                    <span class="field-label">Visa Description</span>
+                                    <span class="field-value">
+                                        <?php echo $visa_Info->visa_description; ?>
+                                    </span>
+                                </div>
+                                @endif
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="field-group">
+                                <span class="field-label">Visa Type</span>
+                                <span class="field-value">N/A</span>
+                            </div>
+                            <div class="field-group">
+                                <span class="field-label">Visa Expiry Date</span>
+                                <span class="field-value">N/A</span>
+                            </div>
+                        <?php endif; ?>
                         <div class="field-group">
                             <span class="field-label">Country Of Passport</span>
                             <span class="field-value">
@@ -453,7 +502,8 @@
                                             //dd($relationship->related_client_id);
                                             if(isset($relationship->related_client_id) && $relationship->related_client_id != "" && $relationship->related_client_id != 0)
                                             { //Existing Client
-                                                $relatedClientInfo = App\Models\Admin::select('client_id','first_name','last_name')->where('id', $relationship->related_client_id)->first();
+                                                // Use eager-loaded relatedClient instead of querying in loop (prevents N+1)
+                                                $relatedClientInfo = $relationship->relatedClient;
                                                 //dd($relatedClientInfo);
                                                 if($relatedClientInfo){
                                                     $relatedClientId = $relatedClientInfo->client_id;

@@ -4498,7 +4498,10 @@ class ClientsController extends Controller
                 $ClientPoints = ClientPoint::where('client_id', $id)->get();
 
                 // Fetch client family details with optimized query
-                $clientFamilyDetails = ClientRelationship::Where('client_id', $id)->get()?? [];
+                // Eager load related client to prevent N+1 queries in the view
+                $clientFamilyDetails = ClientRelationship::where('client_id', $id)
+                    ->with(['relatedClient:id,first_name,last_name,client_id'])
+                    ->get() ?? [];
                 
                 // Detect if current matter is EOI-related
                 $isEoiMatter = false;

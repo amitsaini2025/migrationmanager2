@@ -302,6 +302,9 @@ Route::middleware(['auth:admin'])->group(function() {
 	Route::get('/action', [AssigneeController::class, 'action'])->name('assignee.action');
 	Route::get('/action/list', [AssigneeController::class, 'getAction'])->name('action.list');
 
+	/*---------- Matter Office Management ----------*/
+	Route::post('/matters/update-office', [ClientsController::class, 'updateMatterOffice'])->name('matters.update-office');
+
 	/*---------- End of Admin Routes ----------*/
 
 

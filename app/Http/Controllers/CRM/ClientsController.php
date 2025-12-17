@@ -7442,6 +7442,7 @@ class ClientsController extends Controller
             $obj5 = new ClientMatter();
             $obj5->user_id = Auth::user()->id;
             $obj5->client_id = $requestData['client_id'];
+            $obj5->office_id = $requestData['office_id'] ?? Auth::user()->office_id ?? null;
             $obj5->sel_migration_agent = $requestData['migration_agent'];
             $obj5->sel_person_responsible = $requestData['person_responsible'];
             $obj5->sel_person_assisting = $requestData['person_assisting'];
@@ -8083,6 +8084,7 @@ class ClientsController extends Controller
                     $matter = new ClientMatter();
                     $matter->user_id = $request['user_id'];
                     $matter->client_id = $request['client_id'];
+                    $matter->office_id = $request['office_id'] ?? Auth::user()->office_id ?? null;
                     $matter->sel_migration_agent = $request['migration_agent'];
                     $matter->sel_person_responsible = $request['person_responsible'];
                     $matter->sel_person_assisting = $request['person_assisting'];
@@ -8552,6 +8554,63 @@ class ClientsController extends Controller
                 'success' => false,
                 'message' => 'Error during test processing',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update office assignment for a matter
+     * POST /matters/update-office
+     */
+    public function updateMatterOffice(Request $request)
+    {
+        try {
+            $this->validate($request, [
+                'matter_id' => 'required|exists:client_matters,id',
+                'office_id' => 'required|exists:branches,id',
+            ]);
+            
+            $matter = ClientMatter::findOrFail($request->matter_id);
+            $oldOffice = $matter->office ? $matter->office->office_name : 'None';
+            $newOffice = Branch::findOrFail($request->office_id);
+            
+            // Update matter
+            $matter->office_id = $request->office_id;
+            $matter->save();
+            
+            // Log activity
+            $activitySubject = $oldOffice === 'None' 
+                ? "assigned matter to {$newOffice->office_name} office"
+                : "changed matter office from {$oldOffice} to {$newOffice->office_name}";
+            
+            if (!empty($request->notes)) {
+                $activitySubject .= " - Notes: {$request->notes}";
+            }
+            
+            $activityLog = new ActivitiesLog;
+            $activityLog->client_id = $matter->client_id;
+            $activityLog->created_by = Auth::id();
+            $activityLog->subject = $activitySubject;
+            $activityLog->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Office assigned successfully',
+                'office_name' => $newOffice->office_name,
+                'office_id' => $newOffice->id
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error: ' . implode(', ', $e->errors())
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Error updating matter office: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to assign office: ' . $e->getMessage()
             ], 500);
         }
     }

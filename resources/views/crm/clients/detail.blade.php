@@ -456,6 +456,7 @@ use App\Http\Controllers\Controller;
 @include('crm.clients.modals.appointment')
 @include('crm.clients.addclientmodal')
 @include('crm.clients.editclientmodal')
+@include('crm.clients.modals.edit-matter-office')
 
 
 

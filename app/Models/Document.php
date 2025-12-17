@@ -30,6 +30,7 @@ class Document extends Model
         'folder_name',
         'mail_type',
         'client_matter_id',
+        'office_id',
         'checklist',
         'checklist_verified_by',
         'checklist_verified_at',
@@ -117,6 +118,16 @@ class Document extends Model
         return $this->hasMany(DocumentNote::class)->orderBy('created_at', 'desc');
     }
 
+    public function clientMatter(): BelongsTo
+    {
+        return $this->belongsTo(ClientMatter::class, 'client_matter_id');
+    }
+
+    public function office(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'office_id');
+    }
+
     // Scopes
     public function scopeForUser($query, $userId)
     {
@@ -155,7 +166,58 @@ class Document extends Model
         return $query;
     }
 
+    /**
+     * Scope to filter documents by office (includes matter-derived)
+     */
+    public function scopeByOffice($query, $officeId)
+    {
+        return $query->where(function($q) use ($officeId) {
+            // Direct office assignment (ad-hoc docs)
+            $q->where('documents.office_id', $officeId)
+              // Or via client matter
+              ->orWhereHas('clientMatter', function($mq) use ($officeId) {
+                  $mq->where('office_id', $officeId);
+              });
+        });
+    }
+
     // Accessors
+    
+    /**
+     * Get resolved office (from matter or direct assignment)
+     */
+    public function getResolvedOfficeAttribute()
+    {
+        // Priority 1: From client matter
+        if ($this->client_matter_id && $this->clientMatter) {
+            return $this->clientMatter->office;
+        }
+        
+        // Priority 2: Direct assignment (ad-hoc docs)
+        if ($this->office_id && $this->office) {
+            return $this->office;
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get resolved office ID
+     */
+    public function getResolvedOfficeIdAttribute()
+    {
+        return $this->resolved_office?->id;
+    }
+
+    /**
+     * Get resolved office name
+     */
+    public function getResolvedOfficeNameAttribute()
+    {
+        return $this->resolved_office?->office_name ?? 'No Office';
+    }
+
+    // Existing Accessors
     public function getDisplayTitleAttribute()
     {
         return $this->title ?: $this->file_name;

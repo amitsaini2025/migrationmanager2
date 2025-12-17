@@ -17318,5 +17318,111 @@ Bansal Immigration`;
         
         return false;
     });
+
+    // ============================================
+    // MATTER OFFICE ASSIGNMENT
+    // ============================================
+
+    // Open edit office modal for existing matters
+    $(document).on('click', '.assign-office-btn, .edit-office-btn', function(e) {
+        e.preventDefault();
+        const matterId = $(this).data('matter-id');
+        const matterNo = $(this).data('matter-no');
+        const matterType = $(this).data('matter-type');
+        const currentOffice = $(this).data('current-office');
+        
+        // Set form values
+        $('#edit_matter_id').val(matterId);
+        $('#edit_office_id').val(currentOffice || '');
+        
+        // Display matter details
+        const detailsHtml = `
+            <strong>Matter No:</strong> ${matterNo}<br>
+            <strong>Matter Type:</strong> ${matterType}
+        `;
+        $('#matter_details').html(detailsHtml);
+        
+        // Open modal
+        $('#editMatterOfficeModal').modal('show');
+    });
+
+    // Submit office assignment form
+    $(document).on('submit', '#editMatterOfficeForm', function(e) {
+        e.preventDefault();
+        
+        const formData = $(this).serialize();
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalBtnHtml = submitBtn.html();
+        
+        // Disable button and show loading
+        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+        
+        $.ajax({
+            url: $(this).attr('action'),
+            method: 'POST',
+            data: formData,
+            success: function(response) {
+                if (response.success) {
+                    // Show success message
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: 'Office assigned successfully',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        alert('Office assigned successfully!');
+                    }
+                    
+                    // Close modal
+                    $('#editMatterOfficeModal').modal('hide');
+                    
+                    // Reload page to show updated office
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: response.message || 'Failed to assign office'
+                        });
+                    } else {
+                        alert('Error: ' + (response.message || 'Failed to assign office'));
+                    }
+                    submitBtn.prop('disabled', false).html(originalBtnHtml);
+                }
+            },
+            error: function(xhr) {
+                let errorMsg = 'An error occurred. Please try again.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: errorMsg
+                    });
+                } else {
+                    alert('Error: ' + errorMsg);
+                }
+                submitBtn.prop('disabled', false).html(originalBtnHtml);
+            }
+        });
+        
+        return false;
+    });
+
+    // Reset form when modal closes
+    $('#editMatterOfficeModal').on('hidden.bs.modal', function() {
+        $('#editMatterOfficeForm')[0].reset();
+        $('#office_notes').val('');
+        $('#matter_details').html('');
+    });
     
 })();

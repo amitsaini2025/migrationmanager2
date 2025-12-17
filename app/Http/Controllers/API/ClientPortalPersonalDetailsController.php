@@ -6551,10 +6551,49 @@ class ClientPortalPersonalDetailsController extends Controller
             DB::beginTransaction();
 
             try {
-                // Delete existing visa audit entries for this client
-                ClientPortalDetailAudit::where('client_id', $clientId)
+                // Get existing visa IDs from request to identify which ones to update
+                $visaIdsToUpdate = [];
+                $visaIdToMetaOrderMap = []; // Map visa ID to its meta_order
+                
+                foreach ($visas as $visaData) {
+                    // ID field is required - if it has a value (not null), it's an update; if null, it's a new record
+                    if (isset($visaData['id']) && $visaData['id'] !== null && $visaData['id'] !== '') {
+                        $visaIdsToUpdate[] = (int) $visaData['id'];
+                    }
+                }
+
+                // Get the highest existing meta_order BEFORE deleting (to ensure unique values for new visas)
+                $maxMetaOrder = ClientPortalDetailAudit::where('client_id', $clientId)
                     ->whereIn('meta_key', ['visa', 'visa_country', 'visa_type', 'visa_description', 'visa_expiry_date', 'visa_grant_date'])
-                    ->delete();
+                    ->max('meta_order') ?? -1;
+
+                // Get meta_order values for existing visas BEFORE deleting (if IDs provided)
+                if (!empty($visaIdsToUpdate)) {
+                    $existingAuditEntries = ClientPortalDetailAudit::where('client_id', $clientId)
+                        ->where('meta_key', 'visa')
+                        ->whereIn('meta_type', array_map('strval', $visaIdsToUpdate))
+                        ->get();
+
+                    foreach ($existingAuditEntries as $entry) {
+                        $vid = (int) $entry->meta_type;
+                        if (!isset($visaIdToMetaOrderMap[$vid])) {
+                            $visaIdToMetaOrderMap[$vid] = $entry->meta_order;
+                        }
+                    }
+
+                    // Delete audit entries for specific visas being updated
+                    if (!empty($visaIdToMetaOrderMap)) {
+                        $ordersToDelete = array_values($visaIdToMetaOrderMap);
+                        ClientPortalDetailAudit::where('client_id', $clientId)
+                            ->whereIn('meta_key', ['visa', 'visa_country', 'visa_type', 'visa_description', 'visa_expiry_date', 'visa_grant_date'])
+                            ->whereIn('meta_order', $ordersToDelete)
+                            ->delete();
+                    }
+                }
+                // Note: If all visas have id: null (new visas), no deletion happens - safe behavior
+
+                // Track which meta_order values are being reused (to avoid conflicts with new visas)
+                $usedMetaOrders = array_values($visaIdToMetaOrderMap);
 
                 // Process each visa
                 foreach ($visas as $index => $visaData) {
@@ -6583,7 +6622,19 @@ class ClientPortalPersonalDetailsController extends Controller
                     // Determine action: 'create' for new records, 'update' for existing ones
                     $action = $isNewRecord ? 'create' : 'update';
 
-                    $metaOrder = $index;
+                    // Determine meta_order: use existing if updating by ID, otherwise use next available
+                    if (!$isNewRecord && isset($visaIdToMetaOrderMap[$visaId])) {
+                        // Use existing meta_order for this visa
+                        $metaOrder = $visaIdToMetaOrderMap[$visaId];
+                    } else {
+                        // New visa - use next available meta_order that doesn't conflict with reused values
+                        do {
+                            $maxMetaOrder++;
+                            $metaOrder = $maxMetaOrder;
+                        } while (in_array($metaOrder, $usedMetaOrders));
+                        // Track this meta_order as used to avoid conflicts with subsequent new visas
+                        $usedMetaOrders[] = $metaOrder;
+                    }
 
                     // Save visa marker
                     ClientPortalDetailAudit::create([
@@ -7135,10 +7186,49 @@ class ClientPortalPersonalDetailsController extends Controller
             DB::beginTransaction();
 
             try {
-                // Delete existing address audit entries for this client
-                ClientPortalDetailAudit::where('client_id', $clientId)
+                // Get existing address IDs from request to identify which ones to update
+                $addressIdsToUpdate = [];
+                $addressIdToMetaOrderMap = []; // Map address ID to its meta_order
+                
+                foreach ($addresses as $addressData) {
+                    // ID field is required - if it has a value (not null), it's an update; if null, it's a new record
+                    if (isset($addressData['id']) && $addressData['id'] !== null && $addressData['id'] !== '') {
+                        $addressIdsToUpdate[] = (int) $addressData['id'];
+                    }
+                }
+
+                // Get the highest existing meta_order BEFORE deleting (to ensure unique values for new addresses)
+                $maxMetaOrder = ClientPortalDetailAudit::where('client_id', $clientId)
                     ->whereIn('meta_key', ['address', 'address_line_1', 'address_line_2', 'address_suburb', 'address_state', 'address_postcode', 'address_country', 'address_regional_code', 'address_start_date', 'address_end_date', 'address_is_current'])
-                    ->delete();
+                    ->max('meta_order') ?? -1;
+
+                // Get meta_order values for existing addresses BEFORE deleting (if IDs provided)
+                if (!empty($addressIdsToUpdate)) {
+                    $existingAuditEntries = ClientPortalDetailAudit::where('client_id', $clientId)
+                        ->where('meta_key', 'address_line_1')
+                        ->whereIn('meta_type', array_map('strval', $addressIdsToUpdate))
+                        ->get();
+
+                    foreach ($existingAuditEntries as $entry) {
+                        $aid = (int) $entry->meta_type;
+                        if (!isset($addressIdToMetaOrderMap[$aid])) {
+                            $addressIdToMetaOrderMap[$aid] = $entry->meta_order;
+                        }
+                    }
+
+                    // Delete audit entries for specific addresses being updated
+                    if (!empty($addressIdToMetaOrderMap)) {
+                        $ordersToDelete = array_values($addressIdToMetaOrderMap);
+                        ClientPortalDetailAudit::where('client_id', $clientId)
+                            ->whereIn('meta_key', ['address', 'address_line_1', 'address_line_2', 'address_suburb', 'address_state', 'address_postcode', 'address_country', 'address_regional_code', 'address_start_date', 'address_end_date', 'address_is_current'])
+                            ->whereIn('meta_order', $ordersToDelete)
+                            ->delete();
+                    }
+                }
+                // Note: If all addresses have id: null (new addresses), no deletion happens - safe behavior
+
+                // Track which meta_order values are being reused (to avoid conflicts with new addresses)
+                $usedMetaOrders = array_values($addressIdToMetaOrderMap);
 
                 // Process each address
                 foreach ($addresses as $index => $addressData) {
@@ -7159,8 +7249,6 @@ class ClientPortalPersonalDetailsController extends Controller
                         continue; // Skip if address_line_1 is empty
                     }
 
-                    $metaOrder = $index;
-
                     // Determine if this is a new record and set action
                     $isNewRecord = ($addressId === null || $addressId === '');
                     $action = $isNewRecord ? 'create' : 'update';
@@ -7168,6 +7256,22 @@ class ClientPortalPersonalDetailsController extends Controller
                     // Generate timestamp-based ID for new records
                     if ($isNewRecord) {
                         $addressId = $this->generateTimestampBasedId();
+                    } else {
+                        $addressId = (int) $addressId;
+                    }
+
+                    // Determine meta_order: use existing if updating by ID, otherwise use next available
+                    if (!$isNewRecord && isset($addressIdToMetaOrderMap[$addressId])) {
+                        // Use existing meta_order for this address
+                        $metaOrder = $addressIdToMetaOrderMap[$addressId];
+                    } else {
+                        // New address - use next available meta_order that doesn't conflict with reused values
+                        do {
+                            $maxMetaOrder++;
+                            $metaOrder = $maxMetaOrder;
+                        } while (in_array($metaOrder, $usedMetaOrders));
+                        // Track this meta_order as used to avoid conflicts with subsequent new addresses
+                        $usedMetaOrders[] = $metaOrder;
                     }
 
                     // Convert dates from dd/mm/yyyy to Y-m-d format
@@ -7484,10 +7588,49 @@ class ClientPortalPersonalDetailsController extends Controller
             DB::beginTransaction();
 
             try {
-                // Delete existing travel audit entries for this client
-                ClientPortalDetailAudit::where('client_id', $clientId)
+                // Get existing travel IDs from request to identify which ones to update
+                $travelIdsToUpdate = [];
+                $travelIdToMetaOrderMap = []; // Map travel ID to its meta_order
+                
+                foreach ($travels as $travelData) {
+                    // ID field is required - if it has a value (not null), it's an update; if null, it's a new record
+                    if (isset($travelData['id']) && $travelData['id'] !== null && $travelData['id'] !== '') {
+                        $travelIdsToUpdate[] = (int) $travelData['id'];
+                    }
+                }
+
+                // Get the highest existing meta_order BEFORE deleting (to ensure unique values for new travels)
+                $maxMetaOrder = ClientPortalDetailAudit::where('client_id', $clientId)
                     ->whereIn('meta_key', ['travel', 'travel_country_visited', 'travel_arrival_date', 'travel_departure_date', 'travel_purpose'])
-                    ->delete();
+                    ->max('meta_order') ?? -1;
+
+                // Get meta_order values for existing travels BEFORE deleting (if IDs provided)
+                if (!empty($travelIdsToUpdate)) {
+                    $existingAuditEntries = ClientPortalDetailAudit::where('client_id', $clientId)
+                        ->where('meta_key', 'travel')
+                        ->whereIn('meta_type', array_map('strval', $travelIdsToUpdate))
+                        ->get();
+
+                    foreach ($existingAuditEntries as $entry) {
+                        $tid = (int) $entry->meta_type;
+                        if (!isset($travelIdToMetaOrderMap[$tid])) {
+                            $travelIdToMetaOrderMap[$tid] = $entry->meta_order;
+                        }
+                    }
+
+                    // Delete audit entries for specific travels being updated
+                    if (!empty($travelIdToMetaOrderMap)) {
+                        $ordersToDelete = array_values($travelIdToMetaOrderMap);
+                        ClientPortalDetailAudit::where('client_id', $clientId)
+                            ->whereIn('meta_key', ['travel', 'travel_country_visited', 'travel_arrival_date', 'travel_departure_date', 'travel_purpose'])
+                            ->whereIn('meta_order', $ordersToDelete)
+                            ->delete();
+                    }
+                }
+                // Note: If all travels have id: null (new travels), no deletion happens - safe behavior
+
+                // Track which meta_order values are being reused (to avoid conflicts with new travels)
+                $usedMetaOrders = array_values($travelIdToMetaOrderMap);
 
                 // Process each travel
                 foreach ($travels as $index => $travelData) {
@@ -7514,7 +7657,19 @@ class ClientPortalPersonalDetailsController extends Controller
                     // Determine action: 'create' for new records, 'update' for existing ones
                     $action = $isNewRecord ? 'create' : 'update';
 
-                    $metaOrder = $index;
+                    // Determine meta_order: use existing if updating by ID, otherwise use next available
+                    if (!$isNewRecord && isset($travelIdToMetaOrderMap[$travelId])) {
+                        // Use existing meta_order for this travel
+                        $metaOrder = $travelIdToMetaOrderMap[$travelId];
+                    } else {
+                        // New travel - use next available meta_order that doesn't conflict with reused values
+                        do {
+                            $maxMetaOrder++;
+                            $metaOrder = $maxMetaOrder;
+                        } while (in_array($metaOrder, $usedMetaOrders));
+                        // Track this meta_order as used to avoid conflicts with subsequent new travels
+                        $usedMetaOrders[] = $metaOrder;
+                    }
 
                     // Convert dates from dd/mm/yyyy to Y-m-d format
                     $arrivalDateDb = null;
@@ -7747,10 +7902,49 @@ class ClientPortalPersonalDetailsController extends Controller
             DB::beginTransaction();
 
             try {
-                // Delete existing qualification audit entries for this client
-                ClientPortalDetailAudit::where('client_id', $clientId)
+                // Get existing qualification IDs from request to identify which ones to update
+                $qualificationIdsToUpdate = [];
+                $qualificationIdToMetaOrderMap = []; // Map qualification ID to its meta_order
+                
+                foreach ($qualifications as $qualificationData) {
+                    // ID field is required - if it has a value (not null), it's an update; if null, it's a new record
+                    if (isset($qualificationData['id']) && $qualificationData['id'] !== null && $qualificationData['id'] !== '') {
+                        $qualificationIdsToUpdate[] = (int) $qualificationData['id'];
+                    }
+                }
+
+                // Get the highest existing meta_order BEFORE deleting (to ensure unique values for new qualifications)
+                $maxMetaOrder = ClientPortalDetailAudit::where('client_id', $clientId)
                     ->whereIn('meta_key', ['qualification', 'qualification_level', 'qualification_name', 'qualification_college_name', 'qualification_campus', 'qualification_country', 'qualification_state', 'qualification_start_date', 'qualification_finish_date', 'qualification_relevant', 'qualification_specialist_education', 'qualification_stem', 'qualification_regional_study'])
-                    ->delete();
+                    ->max('meta_order') ?? -1;
+
+                // Get meta_order values for existing qualifications BEFORE deleting (if IDs provided)
+                if (!empty($qualificationIdsToUpdate)) {
+                    $existingAuditEntries = ClientPortalDetailAudit::where('client_id', $clientId)
+                        ->where('meta_key', 'qualification')
+                        ->whereIn('meta_type', array_map('strval', $qualificationIdsToUpdate))
+                        ->get();
+
+                    foreach ($existingAuditEntries as $entry) {
+                        $qid = (int) $entry->meta_type;
+                        if (!isset($qualificationIdToMetaOrderMap[$qid])) {
+                            $qualificationIdToMetaOrderMap[$qid] = $entry->meta_order;
+                        }
+                    }
+
+                    // Delete audit entries for specific qualifications being updated
+                    if (!empty($qualificationIdToMetaOrderMap)) {
+                        $ordersToDelete = array_values($qualificationIdToMetaOrderMap);
+                        ClientPortalDetailAudit::where('client_id', $clientId)
+                            ->whereIn('meta_key', ['qualification', 'qualification_level', 'qualification_name', 'qualification_college_name', 'qualification_campus', 'qualification_country', 'qualification_state', 'qualification_start_date', 'qualification_finish_date', 'qualification_relevant', 'qualification_specialist_education', 'qualification_stem', 'qualification_regional_study'])
+                            ->whereIn('meta_order', $ordersToDelete)
+                            ->delete();
+                    }
+                }
+                // Note: If all qualifications have id: null (new qualifications), no deletion happens - safe behavior
+
+                // Track which meta_order values are being reused (to avoid conflicts with new qualifications)
+                $usedMetaOrders = array_values($qualificationIdToMetaOrderMap);
 
                 // Process each qualification
                 foreach ($qualifications as $index => $qualificationData) {
@@ -7786,7 +7980,19 @@ class ClientPortalPersonalDetailsController extends Controller
                     // Determine action: 'create' for new records, 'update' for existing ones
                     $action = $isNewRecord ? 'create' : 'update';
 
-                    $metaOrder = $index;
+                    // Determine meta_order: use existing if updating by ID, otherwise use next available
+                    if (!$isNewRecord && isset($qualificationIdToMetaOrderMap[$qualificationId])) {
+                        // Use existing meta_order for this qualification
+                        $metaOrder = $qualificationIdToMetaOrderMap[$qualificationId];
+                    } else {
+                        // New qualification - use next available meta_order that doesn't conflict with reused values
+                        do {
+                            $maxMetaOrder++;
+                            $metaOrder = $maxMetaOrder;
+                        } while (in_array($metaOrder, $usedMetaOrders));
+                        // Track this meta_order as used to avoid conflicts with subsequent new qualifications
+                        $usedMetaOrders[] = $metaOrder;
+                    }
 
                     // Convert dates from dd/mm/yyyy to Y-m-d format
                     $startDateDb = null;
@@ -8143,10 +8349,49 @@ class ClientPortalPersonalDetailsController extends Controller
             DB::beginTransaction();
 
             try {
-                // Delete existing experience audit entries for this client
-                ClientPortalDetailAudit::where('client_id', $clientId)
+                // Get existing experience IDs from request to identify which ones to update
+                $experienceIdsToUpdate = [];
+                $experienceIdToMetaOrderMap = []; // Map experience ID to its meta_order
+                
+                foreach ($experiences as $experienceData) {
+                    // ID field is required - if it has a value (not null), it's an update; if null, it's a new record
+                    if (isset($experienceData['id']) && $experienceData['id'] !== null && $experienceData['id'] !== '') {
+                        $experienceIdsToUpdate[] = (int) $experienceData['id'];
+                    }
+                }
+
+                // Get the highest existing meta_order BEFORE deleting (to ensure unique values for new experiences)
+                $maxMetaOrder = ClientPortalDetailAudit::where('client_id', $clientId)
                     ->whereIn('meta_key', ['experience', 'experience_job_title', 'experience_job_code', 'experience_country', 'experience_start_date', 'experience_finish_date', 'experience_relevant', 'experience_employer_name', 'experience_state', 'experience_job_type', 'experience_fte_multiplier'])
-                    ->delete();
+                    ->max('meta_order') ?? -1;
+
+                // Get meta_order values for existing experiences BEFORE deleting (if IDs provided)
+                if (!empty($experienceIdsToUpdate)) {
+                    $existingAuditEntries = ClientPortalDetailAudit::where('client_id', $clientId)
+                        ->where('meta_key', 'experience')
+                        ->whereIn('meta_type', array_map('strval', $experienceIdsToUpdate))
+                        ->get();
+
+                    foreach ($existingAuditEntries as $entry) {
+                        $eid = (int) $entry->meta_type;
+                        if (!isset($experienceIdToMetaOrderMap[$eid])) {
+                            $experienceIdToMetaOrderMap[$eid] = $entry->meta_order;
+                        }
+                    }
+
+                    // Delete audit entries for specific experiences being updated
+                    if (!empty($experienceIdToMetaOrderMap)) {
+                        $ordersToDelete = array_values($experienceIdToMetaOrderMap);
+                        ClientPortalDetailAudit::where('client_id', $clientId)
+                            ->whereIn('meta_key', ['experience', 'experience_job_title', 'experience_job_code', 'experience_country', 'experience_start_date', 'experience_finish_date', 'experience_relevant', 'experience_employer_name', 'experience_state', 'experience_job_type', 'experience_fte_multiplier'])
+                            ->whereIn('meta_order', $ordersToDelete)
+                            ->delete();
+                    }
+                }
+                // Note: If all experiences have id: null (new experiences), no deletion happens - safe behavior
+
+                // Track which meta_order values are being reused (to avoid conflicts with new experiences)
+                $usedMetaOrders = array_values($experienceIdToMetaOrderMap);
 
                 // Process each experience
                 foreach ($experiences as $index => $experienceData) {
@@ -8179,7 +8424,19 @@ class ClientPortalPersonalDetailsController extends Controller
                     // Determine action: 'create' for new records, 'update' for existing ones
                     $action = $isNewRecord ? 'create' : 'update';
 
-                    $metaOrder = $index;
+                    // Determine meta_order: use existing if updating by ID, otherwise use next available
+                    if (!$isNewRecord && isset($experienceIdToMetaOrderMap[$experienceId])) {
+                        // Use existing meta_order for this experience
+                        $metaOrder = $experienceIdToMetaOrderMap[$experienceId];
+                    } else {
+                        // New experience - use next available meta_order that doesn't conflict with reused values
+                        do {
+                            $maxMetaOrder++;
+                            $metaOrder = $maxMetaOrder;
+                        } while (in_array($metaOrder, $usedMetaOrders));
+                        // Track this meta_order as used to avoid conflicts with subsequent new experiences
+                        $usedMetaOrders[] = $metaOrder;
+                    }
 
                     // Convert dates from dd/mm/yyyy to Y-m-d format
                     $startDateDb = null;
@@ -8505,10 +8762,49 @@ class ClientPortalPersonalDetailsController extends Controller
             DB::beginTransaction();
 
             try {
-                // Delete existing occupation audit entries for this client
-                ClientPortalDetailAudit::where('client_id', $clientId)
+                // Get existing occupation IDs from request to identify which ones to update
+                $occupationIdsToUpdate = [];
+                $occupationIdToMetaOrderMap = []; // Map occupation ID to its meta_order
+                
+                foreach ($occupations as $occupationData) {
+                    // ID field is required - if it has a value (not null), it's an update; if null, it's a new record
+                    if (isset($occupationData['id']) && $occupationData['id'] !== null && $occupationData['id'] !== '') {
+                        $occupationIdsToUpdate[] = (int) $occupationData['id'];
+                    }
+                }
+
+                // Get the highest existing meta_order BEFORE deleting (to ensure unique values for new occupations)
+                $maxMetaOrder = ClientPortalDetailAudit::where('client_id', $clientId)
                     ->whereIn('meta_key', ['occupation', 'occupation_skill_assessment', 'occupation_nominated', 'occupation_code', 'occupation_assessing_authority', 'occupation_visa_subclass', 'occupation_assessment_date', 'occupation_expiry_date', 'occupation_reference_no', 'occupation_relevant', 'occupation_anzsco_id'])
-                    ->delete();
+                    ->max('meta_order') ?? -1;
+
+                // Get meta_order values for existing occupations BEFORE deleting (if IDs provided)
+                if (!empty($occupationIdsToUpdate)) {
+                    $existingAuditEntries = ClientPortalDetailAudit::where('client_id', $clientId)
+                        ->where('meta_key', 'occupation')
+                        ->whereIn('meta_type', array_map('strval', $occupationIdsToUpdate))
+                        ->get();
+
+                    foreach ($existingAuditEntries as $entry) {
+                        $oid = (int) $entry->meta_type;
+                        if (!isset($occupationIdToMetaOrderMap[$oid])) {
+                            $occupationIdToMetaOrderMap[$oid] = $entry->meta_order;
+                        }
+                    }
+
+                    // Delete audit entries for specific occupations being updated
+                    if (!empty($occupationIdToMetaOrderMap)) {
+                        $ordersToDelete = array_values($occupationIdToMetaOrderMap);
+                        ClientPortalDetailAudit::where('client_id', $clientId)
+                            ->whereIn('meta_key', ['occupation', 'occupation_skill_assessment', 'occupation_nominated', 'occupation_code', 'occupation_assessing_authority', 'occupation_visa_subclass', 'occupation_assessment_date', 'occupation_expiry_date', 'occupation_reference_no', 'occupation_relevant', 'occupation_anzsco_id'])
+                            ->whereIn('meta_order', $ordersToDelete)
+                            ->delete();
+                    }
+                }
+                // Note: If all occupations have id: null (new occupations), no deletion happens - safe behavior
+
+                // Track which meta_order values are being reused (to avoid conflicts with new occupations)
+                $usedMetaOrders = array_values($occupationIdToMetaOrderMap);
 
                 // Process each occupation
                 foreach ($occupations as $index => $occupationData) {
@@ -8542,7 +8838,19 @@ class ClientPortalPersonalDetailsController extends Controller
                     // Determine action: 'create' for new records, 'update' for existing ones
                     $action = $isNewRecord ? 'create' : 'update';
 
-                    $metaOrder = $index;
+                    // Determine meta_order: use existing if updating by ID, otherwise use next available
+                    if (!$isNewRecord && isset($occupationIdToMetaOrderMap[$occupationId])) {
+                        // Use existing meta_order for this occupation
+                        $metaOrder = $occupationIdToMetaOrderMap[$occupationId];
+                    } else {
+                        // New occupation - use next available meta_order that doesn't conflict with reused values
+                        do {
+                            $maxMetaOrder++;
+                            $metaOrder = $maxMetaOrder;
+                        } while (in_array($metaOrder, $usedMetaOrders));
+                        // Track this meta_order as used to avoid conflicts with subsequent new occupations
+                        $usedMetaOrders[] = $metaOrder;
+                    }
 
                     // Convert dates from dd/mm/yyyy to Y-m-d format
                     $assessmentDateDb = null;
@@ -8867,10 +9175,49 @@ class ClientPortalPersonalDetailsController extends Controller
             DB::beginTransaction();
 
             try {
-                // Delete existing test score audit entries for this client
-                ClientPortalDetailAudit::where('client_id', $clientId)
+                // Get existing test score IDs from request to identify which ones to update
+                $testScoreIdsToUpdate = [];
+                $testScoreIdToMetaOrderMap = []; // Map test score ID to its meta_order
+                
+                foreach ($testScores as $testScoreData) {
+                    // ID field is required - if it has a value (not null), it's an update; if null, it's a new record
+                    if (isset($testScoreData['id']) && $testScoreData['id'] !== null && $testScoreData['id'] !== '') {
+                        $testScoreIdsToUpdate[] = (int) $testScoreData['id'];
+                    }
+                }
+
+                // Get the highest existing meta_order BEFORE deleting (to ensure unique values for new test scores)
+                $maxMetaOrder = ClientPortalDetailAudit::where('client_id', $clientId)
                     ->whereIn('meta_key', ['test_score', 'test_score_test_type', 'test_score_listening', 'test_score_reading', 'test_score_writing', 'test_score_speaking', 'test_score_overall_score', 'test_score_test_date', 'test_score_reference_no', 'test_score_relevant'])
-                    ->delete();
+                    ->max('meta_order') ?? -1;
+
+                // Get meta_order values for existing test scores BEFORE deleting (if IDs provided)
+                if (!empty($testScoreIdsToUpdate)) {
+                    $existingAuditEntries = ClientPortalDetailAudit::where('client_id', $clientId)
+                        ->where('meta_key', 'test_score')
+                        ->whereIn('meta_type', array_map('strval', $testScoreIdsToUpdate))
+                        ->get();
+
+                    foreach ($existingAuditEntries as $entry) {
+                        $tsid = (int) $entry->meta_type;
+                        if (!isset($testScoreIdToMetaOrderMap[$tsid])) {
+                            $testScoreIdToMetaOrderMap[$tsid] = $entry->meta_order;
+                        }
+                    }
+
+                    // Delete audit entries for specific test scores being updated
+                    if (!empty($testScoreIdToMetaOrderMap)) {
+                        $ordersToDelete = array_values($testScoreIdToMetaOrderMap);
+                        ClientPortalDetailAudit::where('client_id', $clientId)
+                            ->whereIn('meta_key', ['test_score', 'test_score_test_type', 'test_score_listening', 'test_score_reading', 'test_score_writing', 'test_score_speaking', 'test_score_overall_score', 'test_score_test_date', 'test_score_reference_no', 'test_score_relevant'])
+                            ->whereIn('meta_order', $ordersToDelete)
+                            ->delete();
+                    }
+                }
+                // Note: If all test scores have id: null (new test scores), no deletion happens - safe behavior
+
+                // Track which meta_order values are being reused (to avoid conflicts with new test scores)
+                $usedMetaOrders = array_values($testScoreIdToMetaOrderMap);
 
                 // Process each test score
                 foreach ($testScores as $index => $testScoreData) {
@@ -8902,7 +9249,19 @@ class ClientPortalPersonalDetailsController extends Controller
                     // Determine action: 'create' for new records, 'update' for existing ones
                     $action = $isNewRecord ? 'create' : 'update';
 
-                    $metaOrder = $index;
+                    // Determine meta_order: use existing if updating by ID, otherwise use next available
+                    if (!$isNewRecord && isset($testScoreIdToMetaOrderMap[$testScoreId])) {
+                        // Use existing meta_order for this test score
+                        $metaOrder = $testScoreIdToMetaOrderMap[$testScoreId];
+                    } else {
+                        // New test score - use next available meta_order that doesn't conflict with reused values
+                        do {
+                            $maxMetaOrder++;
+                            $metaOrder = $maxMetaOrder;
+                        } while (in_array($metaOrder, $usedMetaOrders));
+                        // Track this meta_order as used to avoid conflicts with subsequent new test scores
+                        $usedMetaOrders[] = $metaOrder;
+                    }
 
                     // Convert date from dd/mm/yyyy to Y-m-d format
                     $testDateDb = null;

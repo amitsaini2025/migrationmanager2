@@ -20,6 +20,7 @@ class ClientMatter extends Model
      */
     protected $fillable = [
         'client_id',
+        'office_id',
         'sel_migration_agent',
         'sel_person_responsible',
         'sel_person_assisting',
@@ -79,6 +80,22 @@ class ClientMatter extends Model
     }
 
     /**
+     * Alias for matter() - for consistency in views
+     */
+    public function matterType()
+    {
+        return $this->belongsTo(Matter::class, 'sel_matter_id');
+    }
+
+    /**
+     * Get the office that handles this matter.
+     */
+    public function office()
+    {
+        return $this->belongsTo(Branch::class, 'office_id');
+    }
+
+    /**
      * Get the notes for the matter.
      */
     public function notes()
@@ -92,5 +109,85 @@ class ClientMatter extends Model
     public function mailReports()
     {
         return $this->hasMany(MailReport::class, 'client_matter_id');
+    }
+
+    /**
+     * Get the documents for this matter.
+     */
+    public function documents()
+    {
+        return $this->hasMany(Document::class, 'client_matter_id');
+    }
+
+    /**
+     * Get the receipts/financial transactions for this matter.
+     */
+    public function receipts()
+    {
+        return $this->hasMany(AccountClientReceipt::class, 'client_matter_id');
+    }
+
+    // ============================================
+    // SCOPES FOR QUERYING
+    // ============================================
+
+    /**
+     * Scope to filter matters by office.
+     */
+    public function scopeByOffice($query, $officeId)
+    {
+        return $query->where('office_id', $officeId);
+    }
+
+    /**
+     * Scope to get active matters only.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('matter_status', 1);
+    }
+
+    /**
+     * Scope to get inactive matters only.
+     */
+    public function scopeInactive($query)
+    {
+        return $query->where('matter_status', '!=', 1);
+    }
+
+    /**
+     * Scope to get matters without office assigned.
+     */
+    public function scopeWithoutOffice($query)
+    {
+        return $query->whereNull('office_id');
+    }
+
+    /**
+     * Scope to get matters with office assigned.
+     */
+    public function scopeWithOffice($query)
+    {
+        return $query->whereNotNull('office_id');
+    }
+
+    // ============================================
+    // ACCESSORS & HELPERS
+    // ============================================
+
+    /**
+     * Get the office name for this matter.
+     */
+    public function getOfficeNameAttribute()
+    {
+        return $this->office ? $this->office->office_name : 'No Office';
+    }
+
+    /**
+     * Check if matter has office assigned.
+     */
+    public function hasOffice()
+    {
+        return !is_null($this->office_id);
     }
 }

@@ -434,7 +434,6 @@ use App\Http\Controllers\Controller;
                 @endif
                 
                 @include('crm.clients.tabs.account')
-                @include('crm.clients.tabs.email_handling')
                 @include('crm.clients.tabs.form_generation_client')
                 @include('crm.clients.tabs.appointments')
                 @include('crm.clients.tabs.client_portal')
@@ -456,6 +455,7 @@ use App\Http\Controllers\Controller;
 @include('crm.clients.modals.appointment')
 @include('crm.clients.addclientmodal')
 @include('crm.clients.editclientmodal')
+@include('crm.clients.modals.edit-matter-office')
 
 
 

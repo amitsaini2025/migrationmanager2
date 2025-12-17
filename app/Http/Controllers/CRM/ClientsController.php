@@ -553,7 +553,7 @@ class ClientsController extends Controller
                 'health_declarations.*.date' => 'nullable|regex:/^\d{2}\/\d{2}\/\d{4}$/',
                 'source' => 'nullable|in:SubAgent,Others',
                 'partner_details.*' => 'nullable|string|max:255',
-                'partner_relationship_type.*' => 'nullable|in:Husband,Wife,Ex-Wife,Defacto',
+                'partner_relationship_type.*' => 'nullable|in:Husband,Wife,Ex-Husband,Ex-Wife,Mother-in-law,Defacto',
                 'partner_company_type.*' => 'nullable|in:Accompany Member,Non-Accompany Member',
                 'partner_email.*' => 'nullable|email|max:255',
                 'partner_first_name.*' => 'nullable|string|max:255',
@@ -1692,7 +1692,7 @@ class ClientsController extends Controller
 
                 // New validations for Partner fields
                 'partner_details.*' => 'nullable|string|max:1000',
-                'relationship_type.*' => 'nullable|in:Husband,Wife,Ex-Wife,Defacto',
+                'relationship_type.*' => 'nullable|in:Husband,Wife,Ex-Husband,Ex-Wife,Mother-in-law,Defacto',
                 'partner_email.*' => 'nullable|email|max:255',
                 'partner_first_name.*' => 'nullable|string|max:255',
                 'partner_last_name.*' => 'nullable|string|max:255',
@@ -4498,7 +4498,10 @@ class ClientsController extends Controller
                 $ClientPoints = ClientPoint::where('client_id', $id)->get();
 
                 // Fetch client family details with optimized query
-                $clientFamilyDetails = ClientRelationship::Where('client_id', $id)->get()?? [];
+                // Eager load related client to prevent N+1 queries in the view
+                $clientFamilyDetails = ClientRelationship::where('client_id', $id)
+                    ->with(['relatedClient:id,first_name,last_name,client_id'])
+                    ->get() ?? [];
                 
                 // Detect if current matter is EOI-related
                 $isEoiMatter = false;
@@ -6949,7 +6952,22 @@ class ClientsController extends Controller
             }
 
             $sel_migration_agent = $clientMatterInfo->sel_migration_agent;
-            $agentInfo = DB::table('admins')->select('id as agentId','first_name','last_name','company_name')->where('id',$sel_migration_agent)->first();
+            $agentInfo = DB::table('admins')->select(
+                'id as agentId',
+                'first_name',
+                'last_name',
+                'company_name',
+                'is_migration_agent',
+                'marn_number',
+                'legal_practitioner_number',
+                'exempt_person_reason',
+                'business_address',
+                'business_phone',
+                'business_mobile',
+                'business_email',
+                'business_fax',
+                'tax_number'
+            )->where('id',$sel_migration_agent)->first();
             //dd($agentInfo);
             if($agentInfo){
                 $response['agentInfo'] 	= $agentInfo;
@@ -6982,7 +7000,22 @@ class ClientsController extends Controller
             }
 
             $sel_migration_agent = $clientMatterInfo->sel_migration_agent;
-            $agentInfo = DB::table('admins')->select('id as agentId','first_name','last_name','company_name')->where('id',$sel_migration_agent)->first();
+            $agentInfo = DB::table('admins')->select(
+                'id as agentId',
+                'first_name',
+                'last_name',
+                'company_name',
+                'is_migration_agent',
+                'marn_number',
+                'legal_practitioner_number',
+                'exempt_person_reason',
+                'business_address',
+                'business_phone',
+                'business_mobile',
+                'business_email',
+                'business_fax',
+                'tax_number'
+            )->where('id',$sel_migration_agent)->first();
             //dd($agentInfo);
             if($agentInfo){
                 $response['agentInfo'] 	= $agentInfo;
@@ -7024,7 +7057,22 @@ class ClientsController extends Controller
             }
 
             $sel_migration_agent = $clientMatterInfo->sel_migration_agent;
-            $agentInfo = DB::table('admins')->select('id as agentId','first_name','last_name','company_name')->where('id',$sel_migration_agent)->first();
+            $agentInfo = DB::table('admins')->select(
+                'id as agentId',
+                'first_name',
+                'last_name',
+                'company_name',
+                'is_migration_agent',
+                'marn_number',
+                'legal_practitioner_number',
+                'exempt_person_reason',
+                'business_address',
+                'business_phone',
+                'business_mobile',
+                'business_email',
+                'business_fax',
+                'tax_number'
+            )->where('id',$sel_migration_agent)->first();
             //dd($agentInfo);
             if($agentInfo){
                 $response['agentInfo'] 	= $agentInfo;
@@ -7442,6 +7490,7 @@ class ClientsController extends Controller
             $obj5 = new ClientMatter();
             $obj5->user_id = Auth::user()->id;
             $obj5->client_id = $requestData['client_id'];
+            $obj5->office_id = $requestData['office_id'] ?? Auth::user()->office_id ?? null;
             $obj5->sel_migration_agent = $requestData['migration_agent'];
             $obj5->sel_person_responsible = $requestData['person_responsible'];
             $obj5->sel_person_assisting = $requestData['person_assisting'];
@@ -8083,6 +8132,7 @@ class ClientsController extends Controller
                     $matter = new ClientMatter();
                     $matter->user_id = $request['user_id'];
                     $matter->client_id = $request['client_id'];
+                    $matter->office_id = $request['office_id'] ?? Auth::user()->office_id ?? null;
                     $matter->sel_migration_agent = $request['migration_agent'];
                     $matter->sel_person_responsible = $request['person_responsible'];
                     $matter->sel_person_assisting = $request['person_assisting'];
@@ -8552,6 +8602,63 @@ class ClientsController extends Controller
                 'success' => false,
                 'message' => 'Error during test processing',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update office assignment for a matter
+     * POST /matters/update-office
+     */
+    public function updateMatterOffice(Request $request)
+    {
+        try {
+            $this->validate($request, [
+                'matter_id' => 'required|exists:client_matters,id',
+                'office_id' => 'required|exists:branches,id',
+            ]);
+            
+            $matter = ClientMatter::findOrFail($request->matter_id);
+            $oldOffice = $matter->office ? $matter->office->office_name : 'None';
+            $newOffice = Branch::findOrFail($request->office_id);
+            
+            // Update matter
+            $matter->office_id = $request->office_id;
+            $matter->save();
+            
+            // Log activity
+            $activitySubject = $oldOffice === 'None' 
+                ? "assigned matter to {$newOffice->office_name} office"
+                : "changed matter office from {$oldOffice} to {$newOffice->office_name}";
+            
+            if (!empty($request->notes)) {
+                $activitySubject .= " - Notes: {$request->notes}";
+            }
+            
+            $activityLog = new ActivitiesLog;
+            $activityLog->client_id = $matter->client_id;
+            $activityLog->created_by = Auth::id();
+            $activityLog->subject = $activitySubject;
+            $activityLog->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Office assigned successfully',
+                'office_name' => $newOffice->office_name,
+                'office_id' => $newOffice->id
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error: ' . implode(', ', $e->errors())
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Error updating matter office: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to assign office: ' . $e->getMessage()
             ], 500);
         }
     }

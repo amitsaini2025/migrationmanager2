@@ -43,6 +43,9 @@ class Kernel extends ConsoleKernel
         
         // Client Age Management Commands
         '\App\Console\Commands\UpdateClientAges',
+        
+        // Activity Cleanup Commands
+        '\App\Console\Commands\CleanupActivityDescriptions',
     ];
 
     /**

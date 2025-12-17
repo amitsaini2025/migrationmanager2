@@ -141,8 +141,8 @@ class ClientNotesController extends Controller
                             'note'
                         );
                     } else {
-                        // Remove redundant note type from description
-                        $description = '<p>'.substr(strip_tags($request->description), 0, 150).'...</p>';
+                        // Log full description without truncation
+                        $description = $request->description;
                         $this->logClientActivity(
                             $request->client_id,
                             $subjectLine,
@@ -156,8 +156,8 @@ class ClientNotesController extends Controller
                         ? "added {$noteTypeFormatted} Notes - {$matterReference}"
                         : "added {$noteTypeFormatted} Notes";
                         
-                    // Enhanced create logging - Remove redundant note type from description
-                    $description = '<p>'.substr(strip_tags($request->description), 0, 150).'...</p>';
+                    // Enhanced create logging - Log full description without truncation
+                    $description = $request->description;
                     $this->logClientActivity(
                         $request->client_id,
                         $subjectLine,
@@ -409,8 +409,8 @@ class ClientNotesController extends Controller
                     $taskGroup = $data->task_group ?? 'General';
                     $noteTypeFormatted = ucfirst(strtolower($taskGroup));
                     
-                    // Remove redundant note type from description
-                    $description = '<p>'.substr(strip_tags($data->description), 0, 150).'...</p>';
+                    // Log full description without truncation
+                    $description = $data->description;
                     
                     // Format as "deleted Call Notes"
                     $this->logClientActivity(

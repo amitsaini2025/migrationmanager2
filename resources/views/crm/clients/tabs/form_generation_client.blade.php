@@ -149,7 +149,7 @@
                                 <h3 class="text-2xl font-semibold text-gray-800">Cost Assignment Form</h3>
                                 <div class="form-actions">
                                     <button class="btn btn-primary btn-sm costAssignmentCreateForm inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200">
-                                        <i class="fas fa-plus mr-2"></i> Create Cost Assignment
+                                        <i class="fas fa-plus mr-2"></i> Create Agreement
                                     </button>
                                 </div>
                             </div>

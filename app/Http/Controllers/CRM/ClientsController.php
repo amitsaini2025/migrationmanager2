@@ -6634,13 +6634,31 @@ class ClientsController extends Controller
             $client = Admin::findOrFail($request->client_id);
             $responsiblePerson = Admin::findOrFail($request->agent_id); //dd($responsiblePerson);
             if (!$responsiblePerson) {
-                return redirect()->back()->with('error', 'No responsible person found in the database.');
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No responsible person found in the database.',
+                    'message' => 'No responsible person found in the database.'
+                ], 400);
             }
 
+            // Ensure templates directory exists
+            $templatesDir = storage_path('app/templates');
+            if (!file_exists($templatesDir)) {
+                mkdir($templatesDir, 0755, true);
+                Log::info('Created templates directory: ' . $templatesDir);
+            }
+            
             $templatePath = storage_path('app/templates/agreement_template.docx'); //dd($templatePath);
 
             if (!file_exists($templatePath)) {
-                return redirect()->back()->with('error', 'Template file not found at: ' . $templatePath);
+                Log::error('Agreement template file not found at: ' . $templatePath);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Template file not found.',
+                    'message' => 'The agreement template file (agreement_template.docx) is missing. Please ensure the template file is placed at: storage/app/templates/agreement_template.docx',
+                    'template_path' => $templatePath,
+                    'help' => 'Contact your system administrator to upload the agreement template file.'
+                ], 404);
             }
 
             $templateProcessor = new TemplateProcessor($templatePath);
@@ -6912,30 +6930,94 @@ class ClientsController extends Controller
             // Upload to S3 and get download URL
             $fileName = 'agreement_' . $client->client_id . '_' . time() . '.docx';
             $s3Path = $client->client_id . '/cost_assignment_form/' . $fileName;
+            $downloadUrl = null;
+            $s3UploadSuccess = false;
             
-            // Upload to S3
-            Storage::disk('s3')->put($s3Path, file_get_contents($outputPath));
-            
-            // Get the S3 URL
-            $downloadUrl = Storage::disk('s3')->url($s3Path);
-            
-            // Clean up local file
-            if (file_exists($outputPath)) {
-                unlink($outputPath);
+            // Try to upload to S3
+            try {
+                $uploadResult = Storage::disk('s3')->put($s3Path, file_get_contents($outputPath));
+                
+                if ($uploadResult) {
+                    // Get the S3 URL
+                    $downloadUrl = Storage::disk('s3')->url($s3Path);
+                    
+                    // Verify the URL is not empty
+                    if (!empty($downloadUrl)) {
+                        $s3UploadSuccess = true;
+                        Log::info('Document uploaded to S3 successfully. URL: ' . $downloadUrl);
+                    } else {
+                        Log::warning('S3 upload succeeded but URL is empty');
+                    }
+                } else {
+                    Log::warning('S3 upload returned false');
+                }
+            } catch (\Exception $s3Exception) {
+                Log::error('S3 upload failed: ' . $s3Exception->getMessage());
+                Log::error($s3Exception->getTraceAsString());
             }
             
+            // If S3 upload failed or URL is empty, use local file as fallback
+            if (!$s3UploadSuccess || empty($downloadUrl)) {
+                // File is already in public storage (storage/app/public/agreements)
+                // Generate public URL using the storage path
+                // The file is saved as: agreement_{client_id}.docx
+                $localFileName = basename($outputPath);
+                $relativePath = 'agreements/' . $localFileName;
+                $downloadUrl = asset('storage/' . $relativePath);
+                
+                // Verify the file exists before returning the URL
+                if (!file_exists($outputPath)) {
+                    throw new \Exception('Document was generated but file not found at: ' . $outputPath);
+                }
+                
+                Log::info('Using local file as fallback. URL: ' . $downloadUrl);
+                // Keep the local file for download (don't delete it)
+            } else {
+                // Clean up local file only if S3 upload was successful
+                if (file_exists($outputPath)) {
+                    unlink($outputPath);
+                }
+            }
+            
+            // Verify download URL is set
+            if (empty($downloadUrl)) {
+                Log::error('Download URL is empty after all attempts. Output path: ' . $outputPath);
+                throw new \Exception('Failed to generate download URL. Document was created but could not be made available for download.');
+            }
+            
+            // Log the final response for debugging
+            Log::info('Returning success response with download_url: ' . $downloadUrl);
+            
             // Return the download URL as JSON
-            return response()->json([
+            $response = [
                 'success' => true,
                 'download_url' => $downloadUrl,
                 'filename' => $fileName,
                 'message' => 'Document generated successfully'
-            ]);
+            ];
+            
+            // Double-check response structure before returning
+            if (!isset($response['success']) || !isset($response['download_url'])) {
+                Log::error('Response structure is invalid: ' . json_encode($response));
+                throw new \Exception('Invalid response structure generated.');
+            }
+            
+            return response()->json($response);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('Model not found in generateagreement: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Client or agent not found.',
+                'message' => 'Client or agent not found.'
+            ], 404);
         } catch (\Exception $e) {
             Log::error('Error generating document: ' . $e->getMessage());
             Log::error($e->getTraceAsString());
-            //return redirect()->back()->with('error', 'Error generating document: ' . $e->getMessage());
-             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'message' => 'Error generating document: ' . $e->getMessage()
+            ], 500);
         }
     }
 

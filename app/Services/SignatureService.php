@@ -12,17 +12,21 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
+use App\Services\ZeptoMailService;
 
 class SignatureService
 {
     protected EmailConfigService $emailConfigService;
+    protected ZeptoMailService $zeptoMailService;
 
     /**
      * Constructor with dependency injection
      */
-    public function __construct(EmailConfigService $emailConfigService)
+    public function __construct(EmailConfigService $emailConfigService, ZeptoMailService $zeptoMailService)
     {
         $this->emailConfigService = $emailConfigService;
+        $this->zeptoMailService = $zeptoMailService;
     }
     /**
      * Send a document for signature
@@ -72,19 +76,13 @@ class SignatureService
     }
 
     /**
-     * Send signing email to a signer using branded templates and custom SMTP
+     * Send signing email to a signer using ZeptoMail API
      */
     protected function sendSigningEmail(Document $document, Signer $signer, array $options = []): void
     {
         try {
-            // ALWAYS use Zepto email account for signature emails
-            $zeptoConfig = $this->emailConfigService->getZeptoAccount();
-            
-            if (!$zeptoConfig) {
-                throw new \Exception('Zepto email configuration not found');
-            }
-            
-            $this->emailConfigService->applyConfig($zeptoConfig);
+            // Get ZeptoMail API configuration (for email signature)
+            $zeptoApiConfig = $this->emailConfigService->getZeptoApiConfig();
 
             $signingUrl = url("/sign/{$document->id}/{$signer->token}");
             
@@ -105,34 +103,74 @@ class SignatureService
                 'emailMessage' => $message,
                 'documentType' => $document->document_type ?? 'document',
                 'dueDate' => $document->due_at ? $document->due_at->format('F j, Y') : null,
-                'emailSignature' => $zeptoConfig['email_signature'] ?? '',
+                'emailSignature' => $zeptoApiConfig['email_signature'] ?? '',
             ];
 
-            // Send email with template
-            Mail::send($template, $templateData, function ($message) use ($signer, $subject, $options) {
-                $message->to($signer->email, $signer->name)
-                       ->subject($subject);
-                
-                // Add attachments if provided
-                if (isset($options['attachments']) && is_array($options['attachments'])) {
-                    foreach ($options['attachments'] as $attachment) {
-                        if (isset($attachment['path']) && file_exists($attachment['path'])) {
-                            $message->attach($attachment['path'], [
-                                'as' => $attachment['name'] ?? basename($attachment['path']),
-                                'mime' => $attachment['mime'] ?? 'application/octet-stream',
-                            ]);
-                        }
-                    }
-                }
-            });
+            // Prepare attachments
+            $attachments = [];
+            if (isset($options['attachments']) && is_array($options['attachments'])) {
+                $attachments = $options['attachments'];
+            }
 
-            Log::info('Signing email sent', [
+            // Send email via ZeptoMail API
+            $result = $this->zeptoMailService->sendFromTemplate(
+                $template,
+                $templateData,
+                ['address' => $signer->email, 'name' => $signer->name],
+                $subject,
+                $zeptoApiConfig['from_address'],
+                $zeptoApiConfig['from_name'],
+                $attachments
+            );
+
+            // Create activity note for successful email delivery
+            DocumentNote::create([
+                'document_id' => $document->id,
+                'created_by' => Auth::guard('admin')->id() ?? 1,
+                'action_type' => 'email_sent',
+                'note' => "Email sent successfully to {$signer->name} ({$signer->email})",
+                'metadata' => [
+                    'signer_id' => $signer->id,
+                    'signer_email' => $signer->email,
+                    'signer_name' => $signer->name,
+                    'subject' => $subject,
+                    'request_id' => $result['request_id'] ?? null,
+                    'status' => isset($result['data'][0]['message']) ? $result['data'][0]['message'] : 'Email request received',
+                    'email_account' => $zeptoApiConfig['from_address'],
+                ]
+            ]);
+
+            Log::info('Signing email sent via ZeptoMail API', [
                 'document_id' => $document->id,
                 'signer_email' => $signer->email,
                 'template' => $template,
-                'email_account' => $zeptoConfig['from_address']
+                'email_account' => $zeptoApiConfig['from_address'],
+                'request_id' => $result['request_id'] ?? null
             ]);
         } catch (\Exception $e) {
+            // Create activity note for failed email delivery
+            try {
+                DocumentNote::create([
+                    'document_id' => $document->id,
+                    'created_by' => Auth::guard('admin')->id() ?? 1,
+                    'action_type' => 'email_failed',
+                    'note' => "Failed to send email to {$signer->name} ({$signer->email}): {$e->getMessage()}",
+                    'metadata' => [
+                        'signer_id' => $signer->id,
+                        'signer_email' => $signer->email,
+                        'signer_name' => $signer->name,
+                        'error' => $e->getMessage(),
+                        'error_trace' => substr($e->getTraceAsString(), 0, 500), // Limit trace length
+                    ]
+                ]);
+            } catch (\Exception $noteException) {
+                // If note creation fails, just log it
+                Log::warning('Failed to create email failure note', [
+                    'document_id' => $document->id,
+                    'error' => $noteException->getMessage()
+                ]);
+            }
+
             Log::error('Failed to send signing email', [
                 'document_id' => $document->id,
                 'signer_id' => $signer->id,
@@ -143,7 +181,7 @@ class SignatureService
     }
 
     /**
-     * Send reminder to a signer using branded template
+     * Send reminder to a signer using ZeptoMail API
      */
     public function remind(Signer $signer, array $options = []): bool
     {
@@ -153,14 +191,8 @@ class SignatureService
                 throw new \Exception('Maximum reminders already sent');
             }
 
-            // ALWAYS use Zepto email account for signature emails
-            $zeptoConfig = $this->emailConfigService->getZeptoAccount();
-            
-            if (!$zeptoConfig) {
-                throw new \Exception('Zepto email configuration not found');
-            }
-            
-            $this->emailConfigService->applyConfig($zeptoConfig);
+            // Get ZeptoMail API configuration
+            $zeptoApiConfig = $this->emailConfigService->getZeptoApiConfig();
 
             $document = $signer->document;
             $signingUrl = url("/sign/{$document->id}/{$signer->token}");
@@ -171,13 +203,18 @@ class SignatureService
                 'signingUrl' => $signingUrl,
                 'reminderNumber' => $signer->reminder_count + 1,
                 'dueDate' => $document->due_at ? $document->due_at->format('F j, Y') : null,
-                'emailSignature' => $zeptoConfig['email_signature'] ?? '',
+                'emailSignature' => $zeptoApiConfig['email_signature'] ?? '',
             ];
 
-            Mail::send('emails.signature.reminder', $templateData, function ($message) use ($signer) {
-                $message->to($signer->email, $signer->name)
-                       ->subject('Reminder: Please Sign Your Document - Bansal Migration');
-            });
+            // Send via ZeptoMail API
+            $result = $this->zeptoMailService->sendFromTemplate(
+                'emails.signature.reminder',
+                $templateData,
+                ['address' => $signer->email, 'name' => $signer->name],
+                'Reminder: Please Sign Your Document - Bansal Migration',
+                $zeptoApiConfig['from_address'],
+                $zeptoApiConfig['from_name']
+            );
 
             // Update reminder tracking
             $signer->update([
@@ -185,14 +222,52 @@ class SignatureService
                 'reminder_count' => $signer->reminder_count + 1
             ]);
 
-            Log::info('Reminder sent', [
+            // Create activity note for reminder email
+            DocumentNote::create([
+                'document_id' => $document->id,
+                'created_by' => Auth::guard('admin')->id() ?? 1,
+                'action_type' => 'email_sent',
+                'note' => "Reminder #{$signer->reminder_count} sent to {$signer->name} ({$signer->email})",
+                'metadata' => [
+                    'signer_id' => $signer->id,
+                    'signer_email' => $signer->email,
+                    'signer_name' => $signer->name,
+                    'reminder_number' => $signer->reminder_count,
+                    'request_id' => $result['request_id'] ?? null,
+                    'status' => isset($result['data'][0]['message']) ? $result['data'][0]['message'] : 'Email request received',
+                ]
+            ]);
+
+            Log::info('Reminder sent via ZeptoMail API', [
                 'signer_id' => $signer->id,
                 'reminder_count' => $signer->reminder_count,
-                'email_account' => $zeptoConfig['from_address']
+                'email_account' => $zeptoApiConfig['from_address']
             ]);
 
             return true;
         } catch (\Exception $e) {
+            // Create activity note for failed reminder
+            try {
+                DocumentNote::create([
+                    'document_id' => $document->id,
+                    'created_by' => Auth::guard('admin')->id() ?? 1,
+                    'action_type' => 'email_failed',
+                    'note' => "Failed to send reminder to {$signer->name} ({$signer->email}): {$e->getMessage()}",
+                    'metadata' => [
+                        'signer_id' => $signer->id,
+                        'signer_email' => $signer->email,
+                        'signer_name' => $signer->name,
+                        'reminder_number' => $signer->reminder_count + 1,
+                        'error' => $e->getMessage(),
+                    ]
+                ]);
+            } catch (\Exception $noteException) {
+                Log::warning('Failed to create reminder failure note', [
+                    'document_id' => $document->id,
+                    'error' => $noteException->getMessage()
+                ]);
+            }
+
             Log::error('Failed to send reminder', [
                 'signer_id' => $signer->id,
                 'error' => $e->getMessage()

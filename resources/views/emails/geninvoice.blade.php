@@ -23,7 +23,7 @@
         .company-info {
             font-size: 13px;
             line-height: 1.6;
-            color: #555;
+            color: #1f2937;
             margin-top: 8px;
         }
         .company-name {
@@ -42,10 +42,10 @@
         .document-info {
             font-size: 13px;
             line-height: 1.7;
-            color: #555;
+            color: #1f2937;
         }
         .document-info b {
-            color: #333;
+            color: #111827;
             font-weight: 600;
         }
         .section-title {
@@ -71,11 +71,11 @@
         .bill-to-content {
             font-size: 13px;
             line-height: 1.5;
-            color: #555;
+            color: #1f2937;
         }
         .matter-info {
             font-size: 13px;
-            color: #555;
+            color: #1f2937;
             margin: 8px 0;
         }
         .ledger-table-wrapper {
@@ -106,7 +106,7 @@
         .ledger-table tbody td {
             padding: 9px 8px;
             font-size: 12px;
-            color: #555;
+            color: #1f2937;
         }
         .ledger-table thead th:last-child,
         .ledger-table tbody td:last-child,
@@ -146,7 +146,7 @@
             border-left: 4px solid #3abaf4;
             margin-top: 12px;
             font-size: 12px;
-            color: #555;
+            color: #1f2937;
             line-height: 1.6;
         }
         .payment-instructions p {

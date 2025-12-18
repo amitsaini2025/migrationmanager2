@@ -81,12 +81,12 @@
 							<p style="font-size: 13px;line-height: 21px;color: #333;font-weight: normal;margin: 0px;">{{@$partnerdata->address}}<br/> {{@$partnerdata->city}} , {{@$partnerdata->state}}<br/> {{@$partnerdata->country}}</p>
 						</td>
 						<td>
-							<p style="font-size: 14px;line-height: 18px;color: #666;margin: 0px 0px 5px;"><b>Invoice No:</b> <span style="float:right;">{{$invoicedetail->invoice_no}}</span></p>
-							<p style="font-size: 14px;line-height: 18px;color: #666;margin: 0px 0px 5px;"><b>Invoice Date:</b> <span style="float:right;">{{date('d-m-Y', strtotime($invoicedetail->invoice_date))}}</span></p>
+							<p style="font-size: 14px;line-height: 18px;color: #1f2937;margin: 0px 0px 5px;"><b>Invoice No:</b> <span style="float:right;">{{$invoicedetail->invoice_no}}</span></p>
+							<p style="font-size: 14px;line-height: 18px;color: #1f2937;margin: 0px 0px 5px;"><b>Invoice Date:</b> <span style="float:right;">{{date('d-m-Y', strtotime($invoicedetail->invoice_date))}}</span></p>
 							<div style="border:1px solid #ccc;">
 								<!--<p style="background:#eee;padding:10px;font-size: 14px;line-height: 18px;color: #666;margin:0px;"><b>Total Due</b> (in AUD) <span style="font-size: 16px;line-height: 21px;color: #333;float: right;"><b><span class="percentageinput">$</span>{{--$amount_rec--}}</b></span></p>-->
-								<p style="background:#eee;padding:10px;font-size: 14px;line-height: 18px;color: #666;margin:0px;"><b>Total Due</b> (in AUD) <span style="font-size: 16px;line-height: 21px;color: #333;float: right;"><b><span class="percentageinput">$</span>{{0}}</b></span></p>
-								<p style="padding:10px;font-size: 14px;line-height: 18px;color: #666;margin:0px;"><b>Due Date</b> <span style="font-size: 16px;line-height: 21px;margin:0px;color:#333;float: right;"><b>{{date('d-m-Y', strtotime($invoicedetail->due_date))}}</b></span></p>
+								<p style="background:#f3f4f6;padding:10px;font-size: 14px;line-height: 18px;color: #111827;margin:0px;"><b>Total Due</b> (in AUD) <span style="font-size: 16px;line-height: 21px;color: #111827;float: right;"><b><span class="percentageinput">$</span>{{0}}</b></span></p>
+								<p style="padding:10px;font-size: 14px;line-height: 18px;color: #1f2937;margin:0px;"><b>Due Date</b> <span style="font-size: 16px;line-height: 21px;margin:0px;color:#111827;float: right;"><b>{{date('d-m-Y', strtotime($invoicedetail->due_date))}}</b></span></p>
 							</div>
 						</td>
 					</tr>
@@ -106,11 +106,11 @@
 												<tbody>
 													<tr>
 														<td>
-															<span style="font-size:16px;line-height:21px;color:#000;display:block;"><b>Name:{{$clientdata->first_name}} {{$clientdata->last_name}}</b></span>
-															<span style="font-size:16px;line-height:21px;color:#000;display:block;"><b>Client ID:</b> {{$clientdata->client_id}}</span>
-															<span style="font-size:16px;line-height:21px;color:#000;display:block;"><b>DOB:</b> {{date('d-m-Y', strtotime($clientdata->dob))}}</span>
-															<span style="font-size:16px;line-height:21px;color:#000;display:block;"><b>Product:</b> {{$productdata->name}}</span>
-															<p style="font-size:14px;line-height:21px;color:#000;margin:0px;">id: #{{$clientdata->id}}<br/>{{$clientdata->address}}<br/>{{@$partnerdata->partner_name}}<br/>{{@$branchdata->name}}</p>
+															<span style="font-size:16px;line-height:21px;color:#1a1a1a;display:block;"><b>Name:{{$clientdata->first_name}} {{$clientdata->last_name}}</b></span>
+															<span style="font-size:16px;line-height:21px;color:#1a1a1a;display:block;"><b>Client ID:</b> {{$clientdata->client_id}}</span>
+															<span style="font-size:16px;line-height:21px;color:#1a1a1a;display:block;"><b>DOB:</b> {{date('d-m-Y', strtotime($clientdata->dob))}}</span>
+															<span style="font-size:16px;line-height:21px;color:#1a1a1a;display:block;"><b>Product:</b> {{$productdata->name}}</span>
+															<p style="font-size:14px;line-height:21px;color:#1a1a1a;margin:0px;">id: #{{$clientdata->id}}<br/>{{$clientdata->address}}<br/>{{@$partnerdata->partner_name}}<br/>{{@$branchdata->name}}</p>
 														</td>
 													</tr>
 												</tbody>

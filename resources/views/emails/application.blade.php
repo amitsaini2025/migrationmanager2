@@ -44,7 +44,7 @@
 										<td style="padding:0px;">
 											<table width="100%" border="0">
 												<thead>
-													<tr style="background-color:#03a9f4;color:#fff;">
+													<tr style="background-color:#1e40af;color:#ffffff;">
 														<th>{{@$cleintname->first_name}} {{@$cleintname->last_name}}</th>
 														<th></th>
 														<th></th>
@@ -91,7 +91,7 @@
 													</tr>
 												</tbody>
 												<tfoot>
-													<tr style="background-color:#03a9f4;color:#fff;">
+													<tr style="background-color:#1e40af;color:#ffffff;">
 														<td colspan="6">Stages</td>
 													</tr>
 												</tfoot>
@@ -109,7 +109,7 @@
 				<thead>
 					<tr >
 						<td>
-							<td colspan="5" style="color:#3abaf4 ;">Application</td>
+							<td colspan="5" style="color:#1e40af;font-weight:600;">Application</td>
 						</td>
 					</tr>
 					<tr>
@@ -134,7 +134,7 @@
 				<thead>
 					<tr >
 						<td>
-							<td colspan="5" style="color:#3abaf4 ;">Acceptance</td>
+							<td colspan="5" style="color:#1e40af;font-weight:600;">Acceptance</td>
 						</td>
 					</tr>
 					<tr>
@@ -160,7 +160,7 @@
 				<thead>
 					<tr >
 						<td>
-							<td colspan="5" style="color:#3abaf4 ;">Payment</td>
+							<td colspan="5" style="color:#1e40af;font-weight:600;">Payment</td>
 						</td>
 					</tr>
 					<tr>
@@ -185,7 +185,7 @@
 				<thead>
 					<tr >
 						<td>
-							<td colspan="5" style="color:#3abaf4 ;">Form I 20</td>
+							<td colspan="5" style="color:#1e40af;font-weight:600;">Form I 20</td>
 						</td>
 					</tr>
 					<tr>
@@ -210,7 +210,7 @@
 				<thead>
 					<tr >
 						<td>
-							<td colspan="5" style="color:#3abaf4 ;">Visa Application</td>
+							<td colspan="5" style="color:#1e40af;font-weight:600;">Visa Application</td>
 						</td>
 					</tr>
 					<tr>
@@ -235,7 +235,7 @@
 				<thead>
 					<tr >
 						<td>
-							<td colspan="5" style="color:#3abaf4 ;">Interview</td>
+							<td colspan="5" style="color:#1e40af;font-weight:600;">Interview</td>
 						</td>
 					</tr>
 					<tr>
@@ -260,7 +260,7 @@
 				<thead>
 					<tr >
 						<td>
-							<td colspan="5" style="color:#3abaf4 ;">Enrolment</td>
+							<td colspan="5" style="color:#1e40af;font-weight:600;">Enrolment</td>
 						</td>
 					</tr>
 					<tr>
@@ -285,7 +285,7 @@
 				<thead>
 					<tr >
 						<td>
-							<td colspan="5" style="color:#3abaf4 ;">Course Ongoing</td>
+							<td colspan="5" style="color:#1e40af;font-weight:600;">Course Ongoing</td>
 						</td>
 					</tr>
 					<tr>

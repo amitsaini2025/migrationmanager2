@@ -39,9 +39,9 @@
 					<tr>
 						<td colspan="2">
 							<span style="font-size: 18px;line-height: 21px;color: #000;margin: 0px 0px 20px;display:block;"><b>Received From</b></span>
-							<p style="font-size: 13px;line-height: 16px;color: #000;font-weight: normal;margin: 10px 0px 5px;"><b>{{@$fetchedData->invoice->customer->first_name}} {{@$fetchedData->invoice->customer->first_name}}</b></p>
-							<p style="font-size: 14px;line-height: 21px;color: #000;font-weight: bold;margin: 0px;">{{@$fetchedData->invoice->customer->email}}</p>
-							<p style="font-size: 13px;line-height: 21px;color: #333;font-weight: normal;margin: 0px;">{{@$fetchedData->invoice->customer->phone}}</p>
+							<p style="font-size: 13px;line-height: 16px;color: #1a1a1a;font-weight: normal;margin: 10px 0px 5px;"><b>{{@$fetchedData->invoice->customer->first_name}} {{@$fetchedData->invoice->customer->first_name}}</b></p>
+							<p style="font-size: 14px;line-height: 21px;color: #1a1a1a;font-weight: bold;margin: 0px;">{{@$fetchedData->invoice->customer->email}}</p>
+							<p style="font-size: 13px;line-height: 21px;color: #1a1a1a;font-weight: normal;margin: 0px;">{{@$fetchedData->invoice->customer->phone}}</p>
 						</td>
 						<td>
 							<span style="font-size: 18px;line-height: 21px;color: #000;margin: 0px 0px 20px;display:block;"><b>Receipt Details</b></span>

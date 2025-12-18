@@ -407,24 +407,54 @@ class SignatureDashboardController extends Controller
                     'dueDate' => $document->due_at ? $document->due_at->format('F j, Y') : null,
                 ];
 
-                // ALWAYS use Zepto email account for signature emails
+                // Use ZeptoMail API for signature emails
                 $emailConfigService = app(\App\Services\EmailConfigService::class);
-                $zeptoConfig = $emailConfigService->getZeptoAccount();
-                
-                if (!$zeptoConfig) {
-                    throw new \Exception('Zepto email configuration not found');
-                }
+                $zeptoApiConfig = $emailConfigService->getZeptoApiConfig();
                 
                 // Add email signature to template data
-                $templateData['emailSignature'] = $zeptoConfig['email_signature'] ?? '';
+                $templateData['emailSignature'] = $zeptoApiConfig['email_signature'] ?? '';
                 
-                $emailConfigService->applyConfig($zeptoConfig);
-
-                // Send email
-                Mail::send($template, $templateData, function ($message) use ($signer, $subject) {
-                    $message->to($signer->email, $signer->name)
-                           ->subject($subject);
-                });
+                // Send email via ZeptoMail API
+                $zeptoMailService = app(\App\Services\ZeptoMailService::class);
+                try {
+                    $result = $zeptoMailService->sendFromTemplate(
+                        $template,
+                        $templateData,
+                        ['address' => $signer->email, 'name' => $signer->name],
+                        $subject,
+                        $zeptoApiConfig['from_address'],
+                        $zeptoApiConfig['from_name']
+                    );
+                    
+                    // Create activity note for successful email
+                    \App\Models\DocumentNote::create([
+                        'document_id' => $document->id,
+                        'created_by' => \Illuminate\Support\Facades\Auth::guard('admin')->id() ?? 1,
+                        'action_type' => 'email_sent',
+                        'note' => "Email sent successfully to {$signer->name} ({$signer->email})",
+                        'metadata' => [
+                            'signer_email' => $signer->email,
+                            'signer_name' => $signer->name,
+                            'subject' => $subject,
+                            'request_id' => $result['request_id'] ?? null,
+                            'status' => isset($result['data'][0]['message']) ? $result['data'][0]['message'] : 'Email request received',
+                        ]
+                    ]);
+                } catch (\Exception $emailException) {
+                    // Create activity note for failed email
+                    \App\Models\DocumentNote::create([
+                        'document_id' => $document->id,
+                        'created_by' => \Illuminate\Support\Facades\Auth::guard('admin')->id() ?? 1,
+                        'action_type' => 'email_failed',
+                        'note' => "Failed to send email to {$signer->name} ({$signer->email}): {$emailException->getMessage()}",
+                        'metadata' => [
+                            'signer_email' => $signer->email,
+                            'signer_name' => $signer->name,
+                            'error' => $emailException->getMessage(),
+                        ]
+                    ]);
+                    throw $emailException;
+                }
                 
                 $emailsSent++;
                 

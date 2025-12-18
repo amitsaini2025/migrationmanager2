@@ -32,10 +32,10 @@
                     <td style="padding:36px 30px 42px 30px;">
                         <table role="presentation" style="width:100%;border-collapse:collapse;border:0;border-spacing:0;">
                             <tr>
-                                <td style="padding:0 0 36px 0;color:#153643;">
-                                    <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">Dear {{ $details['fullname'] }} ,</p>
-                                    <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">Thank you for booking a <strong>{{ $details['service'] }}</strong> with us! We look forward to assisting you.</p>
-                                    <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;"><strong>Here are the details of your appointment:</strong></p>
+                                <td style="padding:0 0 36px 0;color:#111827;">
+                                    <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">Dear {{ $details['fullname'] }} ,</p>
+                                    <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">Thank you for booking a <strong style="color:#111827;">{{ $details['service'] }}</strong> with us! We look forward to assisting you.</p>
+                                    <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;"><strong style="color:#111827;">Here are the details of your appointment:</strong></p>
                                 </td>
                             </tr>
 
@@ -43,23 +43,23 @@
                                 <td style="padding:0;">
                                     <table role="presentation" style="width:100%;border-collapse:collapse;border:0;border-spacing:0;">
                                         <tr>
-                                            <td style="width:260px;padding:0;vertical-align:top;color:#153643;">
-                                                <p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">• <strong>Service:</strong> {{ $details['service'] }}</p>
-                                                <p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">• <strong>Client Name:</strong> {{ $details['fullname'] }}</p>
-                                                <p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">• <strong>Appointment Type:</strong> {{ $details['appointment_details'] }}</p>
-                                                <p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">• <strong>Date:</strong> {{ $details['date'] }}</p>
-                                                <p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">• <strong>Time:</strong> {{ $details['time'] }}</p>
+                                            <td style="width:260px;padding:0;vertical-align:top;color:#111827;">
+                                                <p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">• <strong style="color:#111827;">Service:</strong> {{ $details['service'] }}</p>
+                                                <p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">• <strong style="color:#111827;">Client Name:</strong> {{ $details['fullname'] }}</p>
+                                                <p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">• <strong style="color:#111827;">Appointment Type:</strong> {{ $details['appointment_details'] }}</p>
+                                                <p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">• <strong style="color:#111827;">Date:</strong> {{ $details['date'] }}</p>
+                                                <p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">• <strong style="color:#111827;">Time:</strong> {{ $details['time'] }}</p>
 
-                                                <p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">• <strong>Location:</strong> {{ $details['inperson_address'] }}</p>
-                                                <p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">• <strong>Preferred Language:</strong> {{ $details['preferred_language'] }}</p>
+                                                <p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">• <strong style="color:#111827;">Location:</strong> {{ $details['inperson_address'] }}</p>
+                                                <p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">• <strong style="color:#111827;">Preferred Language:</strong> {{ $details['preferred_language'] }}</p>
                                             </td>
                                         </tr>
 
                                         <tr>
-                                            <td style="width:260px;padding:0;vertical-align:top;color:#153643;">
+                                            <td style="width:260px;padding:0;vertical-align:top;color:#111827;">
 
                                                 <?php if( isset($details['service_type'])  && $details['service_type'] != 1 ) { ?>
-                                                    <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">Your Payment is pending. Please use below payment link - <a target="_blank" href="http://{{$details['host']}}/stripe/{{$details['appointment_id']}}" style="color:#ee4c50;text-decoration:underline;">Payment link</a></p>
+                                                    <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">Your Payment is pending. Please use below payment link - <a target="_blank" href="http://{{$details['host']}}/stripe/{{$details['appointment_id']}}" style="color:#dc2626;text-decoration:underline;font-weight:600;">Payment link</a></p>
                                                 <?php }?>
 
                                                 <!--<p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">
@@ -75,13 +75,13 @@
 
 
                                         <tr>
-                                            <td style="width:260px;padding:0;vertical-align:top;color:#153643;">
-                                                <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;"><strong>Contact Us:</strong></p>
-                                                <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">If you need to update your appointment details or want to reschedule or cancel, kindly inform us at least 24 hours in advance.</p>
-                                                <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">If you have any questions or need assistance before your appointment, feel free to contact us at 03 9602 1330 or at info@bansalimmigration.com.au</p>
-                                                <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">We look forward to helping you with your migration process!</p>
-                                                <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">Best regards,</p>
-                                                <p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">Bansal Immigration Consultants</p>
+                                            <td style="width:260px;padding:0;vertical-align:top;color:#111827;">
+                                                <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;"><strong style="color:#111827;">Contact Us:</strong></p>
+                                                <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">If you need to update your appointment details or want to reschedule or cancel, kindly inform us at least 24 hours in advance.</p>
+                                                <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">If you have any questions or need assistance before your appointment, feel free to contact us at 03 9602 1330 or at info@bansalimmigration.com.au</p>
+                                                <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">We look forward to helping you with your migration process!</p>
+                                                <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">Best regards,</p>
+                                                <p style="margin:0 0 12px 12px;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">Bansal Immigration Consultants</p>
                                             </td>
                                         </tr>
                                     </table>

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Log;
 
 use App\Models\Admin;
 use App\Models\UserRole;
@@ -105,14 +106,11 @@ class UserController extends Controller
 			
 			if (isset($requestData['is_migration_agent'])) {
 				$obj->marn_number = @$requestData['marn_number'];
-				$obj->legal_practitioner_number = @$requestData['legal_practitioner_number'];
-				$obj->exempt_person_reason = @$requestData['exempt_person_reason'];
 				$obj->company_name = @$requestData['company_name'];
 				$obj->business_address = @$requestData['business_address'];
 				$obj->business_phone = @$requestData['business_phone'];
 				$obj->business_mobile = @$requestData['business_mobile'];
 				$obj->business_email = @$requestData['business_email'];
-				$obj->business_fax = @$requestData['business_fax'];
 				$obj->tax_number = @$requestData['tax_number'];
 			}
 
@@ -184,93 +182,104 @@ class UserController extends Controller
 	 */
 	public function update(Request $request, $id)
 	{
-		//check authorization start
-        $check = $this->checkAuthorizationAction('user_management', 'update', Auth::user()->role);
-        if($check)
-        {
-            return Redirect::to('/dashboard')->with('error',config('constants.unauthorized'));
-        }
-		//check authorization end
-		
-		$requestData = $request->all();
+		try {
+			//check authorization start
+			$check = $this->checkAuthorizationAction('user_management', 'update', Auth::user()->role);
+			if($check)
+			{
+				return Redirect::to('/dashboard')->with('error',config('constants.unauthorized'));
+			}
+			//check authorization end
+			
+			$requestData = $request->all();
 
-		$this->validate($request, [
-			'first_name' => 'required|max:255',
-			'last_name' => 'required|max:255',
-			'phone' => 'required|max:255',
-		]);
+			$this->validate($request, [
+				'first_name' => 'required|max:255',
+				'last_name' => 'required|max:255',
+				'phone' => 'required|max:255',
+			]);
 
-		$obj = Admin::find($id);
-		if (!$obj) {
-			return redirect()->route('adminconsole.system.users.index')->with('error', 'User Not Found');
-		}
+			$obj = Admin::find($id);
+			if (!$obj) {
+				return redirect()->route('adminconsole.system.users.index')->with('error', 'User Not Found');
+			}
 
-		$obj->first_name = @$requestData['first_name'];
-		$obj->last_name = @$requestData['last_name'];
-		$obj->email = @$requestData['email'];
-		$obj->telephone = @$requestData['country_code'];
-		$obj->position = @$requestData['position'];
+			$obj->first_name = @$requestData['first_name'];
+			$obj->last_name = @$requestData['last_name'];
+			$obj->email = @$requestData['email'];
+			$obj->telephone = @$requestData['country_code'];
+			$obj->position = @$requestData['position'];
 
-		$obj->phone = @$requestData['phone'];
-		$obj->role = @$requestData['role'];
-		$obj->office_id = @$requestData['office'];
-		$obj->telephone = @$requestData['country_code'];
-		$obj->team = @$requestData['team'];
+			$obj->phone = @$requestData['phone'];
+			$obj->role = @$requestData['role'];
+			$obj->office_id = @$requestData['office'];
+			$obj->telephone = @$requestData['country_code'];
+			$obj->team = @$requestData['team'];
 
-		if( isset($requestData['permission']) && $requestData['permission'] !="" ){
-			$obj->permission = implode(",", $requestData['permission'] );
-		}else{
-			$obj->permission = "";
-		}
+			if( isset($requestData['permission']) && $requestData['permission'] !="" ){
+				$obj->permission = implode(",", $requestData['permission'] );
+			}else{
+				$obj->permission = "";
+			}
 
-		if(isset($requestData['show_dashboard_per'])){
-			$obj->show_dashboard_per = 1;
-		}else{
-			 $obj->show_dashboard_per = 0;
-		}
+			if(isset($requestData['show_dashboard_per'])){
+				$obj->show_dashboard_per = 1;
+			}else{
+				 $obj->show_dashboard_per = 0;
+			}
 
-		// Migration Agent Fields
-		$obj->is_migration_agent = isset($requestData['is_migration_agent']) ? 1 : 0;
-		
-		if (isset($requestData['is_migration_agent'])) {
-			$obj->marn_number = @$requestData['marn_number'];
-			$obj->legal_practitioner_number = @$requestData['legal_practitioner_number'];
-			$obj->exempt_person_reason = @$requestData['exempt_person_reason'];
-			$obj->company_name = @$requestData['company_name'];
-			$obj->business_address = @$requestData['business_address'];
-			$obj->business_phone = @$requestData['business_phone'];
-			$obj->business_mobile = @$requestData['business_mobile'];
-			$obj->business_email = @$requestData['business_email'];
-			$obj->business_fax = @$requestData['business_fax'];
-			$obj->tax_number = @$requestData['tax_number'];
-		} else {
-			// Clear agent fields if checkbox is unchecked
-			$obj->marn_number = null;
-			$obj->legal_practitioner_number = null;
-			$obj->exempt_person_reason = null;
-			$obj->business_address = null;
-			$obj->business_phone = null;
-			$obj->business_mobile = null;
-			$obj->business_email = null;
-			$obj->business_fax = null;
-			$obj->tax_number = null;
-		}
+			// Migration Agent Fields
+			$obj->is_migration_agent = isset($requestData['is_migration_agent']) ? 1 : 0;
+			
+			if (isset($requestData['is_migration_agent'])) {
+				$obj->marn_number = @$requestData['marn_number'];
+				$obj->company_name = @$requestData['company_name'];
+				$obj->business_address = @$requestData['business_address'];
+				$obj->business_phone = @$requestData['business_phone'];
+				$obj->business_mobile = @$requestData['business_mobile'];
+				$obj->business_email = @$requestData['business_email'];
+				$obj->tax_number = @$requestData['tax_number'];
+			} else {
+				// Clear agent fields if checkbox is unchecked
+				$obj->marn_number = null;
+				$obj->business_address = null;
+				$obj->business_phone = null;
+				$obj->business_mobile = null;
+				$obj->business_email = null;
+				$obj->tax_number = null;
+			}
 
-		if(!empty(@$requestData['password']))
-		{
-			$obj->password = Hash::make(@$requestData['password']);
-		}
+			if(!empty(@$requestData['password']))
+			{
+				$obj->password = Hash::make(@$requestData['password']);
+			}
 
-		$obj->phone = @$requestData['phone'];
-		$saved = $obj->save();
+			$obj->phone = @$requestData['phone'];
+			$saved = $obj->save();
 
-		if(!$saved)
-		{
-			return redirect()->back()->with('error', config('constants.server_error'));
-		}
-		else
-		{
-			return redirect()->route('adminconsole.system.users.view', $id)->with('success', 'User Updated Successfully');
+			if(!$saved)
+			{
+				return redirect()->back()->with('error', config('constants.server_error'));
+			}
+			else
+			{
+				return redirect()->route('adminconsole.system.users.view', $id)->with('success', 'User Updated Successfully');
+			}
+		} catch (\Illuminate\Validation\ValidationException $e) {
+			// Validation errors - redirect back with errors
+			return redirect()->back()->withErrors($e->validator)->withInput();
+		} catch (\Exception $e) {
+			// Log the full error for debugging
+			Log::error('User Update Error: ' . $e->getMessage(), [
+				'user_id' => $id,
+				'request_data' => $request->except(['password', 'password_confirmation']),
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString()
+			]);
+			
+			// Return user-friendly error message
+			return redirect()->back()->with('error', 'An error occurred while updating the user. Please check the server logs for details.');
 		}
 	}
 

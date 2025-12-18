@@ -498,6 +498,7 @@ function addPartnerRow(type) {
                 <option value="Step Father">Step Father</option>
                 <option value="Step Mother">Step Mother</option>
                 <option value="Mother-in-law">Mother-in-law</option>
+                <option value="Father-in-law">Father-in-law</option>
             `;
             break;
         case 'siblings':

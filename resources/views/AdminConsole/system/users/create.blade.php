@@ -199,21 +199,6 @@
 												<input type="text" name="marn_number" id="marn_number" class="form-control" placeholder="Enter MARN Number">
 											</div>
 										</div>
-										<div class="col-md-6">
-											<div class="form-group">
-												<label for="legal_practitioner_number">Legal Practitioner Number</label>
-												<input type="text" name="legal_practitioner_number" class="form-control" placeholder="Enter Legal Practitioner Number">
-											</div>
-										</div>
-									</div>
-
-									<div class="row">
-										<div class="col-md-12">
-											<div class="form-group">
-												<label for="exempt_person_reason">Exempt Person Reason (if applicable)</label>
-												<textarea name="exempt_person_reason" class="form-control" rows="2" placeholder="Enter reason if exempt person"></textarea>
-											</div>
-										</div>
 									</div>
 
 									<h6 class="text-primary mb-3 mt-4">Business Details</h6>
@@ -263,14 +248,6 @@
 										</div>
 									</div>
 
-									<div class="row">
-										<div class="col-md-6">
-											<div class="form-group">
-												<label for="business_fax">Business Fax</label>
-												<input type="text" name="business_fax" class="form-control" placeholder="Enter Business Fax">
-											</div>
-										</div>
-									</div>
 								</div>
 							</div>
 						</div>

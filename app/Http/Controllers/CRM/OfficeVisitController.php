@@ -73,7 +73,7 @@ class OfficeVisitController extends Controller
 	    	        'sender_name' => Auth::user()->first_name . ' ' . Auth::user()->last_name,
 	    	        'client_name' => $client ? $client->first_name . ' ' . $client->last_name : 'Unknown Client',
 	    	        'visit_purpose' => $obj->visit_purpose,
-	    	        'created_at' => $o->created_at->format('d/m/Y h:i A'),
+	    	        'created_at' => $o->created_at ? $o->created_at->format('d/m/Y h:i A') : now()->format('d/m/Y h:i A'),
 	    	        'url' => $o->url
 	    	    ]
 	    	));
@@ -403,7 +403,7 @@ class OfficeVisitController extends Controller
 	    	        'sender_name' => Auth::user()->first_name . ' ' . Auth::user()->last_name,
 	    	        'client_name' => $client ? $client->first_name . ' ' . $client->last_name : 'Unknown Client',
 	    	        'visit_purpose' => $objs->visit_purpose,
-	    	        'created_at' => $o->created_at->format('d/m/Y h:i A'),
+	    	        'created_at' => $o->created_at ? $o->created_at->format('d/m/Y h:i A') : now()->format('d/m/Y h:i A'),
 	    	        'url' => $o->url
 	    	    ]
 	    	));
@@ -460,7 +460,7 @@ class OfficeVisitController extends Controller
 	    	        'sender_name' => Auth::user()->first_name . ' ' . Auth::user()->last_name,
 	    	        'client_name' => $client ? $client->first_name . ' ' . $client->last_name : 'Unknown Client',
 	    	        'visit_purpose' => $obj->visit_purpose,
-	    	        'created_at' => $o->created_at->format('d/m/Y h:i A'),
+	    	        'created_at' => $o->created_at ? $o->created_at->format('d/m/Y h:i A') : now()->format('d/m/Y h:i A'),
 	    	        'url' => $o->url
 	    	    ]
 	    	));

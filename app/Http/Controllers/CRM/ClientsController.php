@@ -6988,6 +6988,17 @@ class ClientsController extends Controller
             // Log the final response for debugging
             Log::info('Returning success response with download_url: ' . $downloadUrl);
             
+            // Log activity
+            $matter = \App\Models\ClientMatter::find($request->client_matter_id);
+            $matterName = $matter ? $matter->title : 'N/A';
+            
+            $activity = new \App\Models\ActivitiesLog;
+            $activity->client_id = $request->client_id;
+            $activity->created_by = Auth::user()->id;
+            $activity->subject = 'created visa agreement';
+            $activity->description = '<p>Visa agreement has been created for matter: <strong>' . $matterName . '</strong></p>';
+            $activity->save();
+            
             // Return the download URL as JSON
             $response = [
                 'success' => true,
@@ -7426,9 +7437,69 @@ class ClientsController extends Controller
             } else {
                 $response['status'] 	= 	true;
                 $response['message']	=	'Cost assignment added successfully';
+                
+                // Log activity
+                $action = ($cost_assignment_cnt > 0) ? 'updated' : 'created';
+                $matter = \App\Models\ClientMatter::find($requestData['client_matter_id']);
+                $matterName = $matter ? $matter->title : 'N/A';
+                
+                $activity = new \App\Models\ActivitiesLog;
+                $activity->client_id = $requestData['client_id'];
+                $activity->created_by = Auth::user()->id;
+                $activity->subject = $action . ' cost assignment form';
+                $activity->description = '<p>Cost assignment form has been ' . $action . ' for matter: <strong>' . $matterName . '</strong></p>';
+                $activity->save();
             }
         }
         echo json_encode($response);
+    }
+
+    public function deletecostagreement(Request $request)
+    {
+        $cost_agreement_id = $request->input('cost_agreement_id');
+        
+        if (!$cost_agreement_id) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Cost agreement ID is required'
+            ]);
+        }
+
+        $costAssignment = \App\Models\CostAssignmentForm::find($cost_agreement_id);
+        
+        if (!$costAssignment) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Cost agreement not found'
+            ]);
+        }
+
+        $client_id = $costAssignment->client_id;
+        $matter = \App\Models\ClientMatter::find($costAssignment->client_matter_id);
+        $matterName = $matter ? $matter->title : 'N/A';
+
+        // Delete the cost assignment
+        $deleted = $costAssignment->delete();
+
+        if ($deleted) {
+            // Log activity
+            $activity = new \App\Models\ActivitiesLog;
+            $activity->client_id = $client_id;
+            $activity->created_by = Auth::user()->id;
+            $activity->subject = 'deleted cost assignment form';
+            $activity->description = '<p>Cost assignment form has been deleted for matter: <strong>' . $matterName . '</strong></p>';
+            $activity->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Cost agreement deleted successfully'
+            ]);
+        } else {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to delete cost agreement'
+            ]);
+        }
     }
 
     //save reference

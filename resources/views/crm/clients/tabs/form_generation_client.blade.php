@@ -22,6 +22,25 @@
                             #costform-subtab .form-list2 {
                                 padding: 0 1.5rem;
                             }
+                            /* Button grid layout improvements */
+                            #costform-subtab .form-list1 [style*="grid-template-columns"] {
+                                display: grid !important;
+                                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+                                gap: 1rem !important;
+                                align-items: stretch !important;
+                            }
+                            #costform-subtab .form-list1 button {
+                                width: 100% !important;
+                                display: inline-flex !important;
+                                align-items: center !important;
+                                justify-content: center !important;
+                                font-weight: 500 !important;
+                                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+                            }
+                            #costform-subtab .form-list1 button:hover {
+                                transform: translateY(-1px) !important;
+                                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+                            }
                             @media (max-width: 768px) {
                                 #costform-subtab .bg-white.shadow-lg {
                                     padding: 1.5rem 1rem !important;
@@ -29,6 +48,18 @@
                                 #costform-subtab .form-list1,
                                 #costform-subtab .form-list2 {
                                     padding: 0 0.5rem;
+                                }
+                                #costform-subtab .form-list1 [style*="grid-template-columns"] {
+                                    grid-template-columns: 1fr !important;
+                                }
+                                #costform-subtab .form-list1 button {
+                                    white-space: normal !important;
+                                    padding: 0.75rem 1rem !important;
+                                }
+                            }
+                            @media (min-width: 769px) and (max-width: 1024px) {
+                                #costform-subtab .form-list1 [style*="grid-template-columns"] {
+                                    grid-template-columns: repeat(2, 1fr) !important;
                                 }
                             }
                         </style>
@@ -145,16 +176,7 @@
 
                         <!-- Cost Assignment Form Subtab -->
                         <div class="subtab3-pane" id="costform-subtab" style="padding: 0 2rem;">
-                            <div class="form-header" style="padding: 1.5rem 0;">
-                                <h3 class="text-2xl font-semibold text-gray-800">Cost Assignment Form</h3>
-                                <div class="form-actions">
-                                    <button class="btn btn-primary btn-sm costAssignmentCreateForm inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200">
-                                        <i class="fas fa-plus mr-2"></i> Create Agreement
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="form-list1" id="form-list1" style="padding: 0 1.5rem;">
+                            <div class="form-list1" id="form-list1" style="padding: 0;">
                                 <?php
                                 $formlists1 = collect(); // Always a Collection
                                 // Fetch cost_assignment_forms for the given client
@@ -188,54 +210,30 @@
                                 @if($formlists1->isEmpty())
                                     <p class="text-gray-600 text-center py-6">No Cost Assignment records found for this client.</p>
                                 @else
-                                    <div class="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-300" style="padding: 2rem 3rem;">
-                                        <div class="border-t border-gray-200">
-                                            <table class="min-w-full costform-table border border-gray-300" style="/*width: 1227px !important;*/ width:100%;">
-                                                <thead class="bg-gray-100">
-                                                    <tr>
-                                                        <th class="p-4 text-center border">Client</th>
-                                                        <th class="p-4 text-center border">Agent</th>
-                                                        <th class="p-4 text-center border">Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody class="bg-white">
-                                                    @foreach($formlists1 as $formlist1)
-                                                        <tr class="border-t border-gray-300 hover:bg-gray-50 transition duration-150">
-                                                            <!-- Client -->
-                                                            <td class="p-4 whitespace-nowrap text-sm text-gray-700 border border-gray-300">
-                                                                {{$formlist1->client->first_name . ' ' . $formlist1->client->last_name}}
-                                                            </td>
+                                    <div class="space-y-4">
+                                        @foreach($formlists1 as $formlist1)
+                                            <div class="bg-white shadow-lg rounded-lg border border-gray-300 p-6 hover:shadow-xl transition duration-200">
+                                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; align-items: stretch;">
+                                                    <button class="btn btn-primary btn-sm costAssignmentCreateForm inline-flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200" style="min-height: 44px; white-space: nowrap;">
+                                                        <i class="fas fa-eye mr-2"></i> Preview Cost Assignment
+                                                    </button>
 
-                                                            <!-- Agent -->
-                                                            <td class="p-4 whitespace-nowrap text-sm text-gray-700 border border-gray-300">
-                                                                {{ $formlist1->agent->first_name. ' ' . $formlist1->agent->last_name }} <br/> ({{ $formlist1->agent->company_name }})
-                                                            </td>
+                                                    <button class="btn btn-primary btn-sm visaAgreementCreateForm inline-flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200" style="min-height: 44px; white-space: nowrap;">
+                                                        <i class="fas fa-plus mr-2"></i> Create Visa Agreement
+                                                    </button>
 
-                                                            <!-- Actions -->
-                                                            <td class="p-4 whitespace-nowrap text-sm text-gray-700 border border-gray-300">
-                                                                <button class="btn btn-primary btn-sm costAssignmentCreateForm inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200">
-                                                                    <i class="fas fa-eye"></i> Preview Cost Assignment
-                                                                </button>
+                                                    <button class="btn btn-primary btn-sm finalizeAgreementConvertToPdf inline-flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200" style="min-height: 44px; white-space: nowrap;">
+                                                        <i class="fas fa-lock mr-2"></i> Finalize Agreement and Upload PDF
+                                                    </button>
 
-                                                                <button class="btn btn-primary btn-sm visaAgreementCreateForm inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200">
-                                                                    <i class="fas fa-plus mr-2"></i> Create Visa Agreement
-                                                                </button>
-
-                                                                <button class="btn btn-primary btn-sm finalizeAgreementConvertToPdf inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200">
-                                                                    <i class="fas fa-lock"></i> Finalize Agreement and Upload PDF
-                                                                </button>
-
-                                                                @if(Auth::user()->role == 1 || Auth::user()->role == 12 || Auth::user()->role == 16)
-                                                                    <button class="btn btn-danger btn-sm deleteCostAgreement inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200" data-id="{{ $formlist1->id }}" data-href="deletecostagreement">
-                                                                        <i class="fas fa-trash-alt"></i> Delete Cost Agreement
-                                                                    </button>
-                                                                @endif
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                                    @if(Auth::user()->role == 1 || Auth::user()->role == 12 || Auth::user()->role == 16)
+                                                        <button class="btn btn-danger btn-sm deleteCostAgreement inline-flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200" style="min-height: 44px; white-space: nowrap;" data-id="{{ $formlist1->id }}" data-href="deletecostagreement">
+                                                            <i class="fas fa-trash-alt mr-2"></i> Delete Cost Agreement
+                                                        </button>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @endforeach
                                     </div>
                                 @endif
                             </div>
@@ -283,8 +281,6 @@
                                             <table class="min-w-full costform-table border border-gray-300" style="/*width: 1227px !important;*/ width:100%;">
                                                 <thead class="bg-gray-100">
                                                     <tr>
-                                                        <th class="p-4 text-center border">SNo.</th>
-                                                        <th class="p-4 text-center border">Added By</th>
                                                         <th class="p-4 text-center border">File Name</th>
                                                         <th class="p-4 text-center border">Action</th>
                                                     </tr>
@@ -293,16 +289,6 @@
                                                     <?php //echo "<pre>formlists2="; print_r($formlists2); ?>
                                                     @foreach($formlists2 as $formlistkey2=>$formlist2)
                                                     <tr class="border-t border-gray-300 hover:bg-gray-50 transition duration-150">
-                                                        <td class="p-4 whitespace-nowrap text-sm text-gray-700 border border-gray-300">
-                                                            <?= $formlistkey2 + 1 ?>
-                                                        </td>
-                                                        <td class="p-4 whitespace-nowrap text-sm text-gray-700 border border-gray-300">
-                                                            <?php
-                                                            $admin = \App\Models\Admin::where('id', $formlist2->user_id)->first();
-                                                            ?>
-                                                            <?= htmlspecialchars($admin->first_name ?? 'NA') ?><br>
-                                                            <?= date('d/m/Y', strtotime($formlist2->created_at)) ?>
-                                                        </td>
                                                         <td class="p-4 whitespace-nowrap text-sm text-gray-700 border border-gray-300">
                                                             <a target="_blank" class="dropdown-item" href="{{$formlist2->myfile}}">
                                                             {{$formlist2->file_name.'.'.$formlist2->filetype}}

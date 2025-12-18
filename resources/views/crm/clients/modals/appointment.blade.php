@@ -173,7 +173,7 @@
                                     <label for="appointment_details" class="heading_title">Appointment details <span class="span_req">*</span></label>
                                     <select class="form-control appointment_item" name="appointment_details" data-valid="required">
                                         <option value="">Select</option>
-                                        <option value="phone"> Phone</option>
+                                        <option value="phone"> Phone Call</option>
                                         <option value="in_person">In person</option>
                                         <option value="video_call" id="video_call_option" style="display: none;">Video Call</option>
                                     </select>

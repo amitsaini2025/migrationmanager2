@@ -8919,7 +8919,9 @@ class ClientPortalPersonalDetailsController extends Controller
                     $startDate = $experienceData['start_date'] ?? null;
                     $finishDate = $experienceData['finish_date'] ?? null;
                     $relevantExperience = isset($experienceData['relevant_experience']) ? (bool) $experienceData['relevant_experience'] : false;
-                    $fteMultiplier = isset($experienceData['fte_multiplier']) ? (float) $experienceData['fte_multiplier'] : null;
+                    // Preserve original type (int or float) from input
+                    $fteMultiplier = $experienceData['fte_multiplier'] ?? null;
+                    $fteMultiplierForDb = isset($experienceData['fte_multiplier']) ? (float) $experienceData['fte_multiplier'] : null;
 
                     if (empty($jobTitle)) {
                         continue; // Skip if job_title is empty
@@ -9115,13 +9117,13 @@ class ClientPortalPersonalDetailsController extends Controller
                         'updated_at' => now(),
                     ]);
 
-                    // Save fte_multiplier if provided
-                    if ($fteMultiplier !== null) {
+                    // Save fte_multiplier if provided (use float for database storage)
+                    if ($fteMultiplierForDb !== null) {
                         ClientPortalDetailAudit::create([
                             'client_id' => $clientId,
                             'meta_key' => 'experience_fte_multiplier',
                             'old_value' => null,
-                            'new_value' => (string) $fteMultiplier,
+                            'new_value' => (string) $fteMultiplierForDb,
                             'meta_order' => $metaOrder,
                             'meta_type' => (string) $experienceId, // Store record ID for consistency
                             'action' => $action,
@@ -9141,19 +9143,25 @@ class ClientPortalPersonalDetailsController extends Controller
                         'start_date' => $startDate,
                         'finish_date' => $finishDate,
                         'relevant_experience' => $relevantExperience,
-                        'fte_multiplier' => $fteMultiplier,
+                        'fte_multiplier' => $fteMultiplier, // Preserve original type (int or float) from input
                     ];
                 }
 
                 DB::commit();
 
-                return response()->json([
+                $responseData = [
                     'success' => true,
                     'message' => 'Experience details updated successfully',
                     'data' => [
                         'experiences' => $updatedExperiences
                     ]
-                ]);
+                ];
+
+                return response(
+                    json_encode($responseData, JSON_PRESERVE_ZERO_FRACTION),
+                    200,
+                    ['Content-Type' => 'application/json']
+                );
 
             } catch (\Exception $e) {
                 DB::rollBack();

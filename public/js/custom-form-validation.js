@@ -2431,10 +2431,10 @@ function customValidate(formName, savetype = '')
 							}
 						});
 					}
-					else if(formName == 'notetermform')
-					{
-						var client_id = $('input[name="client_id"]').val();
-						var myform = document.getElementById('notetermform');
+				else if(formName == 'notetermform')
+				{
+					var client_id = $('input[name="client_id"]').val() || window.ClientDetailConfig?.clientId;
+					var myform = document.getElementById('notetermform');
 						var fd = new FormData(myform);
 						$.ajax({
 							type:'post',
@@ -2442,12 +2442,15 @@ function customValidate(formName, savetype = '')
 							processData: false,
 							contentType: false,
 							data: fd,
-							success: function(response){
-								$('.popuploader').hide();
-								var obj = $.parseJSON(response);
-								if(obj.status){
-									$('#create_note').modal('hide');
-									$('.custom-error-msg').html('<span class="alert alert-success">'+obj.message+'</span>');
+						success: function(response){
+							console.log('Note form success callback reached');
+							$('.popuploader').hide();
+							var obj = $.parseJSON(response);
+							console.log('Parsed response:', obj);
+							if(obj.status){
+								console.log('Note added successfully, client_id:', client_id);
+								$('#create_note').modal('hide');
+								$('.custom-error-msg').html('<span class="alert alert-success">'+obj.message+'</span>');
 									$.ajax({
 										url: site_url+'/get-notes',
 										type:'GET',
@@ -2500,7 +2503,9 @@ function customValidate(formName, savetype = '')
 										}
 									});
 									//Fetch All Activities
+									console.log('About to call getallactivities with client_id:', client_id);
                                     getallactivities(client_id);
+									console.log('getallactivities called');
 								} else {
 									$('.custom-error-msg').html('<span class="alert alert-danger">'+obj.message+'</span>');
 								}
@@ -2509,7 +2514,8 @@ function customValidate(formName, savetype = '')
 					}
 					else if(formName == 'notetermform_n')
 					{
-                        var client_id = $('input[name="client_id"]').val();
+                        var client_id = $('input[name="client_id"]').val() || window.ClientDetailConfig?.clientId;
+						console.log('notetermform_n handler - client_id:', client_id);
 						var myform = document.getElementById('notetermform_n');
 						var fd = new FormData(myform);
 						$.ajax({
@@ -2519,10 +2525,13 @@ function customValidate(formName, savetype = '')
 							contentType: false,
 							data: fd,
 							success: function(response){
+								console.log('notetermform_n success callback');
 								$('.popuploader').hide();
 								var obj = $.parseJSON(response);
+								console.log('notetermform_n parsed response:', obj);
 
 								if(obj.status){
+									console.log('notetermform_n note added successfully');
 								    $('#create_note_d input[name="title"]').val('');
 								    $('#create_note_d input[name="title"]').val('');
 									$("#create_note_d .summernote-simple").val('');
@@ -2591,7 +2600,9 @@ function customValidate(formName, savetype = '')
 										}
 									});
                                     //Fetch All activities
+									console.log('notetermform_n about to call getallactivities with client_id:', client_id);
                                     getallactivities(client_id);
+									console.log('notetermform_n getallactivities called');
 								}else{
 									$('.custom-error-msg').html('<span class="alert alert-danger">'+obj.message+'</span>');
                                 }
@@ -2984,13 +2995,16 @@ async function getInvoiceAmount(invoiceNo) {
 
 //Fetch All Activities
 function getallactivities(client_id){
+	console.log('getallactivities called with client_id:', client_id);
 	$.ajax({
 		url: site_url+'/get-activities',
 		type:'GET',
 		datatype:'json',
 		data:{id:client_id},
 		success: function(responses){
+			console.log('Activities response:', responses);
 			var ress = JSON.parse(responses);
+			console.log('Parsed activities:', ress);
 			var html = '';
 		$.each(ress.data, function (k, v) {
 			// Determine icon based on activity type
@@ -3037,8 +3051,13 @@ function getallactivities(client_id){
 				</li>
 			`;
 		});
+			console.log('Generated HTML length:', html.length);
+			console.log('Updating .feed-list with HTML');
 			$('.feed-list').html(html);
 			$('.popuploader').hide();
+		},
+		error: function(xhr, status, error){
+			console.error('Error fetching activities:', error, xhr.responseText);
 		}
 	});
 }

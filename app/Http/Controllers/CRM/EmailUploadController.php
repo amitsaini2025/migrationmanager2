@@ -274,7 +274,23 @@ class EmailUploadController extends Controller
             // Format sent time from Python response
             if (!empty($parsedData['sent_date'])) {
                 try {
-                    $sentDate = new \DateTime($parsedData['sent_date']);
+                    // Parse the ISO date string from Python
+                    // If timezone is not specified in the string, treat it as UTC
+                    $dateString = $parsedData['sent_date'];
+                    
+                    // Check if the date string has timezone info
+                    // ISO format with timezone: "2025-11-17T18:19:00+00:00" or "2025-11-17T18:19:00Z"
+                    // ISO format without timezone: "2025-11-17T18:19:00"
+                    if (preg_match('/[+-]\d{2}:\d{2}$|Z$/', $dateString)) {
+                        // Has timezone info, parse as-is
+                        $sentDate = new \DateTime($dateString);
+                    } else {
+                        // No timezone info, assume UTC (as Python now sends UTC for naive datetimes)
+                        $sentDate = new \DateTime($dateString, new \DateTimeZone('UTC'));
+                    }
+                    
+                    // Convert to Australia/Melbourne timezone for display
+                    $sentDate->setTimezone(new \DateTimeZone('Australia/Melbourne'));
                     $mailReport->fetch_mail_sent_time = $sentDate->format('d/m/Y h:i a');
                 } catch (\Exception $e) {
                     $mailReport->fetch_mail_sent_time = $parsedData['sent_date'];
@@ -297,7 +313,26 @@ class EmailUploadController extends Controller
             // NEW: Add metadata
             $mailReport->message_id = $parsedData['message_id'] ?? null;
             $mailReport->thread_id = $parsedData['thread_id'] ?? null;
-            $mailReport->received_date = $parsedData['received_date'] ?? now();
+            
+            // Handle received_date with timezone awareness
+            if (!empty($parsedData['received_date'])) {
+                try {
+                    $dateString = $parsedData['received_date'];
+                    if (preg_match('/[+-]\d{2}:\d{2}$|Z$/', $dateString)) {
+                        $receivedDate = new \DateTime($dateString);
+                    } else {
+                        $receivedDate = new \DateTime($dateString, new \DateTimeZone('UTC'));
+                    }
+                    // Convert to Australia/Melbourne timezone
+                    $receivedDate->setTimezone(new \DateTimeZone('Australia/Melbourne'));
+                    $mailReport->received_date = $receivedDate;
+                } catch (\Exception $e) {
+                    $mailReport->received_date = now();
+                }
+            } else {
+                $mailReport->received_date = now();
+            }
+            
             $mailReport->file_hash = md5_file($file->getRealPath());
             
             $mailReport->save();

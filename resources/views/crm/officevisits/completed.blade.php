@@ -310,7 +310,11 @@ body, html {
 													<?php
 													$admin = \App\Models\Admin::where('role', '!=', '7')->where('id', '=', $list->user_id)->first();
 													?>
-													<a href="{{route('adminconsole.system.users.view', $admin->id)}}">{{@$admin->first_name}} {{@$admin->last_name}}</a><br>{{--@$admin->email--}}
+													@if($admin)
+														<a href="{{route('adminconsole.system.users.view', $admin->id)}}">{{$admin->first_name}} {{$admin->last_name}}</a><br>{{$admin->email}}
+													@else
+														<span class="text-muted">Not Assigned</span>
+													@endif
 													</td>
 
 												</tr>

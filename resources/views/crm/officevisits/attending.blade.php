@@ -310,7 +310,11 @@ body, html {
 													<?php
 													$admin = \App\Models\Admin::where('role', '!=', '7')->where('id', '=', $list->user_id)->first();
 													?>
-													<a href="{{route('adminconsole.system.users.view', $admin->id)}}">{{@$admin->first_name}} {{@$admin->last_name}}</a><br>{{@$admin->email}}
+													@if($admin)
+														<a href="{{route('adminconsole.system.users.view', $admin->id)}}">{{$admin->first_name}} {{$admin->last_name}}</a><br>{{$admin->email}}
+													@else
+														<span class="text-muted">Not Assigned</span>
+													@endif
 													</td>
 													<td id="count{{$list->id}}" data-checkintime="{{date('Y-m-d H:i:s',strtotime($list->sesion_start))}}"><?php if($list->status == 0){ ?><span id="waitcount"> 00h:00m:00s</span><?php }else if($list->status == 2){ echo '<span>'.$list->attend_time.'</span>'; }else{ echo '<span >-</span>'; } ?></td>
 												</tr>

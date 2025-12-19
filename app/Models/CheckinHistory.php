@@ -11,7 +11,7 @@ class CheckinHistory extends Authenticatable
 	use Sortable;
 
 	protected $fillable = [
-        'id', 'created_at', 'updated_at'
+        'id', 'subject', 'created_by', 'checkin_id', 'description', 'created_at', 'updated_at'
     ];
 	
 	public $sortable = ['id', 'created_at', 'updated_at'];

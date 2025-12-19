@@ -84,7 +84,7 @@
         }
 
         if (messageEl) {
-            messageEl.textContent = broadcast.message || '';
+            messageEl.innerHTML = broadcast.message || '';
         }
 
         if (metaTextEl) {

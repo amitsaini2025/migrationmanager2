@@ -377,6 +377,7 @@ $(function () {
     // Configuration for simple TinyMCE editors (replacing .summernote-simple)
     // Optimized for quick notes with essential features
     var tinymceSimpleConfig = {
+      license_key: 'gpl',
       height: 150,
       min_height: 150,
       max_height: 400,
@@ -435,6 +436,7 @@ $(function () {
     // Configuration for full TinyMCE editors (replacing .summernote)
     // Enhanced for emails, templates, and longer content
     var tinymceFullConfig = {
+      license_key: 'gpl',
       height: 300,
       min_height: 300,
       max_height: 600,

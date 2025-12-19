@@ -578,6 +578,7 @@ $(document).delegate('.editnote', 'click', function(){
                     }
                     if (!tinymce.get(editorId)) {
                         tinymce.init({
+                            license_key: 'gpl',
                             selector: '#' + editorId,
                             height: 150,
                             menubar: false,

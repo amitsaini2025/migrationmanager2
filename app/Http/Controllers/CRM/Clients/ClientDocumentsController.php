@@ -33,33 +33,80 @@ class ClientDocumentsController extends Controller
      * Add Personal/Education Document Checklist
      */
     public function addedudocchecklist(Request $request){
-        $clientid = $request->clientid;
-        $admin_info1 = Admin::select('client_id')->where('id', $clientid)->first();
-        if(!empty($admin_info1)){
-            $client_unique_id = $admin_info1->client_id;
-        } else {
-            $client_unique_id = "";
-        }
-        $doctype = isset($request->doctype)? $request->doctype : '';
+        try {
+            $response = ['status' => false, 'message' => 'Please try again', 'data' => '', 'griddata' => ''];
+            
+            $clientid = $request->clientid;
+            if(empty($clientid)) {
+                $response['message'] = 'Client ID is required';
+                return response()->json($response);
+            }
+            
+            $admin_info1 = Admin::select('client_id')->where('id', $clientid)->first();
+            if(!empty($admin_info1)){
+                $client_unique_id = $admin_info1->client_id;
+            } else {
+                $client_unique_id = "";
+            }
+            $doctype = isset($request->doctype)? $request->doctype : '';
+            
+            // Validate folder_name
+            if(empty($request->folder_name)) {
+                $response['message'] = 'Document category is required';
+                return response()->json($response);
+            }
 
-        if ($request->has('checklist'))
-        {
-            $checklistArray = $request->input('checklist');
-            if (is_array($checklistArray))
+            if ($request->has('checklist'))
             {
-                foreach ($checklistArray as $item)
+                $checklistArray = $request->input('checklist');
+                if (is_array($checklistArray) && !empty($checklistArray))
                 {
-                    $obj = new Document;
-                    $obj->user_id = Auth::user()->id;
-                    $obj->client_id = $clientid;
-                    $obj->type = $request->type;
-                    $obj->doc_type = $doctype;
-                    $obj->folder_name = $request->folder_name;
-                    $obj->checklist = $item;
-                    $saved = $obj->save();
-                } //end foreach
+                    $saved = false;
+                    $savedCount = 0;
+                    $errors = [];
+                    
+                    foreach ($checklistArray as $item)
+                    {
+                        if(empty(trim($item))) {
+                            continue; // Skip empty checklist items
+                        }
+                        
+                        try {
+                            $obj = new Document;
+                            $obj->user_id = Auth::user()->id;
+                            $obj->client_id = $clientid;
+                            $obj->type = $request->type ?? 'client';
+                            $obj->doc_type = $doctype;
+                            // For PostgreSQL, keep folder_name as string to avoid type issues
+                            // PostgreSQL will handle the conversion if needed
+                            $obj->folder_name = (string)$request->folder_name;
+                            $obj->checklist = trim($item);
+                            
+                            // Validate required fields before saving
+                            if(empty($obj->user_id) || empty($obj->client_id) || empty($obj->folder_name) || empty($obj->checklist)) {
+                                throw new \Exception('Required fields are missing: user_id=' . $obj->user_id . ', client_id=' . $obj->client_id . ', folder_name=' . $obj->folder_name . ', checklist=' . $obj->checklist);
+                            }
+                            
+                            $saved = $obj->save();
+                            
+                            if($saved) {
+                                $savedCount++;
+                            } else {
+                                $errors[] = "Failed to save checklist item: {$item}";
+                            }
+                        } catch (\Exception $e) {
+                            Log::error('Error saving checklist item', [
+                                'item' => $item,
+                                'client_id' => $clientid,
+                                'folder_name' => $request->folder_name,
+                                'error' => $e->getMessage(),
+                                'trace' => $e->getTraceAsString()
+                            ]);
+                            $errors[] = "Error saving '{$item}': " . $e->getMessage();
+                        }
+                    } //end foreach
 
-                if($saved)
+                    if($savedCount > 0)
                 {
                     if($request->type == 'client'){
                         $checklistCount = count($checklistArray);
@@ -77,7 +124,33 @@ class ClientDocumentsController extends Controller
                     $response['status'] = true;
                     $response['message'] = 'You\'ve successfully added your personal checklist';
 
-                    $fetchd = Document::where('client_id',$clientid)->whereNull('not_used_doc')->where('doc_type',$doctype)->where('type',$request->type)->where('folder_name',$request->folder_name)->orderby('updated_at', 'DESC')->get();
+                    // Ensure folder_name is cast to the same type as in database (PostgreSQL is strict about types)
+                    // Use whereRaw with CAST to handle type conversion in PostgreSQL
+                    $folderName = $request->folder_name;
+                    try {
+                        // Try direct comparison first
+                        $fetchd = Document::where('client_id',$clientid)
+                            ->whereNull('not_used_doc')
+                            ->where('doc_type',$doctype)
+                            ->where('type',$request->type)
+                            ->where('folder_name',$folderName)
+                            ->orderBy('updated_at', 'DESC')
+                            ->get();
+                    } catch (\Exception $queryError) {
+                        // If query fails due to type mismatch, use CAST in PostgreSQL
+                        Log::warning('Query failed with folder_name, using CAST for type conversion', [
+                            'folder_name' => $folderName,
+                            'error' => $queryError->getMessage()
+                        ]);
+                        // Use CAST to handle type conversion - PostgreSQL will convert both sides to text for comparison
+                        $fetchd = Document::where('client_id',$clientid)
+                            ->whereNull('not_used_doc')
+                            ->where('doc_type',$doctype)
+                            ->where('type',$request->type)
+                            ->whereRaw('CAST(folder_name AS TEXT) = CAST(? AS TEXT)', [$request->folder_name])
+                            ->orderBy('updated_at', 'DESC')
+                            ->get();
+                    }
                     ob_start();
                     foreach($fetchd as $docKey=>$fetch)
                     {
@@ -165,25 +238,69 @@ class ClientDocumentsController extends Controller
                     $griddata = ob_get_clean();
                     $response['data'] = $data;
                     $response['griddata'] = $griddata;
+                    } //end if
+                    else
+                    {
+                        $response['status'] = false;
+                        $errorMsg = !empty($errors) ? implode('; ', $errors) : 'Failed to save checklist. Please try again';
+                        $response['message'] = $errorMsg;
+                        Log::error('Failed to save any checklist items', [
+                            'client_id' => $clientid,
+                            'folder_name' => $request->folder_name,
+                            'checklist_array' => $checklistArray,
+                            'errors' => $errors
+                        ]);
+                    } //end else
                 } //end if
                 else
                 {
                     $response['status'] = false;
-                    $response['message'] = 'Please try again';
+                    $response['message'] = 'Please select at least one checklist item';
                 } //end else
             } //end if
             else
             {
                 $response['status'] = false;
-                $response['message'] = 'Please try again';
+                $response['message'] = 'Please select at least one checklist item';
             } //end else
-        }
-        else
-        {
+        } catch (\Illuminate\Database\QueryException $e) {
+            // PostgreSQL-specific errors
+            $errorMessage = $e->getMessage();
+            Log::error('PostgreSQL error adding personal checklist', [
+                'client_id' => $request->clientid ?? null,
+                'folder_name' => $request->folder_name ?? null,
+                'checklist' => $request->input('checklist'),
+                'error' => $errorMessage,
+                'sql_state' => $e->errorInfo[0] ?? null,
+                'sql_code' => $e->errorInfo[1] ?? null,
+                'sql_message' => $e->errorInfo[2] ?? null,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Provide more specific error messages
+            if (strpos($errorMessage, 'column') !== false && strpos($errorMessage, 'does not exist') !== false) {
+                $response['message'] = 'Database column error. Please contact support.';
+            } elseif (strpos($errorMessage, 'null value') !== false || strpos($errorMessage, 'NOT NULL') !== false) {
+                $response['message'] = 'Required field is missing. Please check all fields are filled.';
+            } elseif (strpos($errorMessage, 'foreign key') !== false) {
+                $response['message'] = 'Invalid client or user reference. Please refresh and try again.';
+            } else {
+                $response['message'] = 'Database error: ' . substr($errorMessage, 0, 100);
+            }
             $response['status'] = false;
-            $response['message'] = 'Please try again';
-        } //end else
-        echo json_encode($response);
+        } catch (\Exception $e) {
+            Log::error('Error adding personal checklist: ' . $e->getMessage(), [
+                'client_id' => $request->clientid ?? null,
+                'folder_name' => $request->folder_name ?? null,
+                'checklist' => $request->input('checklist'),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            $response['status'] = false;
+            $response['message'] = 'An error occurred while adding the checklist. Please try again.';
+        }
+        
+        return response()->json($response);
 	}
     
     /**
@@ -331,7 +448,7 @@ class ClientDocumentsController extends Controller
                         ->whereNull('not_used_doc')
                         ->where('doc_type',$doctype)
                         ->where('type',$request->type)
-                        ->orderby('updated_at', 'DESC')
+                        ->orderBy('updated_at', 'DESC')
                         ->get();
                     
                     ob_start();

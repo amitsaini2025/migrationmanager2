@@ -27,6 +27,10 @@ function customValidate(formName, savetype = '')
 			if($.inArray("required", splitDataValidation) !== -1) //for required
 				{
 					var for_class = $(this).attr('class');
+					var $element = $(this);
+					var isSelect2 = $element.hasClass('select2-hidden-accessible') || $element.data('select2');
+					var isMultiple = $element.prop('multiple');
+					
 					if(for_class.indexOf('multiselect_subject') != -1)
 						{
 							var value = $.trim($(this).val());
@@ -35,6 +39,17 @@ function customValidate(formName, savetype = '')
 									i++;
 									j++;
 									$(this).parent().after(errorDisplay(requiredError));
+								}
+						}
+					else if(isSelect2 && isMultiple)
+						{
+							// Handle Select2 multiple select
+							var selectedValues = $element.val();
+							if(!selectedValues || selectedValues.length === 0 || (selectedValues.length === 1 && selectedValues[0] === ''))
+								{
+									i++;
+									j++;
+									$(this).after(errorDisplay(requiredError));
 								}
 						}
 					else
@@ -438,17 +453,39 @@ function customValidate(formName, savetype = '')
 							//datatype:'json',
 							success: function(response){
 								$('.popuploader').hide();
-								var obj = $.parseJSON(response);
-								$('#openeducationdocsmodal').modal('hide');
-								if(obj.status){
-									$('.custom-error-msg').html('<span class="alert alert-success">'+obj.message+'</span>');
-									$('.documnetlist_'+doccategory).html(obj.data);
-									$('.griddata_'+doccategory).html(obj.griddata);
-								}else{
-									$('.custom-error-msg').html('<span class="alert alert-danger">'+obj.message+'</span>');
+								try {
+									var obj = typeof response === 'string' ? $.parseJSON(response) : response;
+									$('#openeducationdocsmodal').modal('hide');
+									if(obj.status){
+										$('.custom-error-msg').html('<span class="alert alert-success">'+obj.message+'</span>');
+										$('.documnetlist_'+doccategory).html(obj.data);
+										$('.griddata_'+doccategory).html(obj.griddata);
+									}else{
+										$('.custom-error-msg').html('<span class="alert alert-danger">'+obj.message+'</span>');
+									}
+									//Fetch All Activities
+									getallactivities(client_id);
+								} catch(e) {
+									console.error('Error parsing response:', e);
+									$('.popuploader').hide();
+									$('#openeducationdocsmodal').modal('hide');
+									$('.custom-error-msg').html('<span class="alert alert-danger">An error occurred while processing your request. Please try again.</span>');
 								}
-                                //Fetch All Activities
-								getallactivities(client_id);
+							},
+							error: function(xhr, status, error){
+								$('.popuploader').hide();
+								console.error('AJAX Error:', status, error);
+								var errorMessage = 'An error occurred while adding the checklist. ';
+								if(xhr.status === 0) {
+									errorMessage += 'Please check your internet connection.';
+								} else if(xhr.status === 500) {
+									errorMessage += 'Server error. Please try again later.';
+								} else if(xhr.status === 422) {
+									errorMessage += 'Validation error. Please check your input.';
+								} else {
+									errorMessage += 'Please try again.';
+								}
+								$('.custom-error-msg').html('<span class="alert alert-danger">'+errorMessage+'</span>');
 							}
 						});
 					}

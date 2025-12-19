@@ -3,6 +3,7 @@
                 <div class="card full-width documentalls-container">
                     <?php
                     $clientId = $fetchedData->id ?? null;
+                    $isSuperAdmin = \Illuminate\Support\Facades\Auth::check() && \Illuminate\Support\Facades\Auth::user()->role == 1;
                     $persDocCatList = \App\Models\PersonalDocumentType::select('id', 'title','client_id')
                         ->where('status', 1)
                         ->where(function($query) use ($clientId) {
@@ -28,9 +29,14 @@
                                         <button class="subtab2-button <?= $isActive ?>" data-subtab2="<?= $id ?>">
                                             <?= htmlspecialchars($catVal->title) ?>
                                         </button>
-                                        <?php if ($isClientGenerated): ?>
-                                            <div class="action-buttons" style="display: none; position: absolute; top: 0; right: -8px;">
-                                                <button class="btn btn-sm btn-warning update-personal-cat-title" data-id="<?= $id ?>" style="padding: 2px 0px 2px 6px;"><i class="fa fa-edit" aria-hidden="true"></i></button>
+                                        <?php if ($isClientGenerated || $isSuperAdmin): ?>
+                                            <div class="action-buttons" style="display: none; position: absolute; top: 0; right: -8px; display: flex; gap: 2px;">
+                                                <?php if ($isClientGenerated): ?>
+                                                    <button class="btn btn-sm btn-warning update-personal-cat-title" data-id="<?= $id ?>" style="padding: 2px 0px 2px 6px;"><i class="fa fa-edit" aria-hidden="true"></i></button>
+                                                <?php endif; ?>
+                                                <?php if ($isSuperAdmin): ?>
+                                                    <button class="btn btn-sm btn-danger delete-personal-cat-title" data-id="<?= $id ?>" data-title="<?= htmlspecialchars($catVal->title) ?>" style="padding: 2px 0px 2px 6px;"><i class="fa fa-trash" aria-hidden="true"></i></button>
+                                                <?php endif; ?>
                                             </div>
                                         <?php endif; ?>
                                     </div>
@@ -246,7 +252,13 @@
 
             <script>
                 // ============================================================================
-                // PERSONAL DOCUMENTS - DRAG AND DROP INITIALIZATION
+                // PERSONAL DOCUMENTS - DRAG AND DROP INITIALIZATION (HYBRID APPROACH)
+                // ============================================================================
+                // This uses a DUAL-LAYER strategy to ensure handlers work:
+                // 1. DIRECT handlers on existing elements (fire FIRST, highest priority)
+                // 2. DELEGATED handlers for dynamic elements (fallback)
+                // Both use stopImmediatePropagation() to prevent detail-main.js handlers
+                // from interfering, while keeping them as a safety fallback.
                 // ============================================================================
                 console.log('🚀 Personal Documents Tab Script Loading...');
                 
@@ -269,98 +281,44 @@
                         });
                     });
                     
-                    // IMPORTANT: Remove ALL handlers (including those from detail-main.js)
-                    // This ensures our local handlers take priority
-                    $('.personal-doc-drag-zone').off('click');
-                    $('.personal-doc-drag-zone').off('dragenter');
-                    $('.personal-doc-drag-zone').off('dragover');
-                    $('.personal-doc-drag-zone').off('dragleave');
-                    $('.personal-doc-drag-zone').off('drop');
+                    // Remove only our own handlers to prevent duplicates
+                    $(document).off('dragenter.personaldoclocal', '.personal-doc-drag-zone');
+                    $(document).off('dragover.personaldoclocal', '.personal-doc-drag-zone');
+                    $(document).off('dragleave.personaldoclocal', '.personal-doc-drag-zone');
+                    $(document).off('drop.personaldoclocal', '.personal-doc-drag-zone');
+                    $(document).off('click.personaldoclocal', '.personal-doc-drag-zone');
                     
-                    // Also remove delegated event handlers
-                    $(document).off('click', '.personal-doc-drag-zone');
-                    $(document).off('dragenter', '.personal-doc-drag-zone');
-                    $(document).off('dragover', '.personal-doc-drag-zone');
-                    $(document).off('dragleave', '.personal-doc-drag-zone');
-                    $(document).off('drop', '.personal-doc-drag-zone');
-                    
-                    // Add local click handler as backup (in case detail-main.js handler doesn't fire)
-                    $(document).off('click', '.personal-doc-drag-zone').on('click', '.personal-doc-drag-zone', function(e) {
-                        console.log('🎯 LOCAL CLICK HANDLER - personal-doc-drag-zone clicked');
-                        e.preventDefault();
-                        e.stopPropagation();
-                        
-                        var fileid = $(this).data('fileid');
-                        var formid = $(this).data('formid');
-                        console.log('📂 File ID:', fileid, 'Form ID:', formid);
-                        
-                        var fileInput = $('#' + formid).find('.docupload');
-                        console.log('📁 File input found:', fileInput.length > 0);
-                        
-                        if (fileInput.length > 0) {
-                            console.log('✅ Triggering file input click...');
-                            fileInput[0].click(); // Use native click
-                        } else {
-                            console.error('❌ File input not found for fileid:', fileid);
-                        }
-                        
-                        return false;
-                    });
-                    
-                    // Add drag and drop handlers with better event handling
-                    // IMPORTANT: Remove all existing handlers first to prevent conflicts
-                    $(document).off('dragenter', '.personal-doc-drag-zone');
-                    $(document).off('dragover', '.personal-doc-drag-zone');
-                    $(document).off('dragleave', '.personal-doc-drag-zone');
-                    $(document).off('drop', '.personal-doc-drag-zone');
-                    
-                    // Prevent default drag behavior on document
-                    $(document).off('dragover.personaldoc').on('dragover.personaldoc', function(e) {
-                        if ($(e.target).closest('.personal-doc-drag-zone').length > 0) {
-                            return; // Let drop zone handle it
-                        }
-                        e.preventDefault(); // Prevent browser from opening file
-                    });
-                    
-                    $(document).off('drop.personaldoc').on('drop.personaldoc', function(e) {
-                        if ($(e.target).closest('.personal-doc-drag-zone').length > 0) {
-                            return; // Let drop zone handle it
-                        }
-                        e.preventDefault(); // Prevent browser from opening file
-                    });
-                    
-                    // Attach handlers DIRECTLY to each drop zone element (not delegated)
-                    // This ensures they fire BEFORE detail-main.js handlers
+                    // ALSO attach direct handlers to existing elements for IMMEDIATE priority
+                    // These will fire BEFORE delegated handlers
                     $('.personal-doc-drag-zone').each(function() {
                         var $zone = $(this);
                         
-                        // Click handler
-                        $zone.on('click', function(e) {
-                            console.log('🎯 DIRECT CLICK HANDLER - personal-doc-drag-zone clicked');
+                        // Remove any existing direct handlers first
+                        $zone.off('click.personaldocdirect');
+                        $zone.off('dragenter.personaldocdirect');
+                        $zone.off('dragover.personaldocdirect');
+                        $zone.off('dragleave.personaldocdirect');
+                        $zone.off('drop.personaldocdirect');
+                        
+                        // Attach direct handlers with stopImmediatePropagation
+                        $zone.on('click.personaldocdirect', function(e) {
+                            console.log('🎯 DIRECT CLICK (Highest Priority)');
                             e.preventDefault();
                             e.stopPropagation();
-                            e.stopImmediatePropagation(); // Stop other handlers
+                            e.stopImmediatePropagation();
                             
                             var fileid = $(this).data('fileid');
                             var formid = $(this).data('formid');
-                            console.log('📂 File ID:', fileid, 'Form ID:', formid);
-                            
                             var fileInput = $('#' + formid).find('.docupload');
-                            console.log('📁 File input found:', fileInput.length > 0);
                             
                             if (fileInput.length > 0) {
-                                console.log('✅ Triggering file input click...');
                                 fileInput[0].click();
-                            } else {
-                                console.error('❌ File input not found for fileid:', fileid);
                             }
-                            
                             return false;
                         });
                         
-                        // Dragenter handler
-                        $zone.on('dragenter', function(e) {
-                            console.log('🔥 DIRECT DRAGENTER HANDLER');
+                        $zone.on('dragenter.personaldocdirect', function(e) {
+                            console.log('🔥 DIRECT DRAGENTER (Highest Priority)');
                             e.preventDefault();
                             e.stopPropagation();
                             e.stopImmediatePropagation();
@@ -368,26 +326,25 @@
                             return false;
                         });
                         
-                        // Dragover handler
-                        $zone.on('dragover', function(e) {
-                            console.log('🔥 DIRECT DRAGOVER HANDLER');
-                            var event = e.originalEvent || e;
-                            event.preventDefault();
-                            event.stopPropagation();
+                        $zone.on('dragover.personaldocdirect', function(e) {
+                            console.log('🔥 DIRECT DRAGOVER (Highest Priority)');
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
                             
-                            if (event.dataTransfer) {
-                                event.dataTransfer.dropEffect = 'copy';
+                            if (e.originalEvent && e.originalEvent.dataTransfer) {
+                                e.originalEvent.dataTransfer.dropEffect = 'copy';
                             }
                             
                             $(this).addClass('drag_over');
                             return false;
                         });
                         
-                        // Dragleave handler
-                        $zone.on('dragleave', function(e) {
-                            console.log('⚠️ DIRECT DRAGLEAVE HANDLER');
+                        $zone.on('dragleave.personaldocdirect', function(e) {
+                            console.log('⚠️ DIRECT DRAGLEAVE (Highest Priority)');
                             e.preventDefault();
                             e.stopPropagation();
+                            e.stopImmediatePropagation();
                             
                             var rect = this.getBoundingClientRect();
                             var x = e.originalEvent.clientX;
@@ -399,140 +356,273 @@
                             return false;
                         });
                         
-                        // Drop handler
-                        $zone.on('drop', function(e) {
-                            console.log('🎯 DIRECT DROP HANDLER');
-                            var event = e.originalEvent || e;
-                            event.preventDefault();
-                            event.stopPropagation();
-                            event.stopImmediatePropagation();
+                        $zone.on('drop.personaldocdirect', function(e) {
+                            console.log('🎯 DIRECT DROP (Highest Priority)');
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
                             
                             $(this).removeClass('drag_over');
                             
-                            var files = event.dataTransfer ? event.dataTransfer.files : null;
+                            var files = e.originalEvent && e.originalEvent.dataTransfer ? e.originalEvent.dataTransfer.files : null;
                             if (files && files.length > 0) {
-                                console.log('📄 File dropped:', files[0].name);
+                                var $zone = $(this);
+                                var file = files[0];
+                                var fileid = $zone.data('fileid');
+                                var doccategory = $zone.data('doccategory');
+                                var formId = $zone.data('formid');
+                                var form = $('#' + formId);
                                 
-                                var fileid = $(this).data('fileid');
-                                var formid = $(this).data('formid');
-                                var fileInput = $('#' + formid).find('.docupload')[0];
-                                
-                                if (fileInput) {
-                                    try {
-                                        var dataTransfer = new DataTransfer();
-                                        dataTransfer.items.add(files[0]);
-                                        fileInput.files = dataTransfer.files;
-                                        console.log('✅ File assigned using DataTransfer');
-                                    } catch(err) {
-                                        console.warn('⚠️ Fallback to direct assignment');
-                                        try {
-                                            fileInput.files = files;
-                                        } catch(err2) {
-                                            console.error('❌ Could not assign file:', err2);
-                                        }
-                                    }
-                                    
-                                    $(fileInput).trigger('change');
-                                    console.log('✅ Change event triggered');
-                                } else {
-                                    console.error('❌ File input not found');
+                                if (!form.length) {
+                                    console.error('❌ Form not found:', formId);
+                                    alert('Error: Upload form not found. Please refresh the page.');
+                                    return false;
                                 }
+                                
+                                // Validate filename
+                                var validNameRegex = /^[a-zA-Z0-9_\-\.\s\$]+$/;
+                                if (!validNameRegex.test(file.name)) {
+                                    alert("File name can only contain letters, numbers, dashes (-), underscores (_), spaces, dots (.), and dollar signs ($). Please rename the file and try again.");
+                                    return false;
+                                }
+                                
+                                // Create FormData and upload
+                                var formData = new FormData(form[0]);
+                                formData.set('document_upload', file);
+                                
+                                $zone.addClass('uploading');
+                                $('.custom-error-msg').html('<span class="alert alert-info"><i class="fa fa-clock-o"></i> Uploading document...</span>');
+                                
+                                $.ajax({
+                                    url: '{{ url("/documents/upload-edu-document") }}',
+                                    type: 'POST',
+                                    dataType: 'json',
+                                    data: formData,
+                                    contentType: false,
+                                    processData: false,
+                                    success: function(ress) {
+                                        $zone.removeClass('uploading');
+                                        
+                                        if (ress.status) {
+                                            $('.custom-error-msg').html('<span class="alert alert-success">' + ress.message + '</span>');
+                                            
+                                            var row = $('#id_' + fileid);
+                                            var docNameWithoutExt = ress.filename.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_").toLowerCase();
+                                            
+                                            var uploadTd = row.find('td').eq(1);
+                                            uploadTd.html(
+                                                '<div data-id="' + fileid + '" data-name="' + docNameWithoutExt + '" class="doc-row" title="Uploaded by: Admin" oncontextmenu="showFileContextMenu(event, ' + fileid + ', \'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'' + doccategory + '\', \'' + (ress.status_value || 'draft') + '\'); return false;">' +
+                                                    '<a href="javascript:void(0);" onclick="previewFile(\'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'preview-container-' + doccategory + '\')">' +
+                                                        '<i class="fas fa-file-image"></i> <span>' + ress.filename + '</span>' +
+                                                    '</a>' +
+                                                '</div>'
+                                            );
+                                            
+                                            var actionTd = row.find('td').eq(2);
+                                            actionTd.html(
+                                                '<a class="renamechecklist" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
+                                                '<a class="renamedoc" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
+                                                '<a class="download-file" data-filelink="' + ress.fileurl + '" data-filename="' + ress.filekey + '" href="#" style="display: none;"></a>' +
+                                                '<a class="notuseddoc" data-id="' + fileid + '" data-doctype="' + ress.doctype + '" data-href="notuseddoc" href="javascript:;" style="display: none;"></a>'
+                                            );
+                                            
+                                            row.addClass('drow');
+                                            
+                                            if (typeof getallactivities === 'function') {
+                                                getallactivities();
+                                            }
+                                            
+                                            setTimeout(function() {
+                                                location.reload();
+                                            }, 1000);
+                                        } else {
+                                            $('.custom-error-msg').html('<span class="alert alert-danger">' + ress.message + '</span>');
+                                        }
+                                    },
+                                    error: function(xhr, status, error) {
+                                        $zone.removeClass('uploading');
+                                        $('.custom-error-msg').html('<span class="alert alert-danger">Upload failed. Please try again.</span>');
+                                        console.error('Personal doc upload error:', error);
+                                    }
+                                });
                             }
                             return false;
                         });
                     });
                     
-                    // BACKUP: Also keep delegated handlers as fallback
-                    // Drag enter - initial entry into zone
-                    $(document).on('dragenter.pdbackup', '.personal-doc-drag-zone', function(e) {
-                        console.log('🔥 LOCAL DRAGENTER HANDLER');
+                    // Use DELEGATED event handlers with HIGH PRIORITY (these work for dynamically loaded content)
+                    // The .personaldoclocal namespace ensures we can remove/re-attach without affecting detail-main.js
+                    
+                    // Click handler - for browse functionality
+                    $(document).on('click.personaldoclocal', '.personal-doc-drag-zone', function(e) {
+                        console.log('🎯 BLADE CLICK HANDLER - Personal Doc (Priority)');
                         e.preventDefault();
                         e.stopPropagation();
+                        e.stopImmediatePropagation(); // Stop detail-main.js handler
+                        
+                        var fileid = $(this).data('fileid');
+                        var formid = $(this).data('formid');
+                        console.log('📂 File ID:', fileid, 'Form ID:', formid);
+                        
+                        var fileInput = $('#' + formid).find('.docupload');
+                        console.log('📁 File input found:', fileInput.length > 0);
+                        
+                        if (fileInput.length > 0) {
+                            console.log('✅ Triggering file input click...');
+                            fileInput[0].click();
+                        } else {
+                            console.error('❌ File input not found for formid:', formid);
+                        }
+                        
+                        return false;
+                    });
+                    
+                    // Dragenter - initial entry into zone
+                    $(document).on('dragenter.personaldoclocal', '.personal-doc-drag-zone', function(e) {
+                        console.log('🔥 BLADE DRAGENTER HANDLER - Personal Doc (Priority)');
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation(); // Stop detail-main.js handler
                         $(this).addClass('drag_over');
                         return false;
                     });
                     
-                    // Drag over - continuous while dragging over zone
-                    $(document).on('dragover.pdbackup', '.personal-doc-drag-zone', function(e) {
-                        console.log('🔥 LOCAL DRAGOVER HANDLER');
-                        var event = e.originalEvent || e;
-                        event.preventDefault();
-                        event.stopPropagation();
+                    // Dragover - continuous while dragging over zone (REQUIRED for drop to work!)
+                    $(document).on('dragover.personaldoclocal', '.personal-doc-drag-zone', function(e) {
+                        console.log('🔥 BLADE DRAGOVER HANDLER - Personal Doc (Priority)');
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation(); // Stop detail-main.js handler
                         
                         // Set dropEffect to indicate this is a valid drop zone
-                        if (event.dataTransfer) {
-                            event.dataTransfer.dropEffect = 'copy';
+                        if (e.originalEvent && e.originalEvent.dataTransfer) {
+                            e.originalEvent.dataTransfer.dropEffect = 'copy';
                         }
                         
                         $(this).addClass('drag_over');
                         return false;
                     });
                     
-                    // Drag leave - when dragging out of zone
-                    $(document).on('dragleave.pdbackup', '.personal-doc-drag-zone', function(e) {
-                        console.log('⚠️ LOCAL DRAGLEAVE HANDLER');
+                    // Dragleave - when dragging out of zone
+                    $(document).on('dragleave.personaldoclocal', '.personal-doc-drag-zone', function(e) {
+                        console.log('⚠️ BLADE DRAGLEAVE HANDLER - Personal Doc (Priority)');
                         e.preventDefault();
                         e.stopPropagation();
+                        e.stopImmediatePropagation(); // Stop detail-main.js handler
                         
-                        // Only remove highlight if actually leaving the zone (not just moving between child elements)
-                        var $zone = $(this);
+                        // Only remove highlight if actually leaving the zone
                         var rect = this.getBoundingClientRect();
                         var x = e.originalEvent.clientX;
                         var y = e.originalEvent.clientY;
                         
                         if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
-                            $zone.removeClass('drag_over');
+                            $(this).removeClass('drag_over');
                         }
                         return false;
                     });
                     
                     // Drop - when file is dropped
-                    $(document).on('drop.pdbackup', '.personal-doc-drag-zone', function(e) {
-                        console.log('🎯 LOCAL DROP HANDLER');
-                        var event = e.originalEvent || e;
-                        event.preventDefault();
-                        event.stopPropagation();
+                    $(document).on('drop.personaldoclocal', '.personal-doc-drag-zone', function(e) {
+                        console.log('🎯 BLADE DROP HANDLER - Personal Doc (Priority)');
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation(); // Stop detail-main.js handler from firing
                         
                         $(this).removeClass('drag_over');
                         
-                        var files = event.dataTransfer ? event.dataTransfer.files : null;
+                        var files = e.originalEvent && e.originalEvent.dataTransfer ? e.originalEvent.dataTransfer.files : null;
                         if (files && files.length > 0) {
                             console.log('📄 File dropped:', files[0].name);
-                            console.log('📄 File type:', files[0].type);
-                            console.log('📄 File size:', files[0].size);
                             
-                            var fileid = $(this).data('fileid');
-                            var formid = $(this).data('formid');
-                            console.log('📂 File ID:', fileid, 'Form ID:', formid);
+                            var $zone = $(this);
+                            var file = files[0];
+                            var fileid = $zone.data('fileid');
+                            var doccategory = $zone.data('doccategory');
+                            var formId = $zone.data('formid');
+                            var form = $('#' + formId);
                             
-                            var fileInput = $('#' + formid).find('.docupload')[0];
-                            console.log('📁 File input found:', !!fileInput);
+                            console.log('📂 File ID:', fileid, 'Category:', doccategory, 'Form ID:', formId);
                             
-                            if (fileInput) {
-                                try {
-                                    // Try modern approach first
-                                    var dataTransfer = new DataTransfer();
-                                    dataTransfer.items.add(files[0]);
-                                    fileInput.files = dataTransfer.files;
-                                    console.log('✅ File assigned to input using DataTransfer');
-                                } catch(err) {
-                                    console.warn('⚠️ DataTransfer not supported, trying fallback...');
-                                    // Fallback: directly assign files (works in most browsers)
-                                    try {
-                                        fileInput.files = files;
-                                        console.log('✅ File assigned directly');
-                                    } catch(err2) {
-                                        console.error('❌ Could not assign file:', err2);
-                                    }
-                                }
-                                
-                                // Trigger change event
-                                console.log('🚀 Triggering change event on file input...');
-                                $(fileInput).trigger('change');
-                                console.log('✅ Change event triggered');
-                            } else {
-                                console.error('❌ File input not found for formid:', formid);
+                            if (!form.length) {
+                                console.error('❌ Form not found:', formId);
+                                alert('Error: Upload form not found. Please refresh the page.');
+                                return false;
                             }
+                            
+                            // Validate filename
+                            var validNameRegex = /^[a-zA-Z0-9_\-\.\s\$]+$/;
+                            if (!validNameRegex.test(file.name)) {
+                                alert("File name can only contain letters, numbers, dashes (-), underscores (_), spaces, dots (.), and dollar signs ($). Please rename the file and try again.");
+                                return false;
+                            }
+                            
+                            // Create FormData with all form fields
+                            var formData = new FormData(form[0]);
+                            
+                            // Override the file input with dragged file
+                            formData.set('document_upload', file);
+                            
+                            // Visual feedback
+                            $zone.addClass('uploading');
+                            $('.custom-error-msg').html('<span class="alert alert-info"><i class="fa fa-clock-o"></i> Uploading document...</span>');
+                            
+                            // Upload via AJAX
+                            $.ajax({
+                                url: '{{ url("/documents/upload-edu-document") }}',
+                                type: 'POST',
+                                dataType: 'json',
+                                data: formData,
+                                contentType: false,
+                                processData: false,
+                                success: function(ress) {
+                                    $zone.removeClass('uploading');
+                                    
+                                    if (ress.status) {
+                                        $('.custom-error-msg').html('<span class="alert alert-success">' + ress.message + '</span>');
+                                        
+                                        var row = $('#id_' + fileid);
+                                        var docNameWithoutExt = ress.filename.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_").toLowerCase();
+                                        
+                                        // Replace upload TD content (Column 1 = File Name)
+                                        var uploadTd = row.find('td').eq(1);
+                                        uploadTd.html(
+                                            '<div data-id="' + fileid + '" data-name="' + docNameWithoutExt + '" class="doc-row" title="Uploaded by: Admin" oncontextmenu="showFileContextMenu(event, ' + fileid + ', \'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'' + doccategory + '\', \'' + (ress.status_value || 'draft') + '\'); return false;">' +
+                                                '<a href="javascript:void(0);" onclick="previewFile(\'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'preview-container-' + doccategory + '\')">' +
+                                                    '<i class="fas fa-file-image"></i> <span>' + ress.filename + '</span>' +
+                                                '</a>' +
+                                            '</div>'
+                                        );
+                                        
+                                        // Add hidden elements for context menu actions (Column 2 = Actions)
+                                        var actionTd = row.find('td').eq(2);
+                                        actionTd.html(
+                                            '<a class="renamechecklist" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
+                                            '<a class="renamedoc" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
+                                            '<a class="download-file" data-filelink="' + ress.fileurl + '" data-filename="' + ress.filekey + '" href="#" style="display: none;"></a>' +
+                                            '<a class="notuseddoc" data-id="' + fileid + '" data-doctype="' + ress.doctype + '" data-href="notuseddoc" href="javascript:;" style="display: none;"></a>'
+                                        );
+                                        
+                                        row.addClass('drow');
+                                        
+                                        // Reload activities
+                                        if (typeof getallactivities === 'function') {
+                                            getallactivities();
+                                        }
+                                        
+                                        // Reload the page to refresh the document list
+                                        setTimeout(function() {
+                                            location.reload();
+                                        }, 1000);
+                                    } else {
+                                        $('.custom-error-msg').html('<span class="alert alert-danger">' + ress.message + '</span>');
+                                    }
+                                },
+                                error: function(xhr, status, error) {
+                                    $zone.removeClass('uploading');
+                                    $('.custom-error-msg').html('<span class="alert alert-danger">Upload failed. Please try again.</span>');
+                                    console.error('Personal doc upload error:', error);
+                                }
+                            });
                         } else {
                             console.error('❌ No files in drop event');
                         }
@@ -542,9 +632,14 @@
                     console.log('✅ Local drag-drop handlers attached');
                 }
                 
-                // Initialize on DOM ready
+                // CRITICAL: Initialize IMMEDIATELY (before detail-main.js loads)
+                // This ensures our handlers are attached first and can use stopImmediatePropagation()
+                console.log('🚀 Attaching Personal Documents handlers IMMEDIATELY');
+                initPersonalDocDragDrop();
+                
+                // Also initialize on DOM ready (in case elements weren't ready above)
                 $(document).ready(function() {
-                    console.log('✅ Personal Documents DOM Ready');
+                    console.log('✅ Personal Documents DOM Ready - Reinitializing');
                     initPersonalDocDragDrop();
                 });
                 
@@ -554,7 +649,7 @@
                     console.log('📂 Personal Documents tab clicked, reinitializing...');
                     setTimeout(function() {
                         initPersonalDocDragDrop();
-                    }, 200); // Increased delay to ensure tab is visible
+                    }, 200); // Delay to ensure tab is visible
                 });
                 
                 // Also check if tab is already active (e.g., direct URL navigation)
@@ -752,6 +847,11 @@
                     position: relative;
                     z-index: 1;
                 }
+                
+                /* Make all child elements transparent to pointer events so drag events reach the dropzone */
+                .document-drag-drop-zone * {
+                    pointer-events: none;
+                }
 
                 .document-drag-drop-zone:hover {
                     border-color: #007bff;
@@ -792,6 +892,15 @@
                 }
 
                 /* Bulk Upload Styles */
+                .bulk-upload-dropzone {
+                    position: relative;
+                }
+                
+                /* Make all child elements transparent to pointer events so drag events reach the dropzone */
+                .bulk-upload-dropzone * {
+                    pointer-events: none;
+                }
+                
                 .bulk-upload-dropzone.drag_over {
                     border-color: #28a745;
                     background-color: #e8f5e9;
@@ -1019,30 +1128,151 @@
                     }
                 });
                 
-                // Drag and drop handlers
+                // Attach DIRECT handlers to bulk upload dropzones for highest priority
+                function initBulkUploadDragDrop() {
+                    console.log('🔄 Initializing Bulk Upload Drag & Drop...');
+                    console.log('📊 Bulk upload zones found:', $('.bulk-upload-dropzone').length);
+                    
+                    $('.bulk-upload-dropzone').each(function() {
+                        var $zone = $(this);
+                        
+                        // Remove any existing handlers first
+                        $zone.off('dragenter.bulkdirect dragover.bulkdirect dragleave.bulkdirect drop.bulkdirect');
+                        
+                        // Use native event listeners for maximum compatibility
+                        var elem = this;
+                        
+                        // Remove old native listeners if they exist
+                        if (elem._bulkDragOver) {
+                            elem.removeEventListener('dragover', elem._bulkDragOver);
+                        }
+                        if (elem._bulkDrop) {
+                            elem.removeEventListener('drop', elem._bulkDrop);
+                        }
+                        if (elem._bulkDragEnter) {
+                            elem.removeEventListener('dragenter', elem._bulkDragEnter);
+                        }
+                        if (elem._bulkDragLeave) {
+                            elem.removeEventListener('dragleave', elem._bulkDragLeave);
+                        }
+                        
+                        // Dragover handler (REQUIRED for drop to work)
+                        elem._bulkDragOver = function(e) {
+                            console.log('🔥 NATIVE BULK DRAGOVER');
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.dataTransfer.dropEffect = 'copy';
+                            $zone.addClass('drag_over');
+                        };
+                        elem.addEventListener('dragover', elem._bulkDragOver);
+                        
+                        // Dragenter handler
+                        elem._bulkDragEnter = function(e) {
+                            console.log('🔥 NATIVE BULK DRAGENTER');
+                            e.preventDefault();
+                            e.stopPropagation();
+                            $zone.addClass('drag_over');
+                        };
+                        elem.addEventListener('dragenter', elem._bulkDragEnter);
+                        
+                        // Dragleave handler
+                        elem._bulkDragLeave = function(e) {
+                            console.log('⚠️ NATIVE BULK DRAGLEAVE');
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            var rect = elem.getBoundingClientRect();
+                            if (e.clientX <= rect.left || e.clientX >= rect.right || 
+                                e.clientY <= rect.top || e.clientY >= rect.bottom) {
+                                $zone.removeClass('drag_over');
+                            }
+                        };
+                        elem.addEventListener('dragleave', elem._bulkDragLeave);
+                        
+                        // Drop handler
+                        elem._bulkDrop = function(e) {
+                            console.log('🎯 NATIVE BULK DROP');
+                            e.preventDefault();
+                            e.stopPropagation();
+                            $zone.removeClass('drag_over');
+                            
+                            var files = e.dataTransfer ? e.dataTransfer.files : null;
+                            console.log('📄 Files dropped:', files ? files.length : 0);
+                            
+                            if (files && files.length > 0) {
+                                var categoryId = $zone.data('categoryid');
+                                console.log('📂 Category ID:', categoryId);
+                                handleBulkFilesSelected(categoryId, files);
+                            } else {
+                                console.error('❌ No files in drop event');
+                            }
+                        };
+                        elem.addEventListener('drop', elem._bulkDrop);
+                        
+                        console.log('✅ Attached native handlers to bulk dropzone:', $zone.data('categoryid'));
+                    });
+                }
+                
+                // Initialize bulk upload drag-drop when container becomes visible
+                $(document).on('click', '.bulk-upload-toggle-btn', function() {
+                    setTimeout(function() {
+                        initBulkUploadDragDrop();
+                    }, 300); // Wait for slideDown animation
+                });
+                
+                // Also initialize on DOM ready for any visible dropzones
+                $(document).ready(function() {
+                    initBulkUploadDragDrop();
+                });
+                
+                // Keep delegated handlers as fallback
                 $(document).on('dragover', '.bulk-upload-dropzone', function(e) {
+                    console.log('🔥 DELEGATED BULK DRAGOVER');
                     e.preventDefault();
                     e.stopPropagation();
                     $(this).addClass('drag_over');
+                    if (e.originalEvent && e.originalEvent.dataTransfer) {
+                        e.originalEvent.dataTransfer.dropEffect = 'copy';
+                    }
+                    return false;
+                });
+                
+                $(document).on('dragenter', '.bulk-upload-dropzone', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $(this).addClass('drag_over');
+                    return false;
                 });
                 
                 $(document).on('dragleave', '.bulk-upload-dropzone', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    $(this).removeClass('drag_over');
+                    var rect = this.getBoundingClientRect();
+                    var x = e.originalEvent.clientX;
+                    var y = e.originalEvent.clientY;
+                    if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
+                        $(this).removeClass('drag_over');
+                    }
+                    return false;
                 });
                 
                 $(document).on('drop', '.bulk-upload-dropzone', function(e) {
+                    console.log('🎯 DELEGATED BULK DROP');
                     e.preventDefault();
                     e.stopPropagation();
                     $(this).removeClass('drag_over');
                     
                     const categoryId = $(this).data('categoryid');
-                    const files = e.originalEvent.dataTransfer.files;
+                    const files = e.originalEvent && e.originalEvent.dataTransfer ? e.originalEvent.dataTransfer.files : null;
                     
-                    if (files.length > 0) {
+                    console.log('📄 Files dropped:', files ? files.length : 0);
+                    
+                    if (files && files.length > 0) {
                         handleBulkFilesSelected(categoryId, files);
+                    } else {
+                        console.error('❌ No files in drop event');
                     }
+                    return false;
                 });
                 
                 // Handle files selected

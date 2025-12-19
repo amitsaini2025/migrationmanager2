@@ -11329,7 +11329,7 @@ Bansal Immigration`;
         // This must be on document level, but we let drop zones handle their own events
         $(document).on('dragover', function(e) {
             // Allow drop zones to handle their own dragover events
-            if ($(e.target).closest('.personal-doc-drag-zone, .visa-doc-drag-zone').length) {
+            if ($(e.target).closest('.personal-doc-drag-zone, .visa-doc-drag-zone, .bulk-upload-dropzone, .bulk-upload-dropzone-visa').length) {
                 return; // Let the drop zone handler take over
             }
             // For other areas, prevent default to allow file drops
@@ -11338,7 +11338,7 @@ Bansal Immigration`;
 
         $(document).on('drop', function(e) {
             // Allow drop zones to handle their own drop events
-            if ($(e.target).closest('.personal-doc-drag-zone, .visa-doc-drag-zone').length) {
+            if ($(e.target).closest('.personal-doc-drag-zone, .visa-doc-drag-zone, .bulk-upload-dropzone, .bulk-upload-dropzone-visa').length) {
                 return; // Let the drop zone handler take over
             }
             // For other areas, prevent default to prevent browser from opening file
@@ -11652,6 +11652,57 @@ Bansal Immigration`;
 
             $('.addpersonaldoccatmodel').modal('show');
 
+        });
+
+        // Delete Personal Document Category (Superadmin only)
+        $(document).delegate('.delete-personal-cat-title', 'click', function (e) {
+            e.preventDefault();
+            
+            var id = $(this).data('id');
+            var title = $(this).data('title') || 'this category';
+            
+            // First warning dialog
+            var warningMessage = '⚠️ WARNING: You are about to delete the category "' + title + '"\n\n' +
+                                'This action will permanently remove the category from the system.\n\n' +
+                                'Requirements:\n' +
+                                '• Category must be empty (no documents)\n' +
+                                '• Only superadmin can perform this action\n\n' +
+                                'This action CANNOT be undone!\n\n' +
+                                'Do you want to proceed?';
+            
+            if (confirm(warningMessage)) {
+                // Second confirmation dialog
+                var confirmMessage = '⚠️ FINAL CONFIRMATION\n\n' +
+                                    'Are you absolutely sure you want to delete "' + title + '"?\n\n' +
+                                    'This will permanently delete the category.\n\n' +
+                                    'Click OK to delete or Cancel to abort.';
+                
+                if (confirm(confirmMessage)) {
+                    $.ajax({
+                        url: '/documents/delete-personal-category',
+                        method: 'POST',
+                        data: {
+                            _token: $('meta[name="csrf-token"]').attr('content'),
+                            id: id
+                        },
+                        success: function(response) {
+                            if (response.status) {
+                                alert('✓ Success: ' + response.message);
+                                location.reload();
+                            } else {
+                                alert('✗ Error: ' + (response.message || 'Failed to delete category.'));
+                            }
+                        },
+                        error: function(xhr) {
+                            var errorMsg = 'An error occurred while deleting the category.';
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                errorMsg = xhr.responseJSON.message;
+                            }
+                            alert('✗ Error: ' + errorMsg);
+                        }
+                    });
+                }
+            }
         });
 
 

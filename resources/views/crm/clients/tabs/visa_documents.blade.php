@@ -664,31 +664,148 @@
                     }
                 });
                 
-                // Drag and drop handlers for visa
+                // Attach DIRECT handlers to visa bulk upload dropzones for highest priority
+                function initVisaBulkUploadDragDrop() {
+                    console.log('🔄 Initializing Visa Bulk Upload Drag & Drop...');
+                    console.log('📊 Visa bulk upload zones found:', $('.bulk-upload-dropzone-visa').length);
+                    
+                    $('.bulk-upload-dropzone-visa').each(function() {
+                        var $zone = $(this);
+                        var elem = this;
+                        
+                        // Remove old native listeners if they exist
+                        if (elem._visaBulkDragOver) {
+                            elem.removeEventListener('dragover', elem._visaBulkDragOver);
+                        }
+                        if (elem._visaBulkDrop) {
+                            elem.removeEventListener('drop', elem._visaBulkDrop);
+                        }
+                        if (elem._visaBulkDragEnter) {
+                            elem.removeEventListener('dragenter', elem._visaBulkDragEnter);
+                        }
+                        if (elem._visaBulkDragLeave) {
+                            elem.removeEventListener('dragleave', elem._visaBulkDragLeave);
+                        }
+                        
+                        // Dragover handler (REQUIRED for drop to work)
+                        elem._visaBulkDragOver = function(e) {
+                            console.log('🔥 NATIVE VISA BULK DRAGOVER');
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.dataTransfer.dropEffect = 'copy';
+                            $zone.addClass('drag_over');
+                        };
+                        elem.addEventListener('dragover', elem._visaBulkDragOver);
+                        
+                        // Dragenter handler
+                        elem._visaBulkDragEnter = function(e) {
+                            console.log('🔥 NATIVE VISA BULK DRAGENTER');
+                            e.preventDefault();
+                            e.stopPropagation();
+                            $zone.addClass('drag_over');
+                        };
+                        elem.addEventListener('dragenter', elem._visaBulkDragEnter);
+                        
+                        // Dragleave handler
+                        elem._visaBulkDragLeave = function(e) {
+                            console.log('⚠️ NATIVE VISA BULK DRAGLEAVE');
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            var rect = elem.getBoundingClientRect();
+                            if (e.clientX <= rect.left || e.clientX >= rect.right || 
+                                e.clientY <= rect.top || e.clientY >= rect.bottom) {
+                                $zone.removeClass('drag_over');
+                            }
+                        };
+                        elem.addEventListener('dragleave', elem._visaBulkDragLeave);
+                        
+                        // Drop handler
+                        elem._visaBulkDrop = function(e) {
+                            console.log('🎯 NATIVE VISA BULK DROP');
+                            e.preventDefault();
+                            e.stopPropagation();
+                            $zone.removeClass('drag_over');
+                            
+                            var files = e.dataTransfer ? e.dataTransfer.files : null;
+                            console.log('📄 Visa files dropped:', files ? files.length : 0);
+                            
+                            if (files && files.length > 0) {
+                                var categoryId = $zone.data('categoryid');
+                                var matterId = $zone.data('matterid');
+                                console.log('📂 Category ID:', categoryId, 'Matter ID:', matterId);
+                                handleBulkVisaFilesSelected(categoryId, matterId, files);
+                            } else {
+                                console.error('❌ No files in visa drop event');
+                            }
+                        };
+                        elem.addEventListener('drop', elem._visaBulkDrop);
+                        
+                        console.log('✅ Attached native handlers to visa bulk dropzone:', $zone.data('categoryid'));
+                    });
+                }
+                
+                // Initialize visa bulk upload drag-drop when container becomes visible
+                $(document).on('click', '.bulk-upload-toggle-btn-visa', function() {
+                    setTimeout(function() {
+                        initVisaBulkUploadDragDrop();
+                    }, 300); // Wait for slideDown animation
+                });
+                
+                // Also initialize on DOM ready for any visible dropzones
+                $(document).ready(function() {
+                    initVisaBulkUploadDragDrop();
+                });
+                
+                // Keep delegated handlers as fallback
                 $(document).on('dragover', '.bulk-upload-dropzone-visa', function(e) {
+                    console.log('🔥 DELEGATED VISA BULK DRAGOVER');
                     e.preventDefault();
                     e.stopPropagation();
                     $(this).addClass('drag_over');
+                    if (e.originalEvent && e.originalEvent.dataTransfer) {
+                        e.originalEvent.dataTransfer.dropEffect = 'copy';
+                    }
+                    return false;
+                });
+                
+                $(document).on('dragenter', '.bulk-upload-dropzone-visa', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $(this).addClass('drag_over');
+                    return false;
                 });
                 
                 $(document).on('dragleave', '.bulk-upload-dropzone-visa', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    $(this).removeClass('drag_over');
+                    var rect = this.getBoundingClientRect();
+                    var x = e.originalEvent.clientX;
+                    var y = e.originalEvent.clientY;
+                    if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
+                        $(this).removeClass('drag_over');
+                    }
+                    return false;
                 });
                 
                 $(document).on('drop', '.bulk-upload-dropzone-visa', function(e) {
+                    console.log('🎯 DELEGATED VISA BULK DROP');
                     e.preventDefault();
                     e.stopPropagation();
                     $(this).removeClass('drag_over');
                     
                     const categoryId = $(this).data('categoryid');
                     const matterId = $(this).data('matterid');
-                    const files = e.originalEvent.dataTransfer.files;
+                    const files = e.originalEvent && e.originalEvent.dataTransfer ? e.originalEvent.dataTransfer.files : null;
                     
-                    if (files.length > 0) {
+                    console.log('📄 Visa files dropped:', files ? files.length : 0);
+                    
+                    if (files && files.length > 0) {
                         handleBulkVisaFilesSelected(categoryId, matterId, files);
+                    } else {
+                        console.error('❌ No files in visa drop event');
                     }
+                    return false;
                 });
                 
                 // Handle visa files selected
@@ -1059,6 +1176,21 @@
                     background-color: #f8f9fa;
                 }
 
+                /* Bulk Upload Dropzone Styles for Visa */
+                .bulk-upload-dropzone-visa {
+                    position: relative;
+                }
+                
+                /* Make all child elements transparent to pointer events so drag events reach the dropzone */
+                .bulk-upload-dropzone-visa * {
+                    pointer-events: none;
+                }
+                
+                .bulk-upload-dropzone-visa.drag_over {
+                    border-color: #28a745;
+                    background-color: #e8f5e9;
+                }
+
                 /* Drag and Drop Zone Styles */
                 .document-drag-drop-zone {
                     border: 2px dashed #ccc;
@@ -1075,6 +1207,11 @@
                     margin: 5px 0;
                     position: relative;
                     z-index: 1;
+                }
+                
+                /* Make all child elements transparent to pointer events so drag events reach the dropzone */
+                .document-drag-drop-zone * {
+                    pointer-events: none;
                 }
 
                 .document-drag-drop-zone:hover {

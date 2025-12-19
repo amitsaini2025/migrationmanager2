@@ -131,4 +131,21 @@ return [
         'secret' => env('STRIPE_SECRET'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | ZeptoMail Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for ZeptoMail API integration
+    | Get your API key from: https://www.zeptomail.com/
+    |
+    */
+
+    'zeptomail' => [
+        'api_key' => env('ZEPTOMAIL_API_KEY'),
+        'from_email' => env('ZEPTOMAIL_FROM_EMAIL', 'signature@bansalimmigration.com.au'),
+        'from_name' => env('ZEPTOMAIL_FROM_NAME', 'Bansal Migration'),
+        'api_url' => env('ZEPTOMAIL_API_URL', 'https://api.zeptomail.com/v1.1/email'),
+    ],
+
 ];

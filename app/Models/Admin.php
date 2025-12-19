@@ -35,11 +35,15 @@ class Admin extends Authenticatable
         'country', 'state', 'city', 'address', 'zip',
         // Profile
         'profile_img', 'status', 'verified',
+        // Migration Agent Flag & Details
+        'is_migration_agent',
         // Business/Professional Info
         'marn_number', 'legal_practitioner_number', 'exempt_person_reason',
+        'business_address', 'business_phone', 'business_mobile', 'business_email', 'business_fax',
+        'tax_number',
         'company_name', 'company_website', 'primary_email',
         'gst_no', 'gstin', 'gst_date', 'is_business_gst',
-        'ABN_number', 'business_mobile', 'business_fax', 'company_fax',
+        'ABN_number', 'company_fax',
         // Email Configuration
         'smtp_host', 'smtp_port', 'smtp_enc', 'smtp_username', 'smtp_password',
         // API/Service Tokens
@@ -98,6 +102,38 @@ class Admin extends Authenticatable
     public function getFullNameAttribute(): string
     {
         return trim($this->first_name . ' ' . $this->last_name);
+    }
+
+    /**
+     * Get age attribute - calculates from DOB on-the-fly
+     * Falls back to stored age if DOB is not available
+     * Always returns accurate age when DOB exists
+     * 
+     * @return string|null
+     */
+    public function getAgeAttribute($value)
+    {
+        // If DOB exists, calculate age on-the-fly (always accurate)
+        if ($this->dob && $this->dob !== '0000-00-00') {
+            try {
+                $dobDate = \Carbon\Carbon::parse($this->dob);
+                $now = \Carbon\Carbon::now();
+                
+                // Don't calculate for future dates
+                if ($dobDate->isFuture()) {
+                    return $value; // Return stored value or null
+                }
+                
+                $diff = $now->diff($dobDate);
+                return $diff->y . ' years ' . $diff->m . ' months';
+            } catch (\Exception $e) {
+                // If calculation fails, return stored value
+                return $value;
+            }
+        }
+        
+        // If no DOB, return stored age value (or null)
+        return $value;
     }
 
     // ============================================================

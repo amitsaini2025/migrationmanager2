@@ -1403,28 +1403,58 @@ class CRMUtilityController extends Controller
 		echo json_encode($agents);
 	}
 
-		public function getassigneeajax(Request $request){
-		    $squery = $request->likevalue;
-		     $fetchedData = \App\Models\Admin::where('role', '!=', 7)
-       ->where(
-           function($query) use ($squery) {
-             return $query
-                    ->where('email', 'LIKE', '%'.$squery.'%')
-                    ->orwhere('first_name', 'LIKE','%'.$squery.'%')->orwhere('last_name', 'LIKE','%'.$squery.'%')->orwhere('client_id', 'LIKE','%'.$squery.'%')->orwhere('phone', 'LIKE','%'.$squery.'%')->orWhere(DB::raw("(COALESCE(first_name, '') || ' ' || COALESCE(last_name, ''))"), 'LIKE', "%".$squery."%");
+	public function getassigneeajax(Request $request){
+	    \Log::info('📋 getassigneeajax called', [
+	        'search' => $request->likevalue,
+	        'user_id' => Auth::id(),
+	    ]);
+	    
+	    try {
+	        $squery = $request->likevalue;
+	        
+	        $query = \App\Models\Admin::where('role', '!=', 7)  // Exclude clients (role=7)
+                ->where('status', 1);  // Only active users
+                
+            // Apply search filter if provided
+            if (!empty($squery)) {
+                $query->where(function($q) use ($squery) {
+                    $q->where('email', 'LIKE', '%'.$squery.'%')
+                      ->orWhere('first_name', 'LIKE', '%'.$squery.'%')
+                      ->orWhere('last_name', 'LIKE', '%'.$squery.'%')
+                      ->orWhere('client_id', 'LIKE', '%'.$squery.'%')
+                      ->orWhere('phone', 'LIKE', '%'.$squery.'%')
+                      ->orWhere(DB::raw("(COALESCE(first_name, '') || ' ' || COALESCE(last_name, ''))"), 'LIKE', "%".$squery."%");
+                });
+            }
+            
+            $fetchedData = $query->orderBy('first_name')->orderBy('last_name')->get();
 
-            })
-            ->get();
-
-		$agents = array();
-		foreach($fetchedData as $list){
-			$agents[] = array(
-				'id' => $list->id,
-				'agent_id' => $list->first_name.' '.$list->last_name,
-				'assignee' => $list->first_name.' '.$list->last_name,
-			);
-		}
-
-		echo json_encode($agents);
+    		$agents = array();
+    		foreach($fetchedData as $list){
+    			$agents[] = array(
+    				'id' => $list->id,
+    				'agent_id' => $list->first_name.' '.$list->last_name,
+    				'assignee' => $list->first_name.' '.$list->last_name,
+    			);
+    		}
+    
+    		\Log::info('✅ getassigneeajax success', [
+    		    'count' => count($agents),
+    		    'sample' => array_slice($agents, 0, 3),
+    		]);
+    
+    		return response()->json($agents);
+	    } catch (\Exception $e) {
+	        \Log::error('❌ getassigneeajax failed', [
+	            'error' => $e->getMessage(),
+	            'trace' => $e->getTraceAsString(),
+	        ]);
+	        
+	        return response()->json([
+	            'error' => 'Failed to load staff list',
+	            'message' => $e->getMessage(),
+	        ], 500);
+	    }
 	}
 
 
@@ -1474,10 +1504,11 @@ class CRMUtilityController extends Controller
     // Column preferences method moved to DashboardController
 
     /**
-     * Get office visit notifications
+     * Get office visit notifications (optimized - no N+1 queries)
      */
     public function fetchOfficeVisitNotifications(Request $request)
     {
+        // Fetch notifications with sender relationship eager loaded
         $notifications = \App\Models\Notification::with(['sender:id,first_name,last_name'])
             ->where('receiver_id', Auth::id())
             ->where('notification_type', 'officevisit')
@@ -1485,18 +1516,55 @@ class CRMUtilityController extends Controller
             ->orderBy('created_at', 'DESC')
             ->get();
 
+        if ($notifications->isEmpty()) {
+            return response()->json([]);
+        }
+
+        // Batch-load all checkin logs (eliminates N+1)
+        $checkinLogIds = $notifications->pluck('module_id')->filter()->unique();
+        $checkinLogs = \App\Models\CheckinLog::whereIn('id', $checkinLogIds)
+            ->where('status', 0)
+            ->get()
+            ->keyBy('id');
+
+        // If no active checkin logs, return empty
+        if ($checkinLogs->isEmpty()) {
+            return response()->json([]);
+        }
+
+        // Separate client IDs by type (Lead vs Admin)
+        $leadIds = [];
+        $adminIds = [];
+        foreach ($checkinLogs as $log) {
+            if ($log->contact_type == 'Lead') {
+                $leadIds[] = $log->client_id;
+            } else {
+                $adminIds[] = $log->client_id;
+            }
+        }
+
+        // Batch-load all leads and admins (eliminates N+1)
+        $leads = !empty($leadIds) 
+            ? \App\Models\Lead::whereIn('id', $leadIds)->get()->keyBy('id')
+            : collect();
+        
+        $admins = !empty($adminIds)
+            ? Admin::where('role', '7')->whereIn('id', $adminIds)->get()->keyBy('id')
+            : collect();
+
+        // Build response data
         $data = [];
         foreach ($notifications as $notification) {
-            $checkinLog = \App\Models\CheckinLog::find($notification->module_id);
+            $checkinLog = $checkinLogs->get($notification->module_id);
             
-            if (!$checkinLog || $checkinLog->status != 0) {
+            if (!$checkinLog) {
                 continue;
             }
 
-            // Get client information
+            // Get client from pre-loaded collection
             $client = $checkinLog->contact_type == 'Lead' 
-                ? \App\Models\Lead::find($checkinLog->client_id)
-                : Admin::where('role', '7')->find($checkinLog->client_id);
+                ? $leads->get($checkinLog->client_id)
+                : $admins->get($checkinLog->client_id);
 
             $data[] = [
                 'id' => $notification->id,

@@ -229,23 +229,28 @@ function customValidate(formName, savetype = '')
 								$('.popuploader').hide(); 
 								var obj = $.parseJSON(response);
 								
-								if(obj.status){
-									$('#create_note').modal('hide');
-								$('.custom-error-msg').html('<span class="alert alert-success">'+obj.message+'</span>');
-								$.ajax({
-									url: site_url+'/agent/get-notes',
-									type:'GET',
-									data:{clientid:client_id,type:'partner'},
-									success: function(responses){
-										
-										$('.note_term_list').html(responses);
-									}
-								});
+							if(obj.status){
+								$('#create_note').modal('hide');
+							$('.custom-error-msg').html('<span class="alert alert-success">'+obj.message+'</span>');
+							$.ajax({
+								url: site_url+'/agent/get-notes',
+								type:'GET',
+								data:{clientid:client_id,type:'partner'},
+								success: function(responses){
 									
-								}else{
-									$('.custom-error-msg').html('<span class="alert alert-danger">'+obj.message+'</span>');
-									
+									$('.note_term_list').html(responses);
 								}
+							});
+								// Refresh activity feed
+								if (typeof getallactivities === 'function') {
+									getallactivities(client_id);
+								} else if (typeof loadActivities === 'function') {
+									loadActivities();
+								}
+							}else{
+								$('.custom-error-msg').html('<span class="alert alert-danger">'+obj.message+'</span>');
+								
+							}
 							}
 						});
 					}else if(formName == 'clientcontact')
@@ -1669,32 +1674,22 @@ function customValidate(formName, savetype = '')
 									$('#create_note').modal('hide');
 								$('.custom-error-msg').html('<span class="alert alert-success">'+obj.message+'</span>');
 								$.ajax({
-		url: site_url+'/agent/get-notes',
-		type:'GET',
-		data:{clientid:client_id,type:'client'},
-		success: function(responses){
-			
-			$('.note_term_list').html(responses);
-		}
-	});
-									$.ajax({
-										url: site_url+'/agent/get-activities',
-										type:'GET',
-										datatype:'json',
-										data:{id:client_id},
-										success: function(responses){
-											var ress = JSON.parse(responses);
-											var html = '';
-											$.each(ress.data, function(k, v) {
-												html += '<div class="activity"><div class="activity-icon bg-primary text-white"><span>'+v.createdname+'</span></div><div class="activity-detail"><div class="mb-2"><span class="text-job">'+v.date+'</span></div><p><b>'+v.name+'</b> '+v.subject+'</p>';
-												if(v.message != null){
-													html += '<p>'+v.message+'</p>';
-												}
-												html += '</div></div>';
-											});
-											$('.activities').html(html);
-										}
-									});
+	url: site_url+'/agent/get-notes',
+	type:'GET',
+	data:{clientid:client_id,type:'client'},
+	success: function(responses){
+		
+		$('.note_term_list').html(responses);
+	}
+});
+								// Refresh activity feed using the standardized function
+								if (typeof getallactivities === 'function') {
+									getallactivities(client_id);
+								} else if (typeof loadActivities === 'function') {
+									loadActivities();
+								} else {
+									console.warn('Activity refresh functions not available');
+								}
 								}else{
 									$('.custom-error-msg').html('<span class="alert alert-danger">'+obj.message+'</span>');
 									

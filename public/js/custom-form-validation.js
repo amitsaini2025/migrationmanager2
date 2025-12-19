@@ -430,6 +430,13 @@ function customValidate(formName, savetype = '')
 									$('.migdocumnetlist_'+folder_name).html(obj.data);
 									//$('.miggriddata').show();
 									$('.miggriddata').html(obj.griddata);
+									
+									// Re-initialize drag and drop for newly added checklist items
+									if (typeof initVisaDocDragDrop === 'function') {
+										setTimeout(function() {
+											initVisaDocDragDrop();
+										}, 100);
+									}
 								}else{
 									$('.custom-error-msg').html('<span class="alert alert-danger">'+obj.message+'</span>');
 								}
@@ -460,6 +467,15 @@ function customValidate(formName, savetype = '')
 										$('.custom-error-msg').html('<span class="alert alert-success">'+obj.message+'</span>');
 										$('.documnetlist_'+doccategory).html(obj.data);
 										$('.griddata_'+doccategory).html(obj.griddata);
+										
+										// Re-initialize drag and drop for newly added checklist items
+										// Use setTimeout to ensure DOM is fully updated before initialization
+										setTimeout(function() {
+											if (typeof initPersonalDocDragDrop === 'function') {
+												console.log('🔄 Re-initializing drag and drop after adding checklist...');
+												initPersonalDocDragDrop();
+											}
+										}, 100);
 									}else{
 										$('.custom-error-msg').html('<span class="alert alert-danger">'+obj.message+'</span>');
 									}
@@ -3022,6 +3038,12 @@ function getallactivities(client_id){
 			if (activityType === 'sms') {
 				subjectIcon = '<i class="fas fa-sms"></i>';
 				iconClass = 'feed-icon-sms';
+			} else if (activityType === 'activity') {
+				subjectIcon = '<i class="fas fa-bolt"></i>';
+				iconClass = 'feed-icon-activity';
+			} else if (activityType === 'financial') {
+				subjectIcon = '<i class="fas fa-dollar-sign"></i>';
+				iconClass = 'feed-icon-accounting';
 			} else if (v.subject && v.subject.toLowerCase().includes("document")) {
 				subjectIcon = '<i class="fas fa-file-alt"></i>';
 			} else {

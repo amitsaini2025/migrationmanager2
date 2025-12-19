@@ -8,6 +8,7 @@
     <meta name="author" content="">
     <meta name="keyword" content="CRM">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="current-user-id" content="{{ optional(auth('admin')->user())->id }}">
     <title>CRM | Client Details</title>
     <link rel="icon" type="image/png" href="{{asset('img/favicon.png')}}">
     <link rel="stylesheet" href="{{asset('css/app.min.css')}}">
@@ -23,10 +24,7 @@
     <link rel="stylesheet" href="{{asset('css/components.css')}}">
     <link rel="stylesheet" href="{{asset('css/custom.css')}}">
     <link rel="stylesheet" href="{{asset('css/dataTables_min_latest.css')}}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{asset('icons/font-awesome/css/all.min.css')}}">
     <script src="{{asset('js/jquery_min_latest.js')}}"></script>
     
     {{-- Bootstrap Datepicker CSS --}}
@@ -36,7 +34,7 @@
 
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; color: #343a40; line-height: 1.6; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f8f9fa; color: #343a40; line-height: 1.6; }
         .main-wrapper { position: relative; }
         .main-navbar { position: fixed; top: 0; width: 100%; z-index: 1000; background-color: #fff; height: 70px; }
         
@@ -481,10 +479,184 @@
             text-overflow: ellipsis !important;
             flex: 1 !important;
         }
+        /* Broadcast Notification Box - Top Right Corner */
+        .broadcast-banner {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1100;
+            max-width: 380px;
+            min-width: 320px;
+            display: none;
+            background: linear-gradient(135deg, #005792 0%, #00BBF0 100%);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            transform: translateX(450px);
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.3s ease;
+            opacity: 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .broadcast-banner.is-visible {
+            display: block;
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .broadcast-banner__header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.15);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .broadcast-banner__header-title {
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            margin: 0;
+        }
+
+        .broadcast-banner__header-title i {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+
+        .broadcast-banner__close-btn {
+            background: none;
+            border: none;
+            color: #ffffff;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background-color 0.2s ease;
+            font-size: 16px;
+            line-height: 1;
+            opacity: 0.9;
+        }
+
+        .broadcast-banner__close-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            opacity: 1;
+        }
+
+        .broadcast-banner__content {
+            padding: 18px;
+            color: #ffffff;
+        }
+
+        .broadcast-banner__title {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #ffffff;
+            line-height: 1.4;
+        }
+
+        .broadcast-banner__title:not(.has-title) {
+            display: none;
+        }
+
+        .broadcast-banner__message {
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 12px;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .broadcast-banner__meta {
+            font-size: 12px;
+            opacity: 0.85;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .broadcast-banner__meta i {
+            font-size: 11px;
+        }
+
+        .broadcast-banner__actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .broadcast-banner__btn {
+            border: 0;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.95);
+            color: #005792;
+            flex: 1;
+        }
+
+        .broadcast-banner__btn:hover {
+            background: #ffffff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .broadcast-banner__btn--ghost {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            color: #ffffff;
+        }
+
+        .broadcast-banner__btn--ghost:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.9);
+        }
+
+        @media (max-width: 768px) {
+            .broadcast-banner {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
+                min-width: auto;
+            }
+        }
     </style>
     @stack('styles')
 </head>
 <body class="sidebar-mini">
+    <div class="broadcast-banner" data-broadcast-banner>
+        <div class="broadcast-banner__header">
+            <h5 class="broadcast-banner__header-title">
+                <i class="fas fa-bullhorn"></i>
+                Broadcast Message
+            </h5>
+            <button type="button" class="broadcast-banner__close-btn" data-action="dismiss" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="broadcast-banner__content">
+            <div class="broadcast-banner__title" data-broadcast-title></div>
+            <div class="broadcast-banner__message" data-broadcast-message></div>
+            <div class="broadcast-banner__meta" data-broadcast-meta>
+                <i class="fas fa-info-circle"></i>
+                <span data-broadcast-meta-text></span>
+            </div>
+            <div class="broadcast-banner__actions">
+                <button type="button" class="broadcast-banner__btn" data-action="mark-read">Mark as read</button>
+                <button type="button" class="broadcast-banner__btn broadcast-banner__btn--ghost" data-action="dismiss">Dismiss</button>
+            </div>
+        </div>
+    </div>
     <div class="loader"></div>
     <div class="popuploader" style="display: none;"></div>
     <div id="app">
@@ -1322,9 +1494,6 @@
                         </div>
                         <div class="teams-notification-body">
                             <div class="teams-notification-sender">
-                                <div class="teams-notification-avatar">
-                                    ${notification.sender_avatar}
-                                </div>
                                 <div class="teams-notification-sender-info">
                                     <div class="teams-notification-sender-name">${notification.sender_name}</div>
                                     <div class="teams-notification-message">${notification.message}</div>
@@ -1348,6 +1517,18 @@
                 `;
                 
                 $('#teamsNotificationContainer').append(notificationHtml);
+                
+                // Play notification sound
+                try {
+                    var audioPlayer = document.getElementById('player');
+                    if (audioPlayer) {
+                        audioPlayer.play().catch(function(error) {
+                            console.log('Could not play notification sound:', error);
+                        });
+                    }
+                } catch (error) {
+                    console.log('Error playing notification sound:', error);
+                }
                 
                 // Show the notification with animation
                 setTimeout(function() {
@@ -1452,13 +1633,33 @@
                 });
             };
             
-            // Load office visit notifications every 10 seconds
-            setInterval(function() {
-                loadOfficeVisitNotifications();
-            }, 10000);
+            // Initial load of office visit notifications
+            loadOfficeVisitNotifications();
             
-        // Initial load
-        loadOfficeVisitNotifications();
+            // Wait for window.Echo to be available, then setup real-time notifications
+            function setupOfficeVisitRealtimeNotifications() {
+                if (window.Echo) {
+                    const userId = document.querySelector('meta[name="current-user-id"]')?.content;
+                    if (userId) {
+                        console.log('✅ Subscribing to office visit notifications for user:', userId);
+                        window.Echo.private(`user.${userId}`)
+                            .listen('.OfficeVisitNotificationCreated', (e) => {
+                                console.log('📬 Received office visit notification:', e);
+                                if (e.notification) {
+                                    showTeamsNotification(e.notification);
+                                }
+                            });
+                    } else {
+                        console.warn('⚠️ User ID not found, cannot subscribe to office visit notifications');
+                    }
+                } else {
+                    // Echo not ready yet, wait and try again
+                    setTimeout(setupOfficeVisitRealtimeNotifications, 200);
+                }
+            }
+            
+            // Start setup (will wait for Echo if needed)
+            setTimeout(setupOfficeVisitRealtimeNotifications, 500);
         
         // Profile dropdown hover functionality
         let profileHoverTimeout;
@@ -1562,5 +1763,41 @@
     </div>
     
     @stack('scripts')
+    
+    {{-- Vite: Load Laravel Echo with Reverb for real-time WebSocket notifications --}}
+    {{-- Must load BEFORE broadcasts.js so window.Echo is available --}}
+    @vite(['resources/js/app.js'])
+    
+    {{-- Wait for Echo to be available before loading broadcasts.js --}}
+    <script>
+        // Poll for window.Echo to be available (Vite modules load asynchronously)
+        let echoCheckAttempts = 0;
+        const maxAttempts = 50; // 5 seconds max wait
+        
+        const waitForEcho = setInterval(() => {
+            echoCheckAttempts++;
+            
+            if (typeof window.Echo !== 'undefined') {
+                console.log('✅ window.Echo detected, loading broadcasts.js...');
+                clearInterval(waitForEcho);
+                
+                // Dynamically load broadcasts.js now that Echo is ready
+                const script = document.createElement('script');
+                script.src = '{{asset('js/broadcasts.js')}}';
+                document.body.appendChild(script);
+            } else if (echoCheckAttempts >= maxAttempts) {
+                // Only show warning if Echo was expected but failed (not if intentionally disabled)
+                if (!window.EchoDisabled) {
+                    console.warn('⚠️ window.Echo not available after waiting, broadcasts.js will use polling fallback');
+                }
+                clearInterval(waitForEcho);
+                
+                // Load broadcasts.js anyway (it has fallback to polling)
+                const script = document.createElement('script');
+                script.src = '{{asset('js/broadcasts.js')}}';
+                document.body.appendChild(script);
+            }
+        }, 100); // Check every 100ms
+    </script>
 </body>
 </html>

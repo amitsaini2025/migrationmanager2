@@ -92,8 +92,8 @@
                                                         <input type="hidden" name="signer_id" value="{{ $signer->id }}">
                                                         <button type="submit"
                                                                 class="px-3 py-1 bg-orange-600 text-white text-xs font-medium rounded-md hover:bg-orange-700 transition
-                                                                       @if($signer->reminder_count >= 3 || ($signer->last_reminder_sent_at && $signer->last_reminder_sent_at->diffInHours(now()) < 24)) opacity-50 cursor-not-allowed @endif"
-                                                                @if($signer->reminder_count >= 3 || ($signer->last_reminder_sent_at && $signer->last_reminder_sent_at->diffInHours(now()) < 24)) disabled @endif>
+                                                                       @if($signer->reminder_count >= 3) opacity-50 cursor-not-allowed @endif"
+                                                                @if($signer->reminder_count >= 3) disabled @endif>
                                                             Remind ({{ $signer->reminder_count }}/3)
                                                         </button>
                                                     </form>

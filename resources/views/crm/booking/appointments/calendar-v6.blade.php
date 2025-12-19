@@ -4,7 +4,7 @@
 @section('content')
 
 {{-- ✅ Load FullCalendar v6 CSS from reliable CDN --}}
-<link href="https://unpkg.com/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
 
 @vite(['resources/css/fullcalendar-v6.css'])
 
@@ -144,13 +144,33 @@
 @vite(['resources/js/app.js'])
 
 <script>
-// Ensure FullCalendar v6 is loaded
-if (typeof FullCalendar === 'undefined' || !FullCalendar.Calendar) {
-    console.error('FullCalendar v6 is not loaded! Check Vite build.');
+// Wait for FullCalendar v6 to be loaded from Vite module
+// Vite modules load asynchronously, so we need to wait for it
+function waitForFullCalendar(callback, maxAttempts = 50) {
+    let attempts = 0;
+    
+    const checkInterval = setInterval(() => {
+        attempts++;
+        
+        if (typeof FullCalendar !== 'undefined' && FullCalendar.Calendar && 
+            typeof FullCalendarPlugins !== 'undefined') {
+            clearInterval(checkInterval);
+            console.log('✅ FullCalendar v6 detected, initializing calendar...');
+            callback();
+        } else if (attempts >= maxAttempts) {
+            clearInterval(checkInterval);
+            console.error('❌ FullCalendar v6 not loaded after waiting. Please rebuild assets: npm run build');
+            // Still try to initialize if calendar element exists (graceful degradation)
+            const calendarEl = document.getElementById('calendar');
+            if (calendarEl) {
+                calendarEl.innerHTML = '<div class="alert alert-danger">FullCalendar v6 failed to load. Please refresh the page or rebuild assets.</div>';
+            }
+        }
+    }, 100); // Check every 100ms
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Initializing FullCalendar v6...');
+    console.log('Waiting for FullCalendar v6 to load...');
     
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl) {
@@ -158,8 +178,10 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
-    // Initialize FullCalendar v6
-    const calendar = new FullCalendar.Calendar(calendarEl, {
+    // Wait for FullCalendar to be available before initializing
+    waitForFullCalendar(function() {
+        // Initialize FullCalendar v6
+        const calendar = new FullCalendar.Calendar(calendarEl, {
         plugins: [
             FullCalendarPlugins.dayGridPlugin,
             FullCalendarPlugins.timeGridPlugin,
@@ -384,6 +406,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <!-- <button type="button" class="btn btn-sm btn-outline-warning" onclick="updateAppointmentStatus(${event.id}, 'pending')">
                                     <i class="fas fa-clock"></i> Mark as Pending
                                 </button> -->
+                                ${props.final_amount && parseFloat(props.final_amount) > 0 ? `
+                                <button type="button" class="btn btn-sm btn-outline-info" onclick="updateAppointmentStatus(${event.id}, 'paid')">
+                                    <i class="fas fa-dollar-sign"></i> Mark As Payment Done
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="updateAppointmentStatus(${event.id}, 'pending')">
+                                    <i class="fas fa-clock"></i> Mark As Payment Pending
+                                </button>
+                                ` : ''}
                                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="updateAppointmentStatus(${event.id}, 'cancelled')">
                                     <i class="fas fa-times"></i> Mark as Cancelled
                                 </button>
@@ -464,11 +494,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Render the calendar
-    calendar.render();
-    console.log('FullCalendar v6 initialized successfully');
-    
-    // Helper functions
+        // Render the calendar
+        calendar.render();
+        console.log('FullCalendar v6 initialized successfully');
+        
+        // Helper functions
     function getStatusColor(status) {
         const colors = {
             'pending': '#ffc107',
@@ -489,6 +519,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function getStatusClass(status) {
         const classes = {
             'pending': 'warning',
+            'paid': 'info',
             'confirmed': 'success',
             'completed': 'info',
             'cancelled': 'danger',
@@ -668,7 +699,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 5000);
         }
     }
-});
+    }); // Close waitForFullCalendar callback
+}); // Close DOMContentLoaded
 </script>
 
 <style>

@@ -135,10 +135,23 @@ Route::middleware(['auth:admin'])->group(function() {
 
     Route::prefix('notifications/broadcasts')->name('notifications.broadcasts.')->group(function () {
         Route::post('/send', [BroadcastNotificationAjaxController::class, 'store'])->name('send');
-        Route::get('/history', [BroadcastNotificationAjaxController::class, 'history'])->name('history');
-        Route::get('/{batchUuid}/details', [BroadcastNotificationAjaxController::class, 'details'])->name('details');
+        
+        // History routes (specific routes first)
+        Route::get('/history', [BroadcastNotificationAjaxController::class, 'history'])->name('history'); // Global history
+        Route::get('/my-history', [BroadcastNotificationAjaxController::class, 'myHistory'])->name('my-history'); // My sent broadcasts
+        Route::get('/read-history', [BroadcastNotificationAjaxController::class, 'readHistory'])->name('read-history'); // My read broadcasts
         Route::get('/unread', [BroadcastNotificationAjaxController::class, 'unread'])->name('unread');
-        Route::post('/{notificationId}/read', [BroadcastNotificationAjaxController::class, 'markAsRead'])->name('read');
+        
+        // Parameterized routes with constraints for extra safety
+        Route::get('/{batchUuid}/details', [BroadcastNotificationAjaxController::class, 'details'])
+            ->name('details')
+            ->where('batchUuid', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
+        Route::post('/{notificationId}/read', [BroadcastNotificationAjaxController::class, 'markAsRead'])
+            ->name('read')
+            ->where('notificationId', '[0-9]+');
+        Route::delete('/{batchUuid}', [BroadcastNotificationAjaxController::class, 'delete'])
+            ->name('delete')
+            ->where('batchUuid', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
     });
 
     // User Login Analytics Routes
@@ -289,6 +302,9 @@ Route::middleware(['auth:admin'])->group(function() {
 	Route::get('/action', [AssigneeController::class, 'action'])->name('assignee.action');
 	Route::get('/action/list', [AssigneeController::class, 'getAction'])->name('action.list');
 
+	/*---------- Matter Office Management ----------*/
+	Route::post('/matters/update-office', [ClientsController::class, 'updateMatterOffice'])->name('matters.update-office');
+
 	/*---------- End of Admin Routes ----------*/
 
 
@@ -306,3 +322,5 @@ require __DIR__ . '/documents.php';
 |--------------------------------------------------*/
 // Public email verification route loaded from clients.php
 
+// Public email verification route - no authentication required
+Route::get('/verify-email/{token}', [EmailVerificationController::class, 'verifyEmail'])->name('clients.email.verify');

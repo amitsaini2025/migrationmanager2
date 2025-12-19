@@ -32,27 +32,27 @@
             <td style="padding:36px 30px 42px 30px;">
               <table role="presentation" style="width:100%;border-collapse:collapse;border:0;border-spacing:0;">
                 <tr>
-                  <td style="padding:0 0 36px 0;color:#153643;">
-                    <h1 style="font-size:24px;margin:0 0 20px 0;font-family:Arial,sans-serif;">Appointment</h1>
-                    <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">Dear {{ $details['fullname'] }} ,</p>
-                    <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">{{$details['title']}} .</p>
-                    <p style="margin:0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;"><a href="#" style="color:#ee4c50;text-decoration:underline;">Appointment Details:</a></p>
+                  <td style="padding:0 0 36px 0;color:#111827;">
+                    <h1 style="font-size:24px;margin:0 0 20px 0;font-family:Arial,sans-serif;color:#111827;">Appointment</h1>
+                    <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">Dear {{ $details['fullname'] }} ,</p>
+                    <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">{{$details['title']}} .</p>
+                    <p style="margin:0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;"><a href="#" style="color:#dc2626;text-decoration:underline;font-weight:600;">Appointment Details:</a></p>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding:0;">
                     <table role="presentation" style="width:100%;border-collapse:collapse;border:0;border-spacing:0;">
                       <tr>
-                        <td style="width:260px;padding:0;vertical-align:top;color:#153643;">
-                          <p style="margin:0 0 25px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">Service : {{ $details['service'] }}</p>
-                          <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">Name : {{ $details['fullname'] }}</p>
-                          <p style="margin:0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">Email : {{ $details['email'] }}</p>
+                        <td style="width:260px;padding:0;vertical-align:top;color:#111827;">
+                          <p style="margin:0 0 25px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">Service : {{ $details['service'] }}</p>
+                          <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">Name : {{ $details['fullname'] }}</p>
+                          <p style="margin:0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">Email : {{ $details['email'] }}</p>
                         </td>
                         <td style="width:20px;padding:0;font-size:0;line-height:0;">&nbsp;</td>
-                        <td style="width:260px;padding:0;vertical-align:top;color:#153643;">
-                          <p style="margin:0 0 25px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">Phone : {{ $details['phone'] }}</p>
-                          <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">Date : {{ $details['date'] }}</p>
-                          <p style="margin:0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">Time : {{ $details['time'] }}</p>
+                        <td style="width:260px;padding:0;vertical-align:top;color:#111827;">
+                          <p style="margin:0 0 25px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">Phone : {{ $details['phone'] }}</p>
+                          <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">Date : {{ $details['date'] }}</p>
+                          <p style="margin:0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">Time : {{ $details['time'] }}</p>
                         </td>
                       </tr>
                     </table>

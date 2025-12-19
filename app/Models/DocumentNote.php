@@ -64,6 +64,9 @@ class DocumentNote extends Model
             'status_changed' => 'Status changed',
             'sent' => 'Document sent',
             'signed' => 'Document signed',
+            'email_sent' => 'Email sent',
+            'email_failed' => 'Email failed',
+            'email_delivered' => 'Email delivered',
             default => ucfirst(str_replace('_', ' ', $this->action_type))
         };
     }

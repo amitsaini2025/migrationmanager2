@@ -182,7 +182,15 @@
 
                                 <div class="form-group">
                                     <label for="dob">Date of Birth</label>
-                                    <input type="text" id="dob" name="dob" value="{{ $fetchedData->dob ? date('d/m/Y', strtotime($fetchedData->dob)) : '' }}" placeholder="dd/mm/yyyy" autocomplete="off">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <input type="text" id="dob" name="dob" value="{{ $fetchedData->dob ? date('d/m/Y', strtotime($fetchedData->dob)) : '' }}" placeholder="dd/mm/yyyy" autocomplete="off" style="flex: 1;">
+                                        @if($fetchedData->updated_at)
+                                            <span class="last-updated-badge" style="font-size: 0.85em; color: #6c757d; white-space: nowrap;" title="Last updated: {{ $fetchedData->updated_at->format('M j, Y g:i A') }}">
+                                                <i class="far fa-circle" style="color: #6c757d; margin-right: 4px;"></i>
+                                                Updated: {{ $fetchedData->updated_at->format('d/m/Y') }}
+                                            </span>
+                                        @endif
+                                    </div>
                                     @error('dob')
                                         <span class="text-danger">{{ $message }}</span>
                                     @enderror
@@ -1348,7 +1356,7 @@
                                         :index="$index"
                                         :member="$partner"
                                         type="partner"
-                                        :relationshipOptions="['Husband', 'Wife', 'Ex-Wife', 'Defacto']"
+                                        :relationshipOptions="['Husband', 'Wife', 'Ex-Husband', 'Ex-Wife', 'Defacto']"
                                     />
                                 @endforeach
                             </div>
@@ -1589,7 +1597,7 @@
                         <!-- Summary View -->
                         <div id="parentsInfoSummary" class="summary-view">
                             @php
-                                $parents = $clientPartners->whereIn('relationship_type', ['Father', 'Mother', 'Step Father', 'Step Mother']);
+                                $parents = $clientPartners->whereIn('relationship_type', ['Father', 'Mother', 'Step Father', 'Step Mother', 'Mother-in-law', 'Father-in-law']);
                             @endphp
                             @if($parents->count() > 0)
                                 <div style="margin-top: 15px;">
@@ -1651,7 +1659,7 @@
                                         :index="$index"
                                         :member="$parent"
                                         type="parent"
-                                        :relationshipOptions="['Father', 'Mother', 'Step Father', 'Step Mother']"
+                                        :relationshipOptions="['Father', 'Mother', 'Step Father', 'Step Mother', 'Mother-in-law', 'Father-in-law']"
                                     />
                                 @endforeach
                             </div>

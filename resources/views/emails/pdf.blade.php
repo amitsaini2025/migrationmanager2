@@ -92,7 +92,7 @@
         
         .attachment-details {
             font-size: 12px;
-            color: #666;
+            color: #1a1a1a;
         }
         
         .footer {
@@ -100,7 +100,7 @@
             padding-top: 20px;
             border-top: 1px solid #ddd;
             font-size: 12px;
-            color: #666;
+            color: #1a1a1a;
             text-align: center;
         }
     </style>

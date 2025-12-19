@@ -24,6 +24,7 @@ use App\Models\AccountClientReceipt;
 
 use App\Models\Matter;
 use App\Models\ClientMatter;
+use App\Models\Branch;
 
 use App\Models\FileStatus;
 use Illuminate\Support\Facades\Storage;
@@ -77,10 +78,11 @@ use App\Services\Sms\UnifiedSmsManager;
 use App\Traits\ClientAuthorization;
 use App\Traits\ClientHelpers;
 use App\Traits\ClientQueries;
+use App\Traits\LogsClientActivity;
 
 class ClientsController extends Controller
 {
-    use ClientAuthorization, ClientHelpers, ClientQueries;
+    use ClientAuthorization, ClientHelpers, ClientQueries, LogsClientActivity;
     
     protected $openAiClient;
     protected $smsManager;
@@ -552,7 +554,7 @@ class ClientsController extends Controller
                 'health_declarations.*.date' => 'nullable|regex:/^\d{2}\/\d{2}\/\d{4}$/',
                 'source' => 'nullable|in:SubAgent,Others',
                 'partner_details.*' => 'nullable|string|max:255',
-                'partner_relationship_type.*' => 'nullable|in:Husband,Wife,Ex-Wife,Defacto',
+                'partner_relationship_type.*' => 'nullable|in:Husband,Wife,Ex-Husband,Ex-Wife,Defacto',
                 'partner_company_type.*' => 'nullable|in:Accompany Member,Non-Accompany Member',
                 'partner_email.*' => 'nullable|email|max:255',
                 'partner_first_name.*' => 'nullable|string|max:255',
@@ -566,7 +568,7 @@ class ClientsController extends Controller
                 'children_last_name.*' => 'nullable|string|max:255',
                 'children_phone.*' => 'nullable|string|max:20',
                 'parent_details.*' => 'nullable|string|max:255',
-                'parent_relationship_type.*' => 'nullable|in:Father,Mother,Step Father,Step Mother',
+                'parent_relationship_type.*' => 'nullable|in:Father,Mother,Step Father,Step Mother,Mother-in-law,Father-in-law',
                 'parent_company_type.*' => 'nullable|in:Accompany Member,Non-Accompany Member',
                 'parent_email.*' => 'nullable|email|max:255',
                 'parent_first_name.*' => 'nullable|string|max:255',
@@ -757,12 +759,24 @@ class ClientsController extends Controller
             if (isset($validated['dob_verified']) && $validated['dob_verified'] === '1') {
                 $client->dob_verified_date = $currentDateTime;
                 $client->dob_verified_by = $currentUserId;
+                
+                // Recalculate age when DOB is verified (ensures age is current)
+                if ($client->dob && $client->dob !== '0000-00-00') {
+                    try {
+                        $dobDate = \Carbon\Carbon::parse($client->dob);
+                        $client->age = $dobDate->diff(\Carbon\Carbon::now())->format('%y years %m months');
+                    } catch (\Exception $e) {
+                        // If calculation fails, use provided age or keep existing
+                        $client->age = $validated['age'] ?? null;
+                    }
+                } else {
+                    $client->age = $validated['age'] ?? null;
+                }
             } else {
                 $client->dob_verified_date = null;
                 $client->dob_verified_by = null;
+                $client->age = $validated['age'] ?? null;
             }
-
-            $client->age = $validated['age'] ?? null;
             $client->gender = $validated['gender'] ?? null;
             $client->marital_status = $validated['marital_status'] ?? null;
             $client->country_passport = $validated['visa_country'][0] ?? null;
@@ -1163,7 +1177,7 @@ class ClientsController extends Controller
             $familyTypes = [
                 'partner' => ['Husband', 'Wife', 'Ex-Wife', 'Defacto'],
                 'children' => ['Son', 'Daughter', 'Step Son', 'Step Daughter'],
-                'parent' => ['Father', 'Mother', 'Step Father', 'Step Mother'],
+                'parent' => ['Father', 'Mother', 'Step Father', 'Step Mother', 'Mother-in-law', 'Father-in-law'],
                 'siblings' => ['Brother', 'Sister', 'Step Brother', 'Step Sister'],
                 'others' => ['Cousin', 'Friend', 'Uncle', 'Aunt', 'Grandchild', 'Granddaughter', 'Grandparent', 'Niece', 'Nephew', 'Grandfather'],
             ];
@@ -1198,6 +1212,10 @@ class ClientsController extends Controller
                         return $relatedGender === 'Female' ? 'Step Daughter' : 'Step Son';
                     case 'Step Mother':
                         return $relatedGender === 'Female' ? 'Step Daughter' : 'Step Son';
+                    case 'Mother-in-law':
+                        return $relatedGender === 'Female' ? 'Daughter' : 'Son';
+                    case 'Father-in-law':
+                        return $relatedGender === 'Female' ? 'Daughter' : 'Son';
                     
                     // Sibling relationships
                     case 'Brother':
@@ -1679,7 +1697,7 @@ class ClientsController extends Controller
 
                 // New validations for Partner fields
                 'partner_details.*' => 'nullable|string|max:1000',
-                'relationship_type.*' => 'nullable|in:Husband,Wife,Ex-Wife,Defacto',
+                'relationship_type.*' => 'nullable|in:Husband,Wife,Ex-Husband,Ex-Wife,Defacto',
                 'partner_email.*' => 'nullable|email|max:255',
                 'partner_first_name.*' => 'nullable|string|max:255',
                 'partner_last_name.*' => 'nullable|string|max:255',
@@ -1699,7 +1717,7 @@ class ClientsController extends Controller
 
                 // Parent
                 'parent_details.*' => 'nullable|string|max:1000',
-                'parent_relationship_type.*' => 'nullable|in:Father,Mother,Step Father,Step Mother',
+                'parent_relationship_type.*' => 'nullable|in:Father,Mother,Step Father,Step Mother,Mother-in-law,Father-in-law',
                 'parent_email.*' => 'nullable|email|max:255',
                 'parent_first_name.*' => 'nullable|string|max:255',
                 'parent_last_name.*' => 'nullable|string|max:255',
@@ -2093,7 +2111,7 @@ class ClientsController extends Controller
                 // Parent
                 'parent_details.*.string' => 'Parent Details must be a valid string.',
                 'parent_details.*.max' => 'Parent Details must not exceed 1000 characters.',
-                'parent_relationship_type.*.in' => 'Parent Relationship Type must be one of: Father, Mother, Step Father, Step Mother.',
+                'parent_relationship_type.*.in' => 'Parent Relationship Type must be one of: Father, Mother, Step Father, Step Mother, Mother-in-law, Father-in-law.',
                 'parent_email.*.email' => 'Parent Email must be a valid email address.',
                 'parent_email.*.max' => 'Parent Email must not exceed 255 characters.',
                 'parent_first_name.*.string' => 'Parent First Name must be a valid string.',
@@ -2255,6 +2273,18 @@ class ClientsController extends Controller
             if (isset($requestData['dob_verified']) && $requestData['dob_verified'] === '1') {
                 $obj->dob_verified_date = $currentDateTime;
                 $obj->dob_verified_by = $currentUserId;
+                
+                // Recalculate age when DOB is verified (ensures age is current)
+                // This happens even if DOB hasn't changed, just verification status
+                if ($obj->dob && $obj->dob !== '0000-00-00') {
+                    try {
+                        $dobDate = \Carbon\Carbon::parse($obj->dob);
+                        $obj->age = $dobDate->diff(\Carbon\Carbon::now())->format('%y years %m months');
+                    } catch (\Exception $e) {
+                        // If calculation fails, keep existing age
+                        \Log::warning("Failed to recalculate age for client {$obj->id} during DOB verification: " . $e->getMessage());
+                    }
+                }
             } else {
                 $obj->dob_verified_date = null;
                 $obj->dob_verified_by = null;
@@ -3410,7 +3440,7 @@ class ClientsController extends Controller
             $familyTypes = [
                 'partner' => ['Husband', 'Wife', 'Ex-Wife', 'Defacto'],
                 'children' => ['Son', 'Daughter', 'Step Son', 'Step Daughter'],
-                'parent' => ['Father', 'Mother', 'Step Father', 'Step Mother'],
+                'parent' => ['Father', 'Mother', 'Step Father', 'Step Mother', 'Mother-in-law', 'Father-in-law'],
                 'siblings' => ['Brother', 'Sister', 'Step Brother', 'Step Sister'],
                 'others' => ['Cousin', 'Friend', 'Uncle', 'Aunt', 'Grandchild', 'Granddaughter', 'Grandparent', 'Niece', 'Nephew', 'Grandfather'],
             ];
@@ -3445,6 +3475,10 @@ class ClientsController extends Controller
                         return $relatedGender === 'Female' ? 'Step Daughter' : 'Step Son';
                     case 'Step Mother':
                         return $relatedGender === 'Female' ? 'Step Daughter' : 'Step Son';
+                    case 'Mother-in-law':
+                        return $relatedGender === 'Female' ? 'Daughter' : 'Son';
+                    case 'Father-in-law':
+                        return $relatedGender === 'Female' ? 'Daughter' : 'Son';
                     
                     // Sibling relationships
                     case 'Brother':
@@ -3905,6 +3939,14 @@ class ClientsController extends Controller
             $client->gender = $validated['gender'] ?? null;
             $client->marital_status = $maritalStatus;
             $client->save();
+
+            // Log activity for basic information update
+            $this->logClientActivity(
+                $client->id,
+                'updated basic information',
+                'Updated basic client information',
+                'activity'
+            );
 
             return response()->json([
                 'success' => true,
@@ -4465,7 +4507,10 @@ class ClientsController extends Controller
                 $ClientPoints = ClientPoint::where('client_id', $id)->get();
 
                 // Fetch client family details with optimized query
-                $clientFamilyDetails = ClientRelationship::Where('client_id', $id)->get()?? [];
+                // Eager load related client to prevent N+1 queries in the view
+                $clientFamilyDetails = ClientRelationship::where('client_id', $id)
+                    ->with(['relatedClient:id,first_name,last_name,client_id'])
+                    ->get() ?? [];
                 
                 // Detect if current matter is EOI-related
                 $isEoiMatter = false;
@@ -6593,13 +6638,31 @@ class ClientsController extends Controller
             $client = Admin::findOrFail($request->client_id);
             $responsiblePerson = Admin::findOrFail($request->agent_id); //dd($responsiblePerson);
             if (!$responsiblePerson) {
-                return redirect()->back()->with('error', 'No responsible person found in the database.');
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No responsible person found in the database.',
+                    'message' => 'No responsible person found in the database.'
+                ], 400);
             }
 
+            // Ensure templates directory exists
+            $templatesDir = storage_path('app/templates');
+            if (!file_exists($templatesDir)) {
+                mkdir($templatesDir, 0755, true);
+                Log::info('Created templates directory: ' . $templatesDir);
+            }
+            
             $templatePath = storage_path('app/templates/agreement_template.docx'); //dd($templatePath);
 
             if (!file_exists($templatePath)) {
-                return redirect()->back()->with('error', 'Template file not found at: ' . $templatePath);
+                Log::error('Agreement template file not found at: ' . $templatePath);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Template file not found.',
+                    'message' => 'The agreement template file (agreement_template.docx) is missing. Please ensure the template file is placed at: storage/app/templates/agreement_template.docx',
+                    'template_path' => $templatePath,
+                    'help' => 'Contact your system administrator to upload the agreement template file.'
+                ], 404);
             }
 
             $templateProcessor = new TemplateProcessor($templatePath);
@@ -6871,30 +6934,105 @@ class ClientsController extends Controller
             // Upload to S3 and get download URL
             $fileName = 'agreement_' . $client->client_id . '_' . time() . '.docx';
             $s3Path = $client->client_id . '/cost_assignment_form/' . $fileName;
+            $downloadUrl = null;
+            $s3UploadSuccess = false;
             
-            // Upload to S3
-            Storage::disk('s3')->put($s3Path, file_get_contents($outputPath));
-            
-            // Get the S3 URL
-            $downloadUrl = Storage::disk('s3')->url($s3Path);
-            
-            // Clean up local file
-            if (file_exists($outputPath)) {
-                unlink($outputPath);
+            // Try to upload to S3
+            try {
+                $uploadResult = Storage::disk('s3')->put($s3Path, file_get_contents($outputPath));
+                
+                if ($uploadResult) {
+                    // Get the S3 URL
+                    $downloadUrl = Storage::disk('s3')->url($s3Path);
+                    
+                    // Verify the URL is not empty
+                    if (!empty($downloadUrl)) {
+                        $s3UploadSuccess = true;
+                        Log::info('Document uploaded to S3 successfully. URL: ' . $downloadUrl);
+                    } else {
+                        Log::warning('S3 upload succeeded but URL is empty');
+                    }
+                } else {
+                    Log::warning('S3 upload returned false');
+                }
+            } catch (\Exception $s3Exception) {
+                Log::error('S3 upload failed: ' . $s3Exception->getMessage());
+                Log::error($s3Exception->getTraceAsString());
             }
             
+            // If S3 upload failed or URL is empty, use local file as fallback
+            if (!$s3UploadSuccess || empty($downloadUrl)) {
+                // File is already in public storage (storage/app/public/agreements)
+                // Generate public URL using the storage path
+                // The file is saved as: agreement_{client_id}.docx
+                $localFileName = basename($outputPath);
+                $relativePath = 'agreements/' . $localFileName;
+                $downloadUrl = asset('storage/' . $relativePath);
+                
+                // Verify the file exists before returning the URL
+                if (!file_exists($outputPath)) {
+                    throw new \Exception('Document was generated but file not found at: ' . $outputPath);
+                }
+                
+                Log::info('Using local file as fallback. URL: ' . $downloadUrl);
+                // Keep the local file for download (don't delete it)
+            } else {
+                // Clean up local file only if S3 upload was successful
+                if (file_exists($outputPath)) {
+                    unlink($outputPath);
+                }
+            }
+            
+            // Verify download URL is set
+            if (empty($downloadUrl)) {
+                Log::error('Download URL is empty after all attempts. Output path: ' . $outputPath);
+                throw new \Exception('Failed to generate download URL. Document was created but could not be made available for download.');
+            }
+            
+            // Log the final response for debugging
+            Log::info('Returning success response with download_url: ' . $downloadUrl);
+            
+            // Log activity
+            $matter = \App\Models\ClientMatter::find($request->client_matter_id);
+            $matterName = $matter ? $matter->title : 'N/A';
+            
+            $activity = new \App\Models\ActivitiesLog;
+            $activity->client_id = $request->client_id;
+            $activity->created_by = Auth::user()->id;
+            $activity->subject = 'created visa agreement';
+            $activity->description = '<p>Visa agreement has been created for matter: <strong>' . $matterName . '</strong></p>';
+            $activity->save();
+            
             // Return the download URL as JSON
-            return response()->json([
+            $response = [
                 'success' => true,
                 'download_url' => $downloadUrl,
                 'filename' => $fileName,
                 'message' => 'Document generated successfully'
-            ]);
+            ];
+            
+            // Double-check response structure before returning
+            if (!isset($response['success']) || !isset($response['download_url'])) {
+                Log::error('Response structure is invalid: ' . json_encode($response));
+                throw new \Exception('Invalid response structure generated.');
+            }
+            
+            return response()->json($response);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('Model not found in generateagreement: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Client or agent not found.',
+                'message' => 'Client or agent not found.'
+            ], 404);
         } catch (\Exception $e) {
             Log::error('Error generating document: ' . $e->getMessage());
             Log::error($e->getTraceAsString());
-            //return redirect()->back()->with('error', 'Error generating document: ' . $e->getMessage());
-             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'message' => 'Error generating document: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -6916,7 +7054,22 @@ class ClientsController extends Controller
             }
 
             $sel_migration_agent = $clientMatterInfo->sel_migration_agent;
-            $agentInfo = DB::table('admins')->select('id as agentId','first_name','last_name','company_name')->where('id',$sel_migration_agent)->first();
+            $agentInfo = DB::table('admins')->select(
+                'id as agentId',
+                'first_name',
+                'last_name',
+                'company_name',
+                'is_migration_agent',
+                'marn_number',
+                'legal_practitioner_number',
+                'exempt_person_reason',
+                'business_address',
+                'business_phone',
+                'business_mobile',
+                'business_email',
+                'business_fax',
+                'tax_number'
+            )->where('id',$sel_migration_agent)->first();
             //dd($agentInfo);
             if($agentInfo){
                 $response['agentInfo'] 	= $agentInfo;
@@ -6949,7 +7102,22 @@ class ClientsController extends Controller
             }
 
             $sel_migration_agent = $clientMatterInfo->sel_migration_agent;
-            $agentInfo = DB::table('admins')->select('id as agentId','first_name','last_name','company_name')->where('id',$sel_migration_agent)->first();
+            $agentInfo = DB::table('admins')->select(
+                'id as agentId',
+                'first_name',
+                'last_name',
+                'company_name',
+                'is_migration_agent',
+                'marn_number',
+                'legal_practitioner_number',
+                'exempt_person_reason',
+                'business_address',
+                'business_phone',
+                'business_mobile',
+                'business_email',
+                'business_fax',
+                'tax_number'
+            )->where('id',$sel_migration_agent)->first();
             //dd($agentInfo);
             if($agentInfo){
                 $response['agentInfo'] 	= $agentInfo;
@@ -6991,7 +7159,22 @@ class ClientsController extends Controller
             }
 
             $sel_migration_agent = $clientMatterInfo->sel_migration_agent;
-            $agentInfo = DB::table('admins')->select('id as agentId','first_name','last_name','company_name')->where('id',$sel_migration_agent)->first();
+            $agentInfo = DB::table('admins')->select(
+                'id as agentId',
+                'first_name',
+                'last_name',
+                'company_name',
+                'is_migration_agent',
+                'marn_number',
+                'legal_practitioner_number',
+                'exempt_person_reason',
+                'business_address',
+                'business_phone',
+                'business_mobile',
+                'business_email',
+                'business_fax',
+                'tax_number'
+            )->where('id',$sel_migration_agent)->first();
             //dd($agentInfo);
             if($agentInfo){
                 $response['agentInfo'] 	= $agentInfo;
@@ -7258,9 +7441,69 @@ class ClientsController extends Controller
             } else {
                 $response['status'] 	= 	true;
                 $response['message']	=	'Cost assignment added successfully';
+                
+                // Log activity
+                $action = ($cost_assignment_cnt > 0) ? 'updated' : 'created';
+                $matter = \App\Models\ClientMatter::find($requestData['client_matter_id']);
+                $matterName = $matter ? $matter->title : 'N/A';
+                
+                $activity = new \App\Models\ActivitiesLog;
+                $activity->client_id = $requestData['client_id'];
+                $activity->created_by = Auth::user()->id;
+                $activity->subject = $action . ' cost assignment form';
+                $activity->description = '<p>Cost assignment form has been ' . $action . ' for matter: <strong>' . $matterName . '</strong></p>';
+                $activity->save();
             }
         }
         echo json_encode($response);
+    }
+
+    public function deletecostagreement(Request $request)
+    {
+        $cost_agreement_id = $request->input('cost_agreement_id');
+        
+        if (!$cost_agreement_id) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Cost agreement ID is required'
+            ]);
+        }
+
+        $costAssignment = \App\Models\CostAssignmentForm::find($cost_agreement_id);
+        
+        if (!$costAssignment) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Cost agreement not found'
+            ]);
+        }
+
+        $client_id = $costAssignment->client_id;
+        $matter = \App\Models\ClientMatter::find($costAssignment->client_matter_id);
+        $matterName = $matter ? $matter->title : 'N/A';
+
+        // Delete the cost assignment
+        $deleted = $costAssignment->delete();
+
+        if ($deleted) {
+            // Log activity
+            $activity = new \App\Models\ActivitiesLog;
+            $activity->client_id = $client_id;
+            $activity->created_by = Auth::user()->id;
+            $activity->subject = 'deleted cost assignment form';
+            $activity->description = '<p>Cost assignment form has been deleted for matter: <strong>' . $matterName . '</strong></p>';
+            $activity->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Cost agreement deleted successfully'
+            ]);
+        } else {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to delete cost agreement'
+            ]);
+        }
     }
 
     //save reference
@@ -7409,6 +7652,7 @@ class ClientsController extends Controller
             $obj5 = new ClientMatter();
             $obj5->user_id = Auth::user()->id;
             $obj5->client_id = $requestData['client_id'];
+            $obj5->office_id = $requestData['office_id'] ?? Auth::user()->office_id ?? null;
             $obj5->sel_migration_agent = $requestData['migration_agent'];
             $obj5->sel_person_responsible = $requestData['person_responsible'];
             $obj5->sel_person_assisting = $requestData['person_assisting'];
@@ -8050,6 +8294,7 @@ class ClientsController extends Controller
                     $matter = new ClientMatter();
                     $matter->user_id = $request['user_id'];
                     $matter->client_id = $request['client_id'];
+                    $matter->office_id = $request['office_id'] ?? Auth::user()->office_id ?? null;
                     $matter->sel_migration_agent = $request['migration_agent'];
                     $matter->sel_person_responsible = $request['person_responsible'];
                     $matter->sel_person_assisting = $request['person_assisting'];
@@ -8519,6 +8764,63 @@ class ClientsController extends Controller
                 'success' => false,
                 'message' => 'Error during test processing',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update office assignment for a matter
+     * POST /matters/update-office
+     */
+    public function updateMatterOffice(Request $request)
+    {
+        try {
+            $this->validate($request, [
+                'matter_id' => 'required|exists:client_matters,id',
+                'office_id' => 'required|exists:branches,id',
+            ]);
+            
+            $matter = ClientMatter::findOrFail($request->matter_id);
+            $oldOffice = $matter->office ? $matter->office->office_name : 'None';
+            $newOffice = Branch::findOrFail($request->office_id);
+            
+            // Update matter
+            $matter->office_id = $request->office_id;
+            $matter->save();
+            
+            // Log activity
+            $activitySubject = $oldOffice === 'None' 
+                ? "assigned matter to {$newOffice->office_name} office"
+                : "changed matter office from {$oldOffice} to {$newOffice->office_name}";
+            
+            if (!empty($request->notes)) {
+                $activitySubject .= " - Notes: {$request->notes}";
+            }
+            
+            $activityLog = new ActivitiesLog;
+            $activityLog->client_id = $matter->client_id;
+            $activityLog->created_by = Auth::id();
+            $activityLog->subject = $activitySubject;
+            $activityLog->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Office assigned successfully',
+                'office_name' => $newOffice->office_name,
+                'office_id' => $newOffice->id
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error: ' . implode(', ', $e->errors())
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Error updating matter office: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to assign office: ' . $e->getMessage()
             ], 500);
         }
     }

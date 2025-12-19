@@ -22,16 +22,31 @@ class BroadcastNotificationService
      */
     public function createBroadcast(array $payload): array
     {
+        \Log::info('🚀 BroadcastNotificationService::createBroadcast started');
+        
         $sender = $payload['sender'] ?? Auth::user();
 
         if (!$sender) {
+            \Log::error('❌ No sender found for broadcast');
             throw new \RuntimeException('A valid sender is required to create a broadcast.');
         }
 
         $scope = $payload['scope'] ?? 'all';
         $messageBody = trim((string) ($payload['message'] ?? ''));
         $title = isset($payload['title']) ? trim((string) $payload['title']) : null;
+        
+        \Log::info('📋 Resolving recipients', [
+            'scope' => $scope,
+            'sender_id' => $sender->id,
+            'provided_recipient_ids' => $payload['recipient_ids'] ?? []
+        ]);
+        
         $recipientIds = $this->resolveRecipients($scope, (array) ($payload['recipient_ids'] ?? []), (int) $sender->id);
+        
+        \Log::info('✅ Recipients resolved', [
+            'count' => $recipientIds->count(),
+            'ids' => $recipientIds->take(10)->toArray() // Show first 10
+        ]);
 
         if ($recipientIds->isEmpty()) {
             throw new \InvalidArgumentException('Unable to resolve any recipients for the broadcast.');
@@ -59,12 +74,24 @@ class BroadcastNotificationService
             ];
         });
 
-        DB::table('notifications')->insert($notificationRows->all());
+        // Chunk inserts to avoid "too many placeholders" error
+        // MySQL has a limit of ~65,535 placeholders per statement
+        // With 11 columns per row, we can safely insert ~500 rows per batch
+        $notificationRows->chunk(500)->each(function ($chunk) {
+            DB::table('notifications')->insert($chunk->all());
+        });
 
         $recipientCount = $recipientIds->count();
         $recipientIdsForChannels = $recipientIds->all();
         $recipientIdsForPayload = $recipientCount <= 50 ? $recipientIdsForChannels : [];
 
+        \Log::info('📡 Broadcasting BroadcastNotificationCreated event', [
+            'batch_uuid' => $batchUuid,
+            'recipient_count' => $recipientCount,
+            'scope' => $scope,
+            'channel_count' => count($recipientIdsForChannels)
+        ]);
+        
         broadcast(new BroadcastNotificationCreated(
             batchUuid: $batchUuid,
             message: $messageBody,
@@ -77,6 +104,8 @@ class BroadcastNotificationService
             scope: $scope,
             sentAt: $sentAt
         ));
+        
+        \Log::info('✅ Broadcast event dispatched successfully');
 
         return [
             'batch_uuid' => $batchUuid,
@@ -97,6 +126,7 @@ class BroadcastNotificationService
         $rows = Notification::query()
             ->select([
                 'url',
+                'sender_id',
                 DB::raw('MIN(created_at) as sent_at'),
                 DB::raw('COUNT(*) as total_recipients'),
                 DB::raw('SUM(CASE WHEN receiver_status = 1 THEN 1 ELSE 0 END) as read_count'),
@@ -105,7 +135,7 @@ class BroadcastNotificationService
             ])
             ->where('notification_type', 'broadcast')
             ->where('sender_id', $senderId)
-            ->groupBy('url')
+            ->groupBy('url', 'sender_id')
             ->orderByDesc(DB::raw('MIN(created_at)'))
             ->get();
 
@@ -115,11 +145,125 @@ class BroadcastNotificationService
                 'message' => $this->extractMessageBody($row->message)['message'],
                 'title' => $this->extractMessageBody($row->message)['title'],
                 'sent_at' => Carbon::parse($row->sent_at),
+                'sender_id' => (int) $row->sender_id,
+                'sender_name' => $this->getSenderName($row->sender_id),
                 'total_recipients' => (int) $row->total_recipients,
                 'read_count' => (int) $row->read_count,
                 'unread_count' => (int) $row->unread_count,
             ];
         });
+    }
+
+    /**
+     * Retrieve ALL broadcast history globally (for all users to see).
+     *
+     * @return \Illuminate\Support\Collection<int,array<string,mixed>>
+     */
+    public function getAllBroadcastHistory(): Collection
+    {
+        $rows = Notification::query()
+            ->select([
+                'url',
+                'sender_id',
+                DB::raw('MIN(created_at) as sent_at'),
+                DB::raw('COUNT(*) as total_recipients'),
+                DB::raw('SUM(CASE WHEN receiver_status = 1 THEN 1 ELSE 0 END) as read_count'),
+                DB::raw('SUM(CASE WHEN receiver_status = 0 THEN 1 ELSE 0 END) as unread_count'),
+                DB::raw('MAX(message) as message'),
+            ])
+            ->where('notification_type', 'broadcast')
+            ->groupBy('url', 'sender_id')
+            ->orderByDesc(DB::raw('MIN(created_at)'))
+            ->get();
+
+        return $rows->map(function ($row) {
+            return [
+                'batch_uuid' => $this->extractBatchUuid($row->url),
+                'message' => $this->extractMessageBody($row->message)['message'],
+                'title' => $this->extractMessageBody($row->message)['title'],
+                'sent_at' => Carbon::parse($row->sent_at),
+                'sender_id' => (int) $row->sender_id,
+                'sender_name' => $this->getSenderName($row->sender_id),
+                'total_recipients' => (int) $row->total_recipients,
+                'read_count' => (int) $row->read_count,
+                'unread_count' => (int) $row->unread_count,
+            ];
+        });
+    }
+
+    /**
+     * Get broadcasts that the user has already read (for archive view).
+     *
+     * @return \Illuminate\Support\Collection<int,array<string,mixed>>
+     */
+    public function getReadBroadcasts(int $receiverId): Collection
+    {
+        $notifications = Notification::query()
+            ->with('sender:id,first_name,last_name,email')
+            ->where('notification_type', 'broadcast')
+            ->where('receiver_id', $receiverId)
+            ->where('receiver_status', 1) // Only read messages
+            ->orderByDesc('updated_at') // Order by when they were marked as read
+            ->get();
+
+        return $notifications->map(function (Notification $notification) {
+            $messageMeta = $this->extractMessageBody($notification->message);
+            $senderName = $notification->sender
+                ? $this->formatSenderName($notification->sender)
+                : null;
+
+            return [
+                'notification_id' => $notification->id,
+                'batch_uuid' => $this->extractBatchUuid($notification->url),
+                'message' => $messageMeta['message'],
+                'title' => $messageMeta['title'],
+                'sender_id' => $notification->sender_id,
+                'sender_name' => $senderName,
+                'sent_at' => Carbon::parse($notification->created_at),
+                'read_at' => Carbon::parse($notification->updated_at),
+            ];
+        });
+    }
+
+    /**
+     * Delete a broadcast batch (super admin only).
+     * This hard deletes all notifications in the batch.
+     */
+    public function deleteBroadcast(string $batchUuid, int $requesterId): bool
+    {
+        \Log::info('🗑️ Delete broadcast requested', [
+            'batch_uuid' => $batchUuid,
+            'requester_id' => $requesterId
+        ]);
+
+        $url = $this->formatBroadcastUrl($batchUuid);
+        
+        $deleted = DB::table('notifications')
+            ->where('notification_type', 'broadcast')
+            ->where('url', $url)
+            ->delete();
+
+        \Log::info('✅ Broadcast deleted', [
+            'batch_uuid' => $batchUuid,
+            'notifications_deleted' => $deleted
+        ]);
+
+        return $deleted > 0;
+    }
+
+    /**
+     * Get sender name by ID (cached helper).
+     */
+    protected function getSenderName(int $senderId): string
+    {
+        static $senderCache = [];
+        
+        if (!isset($senderCache[$senderId])) {
+            $sender = Admin::find($senderId);
+            $senderCache[$senderId] = $sender ? $this->formatSenderName($sender) : 'Unknown';
+        }
+        
+        return $senderCache[$senderId];
     }
 
     /**
@@ -280,15 +424,17 @@ class BroadcastNotificationService
 
     /**
      * Fetch every available recipient excluding the sender.
+     * Only includes Admin users (staff), NOT clients (role=7 are clients).
      */
     protected function allRecipients(int $senderId): Collection
     {
-        $adminIds = Admin::query()->pluck('id')->map(fn ($id) => (int) $id);
-        $portalUserIds = $this->portalUsers()->pluck('id')->map(fn ($id) => (int) $id);
+        $adminIds = Admin::query()
+            ->where('role', '!=', 7)  // Exclude clients (role=7)
+            ->where('status', 1)  // Only active users
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
 
         return $adminIds
-            ->merge($portalUserIds)
-            ->unique()
             ->reject(fn (int $id) => $id === $senderId)
             ->values();
     }
@@ -331,14 +477,13 @@ class BroadcastNotificationService
 
     /**
      * @return \Illuminate\Support\Collection<int,\App\Models\User>
+     * @deprecated No longer used - clients are excluded from broadcasts
      */
     protected function portalUsers(): Collection
     {
-        if (!class_exists(User::class)) {
-            return collect();
-        }
-
-        return User::query()->select('id')->get();
+        // This method is deprecated - clients (User model) should not receive broadcasts
+        // Only Admin users with role != 7 (staff) should receive broadcasts
+        return collect();
     }
 }
 

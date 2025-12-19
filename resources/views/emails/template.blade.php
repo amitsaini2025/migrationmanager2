@@ -32,8 +32,8 @@
             <td style="padding:36px 30px 42px 30px;">
               <table role="presentation" style="width:100%;border-collapse:collapse;border:0;border-spacing:0;">
                 <tr>
-                  <td style="padding:0;color:#153643;">
-                    <div style="font-size:16px;line-height:24px;font-family:Arial,sans-serif;">
+                  <td style="padding:0;color:#111827;">
+                    <div style="font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">
                       {!! $content !!}
                     </div>
                   </td>

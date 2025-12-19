@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'default' => env('BROADCAST_DRIVER', 'pusher'),
+    'default' => env('BROADCAST_DRIVER', 'reverb'),
 
     /*
     |--------------------------------------------------------------------------
@@ -62,10 +62,10 @@ return [
             ],
         ],
 
-        'redis' => [
-            'driver' => 'redis',
-            'connection' => 'default',
-        ],
+        // 'redis' => [
+        //     'driver' => 'redis',
+        //     'connection' => 'default',
+        // ],
 
         'log' => [
             'driver' => 'log',

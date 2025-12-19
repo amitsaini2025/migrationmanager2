@@ -967,7 +967,7 @@
                                 @csrf
                                 <input type="hidden" name="signer_id" value="{{ $signer->id }}">
                                 <button type="submit" class="btn btn-warning" 
-                                        {{ ($signer->reminder_count >= 3 || ($signer->last_reminder_sent_at && $signer->last_reminder_sent_at->diffInHours(now()) < 24)) ? 'disabled' : '' }}>
+                                        {{ $signer->reminder_count >= 3 ? 'disabled' : '' }}>
                                     <i class="fas fa-bell"></i> 
                                     Send Reminder ({{ $signer->reminder_count }}/3)
                                 </button>
@@ -978,11 +978,15 @@
                             </button>
                         </div>
                         
-                        @if($signer->last_reminder_sent_at)
                         <div style="margin-top: 10px; font-size: 12px; color: #6c757d;">
-                            Last reminder sent: {{ $signer->last_reminder_sent_at->diffForHumans() }}
+                            @if($signer->last_reminder_sent_at)
+                                <i class="fas fa-clock"></i> Last reminder sent: 
+                                <strong>{{ $signer->last_reminder_sent_at->format('M d, Y g:i A') }}</strong>
+                                <span style="color: #9ca3af;">({{ $signer->last_reminder_sent_at->diffForHumans() }})</span>
+                            @else
+                                <i class="fas fa-info-circle"></i> No reminders sent yet
+                            @endif
                         </div>
-                        @endif
                         @endif
                     </div>
                     @empty
@@ -1052,35 +1056,6 @@
                     @endif
                 </div>
             </div>
-
-            <!-- Association History Card -->
-            @if($document->notes->count() > 0)
-            <div class="sidebar-card" style="margin-top: 20px;">
-                <h3 class="section-title" style="font-size: 16px;">
-                    <i class="fas fa-clipboard-list"></i>
-                    Association History
-                </h3>
-
-                <div style="padding-left: 10px;">
-                    @foreach($document->notes as $note)
-                    <div class="timeline-item">
-                        <div class="timeline-date">{{ $note->created_at->format('M d, Y g:i A') }}</div>
-                        <div class="timeline-text">
-                            <strong>{{ $note->action_text }}</strong>
-                            @if($note->creator)
-                            <br><small>by {{ $note->creator->first_name }} {{ $note->creator->last_name }}</small>
-                            @endif
-                        </div>
-                        @if($note->note)
-                        <div style="margin-top: 5px; font-size: 13px; color: #6c757d; font-style: italic;">
-                            "{{ $note->note }}"
-                        </div>
-                        @endif
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-            @endif
 
             <!-- Activity Timeline Card -->
             <div class="sidebar-card" style="margin-top: 20px;">
@@ -1167,19 +1142,65 @@
                             }
                         }
                         
+                        // Email delivery activities from DocumentNote
+                        foreach ($document->notes()->whereIn('action_type', ['email_sent', 'email_failed', 'email_delivered'])->get() as $note) {
+                            $metadata = $note->metadata ?? [];
+                            $signerName = $metadata['signer_name'] ?? 'Unknown';
+                            $signerEmail = $metadata['signer_email'] ?? '';
+                            
+                            if ($note->action_type === 'email_sent') {
+                                $status = $metadata['status'] ?? 'sent';
+                                $activities->push([
+                                    'date' => $note->created_at,
+                                    'text' => "Email sent to {$signerName}" . ($signerEmail ? " ({$signerEmail})" : ''),
+                                    'icon' => 'fas fa-envelope',
+                                    'type' => 'email_sent',
+                                    'note' => $note
+                                ]);
+                            } elseif ($note->action_type === 'email_failed') {
+                                $error = $metadata['error'] ?? 'Unknown error';
+                                $activities->push([
+                                    'date' => $note->created_at,
+                                    'text' => "Email failed to {$signerName}" . ($signerEmail ? " ({$signerEmail})" : ''),
+                                    'icon' => 'fas fa-exclamation-triangle',
+                                    'type' => 'email_failed',
+                                    'note' => $note,
+                                    'error' => $error
+                                ]);
+                            } elseif ($note->action_type === 'email_delivered') {
+                                $activities->push([
+                                    'date' => $note->created_at,
+                                    'text' => "Email delivered to {$signerName}" . ($signerEmail ? " ({$signerEmail})" : ''),
+                                    'icon' => 'fas fa-check',
+                                    'type' => 'email_delivered',
+                                    'note' => $note
+                                ]);
+                            }
+                        }
+                        
                         // Sort activities by date (newest first)
                         $activities = $activities->sortByDesc('date');
                     @endphp
                     
                     @if($activities->count() > 0)
                         @foreach($activities as $activity)
-                        <div class="timeline-item {{ $activity['type'] }}">
-                            <div class="timeline-icon">
+                        <div class="timeline-item {{ $activity['type'] }}" style="{{ $activity['type'] === 'email_failed' ? 'border-left: 3px solid #dc3545;' : ($activity['type'] === 'email_sent' ? 'border-left: 3px solid #28a745;' : ($activity['type'] === 'email_delivered' ? 'border-left: 3px solid #17a2b8;' : '')) }}">
+                            <div class="timeline-icon" style="{{ $activity['type'] === 'email_failed' ? 'background-color: #dc3545;' : ($activity['type'] === 'email_sent' ? 'background-color: #28a745;' : ($activity['type'] === 'email_delivered' ? 'background-color: #17a2b8;' : '')) }}">
                                 <i class="{{ $activity['icon'] }}"></i>
                             </div>
                             <div class="timeline-content">
                                 <div class="timeline-date">{{ $activity['date']->format('M d, Y g:i A') }}</div>
-                                <div class="timeline-text">{{ $activity['text'] }}</div>
+                                <div class="timeline-text" style="{{ $activity['type'] === 'email_failed' ? 'color: #dc3545; font-weight: 500;' : '' }}">{{ $activity['text'] }}</div>
+                                @if(isset($activity['error']))
+                                <div style="margin-top: 5px; padding: 6px 10px; background-color: #fee; border-left: 3px solid #dc3545; border-radius: 4px; font-size: 12px; color: #721c24;">
+                                    <strong>Error:</strong> {{ \Illuminate\Support\Str::limit($activity['error'], 150) }}
+                                </div>
+                                @endif
+                                @if(isset($activity['note']) && $activity['note']->metadata && isset($activity['note']->metadata['request_id']))
+                                <div style="margin-top: 3px; font-size: 11px; color: #6c757d;">
+                                    Request ID: {{ \Illuminate\Support\Str::limit($activity['note']->metadata['request_id'], 30) }}
+                                </div>
+                                @endif
                                 <div class="timeline-time">{{ $activity['date']->diffForHumans() }}</div>
                             </div>
                         </div>

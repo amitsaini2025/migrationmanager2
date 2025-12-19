@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Redirect;
 use App\Models\Admin;
 use App\Models\CheckinLog;
 use App\Models\CheckinHistory;
+use App\Events\OfficeVisitNotificationCreated;
 
 use Auth;
 
@@ -55,6 +56,28 @@ class OfficeVisitController extends Controller
 	    	$o->notification_type = 'officevisit';
 	    	$o->message = 'Office visit Assigned by '.Auth::user()->first_name.' '.Auth::user()->last_name;
 	    	$o->save();
+	    	
+	    	// Get client information for the notification
+	    	$client = $requestData['utype'] == 'Lead' 
+	    	    ? \App\Models\Lead::find($requestData['contact'])
+	    	    : Admin::where('role', '7')->find($requestData['contact']);
+	    	
+	    	// Broadcast real-time notification via Reverb
+	    	broadcast(new OfficeVisitNotificationCreated(
+	    	    $o->id,
+	    	    $o->receiver_id,
+	    	    [
+	    	        'id' => $o->id,
+	    	        'checkin_id' => $obj->id,
+	    	        'message' => $o->message,
+	    	        'sender_name' => Auth::user()->first_name . ' ' . Auth::user()->last_name,
+	    	        'client_name' => $client ? $client->first_name . ' ' . $client->last_name : 'Unknown Client',
+	    	        'visit_purpose' => $obj->visit_purpose,
+	    	        'created_at' => $o->created_at ? $o->created_at->format('d/m/Y h:i A') : now()->format('d/m/Y h:i A'),
+	    	        'url' => $o->url
+	    	    ]
+	    	));
+	    	
 			$objs = new CheckinHistory;
 			$objs->subject = 'has created check-in';
 			$objs->created_by = Auth::user()->id;
@@ -363,6 +386,28 @@ class OfficeVisitController extends Controller
 	    	$o->notification_type = 'officevisit';
 	    	$o->message = 'Office Visit Assigned by '.Auth::user()->first_name.' '.Auth::user()->last_name;
 	    	$o->save();
+	    	
+	    	// Get client information for the notification
+	    	$client = $objs->contact_type == 'Lead' 
+	    	    ? \App\Models\Lead::find($objs->client_id)
+	    	    : Admin::where('role', '7')->find($objs->client_id);
+	    	
+	    	// Broadcast real-time notification via Reverb
+	    	broadcast(new OfficeVisitNotificationCreated(
+	    	    $o->id,
+	    	    $o->receiver_id,
+	    	    [
+	    	        'id' => $o->id,
+	    	        'checkin_id' => $objs->id,
+	    	        'message' => $o->message,
+	    	        'sender_name' => Auth::user()->first_name . ' ' . Auth::user()->last_name,
+	    	        'client_name' => $client ? $client->first_name . ' ' . $client->last_name : 'Unknown Client',
+	    	        'visit_purpose' => $objs->visit_purpose,
+	    	        'created_at' => $o->created_at ? $o->created_at->format('d/m/Y h:i A') : now()->format('d/m/Y h:i A'),
+	    	        'url' => $o->url
+	    	    ]
+	    	));
+	    	
 			$response['status'] 	= 	true;
 			$response['message']	=	'Updated successfully';
 		}else{
@@ -398,6 +443,27 @@ class OfficeVisitController extends Controller
 	    	$o->notification_type = 'officevisit';
 	    	$o->message = 'Office Visit Assigned by '.Auth::user()->first_name.' '.Auth::user()->last_name;
 	    	$o->save();
+	    	
+	    	// Get client information for the notification
+	    	$client = $obj->contact_type == 'Lead' 
+	    	    ? \App\Models\Lead::find($obj->client_id)
+	    	    : Admin::where('role', '7')->find($obj->client_id);
+	    	
+	    	// Broadcast real-time notification via Reverb
+	    	broadcast(new OfficeVisitNotificationCreated(
+	    	    $o->id,
+	    	    $o->receiver_id,
+	    	    [
+	    	        'id' => $o->id,
+	    	        'checkin_id' => $obj->id,
+	    	        'message' => $o->message,
+	    	        'sender_name' => Auth::user()->first_name . ' ' . Auth::user()->last_name,
+	    	        'client_name' => $client ? $client->first_name . ' ' . $client->last_name : 'Unknown Client',
+	    	        'visit_purpose' => $obj->visit_purpose,
+	    	        'created_at' => $o->created_at ? $o->created_at->format('d/m/Y h:i A') : now()->format('d/m/Y h:i A'),
+	    	        'url' => $o->url
+	    	    ]
+	    	));
 		}
 
 		$objs = new CheckinHistory;

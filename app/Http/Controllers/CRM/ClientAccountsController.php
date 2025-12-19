@@ -147,15 +147,27 @@ class ClientAccountsController extends Controller
 
     public function saveaccountreport(Request $request, $id = NULL)
     {
-        $requestData = $request->all();
-        $response = [];
-   
-        // Handle document upload
-        $insertedDocId = "";
-        $doc_saved = false;
-        $client_unique_id = "";
-        $awsUrl = "";
-        $doctype = isset($request->doctype) ? $request->doctype : '';
+        try {
+            $requestData = $request->all();
+            $response = [];
+            
+            // Validate required fields
+            if (empty($requestData['client_id'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Client ID is required',
+                    'requestData' => [],
+                    'awsUrl' => "",
+                    'invoices' => []
+                ], 400);
+            }
+       
+            // Handle document upload
+            $insertedDocId = "";
+            $doc_saved = false;
+            $client_unique_id = "";
+            $awsUrl = "";
+            $doctype = isset($request->doctype) ? $request->doctype : '';
    
         if ($request->hasfile('document_upload')) {
             $files = is_array($request->file('document_upload')) ? $request->file('document_upload') : [$request->file('document_upload')];
@@ -244,9 +256,13 @@ class ClientAccountsController extends Controller
                 $ledger_entries = DB::table('account_client_receipts')
                     ->select('deposit_amount', 'withdraw_amount', 'void_fee_transfer')
                     ->where('client_id', $requestData['client_id'])
-                    ->where('client_matter_id', $requestData['client_matter_id'])
-                    ->where('receipt_type', 1)
-                    ->get();
+                    ->where('receipt_type', 1);
+                
+                if (!empty($requestData['client_matter_id'])) {
+                    $ledger_entries->where('client_matter_id', $requestData['client_matter_id']);
+                }
+                
+                $ledger_entries = $ledger_entries->get();
                 
                 $currentFundsHeld = 0;
 			foreach($ledger_entries as $entry) {
@@ -308,7 +324,7 @@ class ClientAccountsController extends Controller
                         $saved = DB::table('account_client_receipts')->insert([
                             'user_id' => $requestData['loggedin_userid'],
                             'client_id' => $requestData['client_id'],
-                            'client_matter_id' => $requestData['client_matter_id'],
+                            'client_matter_id' => $requestData['client_matter_id'] ?? null,
                             'receipt_id' => $receipt_id,
                             'receipt_type' => $requestData['receipt_type'],
                             'trans_date' => $feeTransfer['trans_date'],
@@ -352,7 +368,7 @@ class ClientAccountsController extends Controller
                         $saved = DB::table('account_client_receipts')->insert([
                             'user_id' => $requestData['loggedin_userid'],
                             'client_id' => $requestData['client_id'],
-                            'client_matter_id' => $requestData['client_matter_id'],
+                            'client_matter_id' => $requestData['client_matter_id'] ?? null,
                             'receipt_id' => $receipt_id,
                             'receipt_type' => $requestData['receipt_type'],
                             'trans_date' => $feeTransfers[0]['trans_date'],
@@ -437,9 +453,13 @@ class ClientAccountsController extends Controller
                     $ledger_entries = DB::table('account_client_receipts')
                         ->select('deposit_amount', 'withdraw_amount', 'void_fee_transfer')
                         ->where('client_id', $requestData['client_id'])
-                        ->where('client_matter_id', $requestData['client_matter_id'])
-                        ->where('receipt_type', 1)
-                        ->get();
+                        ->where('receipt_type', 1);
+                    
+                    if (!empty($requestData['client_matter_id'])) {
+                        $ledger_entries->where('client_matter_id', $requestData['client_matter_id']);
+                    }
+                    
+                    $ledger_entries = $ledger_entries->get();
                     
                     $currentFundsHeld = 0;
 			foreach($ledger_entries as $entry) {
@@ -467,7 +487,7 @@ class ClientAccountsController extends Controller
                 $saved = DB::table('account_client_receipts')->insert([
                     'user_id' => $requestData['loggedin_userid'],
                     'client_id' => $requestData['client_id'],
-                     'client_matter_id' => $requestData['client_matter_id'],
+                     'client_matter_id' => $requestData['client_matter_id'] ?? null,
                     'receipt_id' => $receipt_id,
                     'receipt_type' => $requestData['receipt_type'],
                     'trans_date' => $requestData['trans_date'][$i],
@@ -498,9 +518,16 @@ class ClientAccountsController extends Controller
             }
    
             // Log activity
-            if ($saved) {
-                $subject = $doc_saved ? 'added client funds ledger with its document. Reference no- ' . $trans_no : 'added client funds ledger. Reference no- ' . $trans_no;
-                $description = "Transaction Date: {$trans_date}, " . ($deposit > 0 ? "Deposit: \${$deposit}" : "Withdrawal: \${$withdraw}") . ", Balance: \${$running_balance}";
+            if ($saved && !empty($finalArr)) {
+                // Get the last transaction details for logging
+                $lastEntry = end($finalArr);
+                $lastTransDate = $lastEntry['trans_date'] ?? '';
+                $lastDeposit = $lastEntry['deposit_amount'] ?? 0;
+                $lastWithdraw = $lastEntry['withdraw_amount'] ?? 0;
+                $lastTransNo = $lastEntry['trans_no'] ?? $trans_no;
+                
+                $subject = $doc_saved ? 'added client funds ledger with its document. Reference no- ' . $lastTransNo : 'added client funds ledger. Reference no- ' . $lastTransNo;
+                $description = "Transaction Date: {$lastTransDate}, " . ($lastDeposit > 0 ? "Deposit: \${$lastDeposit}" : "Withdrawal: \${$lastWithdraw}") . ", Balance: \${$running_balance}";
                 if ($request->type == 'client') {
                     $objs = new \App\Models\ActivitiesLog;
                     $objs->client_id = $requestData['client_id'];
@@ -522,7 +549,7 @@ class ClientAccountsController extends Controller
             $response['requestData'] = $finalArr;
             $response['db_total_balance_amount'] = $running_balance;
             $response['message'] = $doc_saved ? 'Client receipt with document added successfully' : 'Client receipt added successfully';
-            if ($doc_saved) {
+            if ($doc_saved && isset($name) && !empty($name)) {
                 $url = 'https://' . env('AWS_BUCKET') . '.s3.' . env('AWS_DEFAULT_REGION') . '.amazonaws.com/';
                 $awsUrl = $url . $client_unique_id . '/' . $doctype . '/' . $name;
                 $response['awsUrl'] = $awsUrl;
@@ -538,6 +565,20 @@ class ClientAccountsController extends Controller
         }
    
         return response()->json($response, 200);
+        } catch (\Exception $e) {
+            \Log::error('Error in saveaccountreport: ' . $e->getMessage(), [
+                'request_data' => $request->except(['document_upload']),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while saving the account report. Please try again.',
+                'requestData' => [],
+                'awsUrl' => "",
+                'invoices' => []
+            ], 500);
+        }
     }
    
     private function createTransactionNumber($clientFundLedgerType)
@@ -581,9 +622,20 @@ class ClientAccountsController extends Controller
        //Save adjust invoice reports
     public function saveadjustinvoicereport(Request $request, $id = NULL)
     {
-        $requestData = $request->all();
-        
-        if( $requestData['function_type'] == 'add')
+        try {
+            $requestData = $request->all();
+            
+            // Validate required fields
+            if (empty($requestData['client_id'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Client ID is required',
+                    'requestData' => [],
+                    'function_type' => $requestData['function_type'] ?? 'add'
+                ], 400);
+            }
+            
+            if( $requestData['function_type'] == 'add')
         {
             if(isset($requestData['trans_date'])){
                 //Generate unique receipt id
@@ -681,6 +733,19 @@ class ClientAccountsController extends Controller
             }
         }
         return response()->json($response);
+        } catch (\Exception $e) {
+            \Log::error('Error in saveadjustinvoicereport: ' . $e->getMessage(), [
+                'request_data' => $request->all(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while saving the adjusted invoice. Please try again.',
+                'requestData' => [],
+                'function_type' => $requestData['function_type'] ?? 'add'
+            ], 500);
+        }
        }
    
        //Generate unique invoice no
@@ -715,9 +780,20 @@ class ClientAccountsController extends Controller
 
     public function saveinvoicereport(Request $request, $id = NULL)
     {
-        $requestData = $request->all();
-        
-        if( $requestData['function_type'] == 'add')
+        try {
+            $requestData = $request->all();
+            
+            // Validate required fields
+            if (empty($requestData['client_id'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Client ID is required',
+                    'requestData' => [],
+                    'function_type' => $requestData['function_type'] ?? 'add'
+                ], 400);
+            }
+            
+            if( $requestData['function_type'] == 'add')
         {
             if(isset($requestData['trans_date'])){
                 //Generate unique receipt id
@@ -756,7 +832,7 @@ class ClientAccountsController extends Controller
                     $finalArr[$i]['save_type'] = $requestData['save_type'];
                     $finalArr[$i]['receipt_id'] = $receipt_id;
    
-                    $finalArr[$i]['client_matter_id'] = $requestData['client_matter_id'];
+                    $finalArr[$i]['client_matter_id'] = $requestData['client_matter_id'] ?? null;
    
                     $invoice_status = 0;
                     $finalArr[$i]['invoice_status'] = $invoice_status; //unpaid
@@ -764,7 +840,7 @@ class ClientAccountsController extends Controller
                     $lastInsertId    = DB::table('account_all_invoice_receipts')->insertGetId([
                         'user_id' => $requestData['loggedin_userid'],
                         'client_id' =>  $requestData['client_id'],
-                        'client_matter_id' =>  $requestData['client_matter_id'],
+                        'client_matter_id' =>  $requestData['client_matter_id'] ?? null,
                         'receipt_id'=>  $receipt_id,
                         'receipt_type' => $requestData['receipt_type'],
                         'trans_date' => $requestData['trans_date'][$i],
@@ -804,7 +880,7 @@ class ClientAccountsController extends Controller
                 $lastInsertId    = DB::table('account_client_receipts')->insertGetId([
                     'user_id' => $requestData['loggedin_userid'],
                     'client_id' =>  $requestData['client_id'],
-                    'client_matter_id' =>  $requestData['client_matter_id'],
+                    'client_matter_id' =>  $requestData['client_matter_id'] ?? null,
                     'receipt_id'=>  $receipt_id,
                     'receipt_type' => $requestData['receipt_type'],
                     'trans_date' => $requestData['trans_date'][0],
@@ -878,7 +954,7 @@ class ClientAccountsController extends Controller
                     $entryData = [
                         'user_id' => $requestData['loggedin_userid'],
                         'client_id' => $requestData['client_id'],
-                        'client_matter_id' =>  $requestData['client_matter_id'],
+                        'client_matter_id' =>  $requestData['client_matter_id'] ?? null,
                         'receipt_type' => $requestData['receipt_type'],
                         'receipt_id' => $requestData['receipt_id'],
                         'trans_date' => $transDate,
@@ -988,6 +1064,19 @@ class ClientAccountsController extends Controller
             }
         }
         return response()->json($response);
+        } catch (\Exception $e) {
+            \Log::error('Error in saveinvoicereport: ' . $e->getMessage(), [
+                'request_data' => $request->except(['document_upload']),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while saving the invoice. Please try again.',
+                'requestData' => [],
+                'function_type' => $requestData['function_type'] ?? 'add'
+            ], 500);
+        }
        }
    
     public function isAnyInvoiceNoExistInDB(Request $request)
@@ -1176,15 +1265,26 @@ class ClientAccountsController extends Controller
   // NEW SIMPLIFIED saveofficereport function - Only handles office receipts (receipt_type=2)
   public function saveofficereport(Request $request, $id = NULL)
   {
-      $requestData = $request->all();
-      $response = [];
+      try {
+          $requestData = $request->all();
+          $response = [];
+          
+          // Validate required fields
+          if (empty($requestData['client_id'])) {
+              return response()->json([
+                  'status' => false,
+                  'message' => 'Client ID is required',
+                  'requestData' => [],
+                  'awsUrl' => ""
+              ], 400);
+          }
 
-      // Handle document upload
-      $insertedDocId = "";
-      $doc_saved = false;
-      $client_unique_id = "";
-      $awsUrl = "";
-      $doctype = isset($request->doctype) ? $request->doctype : '';
+          // Handle document upload
+          $insertedDocId = "";
+          $doc_saved = false;
+          $client_unique_id = "";
+          $awsUrl = "";
+          $doctype = isset($request->doctype) ? $request->doctype : '';
 
       if ($request->hasfile('document_upload')) {
           $files = is_array($request->file('document_upload')) ? $request->file('document_upload') : [$request->file('document_upload')];
@@ -1234,7 +1334,7 @@ class ClientAccountsController extends Controller
            $saved = DB::table('account_client_receipts')->insertGetId([
                'user_id' => $requestData['loggedin_userid'],
                'client_id' => $requestData['client_id'],
-               'client_matter_id' => $requestData['client_matter_id'],
+               'client_matter_id' => $requestData['client_matter_id'] ?? null,
                'receipt_id' => $receipt_id,
                'receipt_type' => 2, // Only office receipts
                'trans_date' => $requestData['trans_date'][$i],
@@ -1262,9 +1362,15 @@ class ClientAccountsController extends Controller
           }
 
           // Log activity
-          if ($saved) {
-           $subject = $doc_saved ? 'added office receipt with its document. Reference no- ' . $trans_no : 'added office receipt. Reference no- ' . $trans_no;
-           $description = "Receipt Date: {$receipt_date}, Amount: \${$deposit}, Balance: \${$balance_amount}";
+          if ($saved && !empty($finalArr)) {
+           // Get the last transaction details for logging
+           $lastEntry = end($finalArr);
+           $lastTransDate = $lastEntry['trans_date'] ?? '';
+           $lastDeposit = $lastEntry['deposit_amount'] ?? 0;
+           $lastTransNo = $lastEntry['trans_no'] ?? $trans_no;
+           
+           $subject = $doc_saved ? 'added office receipt with its document. Reference no- ' . $lastTransNo : 'added office receipt. Reference no- ' . $lastTransNo;
+           $description = "Receipt Date: {$lastTransDate}, Amount: \${$lastDeposit}";
            if ($request->type == 'client') {
                $objs = new \App\Models\ActivitiesLog;
                $objs->client_id = $requestData['client_id'];
@@ -1285,7 +1391,7 @@ class ClientAccountsController extends Controller
           $response['status'] = true;
           $response['requestData'] = $finalArr;
           $response['message'] = $doc_saved ? 'Office receipt with document added successfully' : 'Office receipt added successfully';
-          if ($doc_saved) {
+          if ($doc_saved && isset($name) && !empty($name)) {
            $url = 'https://' . env('AWS_BUCKET') . '.s3.' . env('AWS_DEFAULT_REGION') . '.amazonaws.com/';
            $awsUrl = $url . $client_unique_id . '/' . $doctype . '/' . $name;
            $response['awsUrl'] = $awsUrl;
@@ -1300,6 +1406,19 @@ class ClientAccountsController extends Controller
       }
 
       return response()->json($response, 200);
+      } catch (\Exception $e) {
+          \Log::error('Error in saveofficereport: ' . $e->getMessage(), [
+              'request_data' => $request->except(['document_upload']),
+              'trace' => $e->getTraceAsString()
+          ]);
+          
+          return response()->json([
+              'status' => false,
+              'message' => 'An error occurred while saving the office receipt. Please try again.',
+              'requestData' => [],
+              'awsUrl' => ""
+          ], 500);
+      }
   }
 
   // Helper methods
@@ -2041,9 +2160,20 @@ class ClientAccountsController extends Controller
   //Save Journal reports
   public function savejournalreport(Request $request, $id = NULL)
   {
-      $requestData         =     $request->all();
-      
-      if ($request->hasfile('document_upload'))
+      try {
+          $requestData         =     $request->all();
+          
+          // Validate required fields
+          if (empty($requestData['client_id'])) {
+              return response()->json([
+                  'status' => false,
+                  'message' => 'Client ID is required',
+                  'requestData' => [],
+                  'awsUrl' => ''
+              ], 400);
+          }
+          
+          if ($request->hasfile('document_upload'))
       {
           if(!is_array($request->file('document_upload'))){
            $files[] = $request->file('document_upload');
@@ -2160,6 +2290,19 @@ class ClientAccountsController extends Controller
           $response['message']    =    'Please try again';
       }
         return response()->json($response);
+      } catch (\Exception $e) {
+          \Log::error('Error in savejournalreport: ' . $e->getMessage(), [
+              'request_data' => $request->except(['document_upload']),
+              'trace' => $e->getTraceAsString()
+          ]);
+          
+          return response()->json([
+              'status' => false,
+              'message' => 'An error occurred while saving the journal report. Please try again.',
+              'requestData' => [],
+              'awsUrl' => ''
+          ], 500);
+      }
   }
 
   public function genInvoice(Request $request, $id){
@@ -3353,12 +3496,16 @@ class ClientAccountsController extends Controller
                            ->where('client_fund_ledger_type', 'Fee Transfer')
                            ->where('client_id', $invoice_info->client_id)
                            ->where('withdraw_amount', $invoiceAmount)
-                           ->where(function($q) {
-                               $q->whereNull('void_fee_transfer')
-                                 ->orWhere('void_fee_transfer', 0);
-                           })
-                           ->whereRaw("(invoice_no = ? OR invoice_no LIKE ? OR invoice_no IS NULL OR invoice_no = '')", 
-                               [$invoice_info->invoice_no, '%'.$invoice_info->trans_no.'%']);
+                       ->where(function($q) {
+                           $q->whereNull('void_fee_transfer')
+                             ->orWhere('void_fee_transfer', 0);
+                       })
+                       ->where(function($q) use ($invoice_info) {
+                           $q->where('invoice_no', $invoice_info->invoice_no)
+                             ->orWhere('invoice_no', 'LIKE', '%'.$invoice_info->trans_no.'%')
+                             ->orWhereNull('invoice_no')
+                             ->orWhere('invoice_no', '');
+                       });
                        
                        if(!empty($invoice_info->client_matter_id)){
                            $feeTransfersQuery2->where('client_matter_id', $invoice_info->client_matter_id);
@@ -3829,13 +3976,15 @@ class ClientAccountsController extends Controller
       }
   }
 
-  //Delete Receipt by Super admin - Celesty
+  //Delete Receipt by Super admin
   public function delete_receipt(Request $request)
   {
       $response = array();
       if (isset($request->receiptId) && !empty($request->receiptId)) {
-          // Ensure the user is a Super Admin with the correct email
-          if (Auth::user()->role != '1' || Auth::user()->email != 'celestyparmar.62@gmail.com') {
+          // Ensure the user is a Super Admin (role = 1)
+          // Optionally check for specific authorized email from config
+          $authorizedEmail = config('app.super_admin_email', 'celestyparmar.62@gmail.com');
+          if (Auth::user()->role != '1' || (config('app.require_super_admin_email', false) && Auth::user()->email != $authorizedEmail)) {
            $response['status'] = false;
            $response['message'] = 'Unauthorized access.';
            return response()->json($response);
@@ -4850,6 +4999,397 @@ public function getInvoiceAmount(Request $request)
              'hubdoc_sent_at' => null,
              'error' => $e->getMessage()
          ]);
+        }
+    }
+
+    /**
+     * ================================================================
+     * SEND TO CLIENT FUNCTIONALITY
+     * ================================================================
+     */
+
+    /**
+     * Send Invoice to Client via Email
+     */
+    public function sendInvoiceToClient(Request $request, $id)
+    {
+        try {
+            // Get invoice record
+            $record_get = DB::table('account_all_invoice_receipts')
+                ->where('receipt_type', 3)
+                ->where('receipt_id', $id)
+                ->first();
+
+            if (!$record_get) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invoice not found'
+                ], 404);
+            }
+
+            // Get receipt entry
+            $receipt_entry = DB::table('account_client_receipts')
+                ->where('receipt_id', $id)
+                ->where('receipt_type', 3)
+                ->first();
+
+            if (!$receipt_entry) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invoice receipt not found'
+                ], 404);
+            }
+
+            // Get client info
+            $clientname = DB::table('admins')
+                ->where('id', $record_get->client_id)
+                ->first();
+
+            if (!$clientname || empty($clientname->primary_email)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Client email not found'
+                ], 404);
+            }
+
+            // Generate PDF (reuse existing logic from genInvoice)
+            $invoiceUrl = url('/clients/genInvoice/' . $id);
+            
+            // Get or generate PDF
+            $pdfUrl = null;
+            if (!empty($receipt_entry->pdf_document_id)) {
+                $existingPdf = DB::table('documents')
+                    ->where('id', $receipt_entry->pdf_document_id)
+                    ->first();
+                
+                if ($existingPdf && !empty($existingPdf->myfile)) {
+                    $pdfUrl = $existingPdf->myfile;
+                }
+            }
+
+            if (!$pdfUrl) {
+                // Generate PDF if not exists
+                $genRequest = new Request();
+                $response = $this->genInvoice($genRequest, $id);
+                
+                // Get the newly created PDF
+                $receipt_entry = DB::table('account_client_receipts')
+                    ->where('receipt_id', $id)
+                    ->where('receipt_type', 3)
+                    ->first();
+                
+                if (!empty($receipt_entry->pdf_document_id)) {
+                    $existingPdf = DB::table('documents')
+                        ->where('id', $receipt_entry->pdf_document_id)
+                        ->first();
+                    
+                    if ($existingPdf && !empty($existingPdf->myfile)) {
+                        $pdfUrl = $existingPdf->myfile;
+                    }
+                }
+            }
+
+            if (!$pdfUrl) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to generate PDF'
+                ], 500);
+            }
+
+            // Prepare email data
+            $clientFullName = trim(($clientname->first_name ?? '') . ' ' . ($clientname->last_name ?? ''));
+            $invoiceNo = $receipt_entry->invoice_no ?? $id;
+            
+            $subject = 'Invoice #' . $invoiceNo . ' from Bansal Immigration';
+            $emailContent = "Dear " . $clientFullName . ",<br><br>" .
+                "Please find attached your invoice #" . $invoiceNo . ".<br><br>" .
+                "If you have any questions, please don't hesitate to contact us.<br><br>" .
+                "Best regards,<br>Bansal Immigration";
+
+            // Download PDF from S3 to temporary file
+            $pdfContent = file_get_contents($pdfUrl);
+            $tempFilePath = storage_path('app/temp_invoice_' . $id . '.pdf');
+            file_put_contents($tempFilePath, $pdfContent);
+
+            // Send email using InvoiceEmailManager
+            $invoiceArray = [
+                'view' => 'emails.invoice',
+                'from' => 'invoice@bansalimmigration.com.au',
+                'name' => 'Bansal Immigration',
+                'subject' => $subject,
+                'file' => $tempFilePath,
+                'file_name' => 'Invoice-' . $invoiceNo . '.pdf',
+                'content' => $emailContent
+            ];
+
+            Mail::to($clientname->primary_email)->queue(new \App\Mail\InvoiceEmailManager($invoiceArray));
+
+            // Log activity
+            $objs = new ActivitiesLog;
+            $objs->client_id = $record_get->client_id;
+            $objs->created_by = Auth::user()->id;
+            $objs->description = 'Invoice #' . $invoiceNo . ' sent to client email: ' . $clientname->primary_email;
+            $objs->subject = 'Invoice sent to client';
+            $objs->save();
+
+            // Clean up temp file after a delay (queued job will handle sending)
+            // The file will be cleaned up by Laravel's temp file cleanup
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Invoice sent successfully to ' . $clientname->primary_email
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error sending invoice to client: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to send invoice: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Send Client Fund Receipt to Client via Email
+     */
+    public function sendClientFundReceiptToClient(Request $request, $id)
+    {
+        try {
+            // Get receipt record
+            $record_get = DB::table('account_client_receipts')
+                ->where('receipt_type', 1)
+                ->where('id', $id)
+                ->first();
+
+            if (!$record_get) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Client fund receipt not found'
+                ], 404);
+            }
+
+            // Get client info
+            $clientname = DB::table('admins')
+                ->where('id', $record_get->client_id)
+                ->first();
+
+            if (!$clientname || empty($clientname->primary_email)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Client email not found'
+                ], 404);
+            }
+
+            // Get or generate PDF
+            $pdfUrl = null;
+            if (!empty($record_get->pdf_document_id)) {
+                $existingPdf = DB::table('documents')
+                    ->where('id', $record_get->pdf_document_id)
+                    ->first();
+                
+                if ($existingPdf && !empty($existingPdf->myfile)) {
+                    $pdfUrl = $existingPdf->myfile;
+                }
+            }
+
+            if (!$pdfUrl) {
+                // Generate PDF if not exists
+                $genRequest = new Request();
+                $response = $this->genClientFundReceipt($genRequest, $id);
+                
+                // Get the newly created PDF
+                $record_get = DB::table('account_client_receipts')
+                    ->where('receipt_type', 1)
+                    ->where('id', $id)
+                    ->first();
+                
+                if (!empty($record_get->pdf_document_id)) {
+                    $existingPdf = DB::table('documents')
+                        ->where('id', $record_get->pdf_document_id)
+                        ->first();
+                    
+                    if ($existingPdf && !empty($existingPdf->myfile)) {
+                        $pdfUrl = $existingPdf->myfile;
+                    }
+                }
+            }
+
+            if (!$pdfUrl) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to generate PDF'
+                ], 500);
+            }
+
+            // Prepare email data
+            $clientFullName = trim(($clientname->first_name ?? '') . ' ' . ($clientname->last_name ?? ''));
+            $receiptNo = $record_get->trans_no ?? $id;
+            
+            $subject = 'Client Fund Receipt #' . $receiptNo . ' from Bansal Immigration';
+            $emailContent = "Dear " . $clientFullName . ",<br><br>" .
+                "Please find attached your client fund receipt #" . $receiptNo . ".<br><br>" .
+                "If you have any questions, please don't hesitate to contact us.<br><br>" .
+                "Best regards,<br>Bansal Immigration";
+
+            // Download PDF from S3 to temporary file
+            $pdfContent = file_get_contents($pdfUrl);
+            $tempFilePath = storage_path('app/temp_client_receipt_' . $id . '.pdf');
+            file_put_contents($tempFilePath, $pdfContent);
+
+            // Send email using InvoiceEmailManager
+            $invoiceArray = [
+                'view' => 'emails.invoice',
+                'from' => 'invoice@bansalimmigration.com.au',
+                'name' => 'Bansal Immigration',
+                'subject' => $subject,
+                'file' => $tempFilePath,
+                'file_name' => 'Receipt-' . $receiptNo . '.pdf',
+                'content' => $emailContent
+            ];
+
+            Mail::to($clientname->primary_email)->queue(new \App\Mail\InvoiceEmailManager($invoiceArray));
+
+            // Log activity
+            $objs = new ActivitiesLog;
+            $objs->client_id = $record_get->client_id;
+            $objs->created_by = Auth::user()->id;
+            $objs->description = 'Client fund receipt #' . $receiptNo . ' sent to client email: ' . $clientname->primary_email;
+            $objs->subject = 'Client fund receipt sent to client';
+            $objs->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Client fund receipt sent successfully to ' . $clientname->primary_email
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error sending client fund receipt to client: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to send receipt: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Send Office Receipt to Client via Email
+     */
+    public function sendOfficeReceiptToClient(Request $request, $id)
+    {
+        try {
+            // Get receipt record
+            $record_get = DB::table('account_client_receipts')
+                ->where('receipt_type', 2)
+                ->where('id', $id)
+                ->first();
+
+            if (!$record_get) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Office receipt not found'
+                ], 404);
+            }
+
+            // Get client info
+            $clientname = DB::table('admins')
+                ->where('id', $record_get->client_id)
+                ->first();
+
+            if (!$clientname || empty($clientname->primary_email)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Client email not found'
+                ], 404);
+            }
+
+            // Get or generate PDF
+            $pdfUrl = null;
+            if (!empty($record_get->pdf_document_id)) {
+                $existingPdf = DB::table('documents')
+                    ->where('id', $record_get->pdf_document_id)
+                    ->first();
+                
+                if ($existingPdf && !empty($existingPdf->myfile)) {
+                    $pdfUrl = $existingPdf->myfile;
+                }
+            }
+
+            if (!$pdfUrl) {
+                // Generate PDF if not exists
+                $genRequest = new Request();
+                $response = $this->genofficereceiptInvoice($genRequest, $id);
+                
+                // Get the newly created PDF
+                $record_get = DB::table('account_client_receipts')
+                    ->where('receipt_type', 2)
+                    ->where('id', $id)
+                    ->first();
+                
+                if (!empty($record_get->pdf_document_id)) {
+                    $existingPdf = DB::table('documents')
+                        ->where('id', $record_get->pdf_document_id)
+                        ->first();
+                    
+                    if ($existingPdf && !empty($existingPdf->myfile)) {
+                        $pdfUrl = $existingPdf->myfile;
+                    }
+                }
+            }
+
+            if (!$pdfUrl) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to generate PDF'
+                ], 500);
+            }
+
+            // Prepare email data
+            $clientFullName = trim(($clientname->first_name ?? '') . ' ' . ($clientname->last_name ?? ''));
+            $receiptNo = $record_get->trans_no ?? $id;
+            
+            $subject = 'Office Receipt #' . $receiptNo . ' from Bansal Immigration';
+            $emailContent = "Dear " . $clientFullName . ",<br><br>" .
+                "Please find attached your office receipt #" . $receiptNo . ".<br><br>" .
+                "If you have any questions, please don't hesitate to contact us.<br><br>" .
+                "Best regards,<br>Bansal Immigration";
+
+            // Download PDF from S3 to temporary file
+            $pdfContent = file_get_contents($pdfUrl);
+            $tempFilePath = storage_path('app/temp_office_receipt_' . $id . '.pdf');
+            file_put_contents($tempFilePath, $pdfContent);
+
+            // Send email using InvoiceEmailManager
+            $invoiceArray = [
+                'view' => 'emails.invoice',
+                'from' => 'invoice@bansalimmigration.com.au',
+                'name' => 'Bansal Immigration',
+                'subject' => $subject,
+                'file' => $tempFilePath,
+                'file_name' => 'Office-Receipt-' . $receiptNo . '.pdf',
+                'content' => $emailContent
+            ];
+
+            Mail::to($clientname->primary_email)->queue(new \App\Mail\InvoiceEmailManager($invoiceArray));
+
+            // Log activity
+            $objs = new ActivitiesLog;
+            $objs->client_id = $record_get->client_id;
+            $objs->created_by = Auth::user()->id;
+            $objs->description = 'Office receipt #' . $receiptNo . ' sent to client email: ' . $clientname->primary_email;
+            $objs->subject = 'Office receipt sent to client';
+            $objs->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Office receipt sent successfully to ' . $clientname->primary_email
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error sending office receipt to client: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to send receipt: ' . $e->getMessage()
+            ], 500);
         }
     }
 

@@ -22,7 +22,7 @@
 			<table width="100%" border="0">
 				<tbody>
 					<tr>
-						<td><img src="" alt="Company Logo"/></td>
+						<td><img src="{{URL::to('/public/img/logo.png')}}" alt="Company Logo" style="max-width: 180px; height: auto;"/></td>
 						<td>
 							<span style="font-size:21px;line-height:24px;color:#000;"><b>{{$admin->company_name}}</b></span>
 							<p style="font-size: 15px;line-height: 21px;color: #333;font-weight: normal;margin: 10px 0px 0px;"><b>Address:</b> {{$admin->address}}<br/>
@@ -39,8 +39,8 @@
 					<tr>
 						<td colspan="2">
 							<span style="font-size: 18px;line-height: 21px;color: #000;margin: 0px 0px 20px;display:block;"><b>Client Detail</b></span>
-							<p style="font-size: 13px;line-height: 16px;color: #000;font-weight: normal;margin: 10px 0px 5px;"><b>{{@$cleintname->first_name}} {{@$cleintname->last_name}}</b></p>
-							<p style="font-size: 14px;line-height: 21px;color: #000;font-weight: bold;margin: 0px;">{{@$cleintname->email}}</p>
+							<p style="font-size: 13px;line-height: 16px;color: #1a1a1a;font-weight: normal;margin: 10px 0px 5px;"><b>{{@$cleintname->first_name}} {{@$cleintname->last_name}}</b></p>
+							<p style="font-size: 14px;line-height: 21px;color: #1a1a1a;font-weight: bold;margin: 0px;">{{@$cleintname->email}}</p>
 							
 						</td>
 						<td>

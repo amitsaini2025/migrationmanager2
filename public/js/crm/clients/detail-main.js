@@ -1,4 +1,4 @@
-﻿    // Global flag to prevent redirects during page initialization
+    // Global flag to prevent redirects during page initialization
 
     var isInitializing = true;
 
@@ -618,9 +618,8 @@
 
     $(document).ready(function() {
 
-        // COMMENTED OUT - Using the direct event handler below instead
-
-        
+        // PRIMARY HANDLER - jQuery delegated event handler for download-file elements
+        // This handles all downloads including dynamically added elements
 
         $(document).on('click', '.download-file', function(e) {
 
@@ -789,8 +788,11 @@
         
 
     });
-    // Alternative vanilla JavaScript version as backup
+    
+    // DISABLED: Alternative vanilla JavaScript version as backup
+    // This was causing duplicate downloads - the jQuery delegated handler above is sufficient
 
+    /*
     document.addEventListener('DOMContentLoaded', function () {
 
         document.addEventListener('click', function (e) {
@@ -976,6 +978,7 @@
         });
 
     });
+    */
 
 
 
@@ -987,17 +990,22 @@
 
         // Trigger file input click when "Add Document" button is clicked
 
-        document.querySelector('.add-document-btn').addEventListener('click', function() {
+        const addDocumentBtn = document.querySelector('.add-document-btn');
+        if (addDocumentBtn) {
+            addDocumentBtn.addEventListener('click', function() {
 
-            document.querySelector('.docclientreceiptupload').click();
+                document.querySelector('.docclientreceiptupload').click();
 
-        });
+            });
+        }
 
 
 
         // Show file selection hint when files are selected
 
-        document.querySelector('.docclientreceiptupload').addEventListener('change', function(e) {
+        const docClientReceiptUpload = document.querySelector('.docclientreceiptupload');
+        if (docClientReceiptUpload) {
+            docClientReceiptUpload.addEventListener('change', function(e) {
 
             const files = e.target.files;
 
@@ -1029,7 +1037,8 @@
 
             }
 
-        });
+            });
+        }
 
 
 
@@ -1037,17 +1046,601 @@
 
         // Trigger file input click when "Add Document" button is clicked
 
-        document.querySelector('.add-document-btn1').addEventListener('click', function() {
+        const addDocumentBtn1 = document.querySelector('.add-document-btn1');
+        if (addDocumentBtn1) {
+            addDocumentBtn1.addEventListener('click', function() {
 
-            document.querySelector('.docofficereceiptupload').click();
+                document.querySelector('.docofficereceiptupload').click();
 
+            });
+        }
+
+
+
+
+        // ============================================================================
+        // DRAG AND DROP FUNCTIONALITY FOR CLIENT FUNDS LEDGER FORM
+        // ============================================================================
+        
+        console.log('📄 Ledger Drag & Drop Initialization...');
+        
+        function initLedgerDragDrop() {
+            console.log('🔄 Initializing Ledger Drag & Drop...');
+            
+            var $zone = $('#ledgerDragDropZone');
+            if ($zone.length === 0) {
+                console.warn('⚠️ Ledger drag zone not found');
+                return;
+            }
+            
+            console.log('✅ Ledger drag zone found');
+            
+            // Remove all existing handlers
+            $zone.off('click dragenter dragover dragleave drop');
+            $(document).off('dragover.ledger dragenter.ledger');
+            
+            // Prevent default drag behaviors
+            $(document).on('dragover.ledger dragenter.ledger', '#createreceiptmodal', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+            
+            // DIRECT BINDING to ledger drag zone for priority
+            $zone.on('dragenter', function(e) {
+                console.log('🔥 LEDGER DRAGENTER');
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                $(this).addClass('drag_over');
+                return false;
+            });
+            
+            $zone.on('dragover', function(e) {
+                console.log('🔥 LEDGER DRAGOVER');
+                var event = e.originalEvent || e;
+                event.preventDefault();
+                event.stopPropagation();
+                
+                if (event.dataTransfer) {
+                    event.dataTransfer.dropEffect = 'copy';
+                }
+                
+                $(this).addClass('drag_over');
+                return false;
+            });
+
+            $zone.on('dragleave', function(e) {
+                console.log('⚠️ LEDGER DRAGLEAVE');
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Only remove highlight if actually leaving the zone
+                var rect = this.getBoundingClientRect();
+                var x = e.originalEvent.clientX;
+                var y = e.originalEvent.clientY;
+                
+                if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
+                    $(this).removeClass('drag_over');
+                }
+                return false;
+            });
+
+            $zone.on('drop', function(e) {
+                console.log('🎯 LEDGER DROP');
+                var event = e.originalEvent || e;
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                
+                $(this).removeClass('drag_over');
+                
+                var files = event.dataTransfer ? event.dataTransfer.files : null;
+                if (files && files.length > 0) {
+                    console.log('📄 Files dropped:', files.length);
+                    handleLedgerFilesDrop(files);
+                } else {
+                    console.error('❌ No files in drop event');
+                }
+                return false;
+            });
+
+            // Click to browse
+            $zone.on('click', function(e) {
+                console.log('🎯 LEDGER ZONE CLICKED');
+                e.preventDefault();
+                if (!$(e.target).closest('.remove-file, .remove-all-files').length) {
+                    $('.docclientreceiptupload').click();
+                }
+            });
+            
+            console.log('✅ Ledger drag-drop handlers attached');
+        }
+        
+        // Initialize when modal is shown
+        $('#createreceiptmodal').on('shown.bs.modal', function() {
+            console.log('📄 Create receipt modal shown, initializing ledger drag-drop...');
+            setTimeout(initLedgerDragDrop, 100);
         });
+        
+        // Also initialize on page load (in case modal is already open)
+        initLedgerDragDrop();
+        
+        // File input change handler (for when user clicks to browse) - enhanced
+        $(document).on('change', '.docclientreceiptupload', function() {
+            var files = this.files;
+            if (files && files.length > 0) {
+                displayLedgerSelectedFiles(files);
+                updateFileSelectionHint(files);
+            } else {
+                clearLedgerFiles();
+            }
+        });
+        
+        // Remove individual file
+        $(document).on('click', '.ledger-remove-file', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var fileIndex = $(this).data('file-index');
+            removeLedgerFile(fileIndex);
+        });
+        
+        // Remove all files
+        $(document).on('click', '.remove-all-files', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            clearLedgerFiles();
+        });
+        
+        // Function to handle dropped files
+        function handleLedgerFilesDrop(files) {
+            var validFiles = [];
+            var fileInput = $('.docclientreceiptupload')[0];
+            var existingFiles = fileInput.files ? Array.from(fileInput.files) : [];
+            
+            // Validate each file
+            for (var i = 0; i < files.length; i++) {
+                if (validateLedgerFile(files[i])) {
+                    validFiles.push(files[i]);
+                }
+            }
+            
+            if (validFiles.length === 0) {
+                return false;
+            }
+            
+            // Combine with existing files
+            var allFiles = existingFiles.concat(validFiles);
+            
+            // Create new FileList using DataTransfer
+            var dataTransfer = new DataTransfer();
+            allFiles.forEach(function(file) {
+                dataTransfer.items.add(file);
+            });
+            
+            fileInput.files = dataTransfer.files;
+            
+            // Display selected files
+            displayLedgerSelectedFiles(fileInput.files);
+            
+            // Update file-selection-hint for compatibility
+            updateFileSelectionHint(fileInput.files);
+        }
+        
+        // Function to validate file
+        function validateLedgerFile(file) {
+            var allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
+            var fileExtension = file.name.split('.').pop().toLowerCase();
+            
+            if (!allowedExtensions.includes(fileExtension)) {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error('Invalid file type: ' + file.name + '. Please upload PDF, JPG, PNG, DOC, or DOCX files only.');
+                } else {
+                    alert('Invalid file type: ' + file.name + '. Please upload PDF, JPG, PNG, DOC, or DOCX files only.');
+                }
+                return false;
+            }
+            
+            // Validate file size (10MB max)
+            var maxSize = 10 * 1024 * 1024;
+            if (file.size > maxSize) {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error('File too large: ' + file.name + '. Maximum size is 10MB.');
+                } else {
+                    alert('File too large: ' + file.name + '. Maximum size is 10MB.');
+                }
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // Function to display selected files
+        function displayLedgerSelectedFiles(files) {
+            var filesList = $('#ledger-files-list');
+            filesList.empty();
+            
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                var fileItem = $('<div class="file-item">' +
+                    '<i class="fas fa-file-alt"></i>' +
+                    '<span class="file-name">' + file.name + ' (' + formatLedgerFileSize(file.size) + ')</span>' +
+                    '<a href="javascript:;" class="ledger-remove-file" data-file-index="' + i + '" title="Remove file">' +
+                        '<i class="fas fa-times"></i>' +
+                    '</a>' +
+                '</div>');
+                filesList.append(fileItem);
+            }
+            
+            $('#ledger-selected-files-display').show();
+            $('#ledgerDragDropZone').addClass('file-selected');
+        }
+        
+        // Function to remove a specific file
+        function removeLedgerFile(fileIndex) {
+            var fileInput = $('.docclientreceiptupload')[0];
+            var files = Array.from(fileInput.files);
+            files.splice(fileIndex, 1);
+            
+            var dataTransfer = new DataTransfer();
+            files.forEach(function(file) {
+                dataTransfer.items.add(file);
+            });
+            
+            fileInput.files = dataTransfer.files;
+            
+            if (files.length > 0) {
+                displayLedgerSelectedFiles(fileInput.files);
+            } else {
+                clearLedgerFiles();
+            }
+            
+            updateFileSelectionHint(fileInput.files);
+        }
+        
+        // Function to clear all files
+        function clearLedgerFiles() {
+            $('.docclientreceiptupload').val('');
+            $('#ledger-selected-files-display').hide();
+            $('#ledger-files-list').empty();
+            $('#ledgerDragDropZone').removeClass('file-selected');
+            $('.file-selection-hint').text('');
+        }
+        
+        // Function to format file size
+        function formatLedgerFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            var k = 1024;
+            var sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            var i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+        
+        // Function to update file selection hint (for compatibility with existing code)
+        function updateFileSelectionHint(files) {
+            var hintElement = $('.file-selection-hint');
+            if (files.length > 0) {
+                if (files.length === 1) {
+                    hintElement.text(files[0].name + ' selected');
+                } else {
+                    hintElement.text(files.length + ' Files selected');
+                }
+            } else {
+                hintElement.text('');
+            }
+        }
+        
+        // Reset when modal is closed
+        $('#createreceiptmodal').on('hidden.bs.modal', function() {
+            clearLedgerFiles();
+            $('#ledgerDragDropZone').removeClass('drag_over');
+            clearOfficeFiles();
+            $('.office-drag-drop-zone').removeClass('drag_over');
+        });
+
+
+
+
+        // ============================================================================
+        // DRAG AND DROP FUNCTIONALITY FOR OFFICE RECEIPT FORM
+        // ============================================================================
+        
+        console.log('📄 Office Receipt Drag & Drop Initialization...');
+        
+        function initOfficeDragDrop() {
+            console.log('🔄 Initializing Office Receipt Drag & Drop...');
+            
+            var $zones = $('.office-drag-drop-zone');
+            if ($zones.length === 0) {
+                console.warn('⚠️ Office drag zones not found');
+                return;
+            }
+            
+            console.log('✅ Office drag zones found:', $zones.length);
+            
+            // Remove all existing handlers
+            $zones.off('click dragenter dragover dragleave drop');
+            $(document).off('dragover.office dragenter.office');
+            
+            // Prevent default drag behaviors
+            $(document).on('dragover.office dragenter.office', '#createreceiptmodal, #createofficereceiptmodal', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+            
+            // DIRECT BINDING to each office drag zone for priority
+            $zones.each(function() {
+                var $zone = $(this);
+                var zoneId = $zone.attr('id');
+                
+                $zone.on('dragenter', function(e) {
+                    console.log('🔥 OFFICE DRAGENTER -', zoneId);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    $(this).addClass('drag_over');
+                    return false;
+                });
+                
+                $zone.on('dragover', function(e) {
+                    console.log('🔥 OFFICE DRAGOVER -', zoneId);
+                    var event = e.originalEvent || e;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    if (event.dataTransfer) {
+                        event.dataTransfer.dropEffect = 'copy';
+                    }
+                    
+                    $(this).addClass('drag_over');
+                    return false;
+                });
+
+                $zone.on('dragleave', function(e) {
+                    console.log('⚠️ OFFICE DRAGLEAVE -', zoneId);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Only remove highlight if actually leaving the zone
+                    var rect = this.getBoundingClientRect();
+                    var x = e.originalEvent.clientX;
+                    var y = e.originalEvent.clientY;
+                    
+                    if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
+                        $(this).removeClass('drag_over');
+                    }
+                    return false;
+                });
+
+                $zone.on('drop', function(e) {
+                    console.log('🎯 OFFICE DROP -', zoneId);
+                    var event = e.originalEvent || e;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    event.stopImmediatePropagation();
+                    
+                    $(this).removeClass('drag_over');
+                    
+                    var files = event.dataTransfer ? event.dataTransfer.files : null;
+                    if (files && files.length > 0) {
+                        console.log('📄 Files dropped:', files.length);
+                        handleOfficeFilesDrop(files, zoneId);
+                    } else {
+                        console.error('❌ No files in drop event');
+                    }
+                    return false;
+                });
+
+                // Click to browse
+                $zone.on('click', function(e) {
+                    console.log('🎯 OFFICE ZONE CLICKED -', zoneId);
+                    e.preventDefault();
+                    if (!$(e.target).closest('.remove-file, .remove-all-files-office').length) {
+                        $('.docofficereceiptupload').click();
+                    }
+                });
+            });
+            
+            console.log('✅ Office receipt drag-drop handlers attached');
+        }
+        
+        // Initialize when either modal is shown
+        $('#createreceiptmodal, #createofficereceiptmodal').on('shown.bs.modal', function() {
+            console.log('📄 Receipt modal shown, initializing office drag-drop...');
+            setTimeout(initOfficeDragDrop, 100);
+        });
+        
+        // Also initialize on page load (in case modal is already open)
+        initOfficeDragDrop();
+        
+        // File input change handler (for when user clicks to browse) - enhanced
+        $(document).on('change', '.docofficereceiptupload', function() {
+            var files = this.files;
+            var zoneId = $(this).closest('.upload_office_receipt_document').find('.office-drag-drop-zone').attr('id');
+            if (files && files.length > 0) {
+                displayOfficeSelectedFiles(files, zoneId);
+                updateOfficeFileSelectionHint(files);
+            } else {
+                clearOfficeFiles(zoneId);
+            }
+        });
+        
+        // Remove individual file
+        $(document).on('click', '.office-remove-file', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var fileIndex = $(this).data('file-index');
+            var zoneId = $(this).closest('.ledger-selected-files-display').attr('id').replace('office-selected-files-display', '').replace('office-selected-files-display2', '');
+            zoneId = zoneId ? 'officeDragDropZone' + zoneId : 'officeDragDropZone';
+            removeOfficeFile(fileIndex, zoneId);
+        });
+        
+        // Remove all files
+        $(document).on('click', '.remove-all-files-office', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var zoneId = $(this).closest('.ledger-selected-files-display').attr('id').replace('office-selected-files-display', '').replace('office-selected-files-display2', '');
+            zoneId = zoneId ? 'officeDragDropZone' + zoneId : 'officeDragDropZone';
+            clearOfficeFiles(zoneId);
+        });
+        
+        // Function to handle dropped files
+        function handleOfficeFilesDrop(files, zoneId) {
+            var validFiles = [];
+            var fileInput = $('.docofficereceiptupload')[0];
+            var existingFiles = fileInput.files ? Array.from(fileInput.files) : [];
+            
+            // Validate each file
+            for (var i = 0; i < files.length; i++) {
+                if (validateOfficeFile(files[i])) {
+                    validFiles.push(files[i]);
+                }
+            }
+            
+            if (validFiles.length === 0) {
+                return false;
+            }
+            
+            // Combine with existing files
+            var allFiles = existingFiles.concat(validFiles);
+            
+            // Create new FileList using DataTransfer
+            var dataTransfer = new DataTransfer();
+            allFiles.forEach(function(file) {
+                dataTransfer.items.add(file);
+            });
+            
+            fileInput.files = dataTransfer.files;
+            
+            // Display selected files
+            displayOfficeSelectedFiles(fileInput.files, zoneId);
+            
+            // Update file-selection-hint for compatibility
+            updateOfficeFileSelectionHint(fileInput.files);
+        }
+        
+        // Function to validate file
+        function validateOfficeFile(file) {
+            var allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
+            var fileExtension = file.name.split('.').pop().toLowerCase();
+            
+            if (!allowedExtensions.includes(fileExtension)) {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error('Invalid file type: ' + file.name + '. Please upload PDF, JPG, PNG, DOC, or DOCX files only.');
+                } else {
+                    alert('Invalid file type: ' + file.name + '. Please upload PDF, JPG, PNG, DOC, or DOCX files only.');
+                }
+                return false;
+            }
+            
+            // Validate file size (10MB max)
+            var maxSize = 10 * 1024 * 1024;
+            if (file.size > maxSize) {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error('File too large: ' + file.name + '. Maximum size is 10MB.');
+                } else {
+                    alert('File too large: ' + file.name + '. Maximum size is 10MB.');
+                }
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // Function to display selected files
+        function displayOfficeSelectedFiles(files, zoneId) {
+            var displayId = zoneId === 'officeDragDropZone2' ? 'office-selected-files-display2' : 'office-selected-files-display';
+            var listId = zoneId === 'officeDragDropZone2' ? 'office-files-list2' : 'office-files-list';
+            var filesList = $('#' + listId);
+            filesList.empty();
+            
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                var fileItem = $('<div class="file-item">' +
+                    '<i class="fas fa-file-alt"></i>' +
+                    '<span class="file-name">' + file.name + ' (' + formatOfficeFileSize(file.size) + ')</span>' +
+                    '<a href="javascript:;" class="office-remove-file" data-file-index="' + i + '" title="Remove file">' +
+                        '<i class="fas fa-times"></i>' +
+                    '</a>' +
+                '</div>');
+                filesList.append(fileItem);
+            }
+            
+            $('#' + displayId).show();
+            $('#' + zoneId).addClass('file-selected');
+        }
+        
+        // Function to remove a specific file
+        function removeOfficeFile(fileIndex, zoneId) {
+            var fileInput = $('.docofficereceiptupload')[0];
+            var files = Array.from(fileInput.files);
+            files.splice(fileIndex, 1);
+            
+            var dataTransfer = new DataTransfer();
+            files.forEach(function(file) {
+                dataTransfer.items.add(file);
+            });
+            
+            fileInput.files = dataTransfer.files;
+            
+            if (files.length > 0) {
+                displayOfficeSelectedFiles(fileInput.files, zoneId);
+            } else {
+                clearOfficeFiles(zoneId);
+            }
+            
+            updateOfficeFileSelectionHint(fileInput.files);
+        }
+        
+        // Function to clear all files
+        function clearOfficeFiles(zoneId) {
+            if (!zoneId) {
+                // Clear all office files
+                $('.docofficereceiptupload').val('');
+                $('#office-selected-files-display, #office-selected-files-display2').hide();
+                $('#office-files-list, #office-files-list2').empty();
+                $('.office-drag-drop-zone').removeClass('file-selected');
+                $('.file-selection-hint1').text('');
+            } else {
+                var displayId = zoneId === 'officeDragDropZone2' ? 'office-selected-files-display2' : 'office-selected-files-display';
+                var listId = zoneId === 'officeDragDropZone2' ? 'office-files-list2' : 'office-files-list';
+                $('.docofficereceiptupload').val('');
+                $('#' + displayId).hide();
+                $('#' + listId).empty();
+                $('#' + zoneId).removeClass('file-selected');
+                $('.file-selection-hint1').text('');
+            }
+        }
+        
+        // Function to format file size
+        function formatOfficeFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            var k = 1024;
+            var sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            var i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+        
+        // Function to update file selection hint (for compatibility with existing code)
+        function updateOfficeFileSelectionHint(files) {
+            var hintElement = $('.file-selection-hint1');
+            if (files.length > 0) {
+                if (files.length === 1) {
+                    hintElement.text(files[0].name + ' selected');
+                } else {
+                    hintElement.text(files.length + ' Files selected');
+                }
+            } else {
+                hintElement.text('');
+            }
+        }
 
 
 
         // Show file selection hint when files are selected
 
-        document.querySelector('.docofficereceiptupload').addEventListener('change', function(e) {
+        const docOfficeReceiptUpload = document.querySelector('.docofficereceiptupload');
+        if (docOfficeReceiptUpload) {
+            docOfficeReceiptUpload.addEventListener('change', function(e) {
 
             const files = e.target.files;
 
@@ -1079,7 +1672,8 @@
 
             }
 
-        });
+            });
+        }
 
     });
 
@@ -2377,6 +2971,42 @@ $(document).ready(function() {
 
 
 
+        // If switching to Create Cost Assignment subtab, load agent details and initialize calculations
+
+        if (subtabId === 'createcostform') {
+
+            $('#cost_assignment_client_id').val(window.ClientDetailConfig.clientId);
+
+            var hidden_client_matter_id_assignment = $('#sel_matter_id_client_detail').val();
+
+            $('#cost_assignment_client_matter_id').val(hidden_client_matter_id_assignment);
+
+            if (window.ClientDetailConfig.clientId && hidden_client_matter_id_assignment) {
+
+                // Use a small delay to ensure function is available, then load agent details
+                setTimeout(function() {
+                    // Use window function if available
+                    if (typeof window.getCostAssignmentMigrationAgentDetail === 'function') {
+                        window.getCostAssignmentMigrationAgentDetail(window.ClientDetailConfig.clientId, hidden_client_matter_id_assignment);
+                    } else {
+                        // Fallback: try to call it directly (in case it's in the same scope)
+                        if (typeof getCostAssignmentMigrationAgentDetail === 'function') {
+                            getCostAssignmentMigrationAgentDetail(window.ClientDetailConfig.clientId, hidden_client_matter_id_assignment);
+                        } else {
+                            console.error('getCostAssignmentMigrationAgentDetail function not found. Please refresh the page.');
+                        }
+                    }
+                }, 100);
+
+            }
+
+            // Initialize calculation handlers for the subtab form
+            initializeCostAssignmentCalculations();
+
+        }
+
+
+
         if ($('.general_matter_checkbox_client_detail').is(':checked')) {
 
             var selectedMatter = $('.general_matter_checkbox_client_detail').val();
@@ -2416,6 +3046,32 @@ $(document).ready(function() {
         }
 
 
+
+        if( subtabId == 'clientagreement') {
+
+            if(selectedMatter != "" ) {
+
+                $('#clientagreement-subtab #form-list2').find('.form-card').each(function() {
+
+                    if ($(this).data('matterid') == selectedMatter) {
+
+                        $(this).show();
+
+                    } else {
+
+                        $(this).hide();
+
+                    }
+
+                });
+
+            }  else {
+
+                $(this).hide();
+
+            }
+
+        }
 
         if( subtabId == 'costform') {
 
@@ -5014,7 +5670,7 @@ $(document).ready(function() {
 
         $('.filter_btn').on('click', function(){
 
-            $('.filter_panel').slideToggle();
+            $('.filter_panel').toggle();
 
         });
 
@@ -6417,7 +7073,9 @@ Bansal Immigration`;
 
         // Handle not lodged checkbox
 
-        document.querySelector('input[name="not_lodged"]').addEventListener('change', function() {
+        const notLodgedInput = document.querySelector('input[name="not_lodged"]');
+        if (notLodgedInput) {
+            notLodgedInput.addEventListener('change', function() {
 
             const dateLodgedInput = document.getElementById('date_lodged');
 
@@ -6429,7 +7087,8 @@ Bansal Immigration`;
 
             }
 
-        });
+            });
+        }
 
 
 
@@ -6848,11 +7507,46 @@ Bansal Immigration`;
 
             $('#cost_assignment_client_matter_id').val(hidden_client_matter_id_assignment);
 
-            getCostAssignmentMigrationAgentDetail(window.ClientDetailConfig.clientId, hidden_client_matter_id_assignment);
+            // Switch to Create Cost Assignment subtab
+            $('.subtab3-button').removeClass('active');
+            $('.subtab3-pane').removeClass('active');
+            $('.subtab3-button[data-subtab="createcostform"]').addClass('active');
+            $('#createcostform-subtab').addClass('active');
 
-            $('#costAssignmentCreateFormModel').modal('show');
+            // Load agent details
+            // Use window function if available
+            if (typeof window.getCostAssignmentMigrationAgentDetail === 'function') {
+                window.getCostAssignmentMigrationAgentDetail(window.ClientDetailConfig.clientId, hidden_client_matter_id_assignment);
+            } else {
+                // Fallback: try to call it directly (in case it's in the same scope)
+                if (typeof getCostAssignmentMigrationAgentDetail === 'function') {
+                    getCostAssignmentMigrationAgentDetail(window.ClientDetailConfig.clientId, hidden_client_matter_id_assignment);
+                } else {
+                    console.error('getCostAssignmentMigrationAgentDetail function not found. Please refresh the page.');
+                }
+            }
+
+            // Initialize calculation handlers
+            setTimeout(function() {
+                if (typeof window.initializeCostAssignmentCalculations === 'function') {
+                    window.initializeCostAssignmentCalculations();
+                }
+            }, 200);
 
         });
+
+
+
+        // Helper function to switch back to Cost Assignment list
+        function switchToCostAssignmentList() {
+            $('.subtab3-button').removeClass('active');
+            $('.subtab3-pane').removeClass('active');
+            $('.subtab3-button[data-subtab="costform"]').addClass('active');
+            $('#costform-subtab').addClass('active');
+        }
+
+        // Make function available globally
+        window.switchToCostAssignmentList = switchToCostAssignmentList;
 
 
 
@@ -7016,6 +7710,19 @@ Bansal Immigration`;
 
                         }
 
+                        // Trigger calculations after data is loaded
+                        setTimeout(function() {
+                            if (typeof window.calculateTotalBlockFee === 'function') {
+                                window.calculateTotalBlockFee();
+                            }
+                            if (typeof window.calculateTotalDoHACharges === 'function') {
+                                window.calculateTotalDoHACharges();
+                            }
+                            if (typeof window.calculateTotalDoHASurcharges === 'function') {
+                                window.calculateTotalDoHASurcharges();
+                            }
+                        }, 100);
+
                     }
 
                 }
@@ -7023,6 +7730,134 @@ Bansal Immigration`;
             });
 
         }
+
+        // Make function available globally for subtab handlers
+        window.getCostAssignmentMigrationAgentDetail = getCostAssignmentMigrationAgentDetail;
+
+
+
+        // Initialize calculation handlers for Cost Assignment form
+        function initializeCostAssignmentCalculations() {
+            // Remove any existing handlers to prevent duplicates
+            $('#Block_1_Ex_Tax, #Block_2_Ex_Tax, #Block_3_Ex_Tax').off('input change keyup');
+            $('#Dept_Base_Application_Charge, #Dept_Non_Internet_Application_Charge, #Dept_Additional_Applicant_Charge_18_Plus, #Dept_Additional_Applicant_Charge_Under_18, #Dept_Subsequent_Temp_Application_Charge, #Dept_Second_VAC_Instalment_Charge_18_Plus, #Dept_Second_VAC_Instalment_Under_18, #Dept_Nomination_Application_Charge, #Dept_Sponsorship_Application_Charge').off('input change keyup');
+            $('#Dept_Base_Application_Charge_no_of_person, #Dept_Non_Internet_Application_Charge_no_of_person, #Dept_Additional_Applicant_Charge_18_Plus_no_of_person, #Dept_Additional_Applicant_Charge_Under_18_no_of_person, #Dept_Subsequent_Temp_Application_Charge_no_of_person, #Dept_Second_VAC_Instalment_Charge_18_Plus_no_of_person, #Dept_Second_VAC_Instalment_Under_18_no_of_person').off('input change keyup');
+            $('#surcharge').off('change');
+
+            // Calculate Total Block Fee when Block fields change
+            $('#Block_1_Ex_Tax, #Block_2_Ex_Tax, #Block_3_Ex_Tax').on('input change keyup', function() {
+                calculateTotalBlockFee();
+            });
+
+            // Calculate Total DoHA Charges when Department fields change
+            $('#Dept_Base_Application_Charge, #Dept_Non_Internet_Application_Charge, #Dept_Additional_Applicant_Charge_18_Plus, #Dept_Additional_Applicant_Charge_Under_18, #Dept_Subsequent_Temp_Application_Charge, #Dept_Second_VAC_Instalment_Charge_18_Plus, #Dept_Second_VAC_Instalment_Under_18, #Dept_Nomination_Application_Charge, #Dept_Sponsorship_Application_Charge').on('input change keyup', function() {
+                calculateTotalDoHACharges();
+            });
+
+            // Recalculate when person counts change
+            $('#Dept_Base_Application_Charge_no_of_person, #Dept_Non_Internet_Application_Charge_no_of_person, #Dept_Additional_Applicant_Charge_18_Plus_no_of_person, #Dept_Additional_Applicant_Charge_Under_18_no_of_person, #Dept_Subsequent_Temp_Application_Charge_no_of_person, #Dept_Second_VAC_Instalment_Charge_18_Plus_no_of_person, #Dept_Second_VAC_Instalment_Under_18_no_of_person').on('input change keyup', function() {
+                calculateTotalDoHACharges();
+            });
+
+            // Calculate Total DoHA Surcharges when surcharge selection changes
+            $('#surcharge').on('change', function() {
+                calculateTotalDoHASurcharges();
+            });
+
+            // Initial calculations
+            calculateTotalBlockFee();
+            calculateTotalDoHACharges();
+            calculateTotalDoHASurcharges();
+        }
+
+        // Calculate Total Block Fee
+        function calculateTotalBlockFee() {
+            var block1 = parseFloat($('#Block_1_Ex_Tax').val()) || 0;
+            var block2 = parseFloat($('#Block_2_Ex_Tax').val()) || 0;
+            var block3 = parseFloat($('#Block_3_Ex_Tax').val()) || 0;
+            var total = block1 + block2 + block3;
+            $('#TotalBLOCKFEE').val(total.toFixed(2));
+        }
+
+        // Calculate Total DoHA Charges
+        function calculateTotalDoHACharges() {
+            var total = 0;
+
+            // Dept Base Application Charge (with person multiplier)
+            var baseCharge = parseFloat($('#Dept_Base_Application_Charge').val()) || 0;
+            var basePersons = parseFloat($('#Dept_Base_Application_Charge_no_of_person').val()) || 1;
+            total += baseCharge * basePersons;
+
+            // Dept Non Internet Application Charge (with person multiplier)
+            var nonInternetCharge = parseFloat($('#Dept_Non_Internet_Application_Charge').val()) || 0;
+            var nonInternetPersons = parseFloat($('#Dept_Non_Internet_Application_Charge_no_of_person').val()) || 1;
+            total += nonInternetCharge * nonInternetPersons;
+
+            // Dept Additional Applicant Charge 18+ (with person multiplier)
+            var add18PlusCharge = parseFloat($('#Dept_Additional_Applicant_Charge_18_Plus').val()) || 0;
+            var add18PlusPersons = parseFloat($('#Dept_Additional_Applicant_Charge_18_Plus_no_of_person').val()) || 1;
+            total += add18PlusCharge * add18PlusPersons;
+
+            // Dept Additional Applicant Charge Under 18 (with person multiplier)
+            var addUnder18Charge = parseFloat($('#Dept_Additional_Applicant_Charge_Under_18').val()) || 0;
+            var addUnder18Persons = parseFloat($('#Dept_Additional_Applicant_Charge_Under_18_no_of_person').val()) || 1;
+            total += addUnder18Charge * addUnder18Persons;
+
+            // Dept Subsequent Temp Application Charge (with person multiplier)
+            var subsequentCharge = parseFloat($('#Dept_Subsequent_Temp_Application_Charge').val()) || 0;
+            var subsequentPersons = parseFloat($('#Dept_Subsequent_Temp_Application_Charge_no_of_person').val()) || 1;
+            total += subsequentCharge * subsequentPersons;
+
+            // Dept Second VAC Instalment 18+ (with person multiplier)
+            var vac18PlusCharge = parseFloat($('#Dept_Second_VAC_Instalment_Charge_18_Plus').val()) || 0;
+            var vac18PlusPersons = parseFloat($('#Dept_Second_VAC_Instalment_Charge_18_Plus_no_of_person').val()) || 1;
+            total += vac18PlusCharge * vac18PlusPersons;
+
+            // Dept Second VAC Instalment Under 18 (with person multiplier)
+            var vacUnder18Charge = parseFloat($('#Dept_Second_VAC_Instalment_Under_18').val()) || 0;
+            var vacUnder18Persons = parseFloat($('#Dept_Second_VAC_Instalment_Under_18_no_of_person').val()) || 1;
+            total += vacUnder18Charge * vacUnder18Persons;
+
+            // Dept Nomination Application Charge (no person multiplier)
+            var nominationCharge = parseFloat($('#Dept_Nomination_Application_Charge').val()) || 0;
+            total += nominationCharge;
+
+            // Dept Sponsorship Application Charge (no person multiplier)
+            var sponsorshipCharge = parseFloat($('#Dept_Sponsorship_Application_Charge').val()) || 0;
+            total += sponsorshipCharge;
+
+            $('#TotalDoHACharges').val(total.toFixed(2));
+            
+            // Recalculate surcharges when charges change
+            calculateTotalDoHASurcharges();
+        }
+
+        // Calculate Total DoHA Surcharges
+        function calculateTotalDoHASurcharges() {
+            var surcharge = $('#surcharge').val();
+            var totalSurcharges = 0;
+
+            if (surcharge === 'Yes') {
+                // Calculate surcharge based on applicable charges
+                // Typically surcharge is a percentage (usually 2% or 4%) of certain charges
+                // For now, we'll calculate it based on the total DoHA charges
+                // You may need to adjust this formula based on your business logic
+                var totalCharges = parseFloat($('#TotalDoHACharges').val()) || 0;
+                
+                // Common surcharge rates: 2% or 4% depending on visa type
+                // Using 2% as default - adjust if needed
+                var surchargeRate = 0.02; // 2%
+                totalSurcharges = totalCharges * surchargeRate;
+            }
+
+            $('#TotalDoHASurcharges').val(totalSurcharges.toFixed(2));
+        }
+
+        // Make calculation functions globally available
+        window.initializeCostAssignmentCalculations = initializeCostAssignmentCalculations;
+        window.calculateTotalBlockFee = calculateTotalBlockFee;
+        window.calculateTotalDoHACharges = calculateTotalDoHACharges;
+        window.calculateTotalDoHASurcharges = calculateTotalDoHASurcharges;
 
 
 
@@ -7050,9 +7885,11 @@ Bansal Immigration`;
 
                     if (obj.status) {
 
-                        // Hide the modal
-
-                        $('#costAssignmentCreateFormModel').modal('hide');
+                        // Switch back to Cost Assignment list subtab
+                        $('.subtab3-button').removeClass('active');
+                        $('.subtab3-pane').removeClass('active');
+                        $('.subtab3-button[data-subtab="costform"]').addClass('active');
+                        $('#costform-subtab').addClass('active');
 
                         localStorage.setItem('activeTab', 'formgenerations');
 
@@ -7122,9 +7959,11 @@ Bansal Immigration`;
 
                     if (obj.status) {
 
-                        // Hide the modal
-
-                        $('#costAssignmentCreateFormModel').modal('hide');
+                        // Switch back to Cost Assignment list subtab
+                        $('.subtab3-button').removeClass('active');
+                        $('.subtab3-pane').removeClass('active');
+                        $('.subtab3-button[data-subtab="costform"]').addClass('active');
+                        $('#costform-subtab').addClass('active');
 
                         localStorage.setItem('activeTab', 'formgenerations');
 
@@ -10482,6 +11321,312 @@ Bansal Immigration`;
 
 
 
+        // ============================================================================
+        // DRAG AND DROP FUNCTIONALITY FOR PERSONAL & VISA DOCUMENTS
+        // ============================================================================
+
+        // Prevent browser's default drag behavior (required for file drops to work)
+        // This must be on document level, but we let drop zones handle their own events
+        $(document).on('dragover', function(e) {
+            // Allow drop zones to handle their own dragover events
+            if ($(e.target).closest('.personal-doc-drag-zone, .visa-doc-drag-zone').length) {
+                return; // Let the drop zone handler take over
+            }
+            // For other areas, prevent default to allow file drops
+            e.preventDefault();
+        });
+
+        $(document).on('drop', function(e) {
+            // Allow drop zones to handle their own drop events
+            if ($(e.target).closest('.personal-doc-drag-zone, .visa-doc-drag-zone').length) {
+                return; // Let the drop zone handler take over
+            }
+            // For other areas, prevent default to prevent browser from opening file
+            e.preventDefault();
+        });
+
+        // -------------------------------------------------------------------------
+        // PERSONAL DOCUMENTS - Drag and Drop Handlers
+        // -------------------------------------------------------------------------
+        
+        // Debug: Check if handlers are being attached
+        console.log('🔧 Attaching personal-doc-drag-zone handlers...');
+        console.log('🔍 Current .personal-doc-drag-zone count:', $('.personal-doc-drag-zone').length);
+        
+        $(document).on('dragover', '.personal-doc-drag-zone', function(e) {
+            console.log('✅ DRAGOVER event fired on personal-doc-drag-zone');
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).addClass('drag_over');
+            return false;
+        });
+        
+        $(document).on('dragenter', '.personal-doc-drag-zone', function(e) {
+            console.log('✅ DRAGENTER event fired on personal-doc-drag-zone');
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).addClass('drag_over');
+            return false;
+        });
+        
+        $(document).on('dragleave', '.personal-doc-drag-zone', function(e) {
+            console.log('⚠️ DRAGLEAVE event fired on personal-doc-drag-zone');
+            e.preventDefault();
+            e.stopPropagation();
+            // Only remove class if leaving the drop zone itself, not child elements
+            var rect = this.getBoundingClientRect();
+            var x = e.originalEvent.clientX;
+            var y = e.originalEvent.clientY;
+            
+            if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
+                $(this).removeClass('drag_over');
+            }
+            return false;
+        });
+        
+        $(document).on('drop', '.personal-doc-drag-zone', function(e) {
+            console.log('🎯 DROP event fired on personal-doc-drag-zone!', e.originalEvent.dataTransfer.files);
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).removeClass('drag_over');
+            
+            var files = e.originalEvent.dataTransfer.files;
+            if (files && files.length > 0) {
+                console.log('📄 File detected, calling handlePersonalDocDragDrop');
+                handlePersonalDocDragDrop($(this), files[0]);
+            } else {
+                console.error('❌ No files in drop event');
+            }
+            return false;
+        });
+        
+        $(document).on('click', '.personal-doc-drag-zone', function(e) {
+            console.log('👆 CLICK event fired on personal-doc-drag-zone');
+            e.preventDefault();
+            e.stopPropagation();
+            var fileid = $(this).data('fileid');
+            console.log('📂 File ID:', fileid);
+            var fileInput = $('#upload_form_' + fileid).find('.docupload');
+            console.log('📁 File input found:', fileInput.length > 0);
+            if (fileInput.length > 0) {
+                fileInput.click();
+            } else {
+                console.error('❌ File input not found for fileid:', fileid);
+            }
+            return false;
+        });
+        
+        // Debug: Verify handlers after a delay (for dynamically loaded content)
+        setTimeout(function() {
+            console.log('🔍 After delay - .personal-doc-drag-zone count:', $('.personal-doc-drag-zone').length);
+            $('.personal-doc-drag-zone').each(function(index) {
+                console.log('📍 Drop zone #' + index + ':', {
+                    fileid: $(this).data('fileid'),
+                    formid: $(this).data('formid'),
+                    element: this
+                });
+            });
+        }, 2000);
+        
+        // -------------------------------------------------------------------------
+        // VISA DOCUMENTS - Drag and Drop Handlers
+        // -------------------------------------------------------------------------
+        
+        $(document).delegate('.visa-doc-drag-zone', 'dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).addClass('drag_over');
+            return false;
+        });
+        
+        $(document).delegate('.visa-doc-drag-zone', 'dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).removeClass('drag_over');
+            return false;
+        });
+        
+        $(document).delegate('.visa-doc-drag-zone', 'drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).removeClass('drag_over');
+            
+            var files = e.originalEvent.dataTransfer.files;
+            if (files && files.length > 0) {
+                handleVisaDocDragDrop($(this), files[0]);
+            }
+            return false;
+        });
+        
+        $(document).delegate('.visa-doc-drag-zone', 'click', function(e) {
+            e.preventDefault();
+            var fileid = $(this).data('fileid');
+            var fileInput = $('#mig_upload_form_' + fileid).find('.migdocupload');
+            fileInput.click();
+        });
+        
+        // -------------------------------------------------------------------------
+        // PERSONAL DOCUMENTS - Upload Handler
+        // -------------------------------------------------------------------------
+        
+        function handlePersonalDocDragDrop(dragZone, file) {
+            var fileid = dragZone.data('fileid');
+            var doccategory = dragZone.data('doccategory');
+            var formId = dragZone.data('formid');
+            var form = $('#' + formId);
+            
+            // Validate filename
+            var validNameRegex = /^[a-zA-Z0-9_\-\.\s\$]+$/;
+            if (!validNameRegex.test(file.name)) {
+                alert("File name can only contain letters, numbers, dashes (-), underscores (_), spaces, dots (.), and dollar signs ($). Please rename the file and try again.");
+                return false;
+            }
+            
+            // Create FormData with all form fields
+            var formData = new FormData(form[0]);
+            
+            // Override the file input with dragged file
+            formData.set('document_upload', file);
+            
+            // Visual feedback
+            dragZone.addClass('uploading');
+            $('.custom-error-msg').html('<span class="alert alert-info"><i class="fa fa-clock-o"></i> Uploading document...</span>');
+            
+            // Upload via AJAX
+            $.ajax({
+                url: site_url + '/documents/upload-edu-document',
+                type: 'POST',
+                dataType: 'json',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(ress) {
+                    dragZone.removeClass('uploading');
+                    
+                    if (ress.status) {
+                        $('.custom-error-msg').html('<span class="alert alert-success">' + ress.message + '</span>');
+                        
+                        var row = $('#id_' + fileid);
+                        var docNameWithoutExt = ress.filename.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_").toLowerCase();
+                        
+                        // Replace upload TD content (Column 1 = File Name)
+                        var uploadTd = row.find('td').eq(1);
+                        uploadTd.html(
+                            '<div data-id="' + fileid + '" data-name="' + docNameWithoutExt + '" class="doc-row" title="Uploaded by: Admin" oncontextmenu="showFileContextMenu(event, ' + fileid + ', \'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'' + doccategory + '\', \'' + (ress.status_value || 'draft') + '\'); return false;">' +
+                                '<a href="javascript:void(0);" onclick="previewFile(\'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'preview-container-' + doccategory + '\')">' +
+                                    '<i class="fas fa-file-image"></i> <span>' + ress.filename + '</span>' +
+                                '</a>' +
+                            '</div>'
+                        );
+                        
+                        // Add hidden elements for context menu actions (Column 2 = Actions)
+                        var actionTd = row.find('td').eq(2);
+                        actionTd.html(
+                            '<a class="renamechecklist" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
+                            '<a class="renamedoc" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
+                            '<a class="download-file" data-filelink="' + ress.fileurl + '" data-filename="' + ress.filekey + '" href="#" style="display: none;"></a>' +
+                            '<a class="notuseddoc" data-id="' + fileid + '" data-doctype="' + ress.doctype + '" data-href="notuseddoc" href="javascript:;" style="display: none;"></a>'
+                        );
+                        
+                        row.addClass('drow');
+                    } else {
+                        $('.custom-error-msg').html('<span class="alert alert-danger">' + ress.message + '</span>');
+                    }
+                    
+                    getallactivities();
+                },
+                error: function(xhr, status, error) {
+                    dragZone.removeClass('uploading');
+                    $('.custom-error-msg').html('<span class="alert alert-danger">Upload failed. Please try again.</span>');
+                    console.error('Personal doc upload error:', error);
+                }
+            });
+        }
+        
+        // -------------------------------------------------------------------------
+        // VISA DOCUMENTS - Upload Handler
+        // -------------------------------------------------------------------------
+        
+        function handleVisaDocDragDrop(dragZone, file) {
+            var fileid = dragZone.data('fileid');
+            var visa_doc_cat = dragZone.data('doccategory');
+            var formId = dragZone.data('formid');
+            var form = $('#' + formId);
+            
+            // Validate filename
+            var validNameRegex = /^[a-zA-Z0-9_\-\.\s\$]+$/;
+            if (!validNameRegex.test(file.name)) {
+                alert("File name can only contain letters, numbers, dashes (-), underscores (_), spaces, dots (.), and dollar signs ($). Please rename the file and try again.");
+                return false;
+            }
+            
+            // Create FormData with all form fields
+            var formData = new FormData(form[0]);
+            
+            // Override the file input with dragged file
+            formData.set('document_upload', file);
+            
+            // Add extra data
+            formData.append('visa_doc_cat', visa_doc_cat);
+            
+            // Visual feedback
+            dragZone.addClass('uploading');
+            $('.custom-error-msg').html('<span class="alert alert-info"><i class="fa fa-clock-o"></i> Uploading document...</span>');
+            
+            // Upload via AJAX
+            $.ajax({
+                url: site_url + '/documents/upload-visa-document',
+                type: 'POST',
+                dataType: 'json',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(ress) {
+                    dragZone.removeClass('uploading');
+                    
+                    if (ress.status) {
+                        $('.custom-error-msg').html('<span class="alert alert-success">' + ress.message + '</span>');
+                        
+                        var row = $('#id_' + fileid);
+                        var docNameWithoutExt = ress.filename.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_").toLowerCase();
+                        
+                        // Replace upload TD content (Column 1 = File Name)
+                        var uploadTd = row.find('td').eq(1);
+                        uploadTd.html(
+                            '<div data-id="' + fileid + '" data-name="' + docNameWithoutExt + '" class="doc-row" title="Uploaded by: Admin" oncontextmenu="showVisaFileContextMenu(event, ' + fileid + ', \'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'' + visa_doc_cat + '\', \'' + (ress.status_value || 'draft') + '\'); return false;">' +
+                                '<a href="javascript:void(0);" onclick="previewFile(\'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'preview-container-migdocumnetlist\')">' +
+                                    '<i class="fas fa-file-image"></i> <span>' + ress.filename + '</span>' +
+                                '</a>' +
+                            '</div>'
+                        );
+                        
+                        // Add hidden elements for context menu actions (Column 2 = Actions)
+                        var actionTd = row.find('td').eq(2);
+                        actionTd.html(
+                            '<a class="renamechecklist" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
+                            '<a class="renamedoc" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
+                            '<a class="download-file" data-filelink="' + ress.fileurl + '" data-filename="' + ress.filekey + '" href="#" style="display: none;"></a>' +
+                            '<a class="notuseddoc" data-id="' + fileid + '" data-doctype="visa" data-href="notuseddoc" href="javascript:;" style="display: none;"></a>'
+                        );
+                        
+                        row.addClass('drow');
+                    } else {
+                        $('.custom-error-msg').html('<span class="alert alert-danger">' + ress.message + '</span>');
+                    }
+                    
+                    getallactivities();
+                },
+                error: function(xhr, status, error) {
+                    dragZone.removeClass('uploading');
+                    $('.custom-error-msg').html('<span class="alert alert-danger">Upload failed. Please try again.</span>');
+                    console.error('Visa doc upload error:', error);
+                }
+            });
+        }
+
+
+
+
 
         $(document).delegate('.add_education_doc', 'click', function (e) {
 
@@ -11378,13 +12523,9 @@ Bansal Immigration`;
 
                             .data('id', obj.Id)
 
-                            .data('personalchecklistname', opentime)
+                            .data('personalchecklistname', obj.checklist)
 
-                            .append(
-
-                                $('<span>').html(obj.checklist)
-
-                            );
+                            .html(obj.html || '<span style="flex: 1;">' + obj.checklist + '</span>');
 
                         if ($('#grid_'+obj.Id).length) {
 
@@ -11871,13 +13012,9 @@ Bansal Immigration`;
 
                             .data('id', obj.Id)
 
-                            .data('visachecklistname', opentime)
+                            .data('visachecklistname', obj.checklist)
 
-                            .append(
-
-                                $('<span>').html(obj.checklist)
-
-                            );
+                            .html(obj.html || '<span style="flex: 1;">' + obj.checklist + '</span>');
 
                         
 
@@ -14925,7 +16062,7 @@ Bansal Immigration`;
 
 				});
 
-				$('html, body').animate({scrollTop:0}, 'slow');
+				$('html, body').scrollTop(0);
 
 			}
 
@@ -15209,8 +16346,10 @@ Bansal Immigration`;
 
 
 
-		// Direct event binding for download-file elements
+		// DISABLED: Direct event binding for download-file elements
+		// This was causing duplicate downloads - the jQuery delegated handler at line 625 is sufficient
 
+		/*
 		$('.download-file').off('click').on('click', function(e) {
 
 			e.preventDefault();
@@ -15364,6 +16503,7 @@ Bansal Immigration`;
 			return false;
 
 		});
+		*/
 
 		
 
@@ -16347,6 +17487,524 @@ Bansal Immigration`;
     // Initialize
     $(document).ready(function() {
         initializeSidebarReferences();
+    });
+
+    // Edit Checklist Button Handler (triggers edit mode)
+    $(document).on('click', '.edit-checklist-btn', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        var checklistId = $(this).data('id');
+        var $drow = $(this).closest('.drow');
+        var $parent = $drow.find('.personalchecklist-row');
+        
+        if ($parent.length === 0) {
+            console.error('Personal checklist row not found');
+            return false;
+        }
+        
+        // Store current HTML
+        $parent.data('current-html', $parent.html());
+        
+        var currentChecklist = $parent.data('personalchecklistname') || $(this).data('checklist');
+        
+        if (!currentChecklist) {
+            console.error('Checklist name not found');
+            return false;
+        }
+        
+        // Replace with input field and buttons
+        $parent.empty().append(
+            $('<input style="display: inline-block;width: auto;" class="form-control opentime" type="text">').prop('value', currentChecklist),
+            $('<button class="btn btn-personalprimary btn-sm mb-1"><i class="fas fa-check"></i></button>'),
+            $('<button class="btn btn-personaldanger btn-sm mb-1"><i class="far fa-trash-alt"></i></button>')
+        );
+        
+        return false;
+    });
+
+    // Delete Checklist Button Handler
+    $(document).on('click', '.delete-checklist-btn', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        var checklistId = $(this).data('id');
+        var checklistName = $(this).data('checklist');
+        var $row = $(this).closest('.drow');
+        
+        if (!confirm('Are you sure you want to delete the checklist "' + checklistName + '"? This action cannot be undone.')) {
+            return false;
+        }
+        
+        // Show loading
+        $('.custom-error-msg').html('<span class="alert alert-info"><i class="fa fa-clock-o"></i> Deleting checklist...</span>');
+        
+        $.ajax({
+            type: "POST",
+            url: site_url + '/documents/delete-checklist',
+            data: {
+                "_token": $('meta[name="csrf-token"]').attr('content'),
+                "id": checklistId
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.status) {
+                    $('.custom-error-msg').html('<span class="alert alert-success">' + response.message + '</span>');
+                    // Remove the row from table
+                    $row.remove();
+                } else {
+                    $('.custom-error-msg').html('<span class="alert alert-danger">' + response.message + '</span>');
+                }
+            },
+            error: function(xhr, status, error) {
+                $('.custom-error-msg').html('<span class="alert alert-danger">An error occurred. Please try again.</span>');
+                console.error('Error deleting checklist:', error);
+            }
+        });
+        
+        return false;
+    });
+
+    // ============================================
+    // MATTER OFFICE ASSIGNMENT
+    // ============================================
+
+    // Open edit office modal for existing matters
+    $(document).on('click', '.assign-office-btn, .edit-office-btn', function(e) {
+        e.preventDefault();
+        const matterId = $(this).data('matter-id');
+        const matterNo = $(this).data('matter-no');
+        const matterType = $(this).data('matter-type');
+        const currentOffice = $(this).data('current-office');
+        
+        // Set form values
+        $('#edit_matter_id').val(matterId);
+        $('#edit_office_id').val(currentOffice || '');
+        
+        // Display matter details
+        const detailsHtml = `
+            <strong>Matter No:</strong> ${matterNo}<br>
+            <strong>Matter Type:</strong> ${matterType}
+        `;
+        $('#matter_details').html(detailsHtml);
+        
+        // Open modal
+        $('#editMatterOfficeModal').modal('show');
+    });
+
+    // Submit office assignment form
+    $(document).on('submit', '#editMatterOfficeForm', function(e) {
+        e.preventDefault();
+        
+        const formData = $(this).serialize();
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalBtnHtml = submitBtn.html();
+        
+        // Disable button and show loading
+        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+        
+        $.ajax({
+            url: $(this).attr('action'),
+            method: 'POST',
+            data: formData,
+            success: function(response) {
+                if (response.success) {
+                    // Show success message
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: 'Office assigned successfully',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        alert('Office assigned successfully!');
+                    }
+                    
+                    // Close modal
+                    $('#editMatterOfficeModal').modal('hide');
+                    
+                    // Reload page to show updated office
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: response.message || 'Failed to assign office'
+                        });
+                    } else {
+                        alert('Error: ' + (response.message || 'Failed to assign office'));
+                    }
+                    submitBtn.prop('disabled', false).html(originalBtnHtml);
+                }
+            },
+            error: function(xhr) {
+                let errorMsg = 'An error occurred. Please try again.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: errorMsg
+                    });
+                } else {
+                    alert('Error: ' + errorMsg);
+                }
+                submitBtn.prop('disabled', false).html(originalBtnHtml);
+            }
+        });
+        
+        return false;
+    });
+
+    // Reset form when modal closes
+    $('#editMatterOfficeModal').on('hidden.bs.modal', function() {
+        $('#editMatterOfficeForm')[0].reset();
+        $('#office_notes').val('');
+        $('#matter_details').html('');
+    });
+
+    // ================================================================
+    // SEND TO CLIENT FUNCTIONALITY
+    // ================================================================
+
+    /**
+     * Send Invoice to Client
+     */
+    function handleSendInvoiceToClient($btn) {
+        var invoiceId = $btn.data('invoice-id');
+        var invoiceNo = $btn.data('invoice-no');
+
+        // Show confirmation dialog
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Send Invoice to Client?',
+                text: 'This will send invoice #' + invoiceNo + ' to the client\'s email address.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, send it!',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    sendInvoiceToClientAjax(invoiceId, invoiceNo, $btn);
+                }
+            });
+        } else {
+            if (confirm('Are you sure you want to send invoice #' + invoiceNo + ' to the client\'s email?')) {
+                sendInvoiceToClientAjax(invoiceId, invoiceNo, $btn);
+            }
+        }
+    }
+
+    function sendInvoiceToClientAjax(invoiceId, invoiceNo, $btn) {
+        // Show loading state
+        var originalHtml = $btn.html();
+        $btn.html('<i class="fas fa-spinner fa-spin"></i> Sending...');
+        $btn.prop('disabled', true);
+
+        $.ajax({
+            url: '/clients/send-invoice-to-client/' + invoiceId,
+            type: 'POST',
+            dataType: 'json',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function(response) {
+                if (response.status) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: response.message,
+                            timer: 3000
+                        });
+                    } else {
+                        alert(response.message);
+                    }
+                } else {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: response.message
+                        });
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                }
+                // Reset button
+                $btn.html(originalHtml);
+                $btn.prop('disabled', false);
+            },
+            error: function(xhr) {
+                console.error('Error sending invoice to client:', xhr);
+                var errorMsg = 'Failed to send invoice. Please try again.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: errorMsg
+                    });
+                } else {
+                    alert('Error: ' + errorMsg);
+                }
+                // Reset button
+                $btn.html(originalHtml);
+                $btn.prop('disabled', false);
+            }
+        });
+    }
+
+    /**
+     * Send Client Fund Receipt to Client
+     */
+    function handleSendClientFundReceiptToClient($btn) {
+        var receiptId = $btn.data('receipt-id');
+        var receiptNo = $btn.data('receipt-no');
+
+        // Show confirmation dialog
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Send Receipt to Client?',
+                text: 'This will send receipt #' + receiptNo + ' to the client\'s email address.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, send it!',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    sendClientFundReceiptToClientAjax(receiptId, receiptNo, $btn);
+                }
+            });
+        } else {
+            if (confirm('Are you sure you want to send receipt #' + receiptNo + ' to the client\'s email?')) {
+                sendClientFundReceiptToClientAjax(receiptId, receiptNo, $btn);
+            }
+        }
+    }
+
+    function sendClientFundReceiptToClientAjax(receiptId, receiptNo, $btn) {
+        // Show loading state
+        var originalHtml = $btn.html();
+        $btn.html('<i class="fas fa-spinner fa-spin"></i> Sending...');
+        $btn.prop('disabled', true);
+
+        $.ajax({
+            url: '/clients/send-client-fund-receipt-to-client/' + receiptId,
+            type: 'POST',
+            dataType: 'json',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function(response) {
+                if (response.status) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: response.message,
+                            timer: 3000
+                        });
+                    } else {
+                        alert(response.message);
+                    }
+                } else {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: response.message
+                        });
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                }
+                // Reset button
+                $btn.html(originalHtml);
+                $btn.prop('disabled', false);
+            },
+            error: function(xhr) {
+                console.error('Error sending client fund receipt to client:', xhr);
+                var errorMsg = 'Failed to send receipt. Please try again.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: errorMsg
+                    });
+                } else {
+                    alert('Error: ' + errorMsg);
+                }
+                // Reset button
+                $btn.html(originalHtml);
+                $btn.prop('disabled', false);
+            }
+        });
+    }
+
+    /**
+     * Send Office Receipt to Client
+     */
+    function handleSendOfficeReceiptToClient($btn) {
+        var receiptId = $btn.data('receipt-id');
+        var receiptNo = $btn.data('receipt-no');
+
+        // Show confirmation dialog
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Send Receipt to Client?',
+                text: 'This will send office receipt #' + receiptNo + ' to the client\'s email address.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, send it!',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    sendOfficeReceiptToClientAjax(receiptId, receiptNo, $btn);
+                }
+            });
+        } else {
+            if (confirm('Are you sure you want to send office receipt #' + receiptNo + ' to the client\'s email?')) {
+                sendOfficeReceiptToClientAjax(receiptId, receiptNo, $btn);
+            }
+        }
+    }
+
+    function sendOfficeReceiptToClientAjax(receiptId, receiptNo, $btn) {
+        // Show loading state
+        var originalHtml = $btn.html();
+        $btn.html('<i class="fas fa-spinner fa-spin"></i> Sending...');
+        $btn.prop('disabled', true);
+
+        $.ajax({
+            url: '/clients/send-office-receipt-to-client/' + receiptId,
+            type: 'POST',
+            dataType: 'json',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function(response) {
+                if (response.status) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: response.message,
+                            timer: 3000
+                        });
+                    } else {
+                        alert(response.message);
+                    }
+                } else {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: response.message
+                        });
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                }
+                // Reset button
+                $btn.html(originalHtml);
+                $btn.prop('disabled', false);
+            },
+            error: function(xhr) {
+                console.error('Error sending office receipt to client:', xhr);
+                var errorMsg = 'Failed to send receipt. Please try again.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: errorMsg
+                    });
+                } else {
+                    alert('Error: ' + errorMsg);
+                }
+                // Reset button
+                $btn.html(originalHtml);
+                $btn.prop('disabled', false);
+            }
+        });
+    }
+
+    // Attach handlers for dropdown buttons
+    function attachSendToClientHandlers() {
+        $('.dropdown-menu .send-invoice-to-client').off('click').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleSendInvoiceToClient($(this));
+        });
+
+        $('.dropdown-menu .send-client-fund-receipt-to-client').off('click').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleSendClientFundReceiptToClient($(this));
+        });
+
+        $('.dropdown-menu .send-office-receipt-to-client').off('click').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleSendOfficeReceiptToClient($(this));
+        });
+    }
+
+    // Attach on page load
+    setTimeout(function() {
+        attachSendToClientHandlers();
+    }, 500);
+
+    // Re-attach when dropdowns are shown
+    $(document).on('shown.bs.dropdown', function() {
+        attachSendToClientHandlers();
+    });
+
+    // Handler for standalone buttons (non-dropdown)
+    $(document).on('click', '.send-invoice-to-client', function() {
+        if ($(this).closest('.dropdown-menu').length > 0) {
+            return;
+        }
+        handleSendInvoiceToClient($(this));
+    });
+
+    $(document).on('click', '.send-client-fund-receipt-to-client', function() {
+        if ($(this).closest('.dropdown-menu').length > 0) {
+            return;
+        }
+        handleSendClientFundReceiptToClient($(this));
+    });
+
+    $(document).on('click', '.send-office-receipt-to-client', function() {
+        if ($(this).closest('.dropdown-menu').length > 0) {
+            return;
+        }
+        handleSendOfficeReceiptToClient($(this));
     });
     
 })();

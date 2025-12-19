@@ -152,12 +152,16 @@ Route::get('/documents/delete', [ClientDocumentsController::class, 'deletedocs']
 Route::get('/documents/get-visa-checklist', [ClientDocumentsController::class, 'getvisachecklist'])->name('clients.documents.getvisachecklist');
 Route::post('/documents/not-used', [ClientDocumentsController::class, 'notuseddoc'])->name('clients.documents.notuseddoc');
 Route::post('/documents/rename-checklist', [ClientDocumentsController::class, 'renamechecklistdoc'])->name('clients.documents.renamechecklistdoc');
+Route::post('/documents/delete-checklist', [ClientDocumentsController::class, 'deleteChecklist'])->name('clients.documents.deleteChecklist');
 Route::post('/documents/back-to-doc', [ClientDocumentsController::class, 'backtodoc'])->name('clients.documents.backtodoc');
 Route::post('/documents/download', [ClientDocumentsController::class, 'download_document'])->name('clients.documents.download');
 Route::post('/documents/add-personal-category', [ClientDocumentsController::class, 'addPersonalDocCategory'])->name('clients.documents.addPersonalDocCategory');
 Route::post('/documents/update-personal-category', [ClientDocumentsController::class, 'updatePersonalDocCategory'])->name('clients.documents.updatePersonalDocCategory');
 Route::post('/documents/add-visa-category', [ClientDocumentsController::class, 'addVisaDocCategory'])->name('clients.documents.addVisaDocCategory');
 Route::post('/documents/update-visa-category', [ClientDocumentsController::class, 'updateVisaDocCategory'])->name('clients.documents.updateVisaDocCategory');
+Route::post('/documents/get-auto-checklist-matches', [ClientDocumentsController::class, 'getAutoChecklistMatches'])->name('clients.documents.getAutoChecklistMatches');
+Route::post('/documents/bulk-upload-personal', [ClientDocumentsController::class, 'bulkUploadPersonalDocuments'])->name('clients.documents.bulkUploadPersonalDocuments');
+Route::post('/documents/bulk-upload-visa', [ClientDocumentsController::class, 'bulkUploadVisaDocuments'])->name('clients.documents.bulkUploadVisaDocuments');
 
 /*---------- Client EOI/ROI Management ----------*/
 Route::prefix('clients/{client}/eoi-roi')->name('clients.eoi-roi.')->group(function () {
@@ -211,6 +215,12 @@ Route::post('/delete_receipt','CRM\ClientAccountsController@delete_receipt');
 
 Route::get('/clients/genClientFundReceipt/{id}', 'CRM\ClientAccountsController@genClientFundReceipt');
 Route::get('/clients/genOfficeReceipt/{id}', 'CRM\ClientAccountsController@genofficereceiptInvoice');
+
+// Send to client routes
+Route::post('/clients/send-invoice-to-client/{id}', 'CRM\ClientAccountsController@sendInvoiceToClient')->name('clients.sendInvoiceToClient');
+Route::post('/clients/send-client-fund-receipt-to-client/{id}', 'CRM\ClientAccountsController@sendClientFundReceiptToClient')->name('clients.sendClientFundReceiptToClient');
+Route::post('/clients/send-office-receipt-to-client/{id}', 'CRM\ClientAccountsController@sendOfficeReceiptToClient')->name('clients.sendOfficeReceiptToClient');
+
 Route::post('/update-client-funds-ledger', 'CRM\ClientAccountsController@updateClientFundsLedger')->name('clients.update-client-funds-ledger');
 Route::post('/update-office-receipt', 'CRM\ClientAccountsController@updateOfficeReceipt')->name('clients.updateOfficeReceipt');
 Route::post('/get-invoices-by-matter', 'CRM\ClientAccountsController@getInvoicesByMatter')->name('clients.getInvoicesByMatter');
@@ -303,8 +313,4 @@ Route::post('/send-webhook', 'CRM\ClientsController@sendToWebhook')->name('send-
 
 /*---------- Visa Expiry Messages ----------*/
 Route::get('/fetch-visa_expiry_messages', 'CRM\CRMUtilityController@fetchvisaexpirymessages');
-
-/*---------- Public Email Verification (No Auth Required) ----------*/
-// This route is outside admin middleware for public access
-Route::get('/verify-email/{token}', [EmailVerificationController::class, 'verifyEmail'])->name('clients.email.verify');
 

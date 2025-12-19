@@ -967,44 +967,79 @@ class DocumentController extends Controller
                         }
                     }
 
-                    // Use Zepto email account for signature emails
+                    // Use ZeptoMail API for signature emails
                     $emailConfigService = app(\App\Services\EmailConfigService::class);
-                    $zeptoConfig = $emailConfigService->getZeptoAccount();
+                    $zeptoApiConfig = $emailConfigService->getZeptoApiConfig();
                     
-                    if (!$zeptoConfig) {
-                        throw new \Exception('Zepto email configuration not found');
+                    // Prepare all attachments for ZeptoMail API
+                    $allAttachments = [];
+                    foreach ($attachments as $file) {
+                        $allAttachments[] = [
+                            'path' => $file['path'],
+                            'name' => $file['name'],
+                            'mime' => $file['mime'],
+                        ];
+                    }
+                    foreach ($checklistFiles as $file) {
+                        $allAttachments[] = [
+                            'path' => $file,
+                            'name' => basename($file),
+                        ];
                     }
                     
-                    $emailConfigService->applyConfig($zeptoConfig);
-                    
-                    //send agreement type document with attachments
-                    $sendMail = Mail::send('emails.sign_agreement_document_email', [
-                        'signingUrl' => $signingUrl, 
-                        'firstName' => $signerName,
-                        'emailmessage' => $request->message,
-                        'emailSignature' => $zeptoConfig['email_signature'] ?? ''
-                    ], function ($message) use ($signerEmail, $signerName, $attachments, $checklistFiles, $request, $zeptoConfig) {
-                        $message->to($signerEmail, $signerName)
-                        ->subject($request->subject)
-                        ->from($zeptoConfig['from_address'], $zeptoConfig['from_name']);
-                        // Attach uploaded files with original name and mime
-                        foreach ($attachments as $file) {
-                            $message->attach($file['path'], [
-                                'as' => $file['name'],
-                                'mime' => $file['mime'],
-                            ]);
-                        }
-                        // Attach checklist files
-                        foreach ($checklistFiles as $file) {
-                            $message->attach($file);
-                        }
-                    });
+                    // Send via ZeptoMail API
+                    $zeptoMailService = app(\App\Services\ZeptoMailService::class);
+                    try {
+                        $sendMail = $zeptoMailService->sendFromTemplate(
+                            'emails.sign_agreement_document_email',
+                            [
+                                'signingUrl' => $signingUrl, 
+                                'firstName' => $signerName,
+                                'emailmessage' => $request->message,
+                                'emailSignature' => $zeptoApiConfig['email_signature'] ?? ''
+                            ],
+                            ['address' => $signerEmail, 'name' => $signerName],
+                            $request->subject,
+                            $zeptoApiConfig['from_address'],
+                            $zeptoApiConfig['from_name'],
+                            $allAttachments
+                        );
+                        
+                        // Create activity note for successful email
+                        \App\Models\DocumentNote::create([
+                            'document_id' => $document->id,
+                            'created_by' => Auth::guard('admin')->id() ?? 1,
+                            'action_type' => 'email_sent',
+                            'note' => "Email sent successfully to {$signerName} ({$signerEmail})",
+                            'metadata' => [
+                                'signer_email' => $signerEmail,
+                                'signer_name' => $signerName,
+                                'subject' => $request->subject,
+                                'request_id' => $sendMail['request_id'] ?? null,
+                                'status' => isset($sendMail['data'][0]['message']) ? $sendMail['data'][0]['message'] : 'Email request received',
+                            ]
+                        ]);
+                    } catch (\Exception $emailException) {
+                        // Create activity note for failed email
+                        \App\Models\DocumentNote::create([
+                            'document_id' => $document->id,
+                            'created_by' => Auth::guard('admin')->id() ?? 1,
+                            'action_type' => 'email_failed',
+                            'note' => "Failed to send email to {$signerName} ({$signerEmail}): {$emailException->getMessage()}",
+                            'metadata' => [
+                                'signer_email' => $signerEmail,
+                                'signer_name' => $signerName,
+                                'error' => $emailException->getMessage(),
+                            ]
+                        ]);
+                        throw $emailException;
+                    }
 
                     if($sendMail){
                         //Save to mail reports table
                         $obj5 = new \App\Models\MailReport;
                         $obj5->user_id 		=  @Auth::guard('admin')->user()->id;
-                        $obj5->from_mail 	=  $zeptoConfig['from_address'];
+                        $obj5->from_mail 	=  $zeptoApiConfig['from_address'];
                         $obj5->to_mail 		=  $document->client_id;
                         $obj5->template_id 	=  $request->template;
                         $obj5->subject		=  $request->subject; //'Bansal Migration Requesting To Sign Your Agreement Document';
@@ -1064,26 +1099,54 @@ class DocumentController extends Controller
                 }
                 else
                 {
-                    // Use Zepto email account for signature emails
+                    // Use ZeptoMail API for signature emails
                     $emailConfigService = app(\App\Services\EmailConfigService::class);
-                    $zeptoConfig = $emailConfigService->getZeptoAccount();
+                    $zeptoApiConfig = $emailConfigService->getZeptoApiConfig();
                     
-                    if (!$zeptoConfig) {
-                        throw new \Exception('Zepto email configuration not found');
+                    // Send via ZeptoMail API
+                    $zeptoMailService = app(\App\Services\ZeptoMailService::class);
+                    try {
+                        $result = $zeptoMailService->sendFromTemplate(
+                            'emails.sign_document_email',
+                            [
+                                'signingUrl' => $signingUrl, 
+                                'firstName' => $signerName,
+                                'emailSignature' => $zeptoApiConfig['email_signature'] ?? ''
+                            ],
+                            ['address' => $signerEmail, 'name' => $signerName],
+                            'Bansal Migration Requesting To Sign Your Document',
+                            $zeptoApiConfig['from_address'],
+                            $zeptoApiConfig['from_name']
+                        );
+                        
+                        // Create activity note for successful email
+                        \App\Models\DocumentNote::create([
+                            'document_id' => $document->id,
+                            'created_by' => Auth::guard('admin')->id() ?? 1,
+                            'action_type' => 'email_sent',
+                            'note' => "Email sent successfully to {$signerName} ({$signerEmail})",
+                            'metadata' => [
+                                'signer_email' => $signerEmail,
+                                'signer_name' => $signerName,
+                                'request_id' => $result['request_id'] ?? null,
+                                'status' => isset($result['data'][0]['message']) ? $result['data'][0]['message'] : 'Email request received',
+                            ]
+                        ]);
+                    } catch (\Exception $emailException) {
+                        // Create activity note for failed email
+                        \App\Models\DocumentNote::create([
+                            'document_id' => $document->id,
+                            'created_by' => Auth::guard('admin')->id() ?? 1,
+                            'action_type' => 'email_failed',
+                            'note' => "Failed to send email to {$signerName} ({$signerEmail}): {$emailException->getMessage()}",
+                            'metadata' => [
+                                'signer_email' => $signerEmail,
+                                'signer_name' => $signerName,
+                                'error' => $emailException->getMessage(),
+                            ]
+                        ]);
+                        throw $emailException;
                     }
-                    
-                    $emailConfigService->applyConfig($zeptoConfig);
-                    
-                    //send visa and personal type document
-                    Mail::send('emails.sign_document_email', [
-                        'signingUrl' => $signingUrl, 
-                        'firstName' => $signerName,
-                        'emailSignature' => $zeptoConfig['email_signature'] ?? ''
-                    ], function ($message) use ($signerEmail, $signerName, $zeptoConfig) {
-                        $message->to($signerEmail, $signerName)
-                        ->subject('Bansal Migration Requesting To Sign Your Document')
-                        ->from($zeptoConfig['from_address'], $zeptoConfig['from_name']);
-                    });
                 }
             } catch (\Exception $e) {
                 Log::error('Mail sending failed: ' . $e->getMessage());
@@ -1998,10 +2061,6 @@ class DocumentController extends Controller
         // Check if we can send a reminder (limit to 3 reminders, 24 hours apart)
         if ($signer->reminder_count >= 3) {
             return redirect()->back()->with('error', 'Maximum reminders already sent.');
-        }
-
-        if ($signer->last_reminder_sent_at && $signer->last_reminder_sent_at->diffInHours(now()) < 24) {
-            return redirect()->back()->with('error', 'Please wait 24 hours between reminders.');
         }
 
         // Send reminder email

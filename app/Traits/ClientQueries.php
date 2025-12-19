@@ -4,6 +4,7 @@ namespace App\Traits;
 
 use App\Models\Admin;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 trait ClientQueries
 {

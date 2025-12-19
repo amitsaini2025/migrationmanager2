@@ -14,6 +14,7 @@ use App\Models\MailReport;
 use App\Models\ActivitiesLog;
 use App\Models\ClientMatter;
 use App\Models\Admin;
+use App\Traits\LogsClientActivity;
 
 /**
  * Modern Email Upload Controller
@@ -23,6 +24,8 @@ use App\Models\Admin;
  */
 class EmailUploadController extends Controller
 {
+    use LogsClientActivity;
+
     /**
      * Python service configuration
      */
@@ -45,7 +48,7 @@ class EmailUploadController extends Controller
             // Validate file input
             $validator = Validator::make($request->all(), [
                 'email_files' => 'required',
-                'email_files.*' => 'mimes:msg|max:20480', // 20MB max
+                'email_files.*' => 'mimes:msg|max:30720', // 30MB max
                 'client_id' => 'required',
                 'type' => 'required|in:client,lead'
             ]);
@@ -131,7 +134,7 @@ class EmailUploadController extends Controller
             // Validate file input
             $validator = Validator::make($request->all(), [
                 'email_files' => 'required',
-                'email_files.*' => 'mimes:msg|max:20480',
+                'email_files.*' => 'mimes:msg|max:30720', // 30MB max
                 'client_id' => 'required',
                 'type' => 'required|in:client,lead'
             ]);
@@ -301,9 +304,27 @@ class EmailUploadController extends Controller
 
             // NEW: Save attachments
             if (isset($parsedData['attachments']) && is_array($parsedData['attachments'])) {
+                Log::info('Processing attachments', [
+                    'count' => count($parsedData['attachments']),
+                    'mail_report_id' => $mailReport->id
+                ]);
+                
                 foreach ($parsedData['attachments'] as $attachmentData) {
-                    $this->saveAttachment($mailReport->id, $attachmentData, $clientUniqueId);
+                    try {
+                        $this->saveAttachment($mailReport->id, $attachmentData, $clientUniqueId);
+                    } catch (\Exception $e) {
+                        Log::error('Error in saveAttachment loop', [
+                            'error' => $e->getMessage(),
+                            'attachment' => $attachmentData['filename'] ?? 'unknown'
+                        ]);
+                        // Continue processing other attachments
+                    }
                 }
+            } else {
+                Log::info('No attachments found in parsed data', [
+                    'has_attachments_key' => isset($parsedData['attachments']),
+                    'mail_report_id' => $mailReport->id
+                ]);
             }
 
             // NEW: Auto-assign labels
@@ -321,12 +342,46 @@ class EmailUploadController extends Controller
 
             // 6. Create activity log
             if ($request->type == 'client') {
-                $activity = new ActivitiesLog();
-                $activity->client_id = $clientId;
-                $activity->created_by = Auth::user()->id;
-                $activity->description = '';
-                $activity->subject = 'uploaded email document';
-                $activity->save();
+                // Get matter reference
+                $matterReference = '';
+                if ($matterId) {
+                    $matter = ClientMatter::find($matterId);
+                    if ($matter && $matter->client_unique_matter_no) {
+                        $matterReference = $matter->client_unique_matter_no;
+                    }
+                }
+                
+                // Fall back to latest active matter if none found
+                if (empty($matterReference)) {
+                    $latestMatter = ClientMatter::where('client_id', $clientId)
+                        ->where('matter_status', 1)
+                        ->orderBy('id', 'desc')
+                        ->first();
+                    if ($latestMatter && $latestMatter->client_unique_matter_no) {
+                        $matterReference = $latestMatter->client_unique_matter_no;
+                    }
+                }
+                
+                // Format subject with matter reference
+                $emailSubject = $parsedData['subject'] ?? 'Email';
+                $subject = !empty($matterReference)
+                    ? "uploaded Email: {$emailSubject} - {$matterReference}"
+                    : "uploaded Email: {$emailSubject}";
+                
+                // Truncate long subjects
+                if (strlen($subject) > 100) {
+                    $subject = substr($subject, 0, 97) . '...';
+                }
+                
+                $from = $parsedData['from'] ?? 'Unknown';
+                $description = "<p>From: {$from}</p>";
+                
+                $this->logClientActivity(
+                    $clientId,
+                    $subject,
+                    $description,
+                    'email'
+                );
             }
 
             return [
@@ -452,20 +507,105 @@ class EmailUploadController extends Controller
      */
     protected function saveAttachment($mailReportId, $attachmentData, $clientUniqueId)
     {
+        $s3Path = null;
+        $s3Key = null;
+        $fileSize = $attachmentData['file_size'] ?? $attachmentData['size'] ?? 0;
+        
         try {
-            // Upload attachment to S3 if it has content
-            $s3Path = null;
-            $s3Key = null;
-            
             // Check for both 'content' and 'data' keys (Python service uses 'data')
             $attachmentContent = $attachmentData['content'] ?? $attachmentData['data'] ?? null;
             
+            Log::info('Processing attachment data', [
+                'filename' => $attachmentData['filename'] ?? 'unknown',
+                'has_content' => !empty($attachmentContent),
+                'content_length' => !empty($attachmentContent) ? strlen($attachmentContent) : 0,
+                'expected_size' => $fileSize
+            ]);
+            
             if (!empty($attachmentContent)) {
-                $s3Key = $clientUniqueId . '/attachments/' . time() . '_' . $attachmentData['filename'];
-                Storage::disk('s3')->put($s3Key, base64_decode($attachmentContent));
-                $s3Path = Storage::disk('s3')->url($s3Key);
+                // Decode base64-encoded attachment data
+                $decodedData = base64_decode($attachmentContent, true);
+                
+                // Validate base64 decode succeeded
+                if ($decodedData === false) {
+                    Log::warning('Failed to decode base64 attachment data', [
+                        'filename' => $attachmentData['filename'] ?? 'unknown',
+                        'content_length' => strlen($attachmentContent)
+                    ]);
+                    // Continue to create attachment record without file
+                } else {
+                    // Validate decoded data size matches expected size (with some tolerance for base64 padding)
+                    $expectedSize = $fileSize;
+                    $actualSize = strlen($decodedData);
+                    
+                    // Allow up to 3 bytes difference (base64 padding can cause small differences)
+                    if ($expectedSize > 0) {
+                        $sizeDifference = abs($actualSize - $expectedSize);
+                        if ($sizeDifference > 3) {
+                            Log::warning('Attachment size mismatch', [
+                                'filename' => $attachmentData['filename'] ?? 'unknown',
+                                'expected' => $expectedSize,
+                                'actual' => $actualSize,
+                                'difference' => $sizeDifference
+                            ]);
+                            // Continue anyway, but log the warning
+                        }
+                    }
+                    
+                    // Validate minimum size (empty files are suspicious)
+                    if ($actualSize === 0) {
+                        Log::warning('Decoded attachment data is empty', [
+                            'filename' => $attachmentData['filename'] ?? 'unknown'
+                        ]);
+                        // Continue to create attachment record without file
+                    } else {
+                        // Generate unique S3 key
+                        $s3Key = $clientUniqueId . '/attachments/' . time() . '_' . ($attachmentData['filename'] ?? 'attachment');
+                        
+                        try {
+                            // Upload to S3
+                            $uploadSuccess = Storage::disk('s3')->put($s3Key, $decodedData);
+                            
+                            if (!$uploadSuccess) {
+                                throw new \Exception('S3 upload returned false');
+                            }
+                            
+                            // Verify file exists in S3
+                            if (!Storage::disk('s3')->exists($s3Key)) {
+                                throw new \Exception('File not found in S3 after upload');
+                            }
+                            
+                            $s3Path = Storage::disk('s3')->url($s3Key);
+                            
+                            // Update file size to actual decoded size
+                            $fileSize = $actualSize;
+                            
+                            Log::info('Attachment saved successfully to S3', [
+                                'filename' => $attachmentData['filename'] ?? 'unknown',
+                                'size' => $actualSize,
+                                's3_key' => $s3Key,
+                                's3_path' => $s3Path
+                            ]);
+                        } catch (\Exception $s3Exception) {
+                            Log::error('S3 upload failed for attachment', [
+                                'filename' => $attachmentData['filename'] ?? 'unknown',
+                                's3_key' => $s3Key,
+                                'error' => $s3Exception->getMessage(),
+                                'trace' => $s3Exception->getTraceAsString()
+                            ]);
+                            // Reset s3_key and s3Path so we don't save invalid references
+                            $s3Key = null;
+                            $s3Path = null;
+                        }
+                    }
+                }
+            } else {
+                Log::info('Attachment has no content data, creating record without file', [
+                    'filename' => $attachmentData['filename'] ?? 'unknown'
+                ]);
             }
 
+            // Always create attachment record (even if file upload failed)
             \App\Models\MailReportAttachment::create([
                 'mail_report_id' => $mailReportId,
                 'filename' => $attachmentData['filename'] ?? 'unknown',
@@ -473,16 +613,20 @@ class EmailUploadController extends Controller
                 'content_type' => $attachmentData['content_type'] ?? 'application/octet-stream',
                 'file_path' => $s3Path,
                 's3_key' => $s3Key,
-                'file_size' => $attachmentData['file_size'] ?? $attachmentData['size'] ?? 0,
+                'file_size' => $fileSize,
                 'content_id' => $attachmentData['content_id'] ?? null,
                 'is_inline' => $attachmentData['is_inline'] ?? false,
                 'extension' => pathinfo($attachmentData['filename'] ?? 'unknown', PATHINFO_EXTENSION),
             ]);
+            
         } catch (\Exception $e) {
             Log::error('Failed to save attachment', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'attachment' => $attachmentData['filename'] ?? 'unknown'
             ]);
+            // Don't re-throw - allow email upload to continue even if attachment fails
+            // Attachment record will still be created (if we got that far) but without file
         }
     }
 

@@ -28,18 +28,19 @@ class SignatureDashboardController extends Controller
     {
         $user = Auth::guard('admin')->user();
         
-        // Get documents based on user permissions using visibility scope
+        // Get all documents (global access - everyone can see everything)
         $query = Document::with(['creator', 'signers', 'documentable'])
+            ->forSignatureWorkflow()
             ->visible($user)
             ->notArchived()
             ->orderBy('created_at', 'desc');
 
-        // Apply filters based on visibility scope
+        // Apply filters based on scope
         $query->when($request->has('scope'), function ($q) use ($request, $user) {
             return match($request->scope) {
                 'my_documents' => $q->forUser($user->id),
-                'team' => $q, // Already filtered by visible(), just keep it
-                'organization' => $user->role === 1 ? $q : $q->forUser($user->id),
+                'team' => $q, // All documents (global access)
+                'organization' => $q, // All documents (global access)
                 default => $q
             };
         })
@@ -71,25 +72,23 @@ class SignatureDashboardController extends Controller
 
         $documents = $query->paginate(20);
 
-        // Get counts for dashboard cards using visibility scope
+        // Get counts for dashboard cards (global access - all documents)
         $counts = [
-            'sent_by_me' => Document::forUser($user->id)->notArchived()->count(),
-            'visible_to_me' => Document::visible($user)->notArchived()->count(),
-            'pending' => Document::visible($user)->byStatus('sent')->notArchived()->count(),
-            'signed' => Document::visible($user)->byStatus('signed')->notArchived()->count(),
-            'overdue' => Document::visible($user)
+            'sent_by_me' => Document::forSignatureWorkflow()->forUser($user->id)->notArchived()->count(),
+            'visible_to_me' => Document::forSignatureWorkflow()->visible($user)->notArchived()->count(), // All documents (global)
+            'pending' => Document::forSignatureWorkflow()->visible($user)->byStatus('sent')->notArchived()->count(), // All pending (global)
+            'signed' => Document::forSignatureWorkflow()->visible($user)->byStatus('signed')->notArchived()->count(), // All signed (global)
+            'overdue' => Document::forSignatureWorkflow()->visible($user)
                 ->whereNotNull('due_at')
                 ->where('due_at', '<', now())
                 ->where('status', '!=', 'signed')
                 ->notArchived()
-                ->count(),
+                ->count(), // All overdue (global)
         ];
 
-        // Add admin counts if user is admin
-        if ($user->role === 1) {
-            $counts['all'] = Document::notArchived()->count();
-            $counts['all_pending'] = Document::byStatus('sent')->notArchived()->count();
-        }
+        // All users see global counts now
+        $counts['all'] = Document::forSignatureWorkflow()->notArchived()->count();
+        $counts['all_pending'] = Document::forSignatureWorkflow()->byStatus('sent')->notArchived()->count();
 
         // Provide errors variable for the layout
         $errors = $request->session()->get('errors') ?? new \Illuminate\Support\MessageBag();
@@ -409,24 +408,54 @@ class SignatureDashboardController extends Controller
                     'dueDate' => $document->due_at ? $document->due_at->format('F j, Y') : null,
                 ];
 
-                // ALWAYS use Zepto email account for signature emails
+                // Use ZeptoMail API for signature emails
                 $emailConfigService = app(\App\Services\EmailConfigService::class);
-                $zeptoConfig = $emailConfigService->getZeptoAccount();
-                
-                if (!$zeptoConfig) {
-                    throw new \Exception('Zepto email configuration not found');
-                }
+                $zeptoApiConfig = $emailConfigService->getZeptoApiConfig();
                 
                 // Add email signature to template data
-                $templateData['emailSignature'] = $zeptoConfig['email_signature'] ?? '';
+                $templateData['emailSignature'] = $zeptoApiConfig['email_signature'] ?? '';
                 
-                $emailConfigService->applyConfig($zeptoConfig);
-
-                // Send email
-                Mail::send($template, $templateData, function ($message) use ($signer, $subject) {
-                    $message->to($signer->email, $signer->name)
-                           ->subject($subject);
-                });
+                // Send email via ZeptoMail API
+                $zeptoMailService = app(\App\Services\ZeptoMailService::class);
+                try {
+                    $result = $zeptoMailService->sendFromTemplate(
+                        $template,
+                        $templateData,
+                        ['address' => $signer->email, 'name' => $signer->name],
+                        $subject,
+                        $zeptoApiConfig['from_address'],
+                        $zeptoApiConfig['from_name']
+                    );
+                    
+                    // Create activity note for successful email
+                    \App\Models\DocumentNote::create([
+                        'document_id' => $document->id,
+                        'created_by' => \Illuminate\Support\Facades\Auth::guard('admin')->id() ?? 1,
+                        'action_type' => 'email_sent',
+                        'note' => "Email sent successfully to {$signer->name} ({$signer->email})",
+                        'metadata' => [
+                            'signer_email' => $signer->email,
+                            'signer_name' => $signer->name,
+                            'subject' => $subject,
+                            'request_id' => $result['request_id'] ?? null,
+                            'status' => isset($result['data'][0]['message']) ? $result['data'][0]['message'] : 'Email request received',
+                        ]
+                    ]);
+                } catch (\Exception $emailException) {
+                    // Create activity note for failed email
+                    \App\Models\DocumentNote::create([
+                        'document_id' => $document->id,
+                        'created_by' => \Illuminate\Support\Facades\Auth::guard('admin')->id() ?? 1,
+                        'action_type' => 'email_failed',
+                        'note' => "Failed to send email to {$signer->name} ({$signer->email}): {$emailException->getMessage()}",
+                        'metadata' => [
+                            'signer_email' => $signer->email,
+                            'signer_name' => $signer->name,
+                            'error' => $emailException->getMessage(),
+                        ]
+                    ]);
+                    throw $emailException;
+                }
                 
                 $emailsSent++;
                 

@@ -251,6 +251,56 @@ class EmailConfigService
     }
 
     /**
+     * Get ZeptoMail API configuration
+     * Returns configuration for using ZeptoMail REST API instead of SMTP
+     *
+     * @return array API configuration
+     * @throws \Exception If API key is not configured
+     */
+    public function getZeptoApiConfig(): array
+    {
+        try {
+            $apiKey = config('services.zeptomail.api_key', env('ZEPTOMAIL_API_KEY'));
+            
+            if (empty($apiKey)) {
+                throw new \Exception('ZEPTOMAIL_API_KEY is not set in .env file');
+            }
+
+            // Get email address from .env or search database
+            $zeptoEmail = config('services.zeptomail.from_email', env('ZEPTOMAIL_FROM_EMAIL', 'signature@bansalimmigration.com.au'));
+            
+            // Try to find email account in database (for email signature)
+            $emailConfig = Email::where('status', true)
+                ->where('email', $zeptoEmail)
+                ->first();
+            
+            // If not found, try pattern search
+            if (!$emailConfig) {
+                $emailConfig = Email::where('status', true)
+                    ->where('email', 'like', '%zepto%')
+                    ->orWhere('email', 'like', '%signature%')
+                    ->first();
+            }
+
+            $fromAddress = config('services.zeptomail.from_email', env('ZEPTOMAIL_FROM_EMAIL', $emailConfig->email ?? 'signature@bansalimmigration.com.au'));
+            $fromName = config('services.zeptomail.from_name', env('ZEPTOMAIL_FROM_NAME', $emailConfig->display_name ?? 'Bansal Migration'));
+
+            return [
+                'api_key' => $apiKey,
+                'from_address' => $fromAddress,
+                'from_name' => $fromName,
+                'email_signature' => $emailConfig->email_signature ?? '',
+                'api_url' => config('services.zeptomail.api_url', 'https://api.zeptomail.com/v1.1/email'),
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve ZeptoMail API configuration', [
+                'error' => $e->getMessage()
+            ]);
+            throw new \Exception("ZeptoMail API configuration error: {$e->getMessage()}");
+        }
+    }
+
+    /**
      * Validate email configuration by attempting connection
      *
      * @param array $config

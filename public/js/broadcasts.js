@@ -3,6 +3,7 @@
     const titleSelector = '[data-broadcast-title]';
     const messageSelector = '[data-broadcast-message]';
     const metaSelector = '[data-broadcast-meta]';
+    const metaTextSelector = '[data-broadcast-meta-text]';
     const markReadSelector = '[data-action="mark-read"]';
     const dismissSelector = '[data-action="dismiss"]';
 
@@ -26,8 +27,9 @@
     const titleEl = bannerEl.querySelector(titleSelector);
     const messageEl = bannerEl.querySelector(messageSelector);
     const metaEl = bannerEl.querySelector(metaSelector);
+    const metaTextEl = bannerEl.querySelector(metaTextSelector);
     const markReadBtn = bannerEl.querySelector(markReadSelector);
-    const dismissBtn = bannerEl.querySelector(dismissSelector);
+    const dismissBtn = bannerEl.querySelectorAll(dismissSelector);
 
     const endpoints = {
         unread: '/notifications/broadcasts/unread',
@@ -71,13 +73,13 @@
         if (!broadcast) {
             titleEl && (titleEl.textContent = '');
             messageEl && (messageEl.textContent = '');
-            metaEl && (metaEl.textContent = '');
+            metaTextEl && (metaTextEl.textContent = '');
             setBannerVisible(false);
             return;
         }
 
         if (titleEl) {
-            titleEl.textContent = broadcast.title || 'Broadcast';
+            titleEl.textContent = broadcast.title || '';
             titleEl.classList.toggle('has-title', Boolean(broadcast.title));
         }
 
@@ -85,7 +87,7 @@
             messageEl.textContent = broadcast.message || '';
         }
 
-        if (metaEl) {
+        if (metaTextEl) {
             const parts = [];
 
             if (broadcast.sender_name) {
@@ -97,7 +99,7 @@
                 parts.push(formatted);
             }
 
-            metaEl.textContent = parts.join(' • ');
+            metaTextEl.textContent = parts.join(' • ');
         }
 
         setBannerVisible(true);
@@ -180,7 +182,79 @@
             clearInterval(state.pollingTimer);
         }
 
-        state.pollingTimer = setInterval(fetchUnreadBroadcasts, 30000);
+        // Use longer polling interval as fallback (only if WebSocket fails)
+        state.pollingTimer = setInterval(fetchUnreadBroadcasts, 60000);
+    }
+    
+    function startRealtimeListener() {
+        if (!window.Echo) {
+            // Only show warning if Echo was expected but failed (not if intentionally disabled)
+            if (!window.EchoDisabled) {
+                console.warn('⚠️ Laravel Echo not available for broadcast notifications, using polling fallback');
+            }
+            startPolling();
+            return;
+        }
+        
+        if (!currentUserId) {
+            console.warn('⚠️ Current user ID not found, cannot subscribe to broadcast notifications');
+            startPolling();
+            return;
+        }
+        
+        console.log('✅ Subscribing to broadcast notifications for user:', currentUserId);
+        
+        window.Echo.private(`user.${currentUserId}`)
+            .listen('.BroadcastNotificationCreated', (e) => {
+                console.log('📢 Received broadcast notification:', e);
+                
+                // Convert the broadcast event data to the format expected by enqueueBroadcasts
+                const notification = {
+                    notification_id: null, // Will be fetched from server
+                    batch_uuid: e.batch_uuid,
+                    message: e.message,
+                    title: e.title,
+                    sender_id: e.sender_id,
+                    sender_name: e.sender_name,
+                    sent_at: e.sent_at
+                };
+                
+                // Fetch the full notification details to get notification_id
+                fetch(endpoints.unread, {
+                    method: 'GET',
+                    headers: {
+                        Accept: 'application/json',
+                    },
+                    credentials: 'include',
+                })
+                .then((response) => response.json())
+                .then((payload) => {
+                    if (Array.isArray(payload?.data)) {
+                        // Find the notification with matching batch_uuid
+                        const fullNotification = payload.data.find(n => n.batch_uuid === e.batch_uuid);
+                        if (fullNotification) {
+                            enqueueBroadcasts([fullNotification]);
+                        }
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error fetching notification details:', error);
+                });
+            });
+        
+        // Monitor connection status
+        window.Echo.connector.pusher.connection.bind('connected', () => {
+            console.log('✅ Reverb connected for broadcast notifications');
+            if (state.pollingTimer) {
+                clearInterval(state.pollingTimer);
+                state.pollingTimer = null;
+            }
+        });
+        
+        window.Echo.connector.pusher.connection.bind('disconnected', () => {
+            console.warn('⚠️ Reverb disconnected, falling back to polling for broadcasts');
+            startPolling();
+        });
     }
 
     function markActiveAsRead() {
@@ -250,17 +324,27 @@
     }
 
     function init() {
+        // Initial fetch to show existing broadcasts
         fetchUnreadBroadcasts();
-        startPolling();
-        setupEchoListeners();
+        
+        // Use real-time listener with polling fallback
+        startRealtimeListener();
+        
+        // Setup Echo listeners for legacy code (if Echo is configured differently)
+        if (window.Echo && typeof setupEchoListeners === 'function') {
+            setupEchoListeners();
+        }
+        
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
         if (markReadBtn) {
             markReadBtn.addEventListener('click', markActiveAsRead);
         }
 
-        if (dismissBtn) {
-            dismissBtn.addEventListener('click', dismissActiveBroadcast);
+        if (dismissBtn && dismissBtn.length > 0) {
+            dismissBtn.forEach(btn => {
+                btn.addEventListener('click', dismissActiveBroadcast);
+            });
         }
     }
 

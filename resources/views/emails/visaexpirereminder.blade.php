@@ -25,25 +25,25 @@
         <table role="presentation" style="width:602px;border-collapse:collapse;border:1px solid #cccccc;border-spacing:0;text-align:left;">
           <tr>
             <td align="center" style="padding:40px 0 30px 0;background:#70bbd9;">
-              <img src="" alt="" width="300" style="height:auto;display:block;" />
+              <img src="{{URL::to('/public/img/logo.png')}}" alt="Bansal Immigration" width="300" style="height:auto;display:block;" />
             </td>
           </tr>
           <tr>
             <td style="padding:36px 30px 42px 30px;">
               <table role="presentation" style="width:100%;border-collapse:collapse;border:0;border-spacing:0;">
                 <tr>
-                  <td style="padding:0 0 36px 0;color:#153643;">
-                    <h1 style="font-size:24px;margin:0 0 20px 0;font-family:Arial,sans-serif;">Your visa is expiring soon</h1>
-                    <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">Dear {{ $details['fullname'] }} ,</p>
-                    <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">{{$details['title']}} .</p>
+                  <td style="padding:0 0 36px 0;color:#111827;">
+                    <h1 style="font-size:24px;margin:0 0 20px 0;font-family:Arial,sans-serif;color:#111827;">Your visa is expiring soon</h1>
+                    <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">Dear {{ $details['fullname'] }} ,</p>
+                    <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;">{{$details['title']}} .</p>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding:0;">
                     <table role="presentation" style="width:100%;border-collapse:collapse;border:0;border-spacing:0;">
                         <tr>
-                            <td style="width:260px;padding:0;vertical-align:top;color:#153643;">
-                            <p style="margin:0 0 25px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;">Visa Valid upto : {{ date('d-m-Y',strtotime( $details['visaExpiry'] ))}}</p>
+                            <td style="width:260px;padding:0;vertical-align:top;color:#111827;">
+                            <p style="margin:0 0 25px 0;font-size:16px;line-height:24px;font-family:Arial,sans-serif;color:#111827;font-weight:600;">Visa Valid upto : {{ date('d-m-Y',strtotime( $details['visaExpiry'] ))}}</p>
                             </td>
                         </tr>
                     </table>

@@ -44,8 +44,12 @@
                                         </div>
 
                                         <div class="form-group">
-                                            <label for="broadcast-message">Message</label>
-                                            <textarea id="broadcast-message" name="message" class="form-control" rows="5" maxlength="1000" placeholder="Enter the announcement you want everyone to see." required></textarea>
+                                            <label for="broadcast-message">Message <span class="text-muted small">(Max 1000 characters)</span></label>
+                                            <textarea id="broadcast-message" name="message" class="form-control" placeholder="Enter the announcement you want everyone to see..." required></textarea>
+                                            <div class="d-flex justify-content-between align-items-center mt-1">
+                                                <small class="text-muted">Rich text formatting is supported</small>
+                                                <small class="text-muted" id="broadcast-char-count">0 / 1000 characters</small>
+                                            </div>
                                         </div>
 
                                         <div class="form-group">
@@ -79,40 +83,116 @@
 
                         <div class="col-lg-7">
                             <div class="card h-100">
-                                <div class="card-header d-flex justify-content-between align-items-center">
-                                    <h4 class="mb-0">History</h4>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="badge badge-primary" id="broadcast-history-count">0 sent</span>
-                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="broadcast-refresh-history">
-                                            <i class="fas fa-sync-alt mr-1"></i> Refresh
-                                        </button>
+                                <div class="card-header">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h4 class="mb-0">Broadcast History</h4>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge badge-light broadcast-count-badge" id="broadcast-history-count">0 broadcasts</span>
+                                            <button type="button" class="btn btn-outline-light btn-sm broadcast-refresh-btn" id="broadcast-refresh-history">
+                                                <i class="fas fa-sync-alt mr-1"></i> Refresh
+                                            </button>
+                                        </div>
                                     </div>
+                                    
+                                    <!-- Tabs for different views -->
+                                    <ul class="nav nav-pills nav-fill" id="history-tabs" role="tablist">
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link active" id="all-broadcasts-tab" data-toggle="pill" data-target="#all-broadcasts" type="button" role="tab">
+                                                <i class="fas fa-globe mr-1"></i> All Broadcasts
+                                            </button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" id="my-sent-tab" data-toggle="pill" data-target="#my-sent" type="button" role="tab">
+                                                <i class="fas fa-paper-plane mr-1"></i> My Sent
+                                            </button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" id="my-read-tab" data-toggle="pill" data-target="#my-read" type="button" role="tab">
+                                                <i class="fas fa-check-circle mr-1"></i> My Read
+                                            </button>
+                                        </li>
+                                    </ul>
                                 </div>
                                 <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-striped" id="broadcast-history-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Sent</th>
-                                                    <th>Message</th>
-                                                    <th class="text-center">Read</th>
-                                                    <th class="text-center">Unread</th>
-                                                    <th class="text-right">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="broadcast-history-body">
-                                                <tr>
-                                                    <td colspan="5" class="text-center text-muted py-4">
-                                                        <i class="fas fa-bullhorn mb-2" style="font-size: 28px;"></i>
-                                                        <div>No broadcasts yet. Send your first announcement!</div>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
+                                    <div class="tab-content" id="history-tabs-content">
+                                        <!-- All Broadcasts Tab -->
+                                        <div class="tab-pane fade show active" id="all-broadcasts" role="tabpanel">
+                                            <div class="table-responsive">
+                                                <table class="table table-striped" id="broadcast-history-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Sent By</th>
+                                                            <th>Date</th>
+                                                            <th>Message</th>
+                                                            <th class="text-center">Read</th>
+                                                            <th class="text-center">Unread</th>
+                                                            <th class="text-right">Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="broadcast-history-body">
+                                                        <tr>
+                                                            <td colspan="6" class="text-center text-muted py-4">
+                                                                <i class="fas fa-bullhorn mb-2" style="font-size: 28px;"></i>
+                                                                <div>No broadcasts yet. Send your first announcement!</div>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- My Sent Broadcasts Tab -->
+                                        <div class="tab-pane fade" id="my-sent" role="tabpanel">
+                                            <div class="table-responsive">
+                                                <table class="table table-striped">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Date</th>
+                                                            <th>Message</th>
+                                                            <th class="text-center">Read</th>
+                                                            <th class="text-center">Unread</th>
+                                                            <th class="text-right">Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="my-sent-body">
+                                                        <tr>
+                                                            <td colspan="5" class="text-center text-muted py-4">
+                                                                <i class="fas fa-paper-plane mb-2" style="font-size: 28px;"></i>
+                                                                <div>You haven't sent any broadcasts yet.</div>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- My Read Broadcasts Tab -->
+                                        <div class="tab-pane fade" id="my-read" role="tabpanel">
+                                            <div class="table-responsive">
+                                                <table class="table table-striped">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Sent By</th>
+                                                            <th>Date</th>
+                                                            <th>Message</th>
+                                                            <th>Read At</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="my-read-body">
+                                                        <tr>
+                                                            <td colspan="4" class="text-center text-muted py-4">
+                                                                <i class="fas fa-check-circle mb-2" style="font-size: 28px;"></i>
+                                                                <div>No read broadcasts yet.</div>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="card-footer text-muted small">
-                                    History is grouped by broadcast batch. Totals update automatically as recipients read notifications.
+                                    <i class="fas fa-info-circle"></i> All users can view broadcast history. Only super admins can delete broadcasts.
                                 </div>
                             </div>
                         </div>
@@ -333,6 +413,68 @@
 
 @push('scripts')
 <script>
+    // Initialize TinyMCE for broadcast message
+    let broadcastEditor = null;
+    
+    if (typeof tinymce !== 'undefined') {
+        tinymce.init({
+            selector: '#broadcast-message',
+            license_key: 'gpl',
+            height: 250,
+            menubar: false,
+            plugins: [
+                'lists', 'link', 'autolink', 'code', 'wordcount'
+            ],
+            toolbar: 'undo redo | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright | bullist numlist | link | code | removeformat',
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 14px; line-height: 1.6; }',
+            placeholder: 'Enter the announcement you want everyone to see...',
+            branding: false,
+            promotion: false,
+            statusbar: true,
+            resize: true,
+            max_chars: 1000,
+            setup: function(editor) {
+                broadcastEditor = editor;
+                
+                // Character counter
+                editor.on('init', function() {
+                    updateCharCount(editor);
+                });
+                
+                editor.on('keyup change', function() {
+                    updateCharCount(editor);
+                });
+                
+                // Enforce character limit
+                editor.on('keydown', function(e) {
+                    const content = editor.getContent({format: 'text'});
+                    if (content.length >= 1000 && e.keyCode !== 8 && e.keyCode !== 46) {
+                        e.preventDefault();
+                        return false;
+                    }
+                });
+            }
+        });
+    }
+    
+    function updateCharCount(editor) {
+        const content = editor.getContent({format: 'text'});
+        const charCount = content.length;
+        const charCountEl = document.getElementById('broadcast-char-count');
+        
+        if (charCountEl) {
+            charCountEl.textContent = `${charCount} / 1000 characters`;
+            charCountEl.className = 'text-muted';
+            
+            if (charCount > 950) {
+                charCountEl.className = 'text-warning font-weight-bold';
+            }
+            if (charCount >= 1000) {
+                charCountEl.className = 'text-danger font-weight-bold';
+            }
+        }
+    }
+    
     (function () {
         const composeForm = document.getElementById('broadcast-compose-form');
         const messageInput = document.getElementById('broadcast-message');
@@ -386,6 +528,15 @@
 
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
+        // Setup CSRF token for all AJAX requests (including Select2)
+        if (typeof $ !== 'undefined' && $.ajaxSetup) {
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken
+                }
+            });
+        }
+
         function toggleRecipientsVisibility() {
             if (scopeSelect.value === 'specific') {
                 recipientGroup.classList.remove('d-none');
@@ -426,29 +577,60 @@
             }).format(date);
         }
 
-        function renderHistoryTable(items) {
+        // State to track current user and permissions
+        let currentState = {
+            isSuperAdmin: false,
+            currentUserId: null
+        };
+
+        // Helper function to truncate HTML message for display
+        function truncateMessage(html, maxLength = 150) {
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+            const text = temp.textContent || temp.innerText || '';
+            
+            if (text.length <= maxLength) {
+                return html;
+            }
+            
+            // Truncate text and add ellipsis
+            const truncated = text.substring(0, maxLength) + '...';
+            return `<span title="${text.replace(/"/g, '&quot;')}">${truncated}</span>`;
+        }
+
+        function renderHistoryTable(items, isSuperAdmin = false) {
             historyBody.innerHTML = '';
 
             if (!items.length) {
                 historyBody.innerHTML = `<tr>
-                    <td colspan="5" class="text-center text-muted py-4">
+                    <td colspan="6" class="text-center text-muted py-4">
                         <i class="fas fa-bullhorn mb-2" style="font-size: 28px;"></i>
                         <div>No broadcasts yet. Send your first announcement!</div>
                     </td>
                 </tr>`;
-                historyCount.textContent = '0 sent';
+                historyCount.textContent = '0 broadcasts';
                 return;
             }
 
-            historyCount.textContent = `${items.length} sent`;
+            historyCount.textContent = `${items.length} broadcast${items.length !== 1 ? 's' : ''}`;
 
             items.forEach((item) => {
                 const row = document.createElement('tr');
+                const deleteBtn = isSuperAdmin 
+                    ? `<button type="button" class="btn btn-outline-danger btn-sm ml-1" data-action="delete-broadcast" data-batch="${item.batch_uuid}" title="Delete broadcast">
+                           <i class="fas fa-trash"></i>
+                       </button>`
+                    : '';
+                
                 row.innerHTML = `
+                    <td>
+                        <strong>${item.sender_name || 'Unknown'}</strong>
+                        <br><small class="text-muted">#${item.sender_id}</small>
+                    </td>
                     <td>${formatDate(item.sent_at)}</td>
                     <td>
                         ${item.title ? `<strong>${item.title}</strong><br>` : ''}
-                        <span class="text-muted">${item.message}</span>
+                        <span class="broadcast-message-text">${item.message}</span>
                     </td>
                     <td class="text-center">
                         <span class="badge badge-success">${item.read_count}</span>
@@ -458,11 +640,92 @@
                     </td>
                     <td class="text-right">
                         <button type="button" class="btn btn-outline-primary btn-sm" data-action="view-broadcast" data-batch="${item.batch_uuid}">
-                            View details
+                            <i class="fas fa-eye"></i> Details
                         </button>
+                        ${deleteBtn}
                     </td>
                 `;
                 historyBody.appendChild(row);
+            });
+        }
+
+        function renderMySentTable(items, isSuperAdmin = false) {
+            const mySentBody = document.getElementById('my-sent-body');
+            mySentBody.innerHTML = '';
+
+            if (!items.length) {
+                mySentBody.innerHTML = `<tr>
+                    <td colspan="5" class="text-center text-muted py-4">
+                        <i class="fas fa-paper-plane mb-2" style="font-size: 28px;"></i>
+                        <div>You haven't sent any broadcasts yet.</div>
+                    </td>
+                </tr>`;
+                return;
+            }
+
+            items.forEach((item) => {
+                const row = document.createElement('tr');
+                const deleteBtn = isSuperAdmin 
+                    ? `<button type="button" class="btn btn-outline-danger btn-sm ml-1" data-action="delete-broadcast" data-batch="${item.batch_uuid}" title="Delete broadcast">
+                           <i class="fas fa-trash"></i>
+                       </button>`
+                    : '';
+                
+                row.innerHTML = `
+                    <td>${formatDate(item.sent_at)}</td>
+                    <td>
+                        ${item.title ? `<strong>${item.title}</strong><br>` : ''}
+                        <span class="broadcast-message-text">${item.message}</span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge badge-success">${item.read_count}</span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge badge-warning">${item.unread_count}</span>
+                    </td>
+                    <td class="text-right">
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-action="view-broadcast" data-batch="${item.batch_uuid}">
+                            <i class="fas fa-eye"></i> Details
+                        </button>
+                        ${deleteBtn}
+                    </td>
+                `;
+                mySentBody.appendChild(row);
+            });
+        }
+
+        function renderMyReadTable(items) {
+            const myReadBody = document.getElementById('my-read-body');
+            myReadBody.innerHTML = '';
+
+            if (!items.length) {
+                myReadBody.innerHTML = `<tr>
+                    <td colspan="4" class="text-center text-muted py-4">
+                        <i class="fas fa-check-circle mb-2" style="font-size: 28px;"></i>
+                        <div>No read broadcasts yet.</div>
+                    </td>
+                </tr>`;
+                return;
+            }
+
+            items.forEach((item) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <strong>${item.sender_name || 'Unknown'}</strong>
+                    </td>
+                    <td>${formatDate(item.sent_at)}</td>
+                    <td>
+                        ${item.title ? `<strong>${item.title}</strong><br>` : ''}
+                        <span class="broadcast-message-text">${item.message}</span>
+                    </td>
+                    <td>
+                        <span class="text-success">
+                            <i class="fas fa-check mr-1"></i>${formatDate(item.read_at)}
+                        </span>
+                    </td>
+                `;
+                myReadBody.appendChild(row);
             });
         }
 
@@ -687,7 +950,11 @@
                     return response.json();
                 })
                 .then((payload) => {
-                    renderHistoryTable(payload.data || []);
+                    // Store current user info
+                    currentState.isSuperAdmin = payload.is_super_admin || false;
+                    currentState.currentUserId = payload.current_user_id || null;
+                    
+                    renderHistoryTable(payload.data || [], currentState.isSuperAdmin);
                 })
                 .catch((error) => {
                     console.error(error);
@@ -695,6 +962,94 @@
                 })
                 .finally(() => {
                     historyBody.classList.remove('loading');
+                });
+        }
+
+        function loadMySent() {
+            const mySentBody = document.getElementById('my-sent-body');
+            mySentBody.classList.add('loading');
+            
+            fetch('/notifications/broadcasts/my-history', {
+                method: 'GET',
+                headers: { Accept: 'application/json' },
+                credentials: 'include',
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error('Unable to load your sent broadcasts.');
+                    }
+                    return response.json();
+                })
+                .then((payload) => {
+                    renderMySentTable(payload.data || [], currentState.isSuperAdmin);
+                })
+                .catch((error) => {
+                    console.error(error);
+                    showFeedback('danger', 'Failed to load your sent broadcasts.');
+                })
+                .finally(() => {
+                    mySentBody.classList.remove('loading');
+                });
+        }
+
+        function loadMyRead() {
+            const myReadBody = document.getElementById('my-read-body');
+            myReadBody.classList.add('loading');
+            
+            fetch('/notifications/broadcasts/read-history', {
+                method: 'GET',
+                headers: { Accept: 'application/json' },
+                credentials: 'include',
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error('Unable to load your read broadcasts.');
+                    }
+                    return response.json();
+                })
+                .then((payload) => {
+                    renderMyReadTable(payload.data || []);
+                })
+                .catch((error) => {
+                    console.error(error);
+                    showFeedback('danger', 'Failed to load your read broadcasts.');
+                })
+                .finally(() => {
+                    myReadBody.classList.remove('loading');
+                });
+        }
+
+        function deleteBroadcast(batchUuid) {
+            if (!confirm('Are you sure you want to delete this broadcast? This action cannot be undone.')) {
+                return;
+            }
+
+            fetch(`/notifications/broadcasts/${batchUuid}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'include',
+            })
+                .then(async (response) => {
+                    const payload = await response.json();
+                    if (!response.ok) {
+                        throw new Error(payload.message || 'Failed to delete broadcast.');
+                    }
+                    return payload;
+                })
+                .then(() => {
+                    showFeedback('success', 'Broadcast deleted successfully.');
+                    // Reload all tabs
+                    loadHistory();
+                    loadMySent();
+                    loadMyRead();
+                })
+                .catch((error) => {
+                    console.error(error);
+                    showFeedback('danger', error.message || 'Failed to delete broadcast.');
                 });
         }
 
@@ -718,7 +1073,7 @@
                     const data = payload.data;
                     detailTitle.textContent = data.title || '';
                     detailTitle.classList.toggle('d-none', !data.title);
-                    detailMessage.textContent = data.message || '';
+                    detailMessage.innerHTML = data.message || ''; // Use innerHTML to render HTML content
                     detailMeta.textContent = `${data.sender_name || 'You'} • ${formatDate(data.sent_at)}`;
 
                     if (!Array.isArray(data.recipients) || !data.recipients.length) {
@@ -846,10 +1201,33 @@
             event.preventDefault();
             hideFeedback();
 
-            if (!messageInput.value.trim()) {
-                showFeedback('warning', 'Please enter a message before sending your broadcast.');
-                messageInput.focus();
-                return;
+            // Get message from TinyMCE editor
+            let messageContent = '';
+            if (broadcastEditor) {
+                messageContent = broadcastEditor.getContent({format: 'html'}).trim();
+                const textContent = broadcastEditor.getContent({format: 'text'}).trim();
+                
+                // Validate content
+                if (!textContent) {
+                    showFeedback('warning', 'Please enter a message before sending your broadcast.');
+                    broadcastEditor.focus();
+                    return;
+                }
+                
+                // Validate character limit
+                if (textContent.length > 1000) {
+                    showFeedback('warning', 'Message exceeds 1000 character limit. Please shorten your message.');
+                    broadcastEditor.focus();
+                    return;
+                }
+            } else {
+                // Fallback to textarea if TinyMCE isn't loaded
+                messageContent = messageInput.value.trim();
+                if (!messageContent) {
+                    showFeedback('warning', 'Please enter a message before sending your broadcast.');
+                    messageInput.focus();
+                    return;
+                }
             }
 
             if (scopeSelect.value === 'specific' && recipientSelect.val().length === 0) {
@@ -869,7 +1247,7 @@
                 credentials: 'include',
                 body: JSON.stringify({
                     title: titleInput.value || null,
-                    message: messageInput.value,
+                    message: messageContent,
                     scope: scopeSelect.value,
                     recipient_ids: scopeSelect.value === 'specific' ? recipientSelect.val() : [],
                 }),
@@ -883,9 +1261,21 @@
                 })
                 .then((payload) => {
                     showFeedback('success', 'Broadcast sent successfully.');
+                    
+                    // Reset form
                     composeForm.reset();
+                    
+                    // Reset TinyMCE editor
+                    if (broadcastEditor) {
+                        broadcastEditor.setContent('');
+                        updateCharCount(broadcastEditor);
+                    }
+                    
+                    // Reset recipient select
                     recipientSelect.val(null).trigger('change');
                     toggleRecipientsVisibility();
+                    
+                    // Reload history
                     loadHistory();
                 })
                 .catch((error) => {
@@ -897,22 +1287,70 @@
                 });
         });
 
+        // Event delegation for history table actions (view and delete)
         historyBody.addEventListener('click', (event) => {
-            const button = event.target.closest('[data-action="view-broadcast"]');
-            if (!button) {
-                return;
+            const viewButton = event.target.closest('[data-action="view-broadcast"]');
+            const deleteButton = event.target.closest('[data-action="delete-broadcast"]');
+            
+            if (viewButton) {
+                const batchUuid = viewButton.getAttribute('data-batch');
+                if (batchUuid) {
+                    loadBroadcastDetails(batchUuid);
+                    detailModal.modal('show');
+                }
             }
-            const batchUuid = button.getAttribute('data-batch');
-            if (!batchUuid) {
-                return;
+            
+            if (deleteButton) {
+                const batchUuid = deleteButton.getAttribute('data-batch');
+                if (batchUuid) {
+                    deleteBroadcast(batchUuid);
+                }
             }
-            loadBroadcastDetails(batchUuid);
-            detailModal.modal('show');
+        });
+
+        // Event delegation for "My Sent" table
+        const mySentBody = document.getElementById('my-sent-body');
+        if (mySentBody) {
+            mySentBody.addEventListener('click', (event) => {
+                const viewButton = event.target.closest('[data-action="view-broadcast"]');
+                const deleteButton = event.target.closest('[data-action="delete-broadcast"]');
+                
+                if (viewButton) {
+                    const batchUuid = viewButton.getAttribute('data-batch');
+                    if (batchUuid) {
+                        loadBroadcastDetails(batchUuid);
+                        detailModal.modal('show');
+                    }
+                }
+                
+                if (deleteButton) {
+                    const batchUuid = deleteButton.getAttribute('data-batch');
+                    if (batchUuid) {
+                        deleteBroadcast(batchUuid);
+                    }
+                }
+            });
+        }
+
+        // Tab switching event listeners
+        $('#all-broadcasts-tab').on('shown.bs.tab', function() {
+            loadHistory();
+        });
+
+        $('#my-sent-tab').on('shown.bs.tab', function() {
+            loadMySent();
+        });
+
+        $('#my-read-tab').on('shown.bs.tab', function() {
+            loadMyRead();
         });
 
         refreshBtn.addEventListener('click', (event) => {
             event.preventDefault();
+            // Reload all tabs
             loadHistory();
+            loadMySent();
+            loadMyRead();
         });
 
         // Active Users Event Listeners
@@ -974,32 +1412,107 @@
             });
         });
 
-        scopeSelect.addEventListener('change', toggleRecipientsVisibility);
-
-        recipientSelect.select2({
-            width: '100%',
-            placeholder: recipientSelect.data('placeholder') || 'Select recipients',
-            minimumInputLength: 1,
-            ajax: {
-                url: '/getassigneeajax',
-                dataType: 'json',
-                delay: 250,
-                data(params) {
-                    return {
-                        likevalue: params.term || '',
-                    };
-                },
-                processResults(data) {
-                    return {
-                        results: (data || []).map((item) => ({
-                            id: item.id,
-                            text: item.assignee || item.agent_id || `User #${item.id}`,
-                        })),
-                    };
-                },
-                cache: true,
-            },
+        scopeSelect.addEventListener('change', function() {
+            toggleRecipientsVisibility();
+            
+            // Re-initialize Select2 when dropdown becomes visible to fix width/position issues
+            if (scopeSelect.value === 'specific' && !recipientSelect.data('select2-initialized')) {
+                initializeRecipientSelect();
+            }
         });
+
+        function initializeRecipientSelect() {
+            console.log('🔧 Initializing recipient Select2 dropdown...');
+            
+            recipientSelect.select2({
+                width: '100%',
+                placeholder: recipientSelect.data('placeholder') || 'Select recipients',
+                minimumInputLength: 0,  // Allow showing all users when clicking dropdown
+                ajax: {
+                    url: '/getassigneeajax',
+                    dataType: 'json',
+                    delay: 250,
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    data(params) {
+                        return {
+                            likevalue: params.term || '',
+                        };
+                    },
+                    processResults(data, params) {
+                        // Handle both array and object responses with error handling
+                        let items = [];
+                        
+                        if (Array.isArray(data)) {
+                            items = data;
+                        } else if (data && Array.isArray(data.data)) {
+                            items = data.data;
+                        } else if (data && data.error) {
+                            console.error('Error loading recipients:', data.error);
+                            return { results: [] };
+                        } else {
+                            console.warn('Unexpected response format:', data);
+                            return { results: [] };
+                        }
+                        
+                        return {
+                            results: items.map((item) => ({
+                                id: item.id,
+                                text: item.assignee || item.agent_id || `User #${item.id}`,
+                            })),
+                        };
+                    },
+                    transport: function(params, success, failure) {
+                        // Custom transport to handle authentication and errors properly
+                        const requestParams = params.data;
+                        const url = params.url + '?' + new URLSearchParams(requestParams).toString();
+                        
+                        fetch(url, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            credentials: 'include',
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                if (response.status === 419) {
+                                    throw new Error('CSRF token mismatch. Please refresh the page.');
+                                } else if (response.status === 401) {
+                                    throw new Error('Authentication required. Please log in again.');
+                                } else {
+                                    throw new Error(`HTTP ${response.status}: Unable to load staff list.`);
+                                }
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('✅ Recipients loaded:', data);
+                            success(data);
+                        })
+                        .catch(error => {
+                            console.error('❌ Failed to load recipients:', error);
+                            failure();
+                            
+                            // Show user-friendly error
+                            if (error.message.includes('CSRF')) {
+                                showFeedback('danger', 'Session expired. Please refresh the page.');
+                            } else if (error.message.includes('Authentication')) {
+                                showFeedback('danger', 'Please log in again to continue.');
+                            }
+                        });
+                        
+                        return { abort: () => {} };
+                    },
+                    cache: true,
+                },
+            });
+            
+            recipientSelect.data('select2-initialized', true);
+        }
 
         toggleRecipientsVisibility();
         loadHistory();
@@ -1012,6 +1525,160 @@
 <style>
     .broadcast-subtitle {
         color: #4a5568;
+    }
+
+    /* Broadcast History Header Improvements */
+    .broadcast-count-badge {
+        background-color: rgba(255, 255, 255, 0.95) !important;
+        color: #005792 !important;
+        font-weight: 600 !important;
+        border: 1px solid rgba(0, 87, 146, 0.2) !important;
+        padding: 0.4rem 0.75rem !important;
+    }
+
+    .broadcast-refresh-btn {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.5) !important;
+        color: #ffffff !important;
+        font-weight: 500 !important;
+        transition: all 0.2s ease;
+    }
+
+    .broadcast-refresh-btn:hover {
+        background-color: rgba(255, 255, 255, 0.95) !important;
+        border-color: #ffffff !important;
+        color: #005792 !important;
+        transform: translateY(-1px);
+    }
+
+    .broadcast-refresh-btn:active {
+        transform: translateY(0);
+    }
+
+    /* Message text readability */
+    .broadcast-message-text {
+        color: #495057 !important;
+        font-size: 0.9375rem;
+    }
+
+    /* History tabs styling */
+    #history-tabs .nav-link {
+        color: #6c757d;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        margin: 0 0.25rem;
+        transition: all 0.2s ease;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    #history-tabs .nav-link:hover {
+        background-color: rgba(0, 87, 146, 0.1);
+        color: #005792;
+    }
+
+    #history-tabs .nav-link.active {
+        background-color: #005792;
+        color: #ffffff;
+    }
+
+    #history-tabs .nav-link i {
+        font-size: 0.875rem;
+    }
+
+    /* Delete button styling */
+    .btn-outline-danger.btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .btn-outline-danger.btn-sm:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+    }
+
+    /* TinyMCE Editor Styling */
+    .tox-tinymce {
+        border: 1px solid #e4e6fc !important;
+        border-radius: 8px !important;
+        overflow: hidden;
+    }
+
+    .tox .tox-toolbar {
+        background: #f8f9fa !important;
+        border-bottom: 1px solid #e4e6fc !important;
+    }
+
+    .tox .tox-edit-area__iframe {
+        background-color: #ffffff !important;
+    }
+
+    .tox .tox-statusbar {
+        border-top: 1px solid #e4e6fc !important;
+        background: #f8f9fa !important;
+    }
+
+    #broadcast-char-count {
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: color 0.2s ease;
+    }
+
+    /* Broadcast message display in history */
+    .broadcast-message-text {
+        color: #495057 !important;
+        font-size: 0.9375rem;
+        line-height: 1.5;
+    }
+
+    .broadcast-message-text p {
+        margin-bottom: 0.5rem;
+    }
+
+    .broadcast-message-text ul,
+    .broadcast-message-text ol {
+        margin-left: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .broadcast-message-text strong {
+        font-weight: 600;
+    }
+
+    .broadcast-message-text a {
+        color: #005792;
+        text-decoration: underline;
+    }
+
+    /* Modal message display */
+    #broadcast-detail-message {
+        line-height: 1.6;
+        color: #495057;
+    }
+
+    #broadcast-detail-message p {
+        margin-bottom: 0.5rem;
+    }
+
+    #broadcast-detail-message ul,
+    #broadcast-detail-message ol {
+        margin-left: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+
+    #broadcast-detail-message strong {
+        font-weight: 600;
+    }
+
+    #broadcast-detail-message a {
+        color: #005792;
+        text-decoration: underline;
+    }
+
+    #broadcast-detail-title {
+        font-size: 1.25rem;
+        color: #2d3748;
+        margin-bottom: 1rem;
     }
 
     /* ============================================

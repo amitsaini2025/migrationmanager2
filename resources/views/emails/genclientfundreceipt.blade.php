@@ -21,7 +21,7 @@
 			.company-info {
 				font-size: 14px;
 				line-height: 1.8;
-				color: #555;
+				color: #1f2937;
 				margin-top: 10px;
 			}
 			.company-name {
@@ -40,10 +40,10 @@
 			.document-info {
 				font-size: 14px;
 				line-height: 1.9;
-				color: #555;
+				color: #1f2937;
 			}
 			.document-info b {
-				color: #333;
+				color: #111827;
 				font-weight: 600;
 			}
 			.section-title {
@@ -69,11 +69,11 @@
 			.bill-to-content {
 				font-size: 14px;
 				line-height: 1.7;
-				color: #555;
+				color: #1f2937;
 			}
 			.matter-info {
 				font-size: 14px;
-				color: #555;
+				color: #1f2937;
 				margin: 10px 0;
 			}
 			.reference-box {
@@ -123,7 +123,7 @@
 			.ledger-table tbody td {
 				padding: 12px 10px;
 				font-size: 13px;
-				color: #555;
+				color: #1a1a1a;
 			}
 			.ledger-table tbody td:nth-child(4) {
 				text-align: right;
@@ -141,7 +141,7 @@
 				margin: 0 0 12px 0;
 				font-size: 14px;
 				line-height: 1.7;
-				color: #555;
+				color: #1a1a1a;
 			}
 			.payment-instructions p:last-child {
 				margin-bottom: 0;
@@ -272,7 +272,7 @@
                     <tr>
                         <td colspan="2">
                             <div style="text-align: right; padding: 15px; background: #f0f8ff; border-radius: 6px; margin-top: 10px;">
-                                <div style="font-size: 13px; color: #555; margin-bottom: 3px;">Total Amount Received</div>
+                                <div style="font-size: 13px; color: #1a1a1a; margin-bottom: 3px;">Total Amount Received</div>
                                 <div style="font-size: 20px; font-weight: 700; color: #2e7d32;">
                                     ${{number_format($record_get->deposit_amount,2)}}
                                 </div>
@@ -281,8 +281,8 @@
                     </tr>
 					<tr>
 						<td colspan="2">
-							<div style="background: #f0f8ff; border-left: 4px solid #3abaf4; padding: 15px; margin-top: 20px; font-size: 13px; color: #555;">
-								<p style="margin: 0;"><strong style="color: #333;">Receipt Acknowledgement:</strong> This receipt confirms that we have received the above amount into our Client Trust Account for matter <strong>{{ $client_matter_no }}</strong>. These funds will be applied to your matter as professional fees, disbursements, and charges are incurred.</p>
+							<div style="background: #f0f8ff; border-left: 4px solid #3abaf4; padding: 15px; margin-top: 20px; font-size: 13px; color: #1f2937;">
+								<p style="margin: 0;"><strong style="color: #111827;">Receipt Acknowledgement:</strong> This receipt confirms that we have received the above amount into our Client Trust Account for matter <strong>{{ $client_matter_no }}</strong>. These funds will be applied to your matter as professional fees, disbursements, and charges are incurred.</p>
 							</div>
 						</td>
 					</tr>

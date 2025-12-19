@@ -30,6 +30,7 @@ class Document extends Model
         'folder_name',
         'mail_type',
         'client_matter_id',
+        'office_id',
         'checklist',
         'checklist_verified_by',
         'checklist_verified_at',
@@ -97,6 +98,16 @@ class Document extends Model
         return $this->belongsTo(Admin::class, 'created_by');
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(Admin::class, 'user_id');
+    }
+
+    public function verifiedBy(): BelongsTo
+    {
+        return $this->belongsTo(Admin::class, 'checklist_verified_by');
+    }
+
     public function documentable(): MorphTo
     {
         return $this->morphTo();
@@ -105,6 +116,16 @@ class Document extends Model
     public function notes(): HasMany
     {
         return $this->hasMany(DocumentNote::class)->orderBy('created_at', 'desc');
+    }
+
+    public function clientMatter(): BelongsTo
+    {
+        return $this->belongsTo(ClientMatter::class, 'client_matter_id');
+    }
+
+    public function office(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'office_id');
     }
 
     // Scopes
@@ -141,37 +162,71 @@ class Document extends Model
      */
     public function scopeVisible($query, $user)
     {
-        // Super admins can see everything
-        if ($user->role === 1) {
-            return $query;
-        }
+        // Global access - everyone can see all documents
+        return $query;
+    }
 
-        return $query->where(function($q) use ($user) {
-            // Documents created by the user
-            $q->where('created_by', $user->id)
-              // Documents where user is a signer
-              ->orWhereHas('signers', function($signerQuery) use ($user) {
-                  $signerQuery->where('email', $user->email);
-              })
-              // Documents associated with entities the user owns/manages
-              ->orWhere(function($assocQuery) use ($user) {
-                  $assocQuery->where(function($adminDocs) use ($user) {
-                      // Admin (client) associations
-                      $adminDocs->where('documentable_type', Admin::class)
-                                ->where('documentable_id', $user->id);
-                  })
-                  ->orWhere(function($leadDocs) use ($user) {
-                      // Lead associations where user is the owner
-                      $leadDocs->where('documentable_type', Lead::class)
-                               ->whereHas('documentable', function($leadQuery) use ($user) {
-                                   $leadQuery->where('user_id', $user->id);
-                               });
-                  });
+    /**
+     * Scope to show only signature workflow documents
+     * Excludes client file uploads which don't have created_by set
+     */
+    public function scopeForSignatureWorkflow($query)
+    {
+        return $query->whereNotNull('created_by');
+    }
+
+    /**
+     * Scope to filter documents by office (includes matter-derived)
+     */
+    public function scopeByOffice($query, $officeId)
+    {
+        return $query->where(function($q) use ($officeId) {
+            // Direct office assignment (ad-hoc docs)
+            $q->where('documents.office_id', $officeId)
+              // Or via client matter
+              ->orWhereHas('clientMatter', function($mq) use ($officeId) {
+                  $mq->where('office_id', $officeId);
               });
         });
     }
 
     // Accessors
+    
+    /**
+     * Get resolved office (from matter or direct assignment)
+     */
+    public function getResolvedOfficeAttribute()
+    {
+        // Priority 1: From client matter
+        if ($this->client_matter_id && $this->clientMatter) {
+            return $this->clientMatter->office;
+        }
+        
+        // Priority 2: Direct assignment (ad-hoc docs)
+        if ($this->office_id && $this->office) {
+            return $this->office;
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get resolved office ID
+     */
+    public function getResolvedOfficeIdAttribute()
+    {
+        return $this->resolved_office?->id;
+    }
+
+    /**
+     * Get resolved office name
+     */
+    public function getResolvedOfficeNameAttribute()
+    {
+        return $this->resolved_office?->office_name ?? 'No Office';
+    }
+
+    // Existing Accessors
     public function getDisplayTitleAttribute()
     {
         return $this->title ?: $this->file_name;

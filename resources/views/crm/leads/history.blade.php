@@ -580,6 +580,7 @@ $(document).delegate('.editnote', 'click', function(){
                         tinymce.init({
                             license_key: 'gpl',
                             selector: '#' + editorId,
+                            license_key: 'gpl',
                             height: 150,
                             menubar: false,
                             plugins: ['lists', 'link', 'autolink'],

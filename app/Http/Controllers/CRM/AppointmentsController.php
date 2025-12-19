@@ -1108,11 +1108,18 @@ public function update_apppointment_comment(Request $request){
             if(isset($requestData['inperson_address']) && $requestData['inperson_address'] != ""){
                 if($requestData['inperson_address'] == 1){
                     $inperson_address = "ADELAIDE (Unit 5 5/55 Gawler Pl, Adelaide SA 5000)";
+                    $contact_phone = "08 8317 1340"; // Adelaide phone number
                 } else if($requestData['inperson_address'] == 2){
                     $inperson_address = "MELBOURNE (Next to flight Center, Level 8/278 Collins St, Melbourne VIC 3000, Australia)";
+                    $contact_phone = "03 9602 1330"; // Melbourne phone number
+                } else {
+                    $inperson_address = "MELBOURNE (Next to flight Center, Level 8/278 Collins St, Melbourne VIC 3000, Australia)";
+                    $contact_phone = "03 9602 1330"; // Default to Melbourne
                 }
             } else {
-                $inperson_address = "";
+                
+                $inperson_address = "MELBOURNE (Next to flight Center, Level 8/278 Collins St, Melbourne VIC 3000, Australia)";
+                $contact_phone = "03 9602 1330"; // Default to Melbourne
             }
 
             $details = [
@@ -1129,6 +1136,7 @@ public function update_apppointment_comment(Request $request){
                 'appointment_id'=> $bookingAppointment->id,  //booking appointment id
                 'appointment_details'=> $appointment_details,
                 'inperson_address'=> $inperson_address,
+                'contact_phone'=> $contact_phone, // Location-based phone number
                 'service_type'=> $request->service_id,
                 'client_id'=> $request->client_id,
                 'preferred_language'=> $request->preferred_language

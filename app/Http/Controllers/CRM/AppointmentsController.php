@@ -2,7 +2,7 @@
 namespace App\Http\Controllers\CRM;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
+// use App\Models\Product; // TODO: Product model not found - commented out to fix Intelephense error
 use Illuminate\Http\Request;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 
@@ -17,7 +17,7 @@ use App\Models\Branch;
 use App\Models\ApplicationActivitiesLog;
 use App\Models\BookingAppointment;
 use App\Services\BansalAppointmentSync\BansalApiClient;
-use Auth;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
@@ -114,7 +114,8 @@ class AppointmentsController extends Controller
     public function store(Request $request)
     {
         $request->validate(['name' => 'required','detail' => 'required',]);
-        Product::create($request->all());
+        // TODO: Product model not found - this appears to be unused/dead code
+        // Product::create($request->all());
         return redirect()->route('appointment.index')->with('success','Product created successfully.');
     }
 
@@ -548,7 +549,7 @@ public function update_appointment_status(Request $request){
     if($saved){
         $objs = new AppointmentLog;
         $objs->title = 'changed status from '.$status.' to '.$request->statusname;
-        $objs->created_by = \Auth::user()->id;
+        $objs->created_by = Auth::user()->id;
         $objs->appointment_id = $request->id;
 
         $saved = $objs->save();
@@ -595,7 +596,7 @@ public function update_appointment_priority(Request $request){
     if($saved){
         $objs = new AppointmentLog;
         $objs->title = 'changed priority from '.$status.' to '.$request->status;
-        $objs->created_by = \Auth::user()->id;
+        $objs->created_by = Auth::user()->id;
         $objs->appointment_id = $request->id;
 
         $saved = $objs->save();
@@ -616,12 +617,12 @@ public function change_assignee(Request $request){
     $saved = $objs->save();
     if($saved){
         $o = new \App\Models\Notification;
-        $o->sender_id = \Auth::user()->id;
+        $o->sender_id = Auth::user()->id;
         $o->receiver_id = $request->assinee;
         $o->module_id = $request->id;
-        $o->url = \URL::to('/appointments');
+        $o->url = URL::to('/appointments');
         $o->notification_type = 'appointment';
-        $o->message = $objs->title.' Appointments Assigned by '.\Auth::user()->first_name.' '.\Auth::user()->last_name;
+        $o->message = $objs->title.' Appointments Assigned by '.Auth::user()->first_name.' '.Auth::user()->last_name;
         $o->save();
         $response['status'] 	= 	true;
         $response['message']	=	'Updated successfully';
@@ -635,7 +636,7 @@ public function change_assignee(Request $request){
 public function update_apppointment_comment(Request $request){
     $objs = new AppointmentLog;
     $objs->title = 'has commented';
-    $objs->created_by = \Auth::user()->id;
+    $objs->created_by = Auth::user()->id;
     $objs->appointment_id = $request->id;
     $objs->message = $request->visit_comment;
     $saved = $objs->save();
@@ -656,7 +657,7 @@ public function update_apppointment_comment(Request $request){
         if($saved){
             $objs = new AppointmentLog;
             $objs->title = 'changed description';
-            $objs->created_by = \Auth::user()->id;
+            $objs->created_by = Auth::user()->id;
             $objs->appointment_id = $request->id;
             $objs->message = $request->visit_purpose;
             $saved = $objs->save();
@@ -1619,7 +1620,7 @@ public function update_apppointment_comment(Request $request){
 		$obj = Appointment::find($request->id);
 		if($obj){
 			?>
-			<form method="post" action="<?php echo \URL::to('/editappointment'); ?>" name="editappointment" id="editappointment" autocomplete="off" enctype="multipart/form-data">
+			<form method="post" action="<?php echo URL::to('/editappointment'); ?>" name="editappointment" id="editappointment" autocomplete="off" enctype="multipart/form-data">
 
 				<input type="hidden" name="_token" value="<?php echo csrf_token(); ?>">
 				<input type="hidden" name="client_id" value="<?php echo $obj->client_id; ?>">

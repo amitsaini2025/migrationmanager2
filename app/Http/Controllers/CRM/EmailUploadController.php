@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\QueryException;
 use App\Models\Document;
 use App\Models\MailReport;
 use App\Models\ActivitiesLog;
@@ -291,7 +292,20 @@ class EmailUploadController extends Controller
             $document->client_matter_id = $mailType === 'sent' 
                 ? $request->upload_sent_mail_client_matter_id 
                 : $request->upload_inbox_mail_client_matter_id;
-            $document->save();
+            // Email documents don't have signers, so set signer_count to 0
+            $document->signer_count = 0;
+            
+            try {
+                $document->save();
+            } catch (QueryException $e) {
+                Log::error('Failed to save Document record', [
+                    'file' => $fileName,
+                    'document_data' => $document->toArray(),
+                    'error' => $e->getMessage(),
+                    'error_info' => $e->errorInfo ?? []
+                ]);
+                throw new \Exception('Failed to save document record: ' . ($e->errorInfo[2] ?? $e->getMessage()));
+            }
 
             // 4. Save to MailReport
             $mailReport = new MailReport();
@@ -303,6 +317,7 @@ class EmailUploadController extends Controller
             $mailReport->subject = $parsedData['subject'] ?? '';
             $mailReport->message = $parsedData['html_content'] ?? $parsedData['text_content'] ?? '';
             $mailReport->mail_type = 1;
+            $mailReport->type = $request->type; // Set type to 'client' or 'lead' as required by filter
             $mailReport->client_id = $clientId;
             $mailReport->conversion_type = $docType;
             $mailReport->mail_body_type = $mailType;
@@ -338,13 +353,19 @@ class EmailUploadController extends Controller
             // NEW: Add Python AI analysis
             $analysisData = $this->analyzeEmailWithPython($parsedData);
             if ($analysisData && isset($analysisData['success']) && $analysisData['success']) {
-                $mailReport->python_analysis = $analysisData;
+                // Ensure JSON fields are properly formatted arrays (not objects or strings)
+                $mailReport->python_analysis = is_array($analysisData) ? $analysisData : null;
                 $mailReport->category = $analysisData['category'] ?? 'Uncategorized';
                 $mailReport->priority = $analysisData['priority'] ?? 'low';
                 $mailReport->sentiment = $analysisData['sentiment'] ?? 'neutral';
                 $mailReport->language = $analysisData['language'] ?? null;
-                $mailReport->security_issues = $analysisData['security_issues'] ?? null;
-                $mailReport->thread_info = $analysisData['thread_info'] ?? null;
+                // Ensure these are arrays or null for JSON columns
+                $mailReport->security_issues = isset($analysisData['security_issues']) 
+                    ? (is_array($analysisData['security_issues']) ? $analysisData['security_issues'] : null)
+                    : null;
+                $mailReport->thread_info = isset($analysisData['thread_info'])
+                    ? (is_array($analysisData['thread_info']) ? $analysisData['thread_info'] : null)
+                    : null;
                 $mailReport->processed_at = now();
             }
             
@@ -373,7 +394,19 @@ class EmailUploadController extends Controller
             
             $mailReport->file_hash = md5_file($file->getRealPath());
             
-            $mailReport->save();
+            try {
+                $mailReport->save();
+            } catch (QueryException $e) {
+                Log::error('Failed to save MailReport record', [
+                    'file' => $fileName,
+                    'document_id' => $document->id,
+                    'mail_report_data' => $mailReport->toArray(),
+                    'error' => $e->getMessage(),
+                    'error_info' => $e->errorInfo ?? [],
+                    'sql' => $e->getSql() ?? 'N/A'
+                ]);
+                throw new \Exception('Failed to save email record: ' . ($e->errorInfo[2] ?? $e->getMessage()));
+            }
 
             // NEW: Save attachments
             if (isset($parsedData['attachments']) && is_array($parsedData['attachments'])) {
@@ -463,6 +496,43 @@ class EmailUploadController extends Controller
                 'mail_report_id' => $mailReport->id
             ];
 
+        } catch (\Illuminate\Database\QueryException $e) {
+            $errorMessage = $e->getMessage();
+            $fileName = $file->getClientOriginalName();
+            
+            // Extract more specific database error information
+            $errorCode = $e->getCode();
+            $errorInfo = $e->errorInfo ?? [];
+            
+            // PostgreSQL specific errors
+            if (isset($errorInfo[0]) && $errorInfo[0] === '23502') {
+                $errorMessage = "Database constraint error: Required field is missing. Please check the email data.";
+            } elseif (isset($errorInfo[0]) && $errorInfo[0] === '23505') {
+                $errorMessage = "Duplicate entry: This email may already exist in the database.";
+            } elseif (isset($errorInfo[0]) && $errorInfo[0] === '22P02' || strpos($errorMessage, 'invalid input syntax') !== false) {
+                $errorMessage = "Data format error: Invalid data format for one or more fields. The email may contain invalid characters or formatting.";
+            } elseif (strpos($errorMessage, 'json') !== false || strpos($errorMessage, 'JSON') !== false) {
+                $errorMessage = "JSON data error: Unable to save email metadata. Please try again or contact support.";
+            } else {
+                $errorMessage = "Database error: " . ($errorInfo[2] ?? $errorMessage);
+            }
+            
+            Log::error('Process email file database error', [
+                'file' => $fileName,
+                'error' => $e->getMessage(),
+                'error_code' => $errorCode,
+                'error_info' => $errorInfo,
+                'sql' => $e->getSql() ?? 'N/A',
+                'bindings' => $e->getBindings() ?? [],
+                'trace' => $e->getTraceAsString(),
+                'user_friendly_error' => $errorMessage
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $errorMessage,
+                'technical_error' => $e->getMessage() // Include original for debugging
+            ];
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage();
             $fileName = $file->getClientOriginalName();
@@ -481,6 +551,7 @@ class EmailUploadController extends Controller
             Log::error('Process email file error', [
                 'file' => $fileName,
                 'error' => $e->getMessage(),
+                'error_code' => $e->getCode(),
                 'trace' => $e->getTraceAsString(),
                 'user_friendly_error' => $errorMessage
             ]);

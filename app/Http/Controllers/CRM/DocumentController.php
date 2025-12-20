@@ -415,10 +415,18 @@ class DocumentController extends Controller
                 's3_path' => $s3FilePath
             ]);
             
-            // Upload to S3
+            // Upload to S3 (matching pattern from working examples in codebase)
             try {
-                Storage::disk('s3')->put($s3FilePath, $fileContents);
-                Log::info('S3 put command executed', ['s3_path' => $s3FilePath]);
+                $uploadResult = Storage::disk('s3')->put($s3FilePath, $fileContents);
+                
+                if ($uploadResult === false) {
+                    throw new \Exception("S3 upload returned false - upload may have failed");
+                }
+                
+                Log::info('S3 put command executed successfully', [
+                    's3_path' => $s3FilePath,
+                    'result' => $uploadResult
+                ]);
             } catch (\Exception $s3Exception) {
                 Log::error('S3 upload failed', [
                     'error' => $s3Exception->getMessage(),
@@ -431,15 +439,8 @@ class DocumentController extends Controller
                 throw $s3Exception;
             }
             
-            // Verify upload succeeded
-            if (!Storage::disk('s3')->exists($s3FilePath)) {
-                throw new \Exception("File upload to S3 failed - file does not exist at path: {$s3FilePath}");
-            }
-            
-            Log::info('S3 upload verified', ['s3_path' => $s3FilePath, 'exists' => true]);
-            
-            // Construct S3 URL manually (more reliable than using url() method)
-            $s3Url = "https://{$bucket}.s3.{$region}.amazonaws.com/{$s3FilePath}";
+            // Get S3 URL using Laravel's url() method (matches working examples)
+            $s3Url = Storage::disk('s3')->url($s3FilePath);
             
             // Update document with S3 file information
             $document->update([

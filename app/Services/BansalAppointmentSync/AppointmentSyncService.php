@@ -624,6 +624,7 @@ class AppointmentSyncService
             'description' => $description,
             'activity_type' => 'activity',
             'task_status' => 0,
+            'pin' => 0,
         ]);
     }
 }

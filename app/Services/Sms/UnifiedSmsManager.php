@@ -219,6 +219,7 @@ class UnifiedSmsManager
                 'sms_log_id' => $smsLog->id,
                 'activity_type' => 'sms',
                 'task_status' => 0,
+                'pin' => 0,
             ]);
         }
 

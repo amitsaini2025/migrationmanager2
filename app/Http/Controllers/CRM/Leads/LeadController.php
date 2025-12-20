@@ -439,6 +439,7 @@ class LeadController extends Controller
                         'contact_type' => $contactType,
                         'phone' => $primaryPhone,
                         'country_code' => $countryCode,
+                        'is_verified' => false,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
@@ -453,6 +454,7 @@ class LeadController extends Controller
                         'client_id' => $admin->id,
                         'email_type' => $emailType,
                         'email' => $primaryEmail,
+                        'is_verified' => false,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
@@ -772,7 +774,8 @@ class LeadController extends Controller
                                 'client_id' => $lead->id,
                                 'contact_type' => $contactType,
                                 'phone' => $phone,
-                                'country_code' => $countryCode
+                                'country_code' => $countryCode,
+                                'is_verified' => false
                             ]);
                             $processedPhoneIds[] = $newContact->id;
                         }
@@ -813,7 +816,8 @@ class LeadController extends Controller
                                 'admin_id' => Auth::user()->id,
                                 'client_id' => $lead->id,
                                 'email_type' => $emailType,
-                                'email' => $email
+                                'email' => $email,
+                                'is_verified' => false
                             ]);
                             $processedEmailIds[] = $newEmail->id;
                         }

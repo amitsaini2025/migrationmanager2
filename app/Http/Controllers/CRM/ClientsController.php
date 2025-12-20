@@ -851,6 +851,7 @@ class ClientsController extends Controller
                             'contact_type' => $contact_type,
                             'country_code' => $validated['country_code'][$index] ?? null,
                             'phone' => $phoneToSave,
+                            'is_verified' => false,
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
@@ -874,6 +875,7 @@ class ClientsController extends Controller
                             'admin_id' => Auth::user()->id,
                             'email_type' => $email_type,
                             'email' => $emailToSave,
+                            'is_verified' => false,
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
@@ -1031,6 +1033,9 @@ class ClientsController extends Controller
                                 ? date('Y-m-d', strtotime(str_replace('/', '-', $validated['finish_date'][$index])))
                                 : null,
                             'relevant_qualification' => isset($validated['relevant_qualification_hidden'][$index]) ? 1 : 0,
+                            'specialist_education' => 0,
+                            'stem_qualification' => 0,
+                            'regional_study' => 0,
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
@@ -1058,6 +1063,7 @@ class ClientsController extends Controller
                             'job_emp_name' => $requestData['job_emp_name'][$index] ?? null,
                             'job_state' => $requestData['job_state'][$index] ?? null,
                             'job_type' => $requestData['job_type'][$index] ?? null,
+                            'fte_multiplier' => 1.00,
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
@@ -2522,7 +2528,8 @@ class ClientsController extends Controller
                                     'client_id' => $obj->id,
                                     'contact_type' => $contactType,
                                     'phone' => $phoneToSave,
-                                    'country_code' => $country_code
+                                    'country_code' => $country_code,
+                                    'is_verified' => false
                                 ]);
                             }
                         }
@@ -2627,7 +2634,8 @@ class ClientsController extends Controller
                                     'admin_id' => Auth::user()->id,
                                     'client_id' => $obj->id,
                                     'email_type' => $emailType,
-                                    'email' => $emailToSave
+                                    'email' => $emailToSave,
+                                    'is_verified' => false
                                 ]);
                             }
                         }
@@ -3120,7 +3128,10 @@ class ClientsController extends Controller
                                 'qual_state' => $qual_state,
                                 'start_date' => $formatted_start_date, // Use the formatted date
                                 'finish_date' => $formatted_finish_date, // Use the formatted date
-                                'relevant_qualification' => $relevant_qualification
+                                'relevant_qualification' => $relevant_qualification,
+                                'specialist_education' => 0,
+                                'stem_qualification' => 0,
+                                'regional_study' => 0
                             ]);
                         }
                     }
@@ -3195,7 +3206,8 @@ class ClientsController extends Controller
                                 'relevant_experience' => $jobRelevantExp,
                                 'job_emp_name' => $job_emp_name,
                                 'job_state' => $job_state,
-                                'job_type' => $job_type
+                                'job_type' => $job_type,
+                                'fte_multiplier' => 1.00
                             ]);
                         }
                     }
@@ -3983,7 +3995,8 @@ class ClientsController extends Controller
                         'client_id' => $client->id,
                         'contact_type' => $phoneData['contact_type'],
                         'country_code' => $phoneData['country_code'] ?? '',
-                        'phone' => $phoneData['phone']
+                        'phone' => $phoneData['phone'],
+                        'is_verified' => false
                     ]);
                 }
             }
@@ -4024,7 +4037,8 @@ class ClientsController extends Controller
                     ClientEmail::create([
                         'client_id' => $client->id,
                         'email_type' => $emailData['email_type'],
-                        'email' => $emailData['email']
+                        'email' => $emailData['email'],
+                        'is_verified' => false
                     ]);
                     
                     // Set primary email for admins table update
@@ -4287,7 +4301,10 @@ class ClientsController extends Controller
                                 'qual_state' => $qual_state,
                                 'start_date' => $formatted_start_date,
                                 'finish_date' => $formatted_finish_date,
-                                'relevant_qualification' => $relevant_qualification
+                                'relevant_qualification' => $relevant_qualification,
+                                'specialist_education' => 0,
+                                'stem_qualification' => 0,
+                                'regional_study' => 0
                             ]);
                         }
                     }
@@ -5162,6 +5179,7 @@ class ClientsController extends Controller
 				$objs->created_by = Auth::user()->id;
 				$objs->subject = $subject;
 				$objs->task_status = 0;
+				$objs->pin = 0;
 				$objs->save();
 				$response['status'] 	= 	true;
 				$response['message']	=	'You’ve successfully updated your client’s information.';
@@ -5209,6 +5227,7 @@ class ClientsController extends Controller
 				$objs->description = '<span class="text-semi-bold">'.@$productdetail->name.'</span><p>'.@$partnerdetail->partner_name.' ('.@$PartnerBranch->name.')</p>';
 				$objs->subject = $subject;
 				$objs->task_status = 0;
+				$objs->pin = 0;
 				$objs->save();
 				$response['status'] 	= 	true;
 				$response['message']	=	'You’ve successfully updated your client’s information.';
@@ -8429,6 +8448,7 @@ class ClientsController extends Controller
                 $objs->subject = 'Set action for ' . $assigneeName;
                 $objs->description = '<span class="text-semi-bold">' . @$requestData['remindersubject'] . '</span><p>' . @$requestData['description'] . '</p>';
                 $objs->task_status = 0;
+                $objs->pin = 0;
 
                 if (Auth::user()->id != $assigneeId) {
                     $objs->use_for = $assigneeId;
@@ -8805,6 +8825,7 @@ class ClientsController extends Controller
             $activityLog->created_by = Auth::id();
             $activityLog->subject = $activitySubject;
             $activityLog->task_status = 0;
+            $activityLog->pin = 0;
             $activityLog->save();
             
             return response()->json([

@@ -345,6 +345,7 @@ class SignatureService
                     'subject' => "Document #{$document->id} attached",
                     'description' => $note ?? "Document '{$document->display_title}' was attached to this client",
                     'task_status' => 0,
+                    'pin' => 0,
                 ]);
             }
 
@@ -419,6 +420,7 @@ class SignatureService
                     'subject' => "Document #{$document->id} attached to {$docCategory} documents{$matterText}",
                     'description' => $note ?? "Document '{$document->display_title}' was attached to this client's {$docCategory} documents",
                     'task_status' => 0,
+                    'pin' => 0,
                 ]);
             }
 
@@ -481,6 +483,7 @@ class SignatureService
                     'subject' => "Document #{$document->id} detached",
                     'description' => $reason ?? "Document '{$document->display_title}' was detached from this client",
                     'task_status' => 0,
+                    'pin' => 0,
                 ]);
             }
 

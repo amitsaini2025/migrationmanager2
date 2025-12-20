@@ -25,6 +25,7 @@ trait LogsClientActivity
             'description' => $description,
             'activity_type' => $activityType,
             'task_status' => 0, // Default to 0 for non-task activities (PostgreSQL NOT NULL requirement)
+            'pin' => 0, // Default to 0 (false) for non-pinned activities (PostgreSQL NOT NULL requirement)
         ]);
     }
 

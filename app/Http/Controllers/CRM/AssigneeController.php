@@ -115,6 +115,7 @@ class AssigneeController extends Controller
                 $objs->followup_date = @$note_data['updated_at'];
                 $objs->task_group = @$note_data['task_group'];
                 $objs->task_status = 1; //maked completed
+                $objs->pin = 0;
                 $objs->save();
             }
             $response['status'] 	= 	true;
@@ -601,6 +602,7 @@ class AssigneeController extends Controller
             }
             $objs->followup_date = @$appointment->followup_datetime;
             $objs->task_group = @$appointment->task_group;
+            $objs->pin = 0;
             $objs->save();
             return redirect()->route('assignee.assigned_by_me')->with('success','Activity deleted successfully');
         }
@@ -640,6 +642,7 @@ class AssigneeController extends Controller
             }
             $objs->followup_date = @$appointment->followup_datetime;
             $objs->task_group = @$appointment->task_group;
+            $objs->pin = 0;
             $objs->save();
             echo json_encode(array('success' => true, 'message' => 'Activity deleted successfully'));
             exit;
@@ -672,6 +675,7 @@ class AssigneeController extends Controller
             }
             $objs->followup_date = @$appointment->followup_datetime;
             $objs->task_group = @$appointment->task_group;
+            $objs->pin = 0;
             $objs->save();
             return redirect()->route('assignee.action_completed')->with('success','Action deleted successfully');
         }
@@ -1074,6 +1078,7 @@ public function update_apppointment_description(Request $request){
                 $completionLog->followup_date = $currentTask->updated_at;
                 $completionLog->task_group = $currentTask->task_group;
                 $completionLog->task_status = 1; // Marked as completed
+                $completionLog->pin = 0;
                 $completionLog->save();
             }
 
@@ -1113,6 +1118,7 @@ public function update_apppointment_description(Request $request){
                 $newTaskLog->followup_date = $followupDate;
                 $newTaskLog->task_group = $validated['task_group'];
                 $newTaskLog->task_status = 0; // New task is incomplete
+                $newTaskLog->pin = 0;
                 $newTaskLog->save();
             }
 

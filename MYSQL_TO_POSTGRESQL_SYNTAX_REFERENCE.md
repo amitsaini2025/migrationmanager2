@@ -312,10 +312,37 @@ $objs->task_status = 0; // Required before save
 $objs->save();
 ```
 
-**Example from Codebase:**
-- **File:** `app/Traits/LogsClientActivity.php`
-- **Line 27:** Added `'task_status' => 0,` to ActivitiesLog::create()
-- **Files Fixed:** All files creating ActivitiesLog instances (40+ instances across 13 files)
+**Examples from Codebase:**
+
+1. **ActivitiesLog Table:**
+   - **File:** `app/Traits/LogsClientActivity.php`
+   - **Line 27:** Added `'task_status' => 0,` and `'pin' => 0,` to ActivitiesLog::create()
+   - **Files Fixed:** All files creating ActivitiesLog instances (40+ instances across 13 files)
+   - **Columns:** `task_status` (default: 0), `pin` (default: 0)
+
+2. **ClientEmail Table:**
+   - **File:** `app/Http/Controllers/CRM/ClientPersonalDetailsController.php`
+   - **Lines 980, 2010:** Added `'is_verified' => false` to ClientEmail::create()
+   - **Files Fixed:** All files creating ClientEmail instances (7 instances across 3 files)
+   - **Columns:** `is_verified` (default: false)
+
+3. **ClientContact Table:**
+   - **Files:** `app/Http/Controllers/CRM/ClientPersonalDetailsController.php`, `app/Http/Controllers/CRM/ClientsController.php`, `app/Http/Controllers/CRM/Leads/LeadController.php`, `app/Services/BansalAppointmentSync/ClientMatchingService.php`
+   - **Lines:** Multiple locations across 4 files
+   - **Files Fixed:** All files creating ClientContact instances (9 instances across 4 files)
+   - **Columns:** `is_verified` (default: false)
+
+4. **ClientQualification Table:**
+   - **Files:** `app/Http/Controllers/CRM/ClientPersonalDetailsController.php`, `app/Http/Controllers/CRM/ClientsController.php`
+   - **Lines:** Multiple locations across 2 files
+   - **Files Fixed:** All files creating ClientQualification instances (5 instances across 2 files)
+   - **Columns:** `specialist_education` (default: 0), `stem_qualification` (default: 0), `regional_study` (default: 0)
+
+5. **ClientExperience Table:**
+   - **Files:** `app/Http/Controllers/CRM/ClientPersonalDetailsController.php`, `app/Http/Controllers/CRM/ClientsController.php`
+   - **Lines:** Multiple locations across 2 files
+   - **Files Fixed:** All files creating ClientExperience instances (4 instances across 2 files)
+   - **Columns:** `fte_multiplier` (default: 1.00)
 
 **Safety:** 🔴 **CRITICAL** - Code missing NOT NULL column values will **fail immediately** in PostgreSQL with errors like:
 ```
@@ -335,6 +362,14 @@ of relation "activities_logs" violates not-null constraint
 - `Model::create([...])` - Add missing NOT NULL fields to the array
 - `new Model; $obj->field = value; $obj->save();` - Add `$obj->not_null_field = default_value;` before save
 - Mass assignment - Ensure `$fillable` array includes the NOT NULL field in the model
+
+**Known Tables with NOT NULL Columns:**
+- `activities_logs`: `task_status` (default: 0), `pin` (default: 0)
+- `client_emails`: `is_verified` (default: false)
+- `client_contacts`: `is_verified` (default: false)
+- `client_qualifications`: `specialist_education` (default: 0), `stem_qualification` (default: 0), `regional_study` (default: 0)
+- `client_experiences`: `fte_multiplier` (default: 1.00)
+- Check migration files for other tables with NOT NULL columns that have defaults
 
 ---
 
@@ -372,6 +407,11 @@ grep -r "whereRaw" app/
 grep -r "::create([" app/ | grep -v "task_status"
 grep -r "new ActivitiesLog" app/
 grep -r "new.*Log" app/ | grep -v "task_status"
+grep -r "ClientEmail::create" app/
+grep -r "ClientContact::create" app/
+grep -r "ClientQualification::create" app/
+grep -r "ClientExperience::create" app/
+grep -r "ActivitiesLog::create" app/
 ```
 
 ---
@@ -390,6 +430,11 @@ grep -r "new.*Log" app/ | grep -v "task_status"
 | `CONCAT(a, b)` | `a \|\| b` | 🟢 Low | Both work, `\|\|` preferred |
 | `Model::create([...])` missing NOT NULL fields | Add all NOT NULL fields to array | 🔴 Critical | PostgreSQL rejects NULL in NOT NULL columns |
 | `new Model; $obj->save()` missing NOT NULL | Set `$obj->not_null_field = value;` before save | 🔴 Critical | Same as above |
+| `ActivitiesLog::create()` missing `task_status`/`pin` | Add `'task_status' => 0, 'pin' => 0` | 🔴 Critical | activities_logs table |
+| `ClientEmail::create()` missing `is_verified` | Add `'is_verified' => false` | 🔴 Critical | client_emails table |
+| `ClientContact::create()` missing `is_verified` | Add `'is_verified' => false` | 🔴 Critical | client_contacts table |
+| `ClientQualification::create()` missing `specialist_education`/`stem_qualification`/`regional_study` | Add `'specialist_education' => 0, 'stem_qualification' => 0, 'regional_study' => 0` | 🔴 Critical | client_qualifications table |
+| `ClientExperience::create()` missing `fte_multiplier` | Add `'fte_multiplier' => 1.00` | 🔴 Critical | client_experiences table |
 
 ---
 
@@ -406,6 +451,12 @@ When pulling new code from MySQL, check for:
 - [ ] Any raw SQL queries using MySQL-specific functions
 - [ ] `Model::create([...])` calls → Verify all NOT NULL columns are included
 - [ ] `new Model` followed by `->save()` → Verify all NOT NULL properties are set before save
+- [ ] `ActivitiesLog::create()` → Verify `task_status` and `pin` are included
+- [ ] `ClientEmail::create()` → Verify `is_verified` is included
+- [ ] `ClientContact::create()` → Verify `is_verified` is included
+- [ ] `ClientQualification::create()` → Verify `specialist_education`, `stem_qualification`, and `regional_study` are included
+- [ ] `ClientExperience::create()` → Verify `fte_multiplier` is included
+- [ ] Check other models for NOT NULL columns with defaults that need explicit values
 
 ---
 

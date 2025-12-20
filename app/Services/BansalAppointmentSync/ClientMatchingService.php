@@ -135,6 +135,7 @@ class ClientMatchingService
                     'contact_type' => 'Mobile',
                     'country_code' => $client->country_code,
                     'phone' => $appointmentData['phone'],
+                    'is_verified' => false,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);

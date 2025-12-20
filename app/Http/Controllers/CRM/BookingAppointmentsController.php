@@ -433,6 +433,7 @@ class BookingAppointmentsController extends Controller
             $activityLog->description = '<p><strong>Status changed:</strong> ' . ucfirst($oldStatus) . ' → ' . ucfirst($request->status) . '</p>' .
                                        ($request->cancellation_reason ? '<p><strong>Reason:</strong> ' . e($request->cancellation_reason) . '</p>' : '');
             $activityLog->task_status = 0;
+            $activityLog->pin = 0;
             $activityLog->save();
         }
 
@@ -485,6 +486,7 @@ class BookingAppointmentsController extends Controller
                 $activityLog->subject = 'Booking appointment consultant reassigned';
                 $activityLog->description = '<p><strong>Consultant assigned:</strong> ' . ($consultant ? e($consultant->name) : 'N/A') . '</p>';
                 $activityLog->task_status = 0;
+                $activityLog->pin = 0;
                 $activityLog->save();
             }
 
@@ -638,6 +640,7 @@ class BookingAppointmentsController extends Controller
             $activityLog->created_by = Auth::id();
             $activityLog->subject = 'Booking appointment rescheduled';
             $activityLog->task_status = 0;
+            $activityLog->pin = 0;
 
             $from = $oldDatetime ? $oldDatetime->format('d M Y, h:i A') : 'N/A';
             $to = $newDatetime->format('d M Y, h:i A');
@@ -648,6 +651,7 @@ class BookingAppointmentsController extends Controller
                 e($to)
             );
             $activityLog->task_status = 0;
+            $activityLog->pin = 0;
             $activityLog->save();
         }
 
@@ -717,6 +721,7 @@ class BookingAppointmentsController extends Controller
             $activityLog->subject = 'Note added to booking appointment';
             $activityLog->description = '<p>' . e($request->note) . '</p>';
             $activityLog->task_status = 0;
+            $activityLog->pin = 0;
             $activityLog->save();
         }
 

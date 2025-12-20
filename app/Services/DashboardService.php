@@ -522,6 +522,7 @@ class DashboardService
                 'followup_date' => $note->followup_date ?? null,
                 'task_group' => $note->task_group ?? null,
                 'task_status' => 0,
+                'pin' => 0,
             ]);
         } catch (\Exception $e) {
             // Log the error but don't break the main functionality

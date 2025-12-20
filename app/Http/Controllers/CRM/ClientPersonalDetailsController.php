@@ -905,7 +905,8 @@ class ClientPersonalDetailsController extends Controller
                             'client_id' => $obj->id,
                             'contact_type' => $contactType,
                             'phone' => $phone,
-                            'country_code' => $country_code
+                            'country_code' => $country_code,
+                            'is_verified' => false
                         ]);
                     }
                 }
@@ -981,7 +982,8 @@ class ClientPersonalDetailsController extends Controller
                             'admin_id' => Auth::user()->id,
                             'client_id' => $obj->id, // Assigning the correct client ID
                             'email_type' => $emailType,
-                            'email' => $email
+                            'email' => $email,
+                            'is_verified' => false
                         ]);
                     }
                 }
@@ -1175,7 +1177,10 @@ class ClientPersonalDetailsController extends Controller
                             'country' => $country,
                             'start_date' => $short,
                             'finish_date' => $finish,
-                            'relevant_qualification' => $relevant_qualification
+                            'relevant_qualification' => $relevant_qualification,
+                            'specialist_education' => 0,
+                            'stem_qualification' => 0,
+                            'regional_study' => 0
                         ]);
                     }
                 }
@@ -1226,7 +1231,8 @@ class ClientPersonalDetailsController extends Controller
                             'job_country' => $jobCountry,
                             'job_start_date' => $jobStartDate,
                             'job_finish_date' => $jobFinishDate,
-                            'relevant_experience' =>$jobRelevantExp
+                            'relevant_experience' =>$jobRelevantExp,
+                            'fte_multiplier' => 1.00
                         ]);
                     }
                 }
@@ -1586,6 +1592,7 @@ class ClientPersonalDetailsController extends Controller
             $objs->created_by = \Auth::user()->id;
             $objs->subject = $subject;
             $objs->task_status = 0;
+            $objs->pin = 0;
             $objs->save();
             return redirect()->route('assignee.index')->with('success','Assignee updated successfully');
         } else {
@@ -1928,7 +1935,8 @@ class ClientPersonalDetailsController extends Controller
                             'client_id' => $client->id,
                             'contact_type' => $contactType,
                             'phone' => $phone,
-                            'country_code' => $countryCode
+                            'country_code' => $countryCode,
+                            'is_verified' => false
                         ]);
                         $processedPhones[] = $newContact->id;
                     }
@@ -2009,7 +2017,8 @@ class ClientPersonalDetailsController extends Controller
                         'client_id' => $client->id,
                         'admin_id' => Auth::user()->id,
                         'email_type' => $emailData['email_type'],
-                        'email' => $emailData['email']
+                        'email' => $emailData['email'],
+                        'is_verified' => false
                     ]);
                     
                     // Set primary email for admins table update
@@ -2487,7 +2496,10 @@ class ClientPersonalDetailsController extends Controller
                                 'qual_state' => $qual_state,
                                 'start_date' => $formatted_start_date,
                                 'finish_date' => $formatted_finish_date,
-                                'relevant_qualification' => $relevant_qualification
+                                'relevant_qualification' => $relevant_qualification,
+                                'specialist_education' => 0,
+                                'stem_qualification' => 0,
+                                'regional_study' => 0
                             ]);
                             $newRecordsCount++;
                         }
@@ -2595,7 +2607,8 @@ class ClientPersonalDetailsController extends Controller
                         'relevant_experience' => $expData['relevant_experience'] ?? 0,
                         'job_emp_name' => $expData['job_emp_name'] ?? null,
                         'job_state' => $expData['job_state'] ?? null,
-                        'job_type' => $expData['job_type'] ?? null
+                        'job_type' => $expData['job_type'] ?? null,
+                        'fte_multiplier' => 1.00
                     ]);
                 }
             }

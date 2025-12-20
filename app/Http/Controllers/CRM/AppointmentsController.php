@@ -321,6 +321,7 @@ class AppointmentsController extends Controller
             $objs->subject = $subject;
             $obj->appointment_details = @$request->appointment_details;
 			$objs->task_status = 0;
+			$objs->pin = 0;
 			$objs->save();
             return redirect()->route('appointments.index')->with('success','Appointment updated successfully');
 		} else {
@@ -1077,6 +1078,7 @@ public function update_apppointment_comment(Request $request){
             <div style="display:inline-grid;"><span class="text-semi-bold">'.$enquiryTitle.'</span> <span class="text-semi-bold">'.$serviceTitle.'</span>  <span class="text-semi-bold">'.$appointment_details.'</span> <span class="text-semi-bold">'.$request->description.'</span> <p class="text-semi-light-grey col-v-1">@ '.$request->appoint_time.'</p></div>';
         $objs->subject = $subject;
         $objs->task_status = 0;
+        $objs->pin = 0;
         $objs->save();
         
 
@@ -1182,6 +1184,7 @@ public function update_apppointment_comment(Request $request){
 				</p></div>';
 			$objs->subject = $subject;
 			$objs->task_status = 0;
+			$objs->pin = 0;
 			$objs->save();
 			}
 
@@ -1235,6 +1238,7 @@ public function update_apppointment_comment(Request $request){
 				</p></div>';
 			$objs->subject = $subject;
 			$objs->task_status = 0;
+			$objs->pin = 0;
 			$objs->save();
 			$response['status'] 	= 	true;
 			$response['data']	=	'Appointment updated successfully';

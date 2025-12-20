@@ -691,6 +691,7 @@ class ClientAccountsController extends Controller
                     $objs->description = '';
                     $objs->subject = $subject;
                     $objs->task_status = 0;
+                    $objs->pin = 0;
                     $objs->save();
    
                     $amount11 = floatval($requestData['withdraw_amount'][$i]);
@@ -868,6 +869,7 @@ class ClientAccountsController extends Controller
                     $objs->description = '';
                     $objs->subject = $subject;
                     $objs->task_status = 0;
+                    $objs->pin = 0;
                     $objs->save();
    
                     $amount11 = $withdrawAmount;
@@ -2226,6 +2228,7 @@ class ClientAccountsController extends Controller
                $objs->subject = $subject;
                $objs->activity_type = 'document';
                $objs->task_status = 0;
+               $objs->pin = 0;
                $objs->save();
            }
           }
@@ -2743,6 +2746,7 @@ class ClientAccountsController extends Controller
                $objs->subject = $subject;
                $objs->activity_type = 'document';
                $objs->task_status = 0;
+               $objs->pin = 0;
                $objs->save();
 
            }
@@ -2960,6 +2964,7 @@ class ClientAccountsController extends Controller
                $objs->subject = $subject;
                $objs->activity_type = 'document';
                $objs->task_status = 0;
+               $objs->pin = 0;
                $objs->save();
 
            }
@@ -3176,6 +3181,7 @@ class ClientAccountsController extends Controller
                $objs->subject = $subject;
                $objs->activity_type = 'document';
                $objs->task_status = 0;
+               $objs->pin = 0;
                $objs->save();
            }
            $response['status']     =     true;
@@ -3404,6 +3410,7 @@ class ClientAccountsController extends Controller
                $objs->description = '';
                $objs->subject = $subject;
                $objs->task_status = 0;
+               $objs->pin = 0;
                $objs->save();
 
                $record_info = DB::table('account_client_receipts')
@@ -3564,6 +3571,7 @@ class ClientAccountsController extends Controller
                            $reversal_activity->description = 'Fee Transfer voided - Amount no longer withdrawn from client funds';
                            $reversal_activity->subject = $reversal_subject;
                            $reversal_activity->task_status = 0;
+                           $reversal_activity->pin = 0;
                            $reversal_activity->save();
                            
                            \Log::info('Fee Transfer marked as voided', [
@@ -3948,6 +3956,7 @@ class ClientAccountsController extends Controller
                $objs->description = '';
                $objs->subject = $subject;
                $objs->task_status = 0;
+               $objs->pin = 0;
                $objs->save();
            }
 

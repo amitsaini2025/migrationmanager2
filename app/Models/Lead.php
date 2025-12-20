@@ -162,6 +162,7 @@ class Lead extends Admin
                            "Follow-up history has been preserved.",
             'activity_type' => 'lead_converted',
             'task_status' => 0,
+            'pin' => 0,
         ]);
         
         // Mark all pending follow-ups with a note

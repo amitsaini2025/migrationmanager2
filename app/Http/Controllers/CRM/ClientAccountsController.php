@@ -163,7 +163,7 @@ class ClientAccountsController extends Controller
             }
        
             // Handle document upload
-            $insertedDocId = "";
+            $insertedDocId = null;
             $doc_saved = false;
             $client_unique_id = "";
             $awsUrl = "";
@@ -198,7 +198,7 @@ class ClientAccountsController extends Controller
                 $insertedDocId = $obj->id;
             }
         } else {
-            $insertedDocId = "";
+            $insertedDocId = null;
             $doc_saved = "";
         }
    
@@ -337,6 +337,11 @@ class ClientAccountsController extends Controller
                             'withdraw_amount' => $amountToUse,
                             'balance_amount' => $running_balance,
                             'uploaded_doc_id' => $insertedDocId,
+                            'validate_receipt' => 0,
+                            'void_invoice' => 0,
+                            'invoice_status' => 0,
+                            'save_type' => 'final',
+                            'hubdoc_sent' => 0,
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
@@ -382,6 +387,11 @@ class ClientAccountsController extends Controller
                             'balance_amount' => $running_balance,
                             'uploaded_doc_id' => $insertedDocId,
                             'extra_amount_receipt' => 'exceed',
+                            'validate_receipt' => 0,
+                            'void_invoice' => 0,
+                            'invoice_status' => 0,
+                            'save_type' => 'final',
+                            'hubdoc_sent' => 0,
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
@@ -492,7 +502,7 @@ class ClientAccountsController extends Controller
                     'receipt_type' => $requestData['receipt_type'],
                     'trans_date' => $requestData['trans_date'][$i],
                     'entry_date' => $requestData['entry_date'][$i],
-                    'invoice_no' => $invoiceNo ?? '',
+                    'invoice_no' => $invoiceNo ?? null,
                     'trans_no' => $trans_no,
                     'client_fund_ledger_type' => $clientFundLedgerType,
                     'description' => $requestData['description'][$i],
@@ -500,6 +510,11 @@ class ClientAccountsController extends Controller
                     'withdraw_amount' => $withdraw,
                     'balance_amount' => $running_balance,
                     'uploaded_doc_id' => $insertedDocId,
+                    'validate_receipt' => 0,
+                    'void_invoice' => 0,
+                    'invoice_status' => 0,
+                    'save_type' => 'final',
+                    'hubdoc_sent' => 0,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -674,10 +689,10 @@ class ClientAccountsController extends Controller
                         'entry_date' => $requestData['entry_date'][$i],
                         'gst_included' => $requestData['gst_included'][$i],
                         'payment_type' => $requestData['payment_type'][$i],
-                        'trans_no' => $requestData['invoice_no'],
+                        'trans_no' => !empty($requestData['invoice_no']) ? $requestData['invoice_no'] : null,
                         'description' => $requestData['description'][$i],
                         'withdraw_amount' => $requestData['withdraw_amount'][$i],
-                        'invoice_no' => $requestData['invoice_no'],
+                        'invoice_no' => !empty($requestData['invoice_no']) ? $requestData['invoice_no'] : null,
                         'save_type' => $requestData['save_type'],
                         'invoice_status' => $invoice_status,
                         'created_at' => date('Y-m-d H:i:s'),
@@ -710,13 +725,16 @@ class ClientAccountsController extends Controller
                     'entry_date' => $requestData['entry_date'][0],
                     'gst_included' => $requestData['gst_included'][0],
                     'payment_type' => $requestData['payment_type'][0],
-                    'trans_no' => $requestData['invoice_no'],
+                    'trans_no' => !empty($requestData['invoice_no']) ? $requestData['invoice_no'] : null,
                     'description' => $requestData['description'][0],
                     'withdraw_amount' => $totalWithdrawAmount,
                     'balance_amount' => $totalWithdrawAmount,
-                    'invoice_no' => $requestData['invoice_no'],
+                    'invoice_no' => !empty($requestData['invoice_no']) ? $requestData['invoice_no'] : null,
                     'save_type' => $requestData['save_type'],
                     'invoice_status' => $invoice_status,
+                    'validate_receipt' => 0,
+                    'void_invoice' => 0,
+                    'hubdoc_sent' => 0,
                     'created_at' => date('Y-m-d H:i:s'),
                     'updated_at' => date('Y-m-d H:i:s')
                 ]);
@@ -851,11 +869,11 @@ class ClientAccountsController extends Controller
                         'entry_date' => $requestData['entry_date'][$i],
                         'gst_included' => $requestData['gst_included'][$i],
                         'payment_type' => $requestData['payment_type'][$i],
-                        'trans_no' => $invoice_no, //$requestData['invoice_no'],
+                        'trans_no' => !empty($invoice_no) ? $invoice_no : null, //$requestData['invoice_no'],
                         'description' => $requestData['description'][$i],
                         'withdraw_amount' => $withdrawAmount, //$requestData['withdraw_amount'][$i],
                         //'unit_price' => $unitPrice,
-                        'invoice_no' => $invoice_no, //$requestData['invoice_no'],
+                        'invoice_no' => !empty($invoice_no) ? $invoice_no : null, //$requestData['invoice_no'],
                         'save_type' => $requestData['save_type'],
                         'invoice_status' => $invoice_status,
                         'created_at' => date('Y-m-d H:i:s'),
@@ -893,14 +911,17 @@ class ClientAccountsController extends Controller
                     'entry_date' => $requestData['entry_date'][0],
                     'gst_included' => $requestData['gst_included'][0],
                     'payment_type' => $requestData['payment_type'][0],
-                    'trans_no' => $invoice_no,//$requestData['invoice_no'],
+                    'trans_no' => !empty($invoice_no) ? $invoice_no : null,//$requestData['invoice_no'],
                     'description' => $requestData['description'][0],
                     'withdraw_amount' => $totalWithdrawAmount,
                     //'unit_price' => $totalWithdrawAmount,
                     'balance_amount' => $totalWithdrawAmount,
-                    'invoice_no' => $invoice_no,//$requestData['invoice_no'],
+                    'invoice_no' => !empty($invoice_no) ? $invoice_no : null,//$requestData['invoice_no'],
                     'save_type' => $requestData['save_type'],
                     'invoice_status' => $invoice_status,
+                    'validate_receipt' => 0,
+                    'void_invoice' => 0,
+                    'hubdoc_sent' => 0,
                     'created_at' => date('Y-m-d H:i:s'),
                     'updated_at' => date('Y-m-d H:i:s')
                 ]);
@@ -1045,6 +1066,11 @@ class ClientAccountsController extends Controller
                     } else {
                         // Insert new record with created_at and updated_at
                         $lastEntryData['created_at'] = $currentTimestamp;
+                        $lastEntryData['validate_receipt'] = 0;
+                        $lastEntryData['void_invoice'] = 0;
+                        $lastEntryData['invoice_status'] = isset($lastEntryData['invoice_status']) ? $lastEntryData['invoice_status'] : $invoice_status;
+                        $lastEntryData['save_type'] = isset($lastEntryData['save_type']) ? $lastEntryData['save_type'] : $requestData['save_type'];
+                        $lastEntryData['hubdoc_sent'] = 0;
                         DB::table('account_client_receipts')->insert($lastEntryData);
                     }
                 }
@@ -1286,7 +1312,7 @@ class ClientAccountsController extends Controller
           }
 
           // Handle document upload
-          $insertedDocId = "";
+          $insertedDocId = null;
           $doc_saved = false;
           $client_unique_id = "";
           $awsUrl = "";
@@ -1346,12 +1372,16 @@ class ClientAccountsController extends Controller
                'trans_date' => $requestData['trans_date'][$i],
                'entry_date' => $requestData['entry_date'][$i],
                'trans_no' => $trans_no,
-               'invoice_no' => isset($requestData['invoice_no'][$i]) ? $requestData['invoice_no'][$i] : '',
+               'invoice_no' => isset($requestData['invoice_no'][$i]) && $requestData['invoice_no'][$i] !== '' ? $requestData['invoice_no'][$i] : null,
                'payment_method' => $requestData['payment_method'][$i],
                'description' => $requestData['description'][$i],
                'deposit_amount' => $requestData['deposit_amount'][$i],
                'uploaded_doc_id' => $insertedDocId,
                'save_type' => $saveType, // Track if draft or final
+               'validate_receipt' => 0,
+               'void_invoice' => 0,
+               'invoice_status' => 0,
+               'hubdoc_sent' => 0,
                'created_at' => now(),
                'updated_at' => now(),
            ]);
@@ -1360,7 +1390,7 @@ class ClientAccountsController extends Controller
                'trans_date' => $requestData['trans_date'][$i],
                'entry_date' => $requestData['entry_date'][$i],
                'trans_no' => $trans_no,
-               'invoice_no' => isset($requestData['invoice_no'][$i]) ? $requestData['invoice_no'][$i] : '',
+               'invoice_no' => isset($requestData['invoice_no'][$i]) && $requestData['invoice_no'][$i] !== '' ? $requestData['invoice_no'][$i] : null,
                'payment_method' => $requestData['payment_method'][$i],
                'description' => $requestData['description'][$i],
                'deposit_amount' => $requestData['deposit_amount'][$i],
@@ -1587,6 +1617,10 @@ class ClientAccountsController extends Controller
                           'balance_amount' => 0,
                           'save_type' => $saveType,
                           'extra_amount_receipt' => 'residual',
+                          'validate_receipt' => 0,
+                          'void_invoice' => 0,
+                          'invoice_status' => 0,
+                          'hubdoc_sent' => 0,
                           'created_at' => now(),
                           'updated_at' => now(),
                       ]);
@@ -1991,13 +2025,18 @@ class ClientAccountsController extends Controller
                   'receipt_type' => 1, // Client fund ledger
                   'trans_date' => $depositEntry->trans_date,
                   'entry_date' => $depositEntry->entry_date,
-                  'invoice_no' => $invoiceNo,
+                  'invoice_no' => !empty($invoiceNo) ? $invoiceNo : null,
                   'trans_no' => $trans_no,
                   'client_fund_ledger_type' => 'Fee Transfer',
                   'description' => 'Fee transfer to invoice ' . $invoiceNo,
                   'deposit_amount' => 0,
                   'withdraw_amount' => $depositAmount,
                   'balance_amount' => $new_balance,
+                  'validate_receipt' => 0,
+                  'void_invoice' => 0,
+                  'invoice_status' => 0,
+                  'save_type' => 'final',
+                  'hubdoc_sent' => 0,
                   'created_at' => now(),
                   'updated_at' => now(),
               ]);
@@ -2241,7 +2280,7 @@ class ClientAccountsController extends Controller
            }
           }
       } else {
-          $insertedDocId = "";
+          $insertedDocId = null;
           $doc_saved = "";
       }
 
@@ -2266,16 +2305,21 @@ class ClientAccountsController extends Controller
            $saved    = DB::table('account_client_receipts')->insert([
                'user_id' => $requestData['loggedin_userid'],
                'client_id' =>  $requestData['client_id'],
-               'agent_id' =>  $requestData['agent_id'],
+               'agent_id' => !empty($requestData['agent_id']) ? $requestData['agent_id'] : null,
                'receipt_id'=>  $receipt_id,
                'receipt_type' => $requestData['receipt_type'],
                'trans_date' => $requestData['trans_date'][$i],
                'entry_date' => $requestData['entry_date'][$i],
                'trans_no' => $requestData['trans_no'][$i],
-               'invoice_no' => $requestData['invoice_no'][$i],
+               'invoice_no' => isset($requestData['invoice_no'][$i]) && $requestData['invoice_no'][$i] !== '' ? $requestData['invoice_no'][$i] : null,
                'description' => $requestData['description'][$i],
                'withdraw_amount' => $withdrawAmount,
-               'uploaded_doc_id'=> $insertedDocId
+               'uploaded_doc_id'=> $insertedDocId,
+               'validate_receipt' => 0,
+               'void_invoice' => 0,
+               'invoice_status' => 0,
+               'save_type' => 'final',
+               'hubdoc_sent' => 0
            ]);
           }
       }
@@ -4459,7 +4503,7 @@ public function genofficereceiptInvoice(Request $request, $id){
     $withdraw_amount = floatval($request->input('withdraw_amount', 0));
 
     // Handle document upload
-    $insertedDocId = "";
+    $insertedDocId = null;
     $doc_saved = false;
     $client_unique_id = "";
     $awsUrl = "";
@@ -4494,7 +4538,7 @@ public function genofficereceiptInvoice(Request $request, $id){
          $insertedDocId = $obj->id;
         }
     } else {
-        $insertedDocId = "";
+        $insertedDocId = null;
         $doc_saved = "";
     }
 

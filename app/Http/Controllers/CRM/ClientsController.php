@@ -5133,31 +5133,48 @@ class ClientsController extends Controller
     }
 
 	public function activities(Request $request){ 
-		if(Admin::where('role', '=', '7')->where('id', $request->id)->exists()){
-			$activities = ActivitiesLog::where('client_id', $request->id)->orderby('created_at', 'DESC')->get(); //->where('subject', '<>','added a note')
-			$data = array();
-			foreach($activities as $activit){
-				$admin = Admin::where('id', $activit->created_by)->first();
-                $data[] = array(
-                    'activity_id' => $activit->id,
-					'subject' => $activit->subject,
-					'createdname' => substr($admin->first_name, 0, 1),
-					'name' => $admin->first_name,
-					'message' => $activit->description,
-					'date' => date('d M Y, H:i A', strtotime($activit->created_at)),
-                   'followup_date' => $activit->followup_date,
-                   'task_group' => $activit->task_group,
-                   'pin' => $activit->pin,
-                   'activity_type' => $activit->activity_type ?? 'note'
-                );
-			}
+		// Initialize response with default error state
+		$response = [
+			'status' => false,
+			'message' => 'An error occurred while fetching activities'
+		];
 
-			$response['status'] 	= 	true;
-			$response['data']	=	$data;
-		}else{
-			$response['status'] 	= 	false;
-			$response['message']	=	'Please try again';
+		try {
+			if(Admin::where('role', '=', '7')->where('id', $request->id)->exists()){
+				$activities = ActivitiesLog::where('client_id', $request->id)->orderby('created_at', 'DESC')->get(); //->where('subject', '<>','added a note')
+				$data = array();
+				foreach($activities as $activit){
+					$admin = Admin::where('id', $activit->created_by)->first();
+					$data[] = array(
+						'activity_id' => $activit->id,
+						'subject' => $activit->subject,
+						'createdname' => $admin ? substr($admin->first_name, 0, 1) : '?',
+						'name' => $admin ? $admin->first_name : 'Unknown',
+						'message' => $activit->description,
+						'date' => date('d M Y, H:i A', strtotime($activit->created_at)),
+					   'followup_date' => $activit->followup_date,
+					   'task_group' => $activit->task_group,
+					   'pin' => $activit->pin,
+					   'activity_type' => $activit->activity_type ?? 'note'
+					);
+				}
+
+				$response['status'] 	= 	true;
+				$response['data']	=	$data;
+				unset($response['message']); // Remove error message on success
+			}else{
+				$response['status'] 	= 	false;
+				$response['message']	=	'Client not found';
+			}
+		} catch (\Exception $e) {
+			\Log::error('Error fetching activities: ' . $e->getMessage(), [
+				'client_id' => $request->id,
+				'trace' => $e->getTraceAsString()
+			]);
+			$response['status'] = false;
+			$response['message'] = 'An error occurred while fetching activities';
 		}
+
 		echo json_encode($response);
 	}
 

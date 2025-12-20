@@ -43,19 +43,25 @@
                             {
                                 $client_selected_matter_id = $matter_get_id->id;
                             } else {
-                                $client_selected_matter_id = '';
+                                $client_selected_matter_id = null;
                             } //dd($client_selected_matter_id);
                         }
                         else
                         {  //dd('elseee');
-                            $client_selected_matter_id = '';
+                            $client_selected_matter_id = null;
                         }
                         // Calculate balance from scratch by summing deposits and withdrawals
                         // Exclude voided fee transfers
                         $ledger_entries = DB::table('account_client_receipts')
                             ->select('deposit_amount', 'withdraw_amount', 'void_fee_transfer')
                             ->where('client_id', $fetchedData->id)
-                            ->where('client_matter_id', $client_selected_matter_id)
+                            ->where(function($query) use ($client_selected_matter_id) {
+                                if ($client_selected_matter_id !== null) {
+                                    $query->where('client_matter_id', $client_selected_matter_id);
+                                } else {
+                                    $query->whereNull('client_matter_id');
+                                }
+                            })
                             ->where('receipt_type', 1)
                             ->get();
                         
@@ -106,7 +112,18 @@
                     </thead>
                     <tbody class="productitemList">
                         <?php
-                        $receipts_lists = DB::table('account_client_receipts')->where('client_matter_id',$client_selected_matter_id)->where('client_id',$fetchedData->id)->where('receipt_type',1)->orderBy('id', 'desc')->get();
+                        $receipts_lists = DB::table('account_client_receipts')
+                            ->where(function($query) use ($client_selected_matter_id) {
+                                if ($client_selected_matter_id !== null) {
+                                    $query->where('client_matter_id', $client_selected_matter_id);
+                                } else {
+                                    $query->whereNull('client_matter_id');
+                                }
+                            })
+                            ->where('client_id',$fetchedData->id)
+                            ->where('receipt_type',1)
+                            ->orderBy('id', 'desc')
+                            ->get();
                         //dd($receipts_lists);
                         if(!empty($receipts_lists) && count($receipts_lists)>0 )
                         {
@@ -314,7 +331,13 @@
                         <?php
                         $latest_outstanding_balance = DB::table('account_client_receipts')
                         ->where('client_id', $fetchedData->id)
-                        ->where('client_matter_id', $client_selected_matter_id)
+                        ->where(function($query) use ($client_selected_matter_id) {
+                            if ($client_selected_matter_id !== null) {
+                                $query->where('client_matter_id', $client_selected_matter_id);
+                            } else {
+                                $query->whereNull('client_matter_id');
+                            }
+                        })
                         ->where('receipt_type', 3) // Invoice
                         ->where(function ($query) {
                             $query->whereIn('invoice_status', [0, 2])
@@ -353,14 +376,25 @@
                     <tbody class="productitemList_invoice">
                         <?php
                         // Use DISTINCT ON for PostgreSQL to get latest record per receipt_id
-                        $receipts_lists_invoice = DB::select("
-                            SELECT DISTINCT ON (receipt_id) *
-                            FROM account_client_receipts
-                            WHERE client_matter_id = ? 
-                            AND client_id = ? 
-                            AND receipt_type = 3
-                            ORDER BY receipt_id, id DESC
-                        ", [$client_selected_matter_id, $fetchedData->id]);
+                        if ($client_selected_matter_id !== null) {
+                            $receipts_lists_invoice = DB::select("
+                                SELECT DISTINCT ON (receipt_id) *
+                                FROM account_client_receipts
+                                WHERE client_matter_id = ? 
+                                AND client_id = ? 
+                                AND receipt_type = 3
+                                ORDER BY receipt_id, id DESC
+                            ", [$client_selected_matter_id, $fetchedData->id]);
+                        } else {
+                            $receipts_lists_invoice = DB::select("
+                                SELECT DISTINCT ON (receipt_id) *
+                                FROM account_client_receipts
+                                WHERE client_matter_id IS NULL 
+                                AND client_id = ? 
+                                AND receipt_type = 3
+                                ORDER BY receipt_id, id DESC
+                            ", [$fetchedData->id]);
+                        }
                         
                         if(!empty($receipts_lists_invoice) && count($receipts_lists_invoice)>0 )
                         {
@@ -509,7 +543,13 @@
                         <?php
                         // Sort office receipts: unallocated (no invoice_no) at the top, then by ID descending
                         $receipts_lists_office = DB::table('account_client_receipts')
-                            ->where('client_matter_id',$client_selected_matter_id)
+                            ->where(function($query) use ($client_selected_matter_id) {
+                                if ($client_selected_matter_id !== null) {
+                                    $query->where('client_matter_id', $client_selected_matter_id);
+                                } else {
+                                    $query->whereNull('client_matter_id');
+                                }
+                            })
                             ->where('client_id',$fetchedData->id)
                             ->where('receipt_type',2)
                             ->orderByRaw("CASE WHEN invoice_no IS NULL OR invoice_no = '' THEN 0 ELSE 1 END")

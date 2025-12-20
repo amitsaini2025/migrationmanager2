@@ -454,6 +454,7 @@ class ClientPortalDocumentController extends Controller
                 'signature_doc_link' => null,
                 'signed_doc_link' => null,
                 'is_client_portal_verify' => 2,
+                'signer_count' => 1, // PostgreSQL NOT NULL constraint - required (default: 1 for regular documents)
                 'created_at' => now(),
                 'updated_at' => now()
             ];

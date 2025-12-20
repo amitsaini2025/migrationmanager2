@@ -459,21 +459,36 @@
                         e.preventDefault();
                         e.stopPropagation();
                         e.stopImmediatePropagation(); // Stop detail-main.js handler
-                        
+
                         var fileid = $(this).data('fileid');
                         var formid = $(this).data('formid');
                         console.log('📂 File ID:', fileid, 'Form ID:', formid);
-                        
-                        var fileInput = $('#' + formid).find('.docupload');
+
+                        var $form = $('#' + formid);
+                        if (!$form.length) {
+                            console.error('❌ Form not found:', formid);
+                            alert('Error: Upload form not found. Please refresh the page.');
+                            return false;
+                        }
+
+                        var fileInput = $form.find('.docupload');
                         console.log('📁 File input found:', fileInput.length > 0);
-                        
+
                         if (fileInput.length > 0) {
                             console.log('✅ Triggering file input click...');
-                            fileInput[0].click();
+                            // Use native click to ensure it works
+                            var nativeInput = fileInput[0];
+                            if (nativeInput && typeof nativeInput.click === 'function') {
+                                nativeInput.click();
+                            } else {
+                                console.error('❌ File input element not accessible');
+                                alert('Error: File input not accessible. Please refresh the page.');
+                            }
                         } else {
                             console.error('❌ File input not found for formid:', formid);
+                            alert('Error: File input not found. Please refresh the page.');
                         }
-                        
+
                         return false;
                     });
                     

@@ -114,13 +114,13 @@ class FixDuplicateClientReferences extends Command
     protected function findDuplicateReferences()
     {
         return DB::table('admins')
-            ->select('client_id', DB::raw('COUNT(*) as count'), DB::raw('GROUP_CONCAT(id) as ids'))
+            ->select('client_id', DB::raw('COUNT(*) as count'), DB::raw('STRING_AGG(id::text, \', \' ORDER BY id) as ids'))
             ->where('role', 7)
             ->whereNotNull('client_id')
             ->whereNull('is_deleted')
             ->groupBy('client_id')
-            ->having('count', '>', 1)
-            ->orderBy('count', 'desc')
+            ->havingRaw('COUNT(*) > 1')
+            ->orderByRaw('COUNT(*) DESC')
             ->get();
     }
 
@@ -208,10 +208,13 @@ class FixDuplicateClientReferences extends Command
                         
                         // Log the change in activities_logs
                         DB::table('activities_logs')->insert([
-                            'admin_id' => 1, // System
+                            'created_by' => 1, // System
                             'client_id' => $lockedClient->id,
-                            'action' => 'Client Reference Fixed',
+                            'subject' => 'Client Reference Fixed',
                             'description' => "Duplicate reference fixed: {$oldReference} → {$reference['client_id']} (older reference kept on client ID: {$lockedClient->id})",
+                            'activity_type' => 'activity',
+                            'task_status' => 0,
+                            'pin' => 0,
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);

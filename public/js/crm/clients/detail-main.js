@@ -11200,21 +11200,34 @@ Bansal Immigration`;
 
 
 
-        $(document).delegate('.docupload', 'change', function () {
-
+        // Use on() instead of delegate() for better compatibility
+        $(document).on('change', '.docupload', function () {
+            console.log('📤 File input change event triggered');
+            
             var fileInput = this;
 
             var file = fileInput.files[0];
 
-            if (!file) return;
+            if (!file) {
+                console.log('⚠️ No file selected');
+                return;
+            }
 
-
+            console.log('📄 File selected:', file.name, 'Size:', file.size);
 
             var fileidL = $(this).attr("data-fileid");
-
             var doccategoryL = $(this).attr("data-doccategory");
+            
+            console.log('📋 File ID:', fileidL, 'Category:', doccategoryL);
 
-            var formData = new FormData($(this).closest('form')[0]);
+            var $form = $(this).closest('form');
+            if (!$form.length) {
+                console.error('❌ Form not found for file input');
+                alert('Error: Upload form not found. Please refresh the page.');
+                return;
+            }
+
+            var formData = new FormData($form[0]);
 
 
 
@@ -11318,9 +11331,17 @@ Bansal Immigration`;
 
                 }
 
+            }).fail(function(xhr, status, error) {
+                console.error('❌ AJAX Upload Error:', {
+                    status: status,
+                    error: error,
+                    response: xhr.responseText
+                });
+                $('.custom-error-msg').html('<span class="alert alert-danger">Upload failed: ' + (error || 'Please try again') + '</span>');
+            }).always(function() {
+                // Clear input after upload attempt (success or failure)
+                fileInput.value = '';
             });
-
-            $(this).val(''); // Clear input after upload
 
         });
 

@@ -82,6 +82,8 @@ class ClientDocumentsController extends Controller
                             // PostgreSQL will handle the conversion if needed
                             $obj->folder_name = (string)$request->folder_name;
                             $obj->checklist = trim($item);
+                            // PostgreSQL NOT NULL constraint - signer_count is required (default: 1 for regular documents)
+                            $obj->signer_count = 1;
                             
                             // Validate required fields before saving
                             if(empty($obj->user_id) || empty($obj->client_id) || empty($obj->folder_name) || empty($obj->checklist)) {
@@ -289,7 +291,6 @@ class ClientDocumentsController extends Controller
             }
             $response['status'] = false;
             $response['message'] = 'Please try again';
-        } //end else
         } catch (\Exception $e) {
             Log::error('Error adding personal document checklist', [
                 'client_id' => $request->clientid ?? null,
@@ -423,6 +424,8 @@ class ClientDocumentsController extends Controller
                     $obj->client_matter_id = $request->client_matter_id;
                     $obj->checklist = $item;
                     $obj->folder_name = $request->folder_name;
+                    // PostgreSQL NOT NULL constraint - signer_count is required (default: 1 for regular documents)
+                    $obj->signer_count = 1;
                     $saved = $obj->save();
                 }  //end foreach
 
@@ -917,7 +920,6 @@ class ClientDocumentsController extends Controller
                         $response['message']	=	'Please try again';
                         $response['visaCheckListInfo'] = array();
                     }
-                }
                 } else {
                     $response['status'] 	= 	false;
                     $response['message']	=	'Please try again';
@@ -1920,6 +1922,8 @@ class ClientDocumentsController extends Controller
                         $document->doc_type = $doctype;
                         $document->folder_name = $categoryid;
                         $document->checklist = $checklistName;
+                        // PostgreSQL NOT NULL constraint - signer_count is required (default: 1 for regular documents)
+                        $document->signer_count = 1;
                         $document->save();
                     } elseif (!$document && $mapping['type'] === 'existing') {
                         // If trying to use existing checklist but all instances have files, create new one
@@ -1940,6 +1944,8 @@ class ClientDocumentsController extends Controller
                             $document->doc_type = $doctype;
                             $document->folder_name = $categoryid;
                             $document->checklist = $checklistName;
+                            // PostgreSQL NOT NULL constraint - signer_count is required (default: 1 for regular documents)
+                            $document->signer_count = 1;
                             $document->save();
                         }
                     }
@@ -2102,6 +2108,8 @@ class ClientDocumentsController extends Controller
                         $document->folder_name = $categoryid;
                         $document->checklist = $checklistName;
                         $document->client_matter_id = $matterid;
+                        // PostgreSQL NOT NULL constraint - signer_count is required (default: 1 for regular documents)
+                        $document->signer_count = 1;
                         $document->save();
                     } elseif (!$document && $mapping['type'] === 'existing') {
                         // If trying to use existing checklist but all instances have files, create new one
@@ -2126,6 +2134,8 @@ class ClientDocumentsController extends Controller
                             $document->folder_name = $categoryid;
                             $document->checklist = $checklistName;
                             $document->client_matter_id = $matterid;
+                            // PostgreSQL NOT NULL constraint - signer_count is required (default: 1 for regular documents)
+                            $document->signer_count = 1;
                             $document->save();
                         }
                     }

@@ -459,6 +459,11 @@ This occurs when `new ActivitiesLog` is used without setting `task_status` and `
 - `client_qualifications`: `specialist_education` (default: 0), `stem_qualification` (default: 0), `regional_study` (default: 0)
 - `client_experiences`: `fte_multiplier` (default: 1.00)
 - `client_matters`: `matter_status` (default: 1 for active) - **CRITICAL**: Must set `matter_status = 1` when creating new matters
+- `documents`: 
+  - `signer_count` (NOT NULL, default: 1) - **CRITICAL**: Must set before save when using `new Document` followed by `->save()`. Use `1` for regular documents (non-signature documents). Database defaults are not applied with explicit INSERT column lists.
+  - **Pattern:** Always set `$document->signer_count = 1;` before `->save()` when creating new Document records
+  - **Common mistake:** Forgetting to set `signer_count` causes immediate PostgreSQL NOT NULL violations: `SQLSTATE[23502]: Not null violation: 7 ERROR: null value in column "signer_count" of relation "documents" violates not-null constraint`
+  - **Files Fixed:** `app/Http/Controllers/CRM/Clients/ClientDocumentsController.php` (6 instances), `app/Http/Controllers/API/ClientPortalDocumentController.php` (1 instance)
 - `admins`: 
   - `verified` (default: 0 for new leads/clients, 1 for verified users) - **CRITICAL**: Required when using `DB::table('admins')->insert()` or `insertGetId()`
   - `password` (NOT NULL, use `Hash::make('LEAD_PLACEHOLDER')` for leads) - **CRITICAL**: Empty strings may be rejected. Use hashed placeholder for leads/clients without portal access.
@@ -754,6 +759,107 @@ Error saving note. Please try again.
 
 ---
 
+## Documents Table - Missing signer_count Field
+
+### Issue: Documents Table NOT NULL Constraint on signer_count
+
+**Problem:** After MySQL to PostgreSQL migration, creating document checklist entries fails with "Error saving '...': SQLSTATE[23502]: Not null violation: 7 ERROR: null value in column "signer_count" of relation "documents" violates not-null constraint". The `documents` table has a NOT NULL constraint on the `signer_count` column that MySQL may have allowed to be NULL or had implicit defaults, but PostgreSQL strictly enforces.
+
+**MySQL Approach:**
+```php
+// ❌ MySQL - May work without explicitly setting signer_count
+$obj = new Document;
+$obj->user_id = Auth::user()->id;
+$obj->client_id = $clientid;
+$obj->type = $request->type ?? 'client';
+$obj->doc_type = $doctype;
+$obj->folder_name = (string)$request->folder_name;
+$obj->checklist = trim($item);
+$obj->save(); // May work in MySQL
+```
+
+**PostgreSQL Solution:**
+```php
+// ✅ PostgreSQL - Must explicitly set signer_count
+$obj = new Document;
+$obj->user_id = Auth::user()->id;
+$obj->client_id = $clientid;
+$obj->type = $request->type ?? 'client';
+$obj->doc_type = $doctype;
+$obj->folder_name = (string)$request->folder_name;
+$obj->checklist = trim($item);
+// PostgreSQL NOT NULL constraint - signer_count is required (default: 1 for regular documents)
+$obj->signer_count = 1;
+$obj->save(); // Will now work in PostgreSQL
+```
+
+**For DB::table()->insertGetId() Pattern:**
+```php
+// ❌ MySQL - May work without signer_count
+$documentData = [
+    'user_id' => $admin->id,
+    'client_id' => $clientId,
+    'type' => 'client',
+    'doc_type' => $docType,
+    'folder_name' => $docCategoryId,
+    'checklist' => $checklistName,
+    'status' => 'draft',
+    'created_at' => now(),
+    'updated_at' => now()
+];
+$documentId = DB::table('documents')->insertGetId($documentData);
+
+// ✅ PostgreSQL - Must include signer_count
+$documentData = [
+    'user_id' => $admin->id,
+    'client_id' => $clientId,
+    'type' => 'client',
+    'doc_type' => $docType,
+    'folder_name' => $docCategoryId,
+    'checklist' => $checklistName,
+    'status' => 'draft',
+    'signer_count' => 1, // PostgreSQL NOT NULL constraint - required
+    'created_at' => now(),
+    'updated_at' => now()
+];
+$documentId = DB::table('documents')->insertGetId($documentData);
+```
+
+**Example from Codebase:**
+- **File:** `app/Http/Controllers/CRM/Clients/ClientDocumentsController.php`
+- **Lines:** 76-91, 417-427, 1914-1923, 1934-1943, 2095-2104, 2119-2129
+- **Issue:** Creating personal/visa document checklists failed with database constraint violation
+- **Fields Required:** 
+  - `signer_count` (integer, NOT NULL, default: 1)
+
+**Error Message:**
+```
+Error saving 'National Identity Card': SQLSTATE[23502]: Not null violation: 7 ERROR: 
+null value in column "signer_count" of relation "documents" violates not-null constraint
+```
+
+**Safety:** 🔴 **CRITICAL** - Document checklist creation will fail completely in PostgreSQL without this field. This is a common issue after migration where MySQL's lenient NULL handling differs from PostgreSQL's strict enforcement.
+
+**Notes:**
+- MySQL may allow NULL values or have implicit defaults even when NOT NULL is specified (depending on SQL mode)
+- PostgreSQL strictly enforces NOT NULL constraints and does not use implicit defaults
+- The migration defines `default(1)` for `signer_count`, but PostgreSQL doesn't apply database defaults when using explicit column lists in INSERT statements (which Laravel/Eloquent uses)
+- Always check database schema for NOT NULL columns when migrating
+- The `signer_count` field tracks how many signers are required for signature documents. For regular documents (non-signature), use `1` as the default value
+- When using `new Document` followed by `->save()`, always set `signer_count` before save
+- When using `DB::table('documents')->insertGetId()` or `insert()`, always include `'signer_count' => 1` in the data array
+
+**When to Set:**
+- Always set when creating new Document records (`new Document` or `DB::table('documents')->insert()`)
+- Use `1` as default for regular documents (non-signature documents)
+- For signature documents, set the actual number of required signers
+
+**Files Fixed:**
+- `app/Http/Controllers/CRM/Clients/ClientDocumentsController.php` - 6 instances (personal checklist, visa checklist, bulk upload)
+- `app/Http/Controllers/API/ClientPortalDocumentController.php` - 1 instance (API endpoint)
+
+---
+
 ## Search Patterns
 
 ### When Pulling Code from MySQL, Search For:
@@ -805,6 +911,11 @@ grep -r "new.*ActivitiesLog" app/Http/Controllers/ | grep -v "task_status"
 grep -r "new Note" app/Http/Controllers/ | grep -v "pin"
 grep -r "\$.*= new Note;" app/Http/Controllers/
 
+# Check for Document creation missing signer_count
+grep -r "new Document" app/Http/Controllers/ | grep -v "signer_count"
+grep -r "\$.*= new Document" app/Http/Controllers/ | grep -v "signer_count"
+grep -r "DB::table('documents')->insert" app/ | grep -v "signer_count"
+
 # Check for direct request field access (may need null coalescing)
 grep -r "\$request->[a-zA-Z_]*;" app/Http/Controllers/ | grep -v "??"
 grep -r "->[a-zA-Z_]* = \$request->" app/Http/Controllers/
@@ -847,6 +958,8 @@ grep -r "== \$request->" app/Http/Controllers/ | grep -v "isset"
 | Update logic comparing undefined field | Check `isset($request->field)` before comparing | 🔴 Critical | Prevents undefined index warnings in change tracking |
 | Database save without error handling | Wrap in try-catch and log errors | 🟡 Medium | Improves debugging and provides better error messages |
 | `new Note` missing `pin`/`folloup`/`status` | Add `$obj->pin = 0; $obj->folloup = 0; $obj->status = '0';` before save | 🔴 Critical | notes table - PostgreSQL NOT NULL constraints |
+| `new Document` missing `signer_count` | Add `$document->signer_count = 1;` before save | 🔴 Critical | documents table - PostgreSQL NOT NULL constraint (default: 1 for regular documents) |
+| `DB::table('documents')->insertGetId()` missing `signer_count` | Add `'signer_count' => 1` to array | 🔴 Critical | documents table - Database defaults not applied with explicit INSERT column lists |
 
 ---
 
@@ -891,6 +1004,9 @@ When pulling new code from MySQL, check for:
 - [ ] **ActivitiesLog pattern:** Use `task_status = 0` and `pin = 0` for regular activities, `task_status = 1` only for task completions
 - [ ] **Note creation:** Verify `pin`, `folloup`, and `status` are set before `save()` when using `new Note`
 - [ ] **Note pattern:** Use `pin = 0`, `folloup = 0`, `status = '0'` for new regular notes (only when `!$isUpdate`)
+- [ ] **Document creation:** Verify `signer_count` is set before `save()` when using `new Document`
+- [ ] **Document pattern:** Use `signer_count = 1` for regular documents (non-signature documents) when creating new Document records
+- [ ] **Document API:** When using `DB::table('documents')->insertGetId()`, include `'signer_count' => 1` in the data array
 
 ---
 

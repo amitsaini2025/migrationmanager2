@@ -39,16 +39,19 @@
     function getClientId() {
         const container = document.querySelector('.email-interface-container');
         if (!container) {
-            console.warn('Email interface container not found - this page may not support emails');
+            // Page doesn't have email interface - this is normal for pages that don't support emails
             return null;
         }
         
-        if (!container.dataset.clientId) {
-            console.error('Client ID not found in DOM - container exists but data-client-id attribute is missing');
+        // Check if the container has the required attribute
+        const clientId = container.dataset.clientId;
+        if (!clientId || clientId === '') {
+            // Container exists but client ID is not set - page may not be configured for emails
+            // This is not an error, just return null silently
             return null;
         }
         
-        return container.dataset.clientId;
+        return clientId;
     }
 
     /**
@@ -57,16 +60,19 @@
     function getMatterId() {
         const container = document.querySelector('.email-interface-container');
         if (!container) {
-            console.warn('Email interface container not found - this page may not support emails');
+            // Page doesn't have email interface - this is normal for pages that don't support emails
             return null;
         }
         
-        if (!container.dataset.matterId) {
-            console.error('Matter ID not found in DOM - container exists but data-matter-id attribute is missing');
+        // Check if the container has the required attribute
+        const matterId = container.dataset.matterId;
+        if (!matterId || matterId === '') {
+            // Container exists but matter ID is not set - page may not be configured for emails
+            // This is not an error, just return null silently
             return null;
         }
         
-        return container.dataset.matterId;
+        return matterId;
     }
 
     /**
@@ -604,6 +610,20 @@
      * Initialize email list and load initial emails
      */
     window.loadEmails = function() {
+        // Check if email interface exists on this page before attempting to load
+        const container = document.querySelector('.email-interface-container');
+        if (!container) {
+            // Page doesn't support emails - silently return
+            return;
+        }
+        
+        // Check if required attributes are present
+        if (!container.dataset.clientId || !container.dataset.matterId) {
+            // Email interface container exists but is not properly configured
+            // This page may not be set up for emails yet
+            return;
+        }
+        
         console.log('Loading emails...');
         loadEmailsFromServer();
     };
@@ -616,13 +636,19 @@
         const matterId = getMatterId();
         
         if (!clientId) {
-            console.warn('Cannot load emails - client ID not available');
+            // Client ID not available - page may not support emails
+            // Don't show warning as this is expected on pages without email interface
             return;
         }
         
         if (!matterId) {
-            console.warn('Cannot load emails - matter ID not available');
-            renderEmptyState('Please select a matter to view emails');
+            // Matter ID not available - show message only if email interface exists
+            const container = document.querySelector('.email-interface-container');
+            if (container) {
+                // Container exists but matter ID is missing - show user-friendly message
+                renderEmptyState('Please select a matter to view emails');
+            }
+            // Otherwise, silently return (page doesn't support emails)
             return;
         }
 

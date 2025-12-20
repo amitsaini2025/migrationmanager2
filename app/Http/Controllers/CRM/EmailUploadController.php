@@ -91,36 +91,72 @@ class EmailUploadController extends Controller
                     }
                 } catch (\Exception $e) {
                     $failedCount++;
+                    $fileName = $file->getClientOriginalName();
+                    $errorMsg = $e->getMessage();
+                    
+                    // Extract user-friendly error if available
+                    $userError = $errorMsg;
+                    if (is_array($errorMsg) && isset($errorMsg['error'])) {
+                        $userError = $errorMsg['error'];
+                    }
+                    
                     $errors[] = [
-                        'filename' => $file->getClientOriginalName(),
-                        'error' => $e->getMessage()
+                        'filename' => $fileName,
+                        'error' => $userError,
+                        'file_size' => $file->getSize(),
+                        'file_type' => $file->getMimeType()
                     ];
                     Log::error('Email upload error', [
-                        'file' => $file->getClientOriginalName(),
+                        'file' => $fileName,
+                        'file_size' => $file->getSize(),
                         'error' => $e->getMessage(),
                         'trace' => $e->getTraceAsString()
                     ]);
                 }
             }
 
+            // Build user-friendly message
+            $message = '';
+            if ($uploadedCount > 0 && $failedCount == 0) {
+                $message = "Successfully uploaded {$uploadedCount} email" . ($uploadedCount > 1 ? 's' : '');
+            } elseif ($uploadedCount > 0 && $failedCount > 0) {
+                $message = "Partially successful: {$uploadedCount} email" . ($uploadedCount > 1 ? 's' : '') . " uploaded, {$failedCount} failed";
+            } elseif ($failedCount > 0) {
+                $message = "Upload failed: {$failedCount} email" . ($failedCount > 1 ? 's' : '') . " could not be processed";
+            } else {
+                $message = "No emails were processed";
+            }
+            
             // Return response
             return response()->json([
                 'status' => true,
-                'message' => "Successfully uploaded {$uploadedCount} email(s)" . ($failedCount > 0 ? ", {$failedCount} failed" : ""),
+                'message' => $message,
                 'uploaded' => $uploadedCount,
                 'failed' => $failedCount,
-                'errors' => $errors
+                'errors' => $errors,
+                'total_files' => $uploadedCount + $failedCount
             ]);
 
         } catch (\Exception $e) {
+            $errorMessage = $e->getMessage();
+            
+            // Make error messages more user-friendly
+            if (strpos($errorMessage, 'Validation failed') !== false) {
+                $errorMessage = "File validation failed. Please ensure you're uploading .msg files only (max 30MB each).";
+            } elseif (strpos($errorMessage, 'No files uploaded') !== false) {
+                $errorMessage = "No files were selected for upload. Please select at least one .msg file.";
+            }
+            
             Log::error('Email upload error', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'user_friendly_error' => $errorMessage
             ]);
 
             return response()->json([
                 'status' => false,
-                'message' => 'Upload failed: ' . $e->getMessage(),
+                'message' => 'Upload failed: ' . $errorMessage,
+                'technical_error' => $e->getMessage() // Include original for debugging
             ], 500);
         }
     }
@@ -234,7 +270,9 @@ class EmailUploadController extends Controller
             // 2. Parse email using Python microservice
             $parsedData = $this->parseEmailWithPython($file);
 
-            if (!$parsedData || !$parsedData['success']) {
+            // Check for error in response (Python service returns error field on failure, 
+            // but doesn't return success field on success - just the parsed data)
+            if (!$parsedData || isset($parsedData['error']) || (isset($parsedData['success']) && !$parsedData['success'])) {
                 throw new \Exception($parsedData['error'] ?? 'Failed to parse email');
             }
 
@@ -426,14 +464,31 @@ class EmailUploadController extends Controller
             ];
 
         } catch (\Exception $e) {
+            $errorMessage = $e->getMessage();
+            $fileName = $file->getClientOriginalName();
+            
+            // Make error messages more user-friendly
+            if (strpos($errorMessage, 'Failed to connect') !== false || strpos($errorMessage, 'Connection refused') !== false) {
+                $errorMessage = "Cannot connect to email processing service. Please ensure the Python service is running at {$this->pythonServiceUrl}";
+            } elseif (strpos($errorMessage, 'Failed to parse email') !== false || strpos($errorMessage, 'Python service returned') !== false) {
+                $errorMessage = "Failed to parse email file. The file may be corrupted or in an unsupported format.";
+            } elseif (strpos($errorMessage, 'S3') !== false || strpos($errorMessage, 'AWS') !== false || strpos($errorMessage, 'storage') !== false) {
+                $errorMessage = "File storage error. Please check S3 configuration or try again.";
+            } elseif (strpos($errorMessage, 'database') !== false || strpos($errorMessage, 'SQL') !== false) {
+                $errorMessage = "Database error. Please try again or contact support if the issue persists.";
+            }
+            
             Log::error('Process email file error', [
-                'file' => $file->getClientOriginalName(),
-                'error' => $e->getMessage()
+                'file' => $fileName,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_friendly_error' => $errorMessage
             ]);
 
             return [
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $errorMessage,
+                'technical_error' => $e->getMessage() // Include original for debugging
             ];
         }
     }
@@ -453,7 +508,16 @@ class EmailUploadController extends Controller
                 ->post($this->pythonServiceUrl . '/email/parse');
 
             if ($response->successful()) {
-                return $response->json();
+                $result = $response->json();
+                // Python service returns data directly on success, or {'success': False, 'error': ...} on error
+                // Check if response contains error (even with 200 status)
+                if (isset($result['error']) || (isset($result['success']) && !$result['success'])) {
+                    return [
+                        'success' => false,
+                        'error' => $result['error'] ?? 'Email parsing failed'
+                    ];
+                }
+                return $result;
             } else {
                 Log::error('Python service error', [
                     'status' => $response->status(),

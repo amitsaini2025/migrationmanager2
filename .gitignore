@@ -35,6 +35,7 @@ python_services/logs/*.log
 python_services/__pycache__/
 python_services/*/__pycache__/
 python_pdf_service/
+python_services/start_services.sh
 
 # Zip archives
 *.zip

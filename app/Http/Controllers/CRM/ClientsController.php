@@ -158,10 +158,7 @@ class ClientsController extends Controller
             ->where('cm.matter_status', '=', '1')
             ->where('ad.is_archived', '=', '0')
             ->where('ad.role', '=', '7')
-            ->whereNull('ad.is_deleted')
-            ->orderBy($sortField, $sortDirection);
-
-            $totalData 	= $query->count(); //dd($totalData);
+            ->whereNull('ad.is_deleted');
 
             if ($request->has('sel_matter_id')) {
                 $sel_matter_id = $request->input('sel_matter_id');
@@ -214,6 +211,12 @@ class ClientsController extends Controller
                     $query->whereBetween($dateField, [$startDate, $endDate]);
                 }
             }
+
+            // Count AFTER all filters are applied, BEFORE orderBy
+            $totalData = $query->count();
+
+            // Apply orderBy AFTER count for pagination
+            $query->orderBy($sortField, $sortDirection);
 
             $allowedPerPage = [10, 20, 50, 100, 200];
             $perPage = (int) $request->get('per_page', 20);

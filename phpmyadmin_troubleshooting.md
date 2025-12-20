@@ -80,3 +80,4 @@ If nothing works, you may need to reinstall phpMyAdmin from the XAMPP package.
 **Cannot connect to MySQL**: Ensure MySQL service is running in XAMPP Control Panel
 
 **Session errors**: Check tmp directory permissions and session.save_path in php.ini
+

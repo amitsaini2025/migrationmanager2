@@ -97,9 +97,13 @@
             border-radius: 4px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             z-index: 10000;
-            max-width: 350px;
+            max-width: 500px;
+            max-height: 400px;
+            overflow-y: auto;
             animation: slideIn 0.3s ease-out;
             font-size: 14px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
             ${type === 'success' ? 'background: #10b981; color: white;' : ''}
             ${type === 'error' ? 'background: #ef4444; color: white;' : ''}
             ${type === 'info' ? 'background: #3b82f6; color: white;' : ''}
@@ -108,6 +112,9 @@
 
         document.body.appendChild(notification);
 
+        // Longer display time for error messages
+        const displayTime = type === 'error' ? 8000 : 4000;
+
         setTimeout(() => {
             notification.style.animation = 'slideOut 0.3s ease-out';
             setTimeout(() => {
@@ -115,7 +122,7 @@
                     notification.parentNode.removeChild(notification);
                 }
             }, 300);
-        }, 4000);
+        }, displayTime);
     }
 
     /**
@@ -496,39 +503,128 @@
             console.log('Upload response:', data);
 
             if (data.status || data.success) {
-                // Success state
-                if (uploadProgress) {
-                    uploadProgress.className = 'upload-progress success';
-                }
-                fileStatus.textContent = 'Upload successful!';
-                showNotification(data.message || 'Files uploaded successfully!', 'success');
+                // Check if there were any failures
+                const failedCount = data.failed || 0;
+                const uploadedCount = data.uploaded || 0;
                 
-                // Reset form after delay
-                setTimeout(() => {
-                    document.getElementById('emailFileInput').value = '';
-                    fileStatus.textContent = 'Ready to upload';
+                if (failedCount > 0) {
+                    // Partial or complete failure
                     if (uploadProgress) {
-                        uploadProgress.className = 'upload-progress';
+                        uploadProgress.className = 'upload-progress error';
                     }
-                    if (fileCountBadge) {
-                        fileCountBadge.classList.remove('show');
+                    fileStatus.textContent = 'Upload completed with errors';
+                    
+                    // Build detailed error message
+                    let errorMessage = data.message || `Upload failed: ${failedCount} file(s) failed`;
+                    
+                    // Add specific error details if available
+                    if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+                        const errorDetails = data.errors.map((err, index) => {
+                            const filename = err.filename || 'Unknown file';
+                            const error = err.error || 'Unknown error';
+                            const fileSize = err.file_size ? ` (${formatFileSize(err.file_size)})` : '';
+                            return `${index + 1}. ${filename}${fileSize}\n   ${error}`;
+                        }).join('\n\n');
+                        errorMessage += '\n\nError Details:\n' + errorDetails;
+                        
+                        // Add helpful tip if all files failed
+                        if (uploadedCount === 0 && failedCount > 0) {
+                            errorMessage += '\n\n💡 Tip: Ensure the Python service is running and the .msg files are valid Outlook email files.';
+                        }
                     }
-                }, 2000);
-                
-                // Reload email list
-                loadEmails();
+                    
+                    showNotification(errorMessage, 'error');
+                    
+                    // Log errors to console for debugging
+                    if (data.errors) {
+                        console.error('Upload errors:', data.errors);
+                    }
+                    
+                    // Reset after delay
+                    setTimeout(() => {
+                        fileStatus.textContent = 'Ready to upload';
+                        if (uploadProgress) {
+                            uploadProgress.className = 'upload-progress';
+                        }
+                        if (fileCountBadge && uploadedCount === 0) {
+                            fileCountBadge.classList.remove('show');
+                        }
+                    }, 5000); // Longer delay for error messages
+                    
+                    // Only reload if some files were successfully uploaded
+                    if (uploadedCount > 0) {
+                        loadEmails();
+                    }
+                } else {
+                    // Complete success
+                    if (uploadProgress) {
+                        uploadProgress.className = 'upload-progress success';
+                    }
+                    fileStatus.textContent = 'Upload successful!';
+                    showNotification(data.message || 'Files uploaded successfully!', 'success');
+                    
+                    // Reset form after delay
+                    setTimeout(() => {
+                        document.getElementById('emailFileInput').value = '';
+                        fileStatus.textContent = 'Ready to upload';
+                        if (uploadProgress) {
+                            uploadProgress.className = 'upload-progress';
+                        }
+                        if (fileCountBadge) {
+                            fileCountBadge.classList.remove('show');
+                        }
+                    }, 2000);
+                    
+                    // Reload email list
+                    loadEmails();
+                }
             } else {
-                // Error state
+                // Complete error state
                 if (uploadProgress) {
                     uploadProgress.className = 'upload-progress error';
                 }
                 fileStatus.textContent = 'Upload failed';
-                showNotification(data.message || 'Upload failed', 'error');
                 
-                // Show errors if available
+                // Build error message with details
+                let errorMessage = data.message || 'Upload failed';
+                
+                // Add validation errors if available
                 if (data.errors) {
+                    if (typeof data.errors === 'object' && !Array.isArray(data.errors)) {
+                        const errorDetails = [];
+                        for (const [key, value] of Object.entries(data.errors)) {
+                            if (Array.isArray(value)) {
+                                const fieldName = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                errorDetails.push(`• ${fieldName}: ${value.join(', ')}`);
+                            } else {
+                                const fieldName = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                errorDetails.push(`• ${fieldName}: ${value}`);
+                            }
+                        }
+                        if (errorDetails.length > 0) {
+                            errorMessage += '\n\nValidation Errors:\n' + errorDetails.join('\n');
+                        }
+                    } else if (Array.isArray(data.errors) && data.errors.length > 0) {
+                        // Handle array of errors
+                        const errorDetails = data.errors.map((err, index) => {
+                            if (typeof err === 'string') {
+                                return `${index + 1}. ${err}`;
+                            } else if (err.filename && err.error) {
+                                return `${index + 1}. ${err.filename}: ${err.error}`;
+                            }
+                            return `${index + 1}. ${JSON.stringify(err)}`;
+                        }).join('\n');
+                        errorMessage += '\n\nErrors:\n' + errorDetails;
+                    }
                     console.error('Upload errors:', data.errors);
                 }
+                
+                // Add technical error for debugging (if available)
+                if (data.technical_error && data.technical_error !== errorMessage) {
+                    console.error('Technical error:', data.technical_error);
+                }
+                
+                showNotification(errorMessage, 'error');
                 
                 // Reset after delay
                 setTimeout(() => {
@@ -536,7 +632,7 @@
                     if (uploadProgress) {
                         uploadProgress.className = 'upload-progress';
                     }
-                }, 3000);
+                }, 5000);
             }
 
         } catch (error) {

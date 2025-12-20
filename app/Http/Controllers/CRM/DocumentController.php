@@ -362,24 +362,91 @@ class DocumentController extends Controller
                 Log::warning('Ghostscript normalization failed, using original PDF', ['path' => $tempFullPath]);
             }
 
-            // Upload to S3 instead of local storage
+            // Upload to S3
             $adminId = auth('admin')->id();
             $docType = 'ad_hoc_documents'; // Category for manually uploaded documents
-            $s3FileName = time() . '_' . $uploadedFile->getClientOriginalName();
-            $s3FilePath = $adminId . '/' . $docType . '/' . $s3FileName;
+            
+            // Verify PDF file exists before upload
+            if (!file_exists($pdfToAdd)) {
+                throw new \Exception("PDF file not found at path: {$pdfToAdd}");
+            }
+            
+            Log::info('Preparing S3 upload', [
+                'pdf_path' => $pdfToAdd,
+                'file_exists' => file_exists($pdfToAdd),
+                'file_size' => file_exists($pdfToAdd) ? filesize($pdfToAdd) : 0,
+                'admin_id' => $adminId
+            ]);
+            
+            // Sanitize filename to avoid issues with special characters
+            $originalFileName = $uploadedFile->getClientOriginalName();
+            $sanitizedFileName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', pathinfo($originalFileName, PATHINFO_FILENAME));
+            $extension = pathinfo($originalFileName, PATHINFO_EXTENSION);
+            $fileName = time() . '_' . $sanitizedFileName . '.' . $extension;
+            
+            $s3FilePath = $adminId . '/' . $docType . '/' . $fileName;
+            
+            // Verify S3 configuration
+            $region = config('filesystems.disks.s3.region');
+            $bucket = config('filesystems.disks.s3.bucket');
+            $awsKey = config('filesystems.disks.s3.key');
+            $awsSecret = config('filesystems.disks.s3.secret');
+            
+            Log::info('S3 configuration check', [
+                'region' => $region,
+                'bucket' => $bucket,
+                'has_key' => !empty($awsKey),
+                'has_secret' => !empty($awsSecret),
+                's3_path' => $s3FilePath
+            ]);
+            
+            if (empty($bucket) || empty($region)) {
+                throw new \Exception("S3 configuration incomplete. Bucket: " . ($bucket ?: 'missing') . ", Region: " . ($region ?: 'missing'));
+            }
+            
+            // Read file contents
+            $fileContents = file_get_contents($pdfToAdd);
+            if ($fileContents === false) {
+                throw new \Exception("Failed to read PDF file contents from: {$pdfToAdd}");
+            }
+            
+            Log::info('File contents read', [
+                'content_size' => strlen($fileContents),
+                's3_path' => $s3FilePath
+            ]);
             
             // Upload to S3
-            Storage::disk('s3')->put($s3FilePath, file_get_contents($pdfToAdd));
-            /** @var \Illuminate\Filesystem\FilesystemAdapter $s3Disk */
-            $s3Disk = Storage::disk('s3');
-            $s3Url = $s3Disk->url($s3FilePath);
+            try {
+                Storage::disk('s3')->put($s3FilePath, $fileContents);
+                Log::info('S3 put command executed', ['s3_path' => $s3FilePath]);
+            } catch (\Exception $s3Exception) {
+                Log::error('S3 upload failed', [
+                    'error' => $s3Exception->getMessage(),
+                    'error_class' => get_class($s3Exception),
+                    'trace' => $s3Exception->getTraceAsString(),
+                    's3_path' => $s3FilePath,
+                    'bucket' => $bucket,
+                    'region' => $region
+                ]);
+                throw $s3Exception;
+            }
+            
+            // Verify upload succeeded
+            if (!Storage::disk('s3')->exists($s3FilePath)) {
+                throw new \Exception("File upload to S3 failed - file does not exist at path: {$s3FilePath}");
+            }
+            
+            Log::info('S3 upload verified', ['s3_path' => $s3FilePath, 'exists' => true]);
+            
+            // Construct S3 URL manually (more reliable than using url() method)
+            $s3Url = "https://{$bucket}.s3.{$region}.amazonaws.com/{$s3FilePath}";
             
             // Update document with S3 file information
             $document->update([
-                'file_name' => $uploadedFile->getClientOriginalName(),
+                'file_name' => $originalFileName,
                 'filetype' => $uploadedFile->getMimeType(),
                 'myfile' => $s3Url,              // Full S3 URL
-                'myfile_key' => $s3FileName,     // S3 key for reference
+                'myfile_key' => $fileName,       // S3 key for reference
                 'doc_type' => $docType,          // Document category
                 'client_id' => $adminId,         // Associated admin ID
                 'file_size' => $uploadedFile->getSize(),
@@ -408,6 +475,50 @@ class DocumentController extends Controller
             return redirect()->route('documents.edit', $document->id)
                 ->with('success', 'Document uploaded successfully! Now place signature fields on the document.');
         } catch (\Exception $e) {
+            // Initialize variables for cleanup
+            $s3FilePathForCleanup = $s3FilePath ?? null;
+            
+            // Clean up document record if it was created but S3 upload failed
+            if (isset($document) && $document->id) {
+                try {
+                    // Check if document has S3 file that needs cleanup
+                    if (!empty($s3FilePathForCleanup) && Storage::disk('s3')->exists($s3FilePathForCleanup)) {
+                        Storage::disk('s3')->delete($s3FilePathForCleanup);
+                        Log::info('Deleted S3 file after failed upload', ['s3_path' => $s3FilePathForCleanup]);
+                    }
+                    // Delete the document record
+                    $document->delete();
+                    Log::info('Cleaned up document record after failed upload', ['document_id' => $document->id]);
+                } catch (\Exception $cleanupException) {
+                    Log::error('Failed to cleanup document after upload error', [
+                        'document_id' => $document->id ?? null,
+                        'cleanup_error' => $cleanupException->getMessage(),
+                        'original_error' => $e->getMessage()
+                    ]);
+                }
+            }
+            
+            // Clean up temp files if they exist
+            if (isset($tempFullPath) && file_exists($tempFullPath)) {
+                @unlink($tempFullPath);
+            }
+            if (isset($normalizedPath) && file_exists($normalizedPath)) {
+                @unlink($normalizedPath);
+            }
+            
+            // Log detailed error
+            Log::error('Document upload failed with detailed error', [
+                'error_message' => $e->getMessage(),
+                'error_class' => get_class($e),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'error_trace' => $e->getTraceAsString(),
+                'filename' => request()->file('document')?->getClientOriginalName(),
+                's3_path' => $s3FilePathForCleanup,
+                's3_bucket' => config('filesystems.disks.s3.bucket'),
+                's3_region' => config('filesystems.disks.s3.region'),
+            ]);
+            
             return $this->handleError(
                 $e,
                 'document_upload',

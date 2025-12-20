@@ -52,3 +52,4 @@ Then try starting MySQL in XAMPP again.
 ## Quick Test
 
 After fixing permissions, try starting MySQL in XAMPP Control Panel. If it starts successfully, you should see it turn green.
+

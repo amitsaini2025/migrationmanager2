@@ -56,11 +56,20 @@ class DocumentController extends Controller
 
         Log::error("Controller error in {$context}", $logContext);
 
+        // Include actual error message for debugging
+        $errorMessage = $userMessage;
+        if (config('app.debug', false)) {
+            $errorMessage .= ' Error: ' . $e->getMessage() . ' (File: ' . basename($e->getFile()) . ':' . $e->getLine() . ')';
+        } else {
+            // Even in production, show a more descriptive error
+            $errorMessage .= ' Error details: ' . $e->getMessage();
+        }
+
         // Return appropriate redirect
         if ($redirectRoute === 'back') {
-            return redirect()->back()->with('error', $userMessage);
+            return redirect()->back()->with('error', $errorMessage);
         } else {
-            return redirect()->route($redirectRoute)->with('error', $userMessage);
+            return redirect()->route($redirectRoute)->with('error', $errorMessage);
         }
     }
 
@@ -329,6 +338,7 @@ class DocumentController extends Controller
                 'status' => 'draft',
                 'created_by' => auth('admin')->id(),
                 'origin' => 'ad_hoc',
+                'signer_count' => 0, // No signers added yet for a new document
             ]);
 
             // Verify the uploaded file is a valid PDF

@@ -280,6 +280,7 @@ class SignatureDashboardController extends Controller
                 'title' => $request->title ?: pathinfo($fileName, PATHINFO_FILENAME),
                 'status' => 'draft',
                 'client_id' => Auth::guard('admin')->id(),
+                'signer_count' => 0, // No signers added yet for a new document
             ]);
         }
 

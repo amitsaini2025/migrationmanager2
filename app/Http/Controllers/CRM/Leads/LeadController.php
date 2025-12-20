@@ -371,7 +371,7 @@ class LeadController extends Controller
                 $adminData = [
                     // System fields
                     'user_id' => Auth::user()->id,
-                    'password' => '', // Set empty password for leads (password field is NOT nullable)
+                    'password' => Hash::make('LEAD_PLACEHOLDER'), // Placeholder password for leads (NOT NULL constraint, will be overwritten if client portal activated)
                     'client_counter' => $client_current_counter,
                     'client_id' => $client_id,
                     'status' => '1', // Default status: 1 (Active)
@@ -379,6 +379,17 @@ class LeadController extends Controller
                     'type' => 'lead', // Lead type
                     'is_archived' => 0, // Not archived
                     'is_deleted' => null, // Not deleted
+                    'verified' => 0, // Not verified (required NOT NULL column)
+                    'show_dashboard_per' => 0, // Dashboard permission (required NOT NULL column, default 0 for leads)
+                    
+                    // Client Portal fields (required NOT NULL columns, default 0 for new leads)
+                    'cp_status' => 0, // Client portal status (NOT NULL, default 0 - inactive)
+                    'cp_code_verify' => 0, // Client portal code verification (NOT NULL, default 0)
+                    
+                    // EOI Qualification fields (required NOT NULL columns, default 0 for new leads)
+                    'australian_study' => 0, // Australian study requirement (NOT NULL, default 0)
+                    'specialist_education' => 0, // Specialist education qualification (NOT NULL, default 0)
+                    'regional_study' => 0, // Regional study qualification (NOT NULL, default 0)
                     
                     // Form fields from simplified create form
                     'first_name' => $requestData['first_name'],

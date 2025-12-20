@@ -1907,6 +1907,18 @@ class ClientPersonalDetailsController extends Controller
                 }
             }
 
+            // Get existing phone numbers before update for change tracking
+            $existingPhones = ClientContact::where('client_id', $client->id)->get()->keyBy('id');
+            $oldPhoneDisplay = [];
+            foreach ($existingPhones as $existing) {
+                $display = ($existing->country_code ? $existing->country_code : '') . $existing->phone;
+                if ($existing->contact_type) {
+                    $display .= ' (' . $existing->contact_type . ')';
+                }
+                $oldPhoneDisplay[] = $display;
+            }
+            $oldPhoneDisplayStr = !empty($oldPhoneDisplay) ? implode(', ', $oldPhoneDisplay) : '(empty)';
+
             // Process phone numbers with proper update/insert logic (like the old working system)
             $processedPhones = [];
             foreach ($phoneNumbers as $phoneData) {
@@ -1971,14 +1983,35 @@ class ClientPersonalDetailsController extends Controller
                 $client->save();
             }
 
-            // Log activity for phone numbers update
-            $phoneCount = count($processedPhones);
-            $this->logClientActivity(
-                $client->id,
-                'updated phone numbers',
-                "Updated {$phoneCount} phone number(s)",
-                'activity'
-            );
+            // Get new phone numbers for change tracking
+            $newPhones = ClientContact::where('client_id', $client->id)->get();
+            $newPhoneDisplay = [];
+            foreach ($newPhones as $newPhone) {
+                $display = ($newPhone->country_code ? $newPhone->country_code : '') . $newPhone->phone;
+                if ($newPhone->contact_type) {
+                    $display .= ' (' . $newPhone->contact_type . ')';
+                }
+                $newPhoneDisplay[] = $display;
+            }
+            $newPhoneDisplayStr = !empty($newPhoneDisplay) ? implode(', ', $newPhoneDisplay) : '(empty)';
+
+            // Log activity with before/after values
+            $changedFields = [];
+            if ($oldPhoneDisplayStr !== $newPhoneDisplayStr) {
+                $changedFields['Phone Numbers'] = [
+                    'old' => $oldPhoneDisplayStr,
+                    'new' => $newPhoneDisplayStr
+                ];
+            }
+
+            if (!empty($changedFields)) {
+                $this->logClientActivityWithChanges(
+                    $client->id,
+                    'updated phone numbers',
+                    $changedFields,
+                    'activity'
+                );
+            }
 
             return response()->json([
                 'success' => true,
@@ -2003,6 +2036,18 @@ class ClientPersonalDetailsController extends Controller
                     'message' => 'Invalid email addresses data'
                 ], 400);
             }
+
+            // Get existing emails before update for change tracking
+            $existingEmails = ClientEmail::where('client_id', $client->id)->get();
+            $oldEmailDisplay = [];
+            foreach ($existingEmails as $existing) {
+                $display = $existing->email;
+                if ($existing->email_type) {
+                    $display .= ' (' . $existing->email_type . ')';
+                }
+                $oldEmailDisplay[] = $display;
+            }
+            $oldEmailDisplayStr = !empty($oldEmailDisplay) ? implode(', ', $oldEmailDisplay) : '(empty)';
 
             // Delete existing emails for this client
             ClientEmail::where('client_id', $client->id)->delete();
@@ -2036,14 +2081,35 @@ class ClientPersonalDetailsController extends Controller
                 $client->save();
             }
 
-            // Log activity for email addresses update
-            $emailCount = count(array_filter($emails, function($e) { return !empty($e['email']); }));
-            $this->logClientActivity(
-                $client->id,
-                'updated email addresses',
-                "Updated {$emailCount} email address(es)",
-                'activity'
-            );
+            // Get new emails for change tracking
+            $newEmails = ClientEmail::where('client_id', $client->id)->get();
+            $newEmailDisplay = [];
+            foreach ($newEmails as $newEmail) {
+                $display = $newEmail->email;
+                if ($newEmail->email_type) {
+                    $display .= ' (' . $newEmail->email_type . ')';
+                }
+                $newEmailDisplay[] = $display;
+            }
+            $newEmailDisplayStr = !empty($newEmailDisplay) ? implode(', ', $newEmailDisplay) : '(empty)';
+
+            // Log activity with before/after values
+            $changedFields = [];
+            if ($oldEmailDisplayStr !== $newEmailDisplayStr) {
+                $changedFields['Email Addresses'] = [
+                    'old' => $oldEmailDisplayStr,
+                    'new' => $newEmailDisplayStr
+                ];
+            }
+
+            if (!empty($changedFields)) {
+                $this->logClientActivityWithChanges(
+                    $client->id,
+                    'updated email addresses',
+                    $changedFields,
+                    'activity'
+                );
+            }
 
             return response()->json([
                 'success' => true,
@@ -2068,6 +2134,27 @@ class ClientPersonalDetailsController extends Controller
                     'message' => 'Invalid passport data'
                 ], 400);
             }
+
+            // Get existing passports before update for change tracking
+            $existingPassports = ClientPassportInformation::where('client_id', $client->id)->get();
+            $oldPassportDisplay = [];
+            foreach ($existingPassports as $existing) {
+                $display = [];
+                if ($existing->passport_country) {
+                    $display[] = 'Country: ' . $existing->passport_country;
+                }
+                if ($existing->passport) {
+                    $display[] = 'Number: ' . $existing->passport;
+                }
+                if ($existing->passport_issue_date) {
+                    $display[] = 'Issue: ' . date('d/m/Y', strtotime($existing->passport_issue_date));
+                }
+                if ($existing->passport_expiry_date) {
+                    $display[] = 'Expiry: ' . date('d/m/Y', strtotime($existing->passport_expiry_date));
+                }
+                $oldPassportDisplay[] = !empty($display) ? implode(', ', $display) : 'Passport record';
+            }
+            $oldPassportDisplayStr = !empty($oldPassportDisplay) ? implode(' | ', $oldPassportDisplay) : '(empty)';
 
             // Delete existing passport records for this client
             ClientPassportInformation::where('client_id', $client->id)->delete();
@@ -2111,16 +2198,44 @@ class ClientPersonalDetailsController extends Controller
                 }
             }
 
-            // Log activity for passport information update
-            $passportCount = count(array_filter($passports, function($p) { 
-                return !empty($p['passport_number']) || !empty($p['passport_country']); 
-            }));
-            $this->logClientActivity(
-                $client->id,
-                'updated passport information',
-                "Updated {$passportCount} passport record(s)",
-                'activity'
-            );
+            // Get new passports for change tracking
+            $newPassports = ClientPassportInformation::where('client_id', $client->id)->get();
+            $newPassportDisplay = [];
+            foreach ($newPassports as $newPassport) {
+                $display = [];
+                if ($newPassport->passport_country) {
+                    $display[] = 'Country: ' . $newPassport->passport_country;
+                }
+                if ($newPassport->passport) {
+                    $display[] = 'Number: ' . $newPassport->passport;
+                }
+                if ($newPassport->passport_issue_date) {
+                    $display[] = 'Issue: ' . date('d/m/Y', strtotime($newPassport->passport_issue_date));
+                }
+                if ($newPassport->passport_expiry_date) {
+                    $display[] = 'Expiry: ' . date('d/m/Y', strtotime($newPassport->passport_expiry_date));
+                }
+                $newPassportDisplay[] = !empty($display) ? implode(', ', $display) : 'Passport record';
+            }
+            $newPassportDisplayStr = !empty($newPassportDisplay) ? implode(' | ', $newPassportDisplay) : '(empty)';
+
+            // Log activity with before/after values
+            $changedFields = [];
+            if ($oldPassportDisplayStr !== $newPassportDisplayStr) {
+                $changedFields['Passport Information'] = [
+                    'old' => $oldPassportDisplayStr,
+                    'new' => $newPassportDisplayStr
+                ];
+            }
+
+            if (!empty($changedFields)) {
+                $this->logClientActivityWithChanges(
+                    $client->id,
+                    'updated passport information',
+                    $changedFields,
+                    'activity'
+                );
+            }
 
             return response()->json([
                 'success' => true,
@@ -2146,6 +2261,30 @@ class ClientPersonalDetailsController extends Controller
                     'message' => 'Invalid visa data'
                 ], 400);
             }
+
+            // Get existing visas before update for change tracking
+            $existingVisas = ClientVisaCountry::where('client_id', $client->id)->get();
+            $oldVisaDisplay = [];
+            foreach ($existingVisas as $existing) {
+                $display = [];
+                if ($existing->visa_type) {
+                    $display[] = 'Type: ' . $existing->visa_type;
+                }
+                if ($existing->visa_country) {
+                    $display[] = 'Country: ' . $existing->visa_country;
+                }
+                if ($existing->visa_grant_date) {
+                    $display[] = 'Grant: ' . date('d/m/Y', strtotime($existing->visa_grant_date));
+                }
+                if ($existing->visa_expiry_date) {
+                    $display[] = 'Expiry: ' . date('d/m/Y', strtotime($existing->visa_expiry_date));
+                }
+                if ($existing->visa_description) {
+                    $display[] = 'Desc: ' . $existing->visa_description;
+                }
+                $oldVisaDisplay[] = !empty($display) ? implode(', ', $display) : 'Visa record';
+            }
+            $oldVisaDisplayStr = !empty($oldVisaDisplay) ? implode(' | ', $oldVisaDisplay) : '(empty)';
 
             // Update client's visa expiry verified status using existing system
             if ($visaExpiryVerified === '1') {
@@ -2189,16 +2328,47 @@ class ClientPersonalDetailsController extends Controller
                 }
             }
 
-            // Log activity for visa information update
-            $visaCount = count(array_filter($visas, function($v) { 
-                return !empty($v['visa_type_hidden']); 
-            }));
-            $this->logClientActivity(
-                $client->id,
-                'updated visa information',
-                "Updated {$visaCount} visa record(s)",
-                'activity'
-            );
+            // Get new visas for change tracking
+            $newVisas = ClientVisaCountry::where('client_id', $client->id)->get();
+            $newVisaDisplay = [];
+            foreach ($newVisas as $newVisa) {
+                $display = [];
+                if ($newVisa->visa_type) {
+                    $display[] = 'Type: ' . $newVisa->visa_type;
+                }
+                if ($newVisa->visa_country) {
+                    $display[] = 'Country: ' . $newVisa->visa_country;
+                }
+                if ($newVisa->visa_grant_date) {
+                    $display[] = 'Grant: ' . date('d/m/Y', strtotime($newVisa->visa_grant_date));
+                }
+                if ($newVisa->visa_expiry_date) {
+                    $display[] = 'Expiry: ' . date('d/m/Y', strtotime($newVisa->visa_expiry_date));
+                }
+                if ($newVisa->visa_description) {
+                    $display[] = 'Desc: ' . $newVisa->visa_description;
+                }
+                $newVisaDisplay[] = !empty($display) ? implode(', ', $display) : 'Visa record';
+            }
+            $newVisaDisplayStr = !empty($newVisaDisplay) ? implode(' | ', $newVisaDisplay) : '(empty)';
+
+            // Log activity with before/after values
+            $changedFields = [];
+            if ($oldVisaDisplayStr !== $newVisaDisplayStr) {
+                $changedFields['Visa Information'] = [
+                    'old' => $oldVisaDisplayStr,
+                    'new' => $newVisaDisplayStr
+                ];
+            }
+
+            if (!empty($changedFields)) {
+                $this->logClientActivityWithChanges(
+                    $client->id,
+                    'updated visa information',
+                    $changedFields,
+                    'activity'
+                );
+            }
 
             return response()->json([
                 'success' => true,
@@ -2218,6 +2388,36 @@ class ClientPersonalDetailsController extends Controller
             $requestData = $request->all();
             
             \Log::info('Address save request data:', $requestData);
+            
+            // Get existing addresses before update for change tracking
+            $existingAddresses = ClientAddress::where('client_id', $client->id)->get();
+            $oldAddressDisplay = [];
+            foreach ($existingAddresses as $existing) {
+                $display = [];
+                if ($existing->address_line_1) {
+                    $display[] = $existing->address_line_1;
+                }
+                if ($existing->suburb) {
+                    $display[] = $existing->suburb;
+                }
+                if ($existing->state) {
+                    $display[] = $existing->state;
+                }
+                if ($existing->zip) {
+                    $display[] = $existing->zip;
+                }
+                if ($existing->country) {
+                    $display[] = $existing->country;
+                }
+                if ($existing->start_date) {
+                    $display[] = 'From: ' . date('d/m/Y', strtotime($existing->start_date));
+                }
+                if ($existing->end_date) {
+                    $display[] = 'To: ' . date('d/m/Y', strtotime($existing->end_date));
+                }
+                $oldAddressDisplay[] = !empty($display) ? implode(', ', $display) : 'Address record';
+            }
+            $oldAddressDisplayStr = !empty($oldAddressDisplay) ? implode(' | ', $oldAddressDisplay) : '(empty)';
             
             if (isset($requestData['zip']) && is_array($requestData['zip'])) {
                 ClientAddress::where('client_id', $client->id)->delete();
@@ -2300,16 +2500,53 @@ class ClientPersonalDetailsController extends Controller
                 }
             }
             
-            // Log activity for address information update
-            $addressCount = isset($requestData['zip']) && is_array($requestData['zip']) 
-                ? count(array_filter($requestData['zip'], function($zip) { return !empty($zip); }))
-                : 0;
-            $this->logClientActivity(
-                $client->id,
-                'updated address information',
-                "Updated {$addressCount} address record(s)",
-                'activity'
-            );
+            // Get new addresses for change tracking
+            $newAddresses = ClientAddress::where('client_id', $client->id)->get();
+            $newAddressDisplay = [];
+            foreach ($newAddresses as $newAddress) {
+                $display = [];
+                if ($newAddress->address_line_1) {
+                    $display[] = $newAddress->address_line_1;
+                }
+                if ($newAddress->suburb) {
+                    $display[] = $newAddress->suburb;
+                }
+                if ($newAddress->state) {
+                    $display[] = $newAddress->state;
+                }
+                if ($newAddress->zip) {
+                    $display[] = $newAddress->zip;
+                }
+                if ($newAddress->country) {
+                    $display[] = $newAddress->country;
+                }
+                if ($newAddress->start_date) {
+                    $display[] = 'From: ' . date('d/m/Y', strtotime($newAddress->start_date));
+                }
+                if ($newAddress->end_date) {
+                    $display[] = 'To: ' . date('d/m/Y', strtotime($newAddress->end_date));
+                }
+                $newAddressDisplay[] = !empty($display) ? implode(', ', $display) : 'Address record';
+            }
+            $newAddressDisplayStr = !empty($newAddressDisplay) ? implode(' | ', $newAddressDisplay) : '(empty)';
+
+            // Log activity with before/after values
+            $changedFields = [];
+            if ($oldAddressDisplayStr !== $newAddressDisplayStr) {
+                $changedFields['Address Information'] = [
+                    'old' => $oldAddressDisplayStr,
+                    'new' => $newAddressDisplayStr
+                ];
+            }
+
+            if (!empty($changedFields)) {
+                $this->logClientActivityWithChanges(
+                    $client->id,
+                    'updated address information',
+                    $changedFields,
+                    'activity'
+                );
+            }
 
             return response()->json([
                 'success' => true,
@@ -2365,16 +2602,65 @@ class ClientPersonalDetailsController extends Controller
                 }
             }
 
-            // Log activity for travel information update
-            $travelCount = count(array_filter($travels, function($travel) { 
-                return !empty($travel['country_visited']); 
-            }));
-            $this->logClientActivity(
-                $client->id,
-                'updated travel information',
-                "Updated {$travelCount} travel record(s)",
-                'activity'
-            );
+            // Get existing travels before update for change tracking
+            $existingTravels = ClientTravelInformation::where('client_id', $client->id)->get();
+            $oldTravelDisplay = [];
+            foreach ($existingTravels as $existing) {
+                $display = [];
+                if ($existing->travel_country_visited) {
+                    $display[] = 'Country: ' . $existing->travel_country_visited;
+                }
+                if ($existing->travel_arrival_date) {
+                    $display[] = 'Arrival: ' . date('d/m/Y', strtotime($existing->travel_arrival_date));
+                }
+                if ($existing->travel_departure_date) {
+                    $display[] = 'Departure: ' . date('d/m/Y', strtotime($existing->travel_departure_date));
+                }
+                if ($existing->travel_purpose) {
+                    $display[] = 'Purpose: ' . $existing->travel_purpose;
+                }
+                $oldTravelDisplay[] = !empty($display) ? implode(', ', $display) : 'Travel record';
+            }
+            $oldTravelDisplayStr = !empty($oldTravelDisplay) ? implode(' | ', $oldTravelDisplay) : '(empty)';
+
+            // Get new travels for change tracking
+            $newTravels = ClientTravelInformation::where('client_id', $client->id)->get();
+            $newTravelDisplay = [];
+            foreach ($newTravels as $newTravel) {
+                $display = [];
+                if ($newTravel->travel_country_visited) {
+                    $display[] = 'Country: ' . $newTravel->travel_country_visited;
+                }
+                if ($newTravel->travel_arrival_date) {
+                    $display[] = 'Arrival: ' . date('d/m/Y', strtotime($newTravel->travel_arrival_date));
+                }
+                if ($newTravel->travel_departure_date) {
+                    $display[] = 'Departure: ' . date('d/m/Y', strtotime($newTravel->travel_departure_date));
+                }
+                if ($newTravel->travel_purpose) {
+                    $display[] = 'Purpose: ' . $newTravel->travel_purpose;
+                }
+                $newTravelDisplay[] = !empty($display) ? implode(', ', $display) : 'Travel record';
+            }
+            $newTravelDisplayStr = !empty($newTravelDisplay) ? implode(' | ', $newTravelDisplay) : '(empty)';
+
+            // Log activity with before/after values
+            $changedFields = [];
+            if ($oldTravelDisplayStr !== $newTravelDisplayStr) {
+                $changedFields['Travel Information'] = [
+                    'old' => $oldTravelDisplayStr,
+                    'new' => $newTravelDisplayStr
+                ];
+            }
+
+            if (!empty($changedFields)) {
+                $this->logClientActivityWithChanges(
+                    $client->id,
+                    'updated travel information',
+                    $changedFields,
+                    'activity'
+                );
+            }
 
             return response()->json([
                 'success' => true,
@@ -2392,6 +2678,33 @@ class ClientPersonalDetailsController extends Controller
     {
         try {
             $requestData = $request->all();
+            
+            // Get existing qualifications before update for change tracking
+            $existingQualifications = ClientQualification::where('client_id', $client->id)->get();
+            $oldQualDisplay = [];
+            foreach ($existingQualifications as $existing) {
+                $display = [];
+                if ($existing->level) {
+                    $display[] = 'Level: ' . $existing->level;
+                }
+                if ($existing->name) {
+                    $display[] = 'Name: ' . $existing->name;
+                }
+                if ($existing->qual_college_name) {
+                    $display[] = 'College: ' . $existing->qual_college_name;
+                }
+                if ($existing->country) {
+                    $display[] = 'Country: ' . $existing->country;
+                }
+                if ($existing->start_date) {
+                    $display[] = 'Start: ' . date('d/m/Y', strtotime($existing->start_date));
+                }
+                if ($existing->finish_date) {
+                    $display[] = 'Finish: ' . date('d/m/Y', strtotime($existing->finish_date));
+                }
+                $oldQualDisplay[] = !empty($display) ? implode(', ', $display) : 'Qualification record';
+            }
+            $oldQualDisplayStr = !empty($oldQualDisplay) ? implode(' | ', $oldQualDisplay) : '(empty)';
             
             // Handle qualification deletion
             if (isset($requestData['delete_qualification_ids']) && is_array($requestData['delete_qualification_ids'])) {
@@ -2525,29 +2838,47 @@ class ClientPersonalDetailsController extends Controller
                 }
             }
 
-            // Log activity for educational qualifications update
-            // Only log if there were actual changes or deletions or new records
-            $totalChanges = $actuallyModifiedCount + $newRecordsCount;
-            $deletedCount = isset($requestData['delete_qualification_ids']) ? count($requestData['delete_qualification_ids']) : 0;
-            
-            if ($totalChanges > 0 || $deletedCount > 0) {
-                $activityParts = [];
-                if ($actuallyModifiedCount > 0) {
-                    $activityParts[] = "updated {$actuallyModifiedCount} qualification record(s)";
+            // Get new qualifications for change tracking
+            $newQualifications = ClientQualification::where('client_id', $client->id)->get();
+            $newQualDisplay = [];
+            foreach ($newQualifications as $newQual) {
+                $display = [];
+                if ($newQual->level) {
+                    $display[] = 'Level: ' . $newQual->level;
                 }
-                if ($newRecordsCount > 0) {
-                    $activityParts[] = "added {$newRecordsCount} new qualification record(s)";
+                if ($newQual->name) {
+                    $display[] = 'Name: ' . $newQual->name;
                 }
-                if ($deletedCount > 0) {
-                    $activityParts[] = "deleted {$deletedCount} qualification record(s)";
+                if ($newQual->qual_college_name) {
+                    $display[] = 'College: ' . $newQual->qual_college_name;
                 }
-                
-                $description = ucfirst(implode(', ', $activityParts));
-                
-                $this->logClientActivity(
+                if ($newQual->country) {
+                    $display[] = 'Country: ' . $newQual->country;
+                }
+                if ($newQual->start_date) {
+                    $display[] = 'Start: ' . date('d/m/Y', strtotime($newQual->start_date));
+                }
+                if ($newQual->finish_date) {
+                    $display[] = 'Finish: ' . date('d/m/Y', strtotime($newQual->finish_date));
+                }
+                $newQualDisplay[] = !empty($display) ? implode(', ', $display) : 'Qualification record';
+            }
+            $newQualDisplayStr = !empty($newQualDisplay) ? implode(' | ', $newQualDisplay) : '(empty)';
+
+            // Log activity with before/after values
+            $changedFields = [];
+            if ($oldQualDisplayStr !== $newQualDisplayStr) {
+                $changedFields['Educational Qualifications'] = [
+                    'old' => $oldQualDisplayStr,
+                    'new' => $newQualDisplayStr
+                ];
+            }
+
+            if (!empty($changedFields)) {
+                $this->logClientActivityWithChanges(
                     $client->id,
                     'updated educational qualifications',
-                    $description,
+                    $changedFields,
                     'activity'
                 );
             }
@@ -2575,6 +2906,33 @@ class ClientPersonalDetailsController extends Controller
                     'message' => 'Invalid experience data'
                 ], 400);
             }
+
+            // Get existing experiences before update for change tracking
+            $existingExperiences = ClientExperience::where('client_id', $client->id)->get();
+            $oldExpDisplay = [];
+            foreach ($existingExperiences as $existing) {
+                $display = [];
+                if ($existing->job_title) {
+                    $display[] = 'Title: ' . $existing->job_title;
+                }
+                if ($existing->job_code) {
+                    $display[] = 'Code: ' . $existing->job_code;
+                }
+                if ($existing->job_emp_name) {
+                    $display[] = 'Employer: ' . $existing->job_emp_name;
+                }
+                if ($existing->job_country) {
+                    $display[] = 'Country: ' . $existing->job_country;
+                }
+                if ($existing->job_start_date) {
+                    $display[] = 'Start: ' . date('d/m/Y', strtotime($existing->job_start_date));
+                }
+                if ($existing->job_finish_date) {
+                    $display[] = 'Finish: ' . date('d/m/Y', strtotime($existing->job_finish_date));
+                }
+                $oldExpDisplay[] = !empty($display) ? implode(', ', $display) : 'Experience record';
+            }
+            $oldExpDisplayStr = !empty($oldExpDisplay) ? implode(' | ', $oldExpDisplay) : '(empty)';
 
             // Delete existing experiences for this client
             ClientExperience::where('client_id', $client->id)->delete();
@@ -2613,16 +2971,50 @@ class ClientPersonalDetailsController extends Controller
                 }
             }
 
-            // Log activity for work experience update
-            $experienceCount = count(array_filter($experiences, function($exp) { 
-                return !empty($exp['job_title']) || !empty($exp['job_code']) || !empty($exp['job_emp_name']); 
-            }));
-            $this->logClientActivity(
-                $client->id,
-                'updated work experience',
-                "Updated {$experienceCount} experience record(s)",
-                'activity'
-            );
+            // Get new experiences for change tracking
+            $newExperiences = ClientExperience::where('client_id', $client->id)->get();
+            $newExpDisplay = [];
+            foreach ($newExperiences as $newExp) {
+                $display = [];
+                if ($newExp->job_title) {
+                    $display[] = 'Title: ' . $newExp->job_title;
+                }
+                if ($newExp->job_code) {
+                    $display[] = 'Code: ' . $newExp->job_code;
+                }
+                if ($newExp->job_emp_name) {
+                    $display[] = 'Employer: ' . $newExp->job_emp_name;
+                }
+                if ($newExp->job_country) {
+                    $display[] = 'Country: ' . $newExp->job_country;
+                }
+                if ($newExp->job_start_date) {
+                    $display[] = 'Start: ' . date('d/m/Y', strtotime($newExp->job_start_date));
+                }
+                if ($newExp->job_finish_date) {
+                    $display[] = 'Finish: ' . date('d/m/Y', strtotime($newExp->job_finish_date));
+                }
+                $newExpDisplay[] = !empty($display) ? implode(', ', $display) : 'Experience record';
+            }
+            $newExpDisplayStr = !empty($newExpDisplay) ? implode(' | ', $newExpDisplay) : '(empty)';
+
+            // Log activity with before/after values
+            $changedFields = [];
+            if ($oldExpDisplayStr !== $newExpDisplayStr) {
+                $changedFields['Work Experience'] = [
+                    'old' => $oldExpDisplayStr,
+                    'new' => $newExpDisplayStr
+                ];
+            }
+
+            if (!empty($changedFields)) {
+                $this->logClientActivityWithChanges(
+                    $client->id,
+                    'updated work experience',
+                    $changedFields,
+                    'activity'
+                );
+            }
 
             return response()->json([
                 'success' => true,
@@ -2684,6 +3076,103 @@ class ClientPersonalDetailsController extends Controller
                 $regionalStudyDateFormatted = $regionalStudyDateObj ? $regionalStudyDateObj->format('Y-m-d') : null;
             }
             
+            // Track changes with old and new values
+            $changedFields = [];
+            $fieldLabels = [
+                'naati_test' => 'NAATI Test',
+                'naati_date' => 'NAATI Date',
+                'py_test' => 'PY Test',
+                'py_date' => 'PY Date',
+                'australian_study' => 'Australian Study',
+                'australian_study_date' => 'Australian Study Date',
+                'specialist_education' => 'Specialist Education',
+                'specialist_education_date' => 'Specialist Education Date',
+                'regional_study' => 'Regional Study',
+                'regional_study_date' => 'Regional Study Date'
+            ];
+            
+            // Compare and track changes
+            if ($client->naati_test !== $naatiTest) {
+                $changedFields[$fieldLabels['naati_test']] = [
+                    'old' => $client->naati_test ?? null,
+                    'new' => $naatiTest ?? null
+                ];
+            }
+            if ($client->naati_date != $naatiDateFormatted) {
+                $oldNaatiDate = $client->naati_date ? date('d/m/Y', strtotime($client->naati_date)) : null;
+                $newNaatiDate = $naatiDateFormatted ? date('d/m/Y', strtotime($naatiDateFormatted)) : null;
+                if ($oldNaatiDate !== $newNaatiDate) {
+                    $changedFields[$fieldLabels['naati_date']] = [
+                        'old' => $oldNaatiDate,
+                        'new' => $newNaatiDate
+                    ];
+                }
+            }
+            if ($client->py_test !== $pyTest) {
+                $changedFields[$fieldLabels['py_test']] = [
+                    'old' => $client->py_test ?? null,
+                    'new' => $pyTest ?? null
+                ];
+            }
+            if ($client->py_date != $pyDateFormatted) {
+                $oldPyDate = $client->py_date ? date('d/m/Y', strtotime($client->py_date)) : null;
+                $newPyDate = $pyDateFormatted ? date('d/m/Y', strtotime($pyDateFormatted)) : null;
+                if ($oldPyDate !== $newPyDate) {
+                    $changedFields[$fieldLabels['py_date']] = [
+                        'old' => $oldPyDate,
+                        'new' => $newPyDate
+                    ];
+                }
+            }
+            if ($client->australian_study !== $australianStudy) {
+                $changedFields[$fieldLabels['australian_study']] = [
+                    'old' => $client->australian_study ?? null,
+                    'new' => $australianStudy ?? null
+                ];
+            }
+            if ($client->australian_study_date != $australianStudyDateFormatted) {
+                $oldAusStudyDate = $client->australian_study_date ? date('d/m/Y', strtotime($client->australian_study_date)) : null;
+                $newAusStudyDate = $australianStudyDateFormatted ? date('d/m/Y', strtotime($australianStudyDateFormatted)) : null;
+                if ($oldAusStudyDate !== $newAusStudyDate) {
+                    $changedFields[$fieldLabels['australian_study_date']] = [
+                        'old' => $oldAusStudyDate,
+                        'new' => $newAusStudyDate
+                    ];
+                }
+            }
+            if ($client->specialist_education !== $specialistEducation) {
+                $changedFields[$fieldLabels['specialist_education']] = [
+                    'old' => $client->specialist_education ?? null,
+                    'new' => $specialistEducation ?? null
+                ];
+            }
+            if ($client->specialist_education_date != $specialistEducationDateFormatted) {
+                $oldSpecEdDate = $client->specialist_education_date ? date('d/m/Y', strtotime($client->specialist_education_date)) : null;
+                $newSpecEdDate = $specialistEducationDateFormatted ? date('d/m/Y', strtotime($specialistEducationDateFormatted)) : null;
+                if ($oldSpecEdDate !== $newSpecEdDate) {
+                    $changedFields[$fieldLabels['specialist_education_date']] = [
+                        'old' => $oldSpecEdDate,
+                        'new' => $newSpecEdDate
+                    ];
+                }
+            }
+            if ($client->regional_study !== $regionalStudy) {
+                $changedFields[$fieldLabels['regional_study']] = [
+                    'old' => $client->regional_study ?? null,
+                    'new' => $regionalStudy ?? null
+                ];
+            }
+            if ($client->regional_study_date != $regionalStudyDateFormatted) {
+                $oldRegStudyDate = $client->regional_study_date ? date('d/m/Y', strtotime($client->regional_study_date)) : null;
+                $newRegStudyDate = $regionalStudyDateFormatted ? date('d/m/Y', strtotime($regionalStudyDateFormatted)) : null;
+                if ($oldRegStudyDate !== $newRegStudyDate) {
+                    $changedFields[$fieldLabels['regional_study_date']] = [
+                        'old' => $oldRegStudyDate,
+                        'new' => $newRegStudyDate
+                    ];
+                }
+            }
+            
             // Save all fields
             $client->naati_test = $naatiTest;
             $client->naati_date = $naatiDateFormatted;
@@ -2703,19 +3192,12 @@ class ClientPersonalDetailsController extends Controller
                 $pointsService->clearCache($client->id);
             }
 
-            // Log activity for additional information update
-            $updatedFields = [];
-            if (!empty($naatiTest) || !empty($naatiDate)) $updatedFields[] = 'NAATI Test';
-            if (!empty($pyTest) || !empty($pyDate)) $updatedFields[] = 'PY Test';
-            if (!empty($australianStudy) || !empty($australianStudyDate)) $updatedFields[] = 'Australian Study';
-            if (!empty($specialistEducation) || !empty($specialistEducationDate)) $updatedFields[] = 'Specialist Education';
-            if (!empty($regionalStudy) || !empty($regionalStudyDate)) $updatedFields[] = 'Regional Study';
-            
-            if (!empty($updatedFields)) {
-                $this->logClientActivity(
+            // Log activity with before/after values
+            if (!empty($changedFields)) {
+                $this->logClientActivityWithChanges(
                     $client->id,
                     'updated additional information',
-                    'Updated: ' . implode(', ', $updatedFields),
+                    $changedFields,
                     'activity'
                 );
             }

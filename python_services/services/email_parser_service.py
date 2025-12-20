@@ -9,7 +9,7 @@ import json
 import sys
 import os
 import base64
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 
@@ -119,6 +119,11 @@ class EmailParserService:
             except:
                 return str(value)
         elif isinstance(value, datetime):
+            # Ensure datetime is timezone-aware before converting to ISO
+            # If naive (no timezone), assume UTC to preserve the exact time
+            if value.tzinfo is None:
+                # Naive datetime - assume UTC to preserve original time
+                value = value.replace(tzinfo=timezone.utc)
             return value.isoformat()
         elif isinstance(value, (int, float, bool)):
             return value

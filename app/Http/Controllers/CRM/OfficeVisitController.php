@@ -99,7 +99,7 @@ class OfficeVisitController extends Controller
 				$query->where('office', '=', $office);
 			}
 		}
-		$lists		= $query->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
+		$lists		= $query->with('assignee')->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
 
 		return view('crm.officevisits.index',compact(['lists', 'totalData']));
 	}
@@ -521,7 +521,7 @@ class OfficeVisitController extends Controller
 				$query->where('office', '=', $office);
 			}
 		}
-		$lists		= $query->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
+		$lists		= $query->with('assignee')->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
 
 		return view('crm.officevisits.waiting',compact(['lists', 'totalData']));
 	}
@@ -544,7 +544,7 @@ class OfficeVisitController extends Controller
 				$query->where('office', '=', $office);
 			}
 		}
-		$lists		= $query->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
+		$lists		= $query->with('assignee')->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
 
 		return view('crm.officevisits.attending',compact(['lists', 'totalData']));
 	}
@@ -567,7 +567,7 @@ class OfficeVisitController extends Controller
 				$query->where('office', '=', $office);
 			}
 		}
-		$lists		= $query->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
+		$lists		= $query->with('assignee')->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
         return view('crm.officevisits.completed',compact(['lists', 'totalData']));
 	}
 
@@ -583,7 +583,7 @@ class OfficeVisitController extends Controller
 				$query->where('office', '=', $office);
 			}
 		}
-		$lists		= $query->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
+		$lists		= $query->with('assignee')->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
 
 		return view('crm.officevisits.archived',compact(['lists', 'totalData']));
 	}

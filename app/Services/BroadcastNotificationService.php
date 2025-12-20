@@ -89,23 +89,45 @@ class BroadcastNotificationService
             'batch_uuid' => $batchUuid,
             'recipient_count' => $recipientCount,
             'scope' => $scope,
-            'channel_count' => count($recipientIdsForChannels)
+            'channel_count' => count($recipientIdsForChannels),
+            'broadcast_driver' => config('broadcasting.default')
         ]);
         
-        broadcast(new BroadcastNotificationCreated(
-            batchUuid: $batchUuid,
-            message: $messageBody,
-            title: $title,
-            senderId: (int) $sender->id,
-            senderName: $senderName,
-            channelRecipientIds: $recipientIdsForChannels,
-            payloadRecipientIds: $recipientIdsForPayload,
-            recipientCount: $recipientCount,
-            scope: $scope,
-            sentAt: $sentAt
-        ));
-        
-        \Log::info('✅ Broadcast event dispatched successfully');
+        try {
+            broadcast(new BroadcastNotificationCreated(
+                batchUuid: $batchUuid,
+                message: $messageBody,
+                title: $title,
+                senderId: (int) $sender->id,
+                senderName: $senderName,
+                channelRecipientIds: $recipientIdsForChannels,
+                payloadRecipientIds: $recipientIdsForPayload,
+                recipientCount: $recipientCount,
+                scope: $scope,
+                sentAt: $sentAt
+            ));
+            
+            \Log::info('✅ Broadcast event dispatched successfully');
+        } catch (\Illuminate\Broadcasting\BroadcastException $e) {
+            // Log the error but don't fail the entire operation
+            \Log::error('⚠️ Reverb broadcast failed (notification still saved to database)', [
+                'error' => $e->getMessage(),
+                'batch_uuid' => $batchUuid,
+                'broadcast_driver' => config('broadcasting.default'),
+                'reverb_host' => config('broadcasting.connections.reverb.options.host'),
+                'reverb_port' => config('broadcasting.connections.reverb.options.port'),
+                'hint' => 'Ensure Reverb server is running: php artisan reverb:start'
+            ]);
+            // Continue execution - notification is already saved to database
+        } catch (\Exception $e) {
+            // Log any other broadcast-related errors
+            \Log::error('⚠️ Unexpected broadcast error (notification still saved to database)', [
+                'error' => $e->getMessage(),
+                'batch_uuid' => $batchUuid,
+                'exception' => get_class($e)
+            ]);
+            // Continue execution - notification is already saved to database
+        }
 
         return [
             'batch_uuid' => $batchUuid,

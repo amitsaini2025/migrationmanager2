@@ -432,6 +432,9 @@
 	padding: 8px;
 	border-right: 1px solid #e2e8f0;
 	background: white;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
 }
 
 .timeslot-section {
@@ -465,6 +468,10 @@
 	border-radius: 6px;
 	padding: 6px;
 	border: 1px solid #e2e8f0;
+	min-height: 300px;
+	width: 100%;
+	display: block;
+	overflow: visible;
 }
 
 /* Modern Bootstrap Datepicker Styling */
@@ -474,10 +481,14 @@
 	background: transparent !important;
 	padding: 0 !important;
 	margin: 0 !important;
+	position: relative !important;
+	display: block !important;
 }
 
 .calendar-wrapper .datepicker.datepicker-inline {
 	width: 100% !important;
+	display: block !important;
+	min-height: 280px !important;
 }
 
 .calendar-wrapper .datepicker table {
@@ -485,21 +496,129 @@
 	border-collapse: separate !important;
 	border-spacing: 4px !important;
 	margin: 0 !important;
+	table-layout: fixed !important;
+	display: table !important;
+}
+
+/* Ensure table header row stays in single line */
+.calendar-wrapper .datepicker table thead {
+	display: table-header-group !important;
+	width: 100% !important;
+}
+
+.calendar-wrapper .datepicker table thead tr {
+	display: table-row !important;
+	width: 100% !important;
+	white-space: nowrap !important;
 }
 
 .calendar-wrapper .datepicker table thead {
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+	display: table-header-group !important;
+	width: 100% !important;
+}
+
+.calendar-wrapper .datepicker table thead tr {
+	display: table-row !important;
+	width: 100% !important;
+}
+
+.calendar-wrapper .datepicker table thead {
+	background: white !important;
 	border-radius: 8px !important;
+	display: table-header-group !important;
+	border: 1px solid #e2e8f0 !important;
+}
+
+.calendar-wrapper .datepicker table thead tr {
+	display: table-row !important;
+}
+
+.calendar-wrapper .datepicker table thead tr th {
+	display: table-cell !important;
+}
+
+/* Ensure month/year text is always visible */
+.calendar-wrapper .datepicker table thead tr:first-child th,
+.calendar-wrapper .datepicker table thead tr:first-child th * {
+	color: #2563eb !important;
+	opacity: 1 !important;
+	visibility: visible !important;
+}
+
+/* Force single-row layout for calendar header */
+.calendar-wrapper .datepicker table thead tr:first-child {
+	display: table-row !important;
+	width: 100% !important;
+	table-layout: fixed !important;
+	white-space: nowrap !important;
 }
 
 .calendar-wrapper .datepicker table thead tr:first-child th {
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-	color: white !important;
+	background: white !important;
+	color: #2563eb !important;
 	border: none !important;
 	border-radius: 8px 8px 0 0 !important;
 	padding: 12px 8px !important;
-	font-weight: 600 !important;
+	font-weight: 700 !important;
 	font-size: 15px !important;
+	opacity: 1 !important;
+	visibility: visible !important;
+	display: table-cell !important;
+	position: relative !important;
+	vertical-align: middle !important;
+	white-space: nowrap !important;
+	float: none !important;
+	line-height: 1.5 !important;
+}
+
+/* Previous button - Left side */
+.calendar-wrapper .datepicker table thead tr:first-child th.prev {
+	text-align: left !important;
+	width: 15% !important;
+	min-width: 50px !important;
+	padding-left: 12px !important;
+	padding-right: 4px !important;
+}
+
+/* Month/Year name - Center */
+.calendar-wrapper .datepicker table thead tr:first-child th.datepicker-switch {
+	text-align: center !important;
+	width: 70% !important;
+	padding: 12px 4px !important;
+	white-space: nowrap !important;
+	overflow: hidden !important;
+	text-overflow: ellipsis !important;
+}
+
+/* Next button - Right side */
+.calendar-wrapper .datepicker table thead tr:first-child th.next {
+	text-align: right !important;
+	width: 15% !important;
+	min-width: 50px !important;
+	display: table-cell !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+	padding-right: 12px !important;
+	padding-left: 4px !important;
+}
+
+.calendar-wrapper .datepicker table thead tr:first-child th.next,
+.calendar-wrapper .datepicker table thead tr:first-child th.next * {
+	display: inline-block !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+}
+
+.calendar-wrapper .datepicker table thead tr:first-child th .datepicker-switch,
+.calendar-wrapper .datepicker table thead tr:first-child th.datepicker-switch {
+	color: #2563eb !important;
+	opacity: 1 !important;
+	visibility: visible !important;
+	display: block !important;
+	text-shadow: none !important;
+	font-weight: 700 !important;
+	text-align: center !important;
+	width: 100% !important;
 }
 
 .calendar-wrapper .datepicker table thead tr:last-child th {
@@ -511,10 +630,16 @@
 	font-size: 13px !important;
 }
 
+.calendar-wrapper .datepicker table tbody {
+	display: table-row-group !important;
+}
+
 .calendar-wrapper .datepicker table tbody td {
 	border: none !important;
 	padding: 2px !important;
 	text-align: center !important;
+	display: table-cell !important;
+	vertical-align: middle !important;
 }
 
 .calendar-wrapper .datepicker table tbody td.day {
@@ -583,27 +708,78 @@
 
 .calendar-wrapper .datepicker .prev,
 .calendar-wrapper .datepicker .next {
-	color: white !important;
+	color: #2563eb !important;
 	font-size: 18px !important;
 	font-weight: bold !important;
-	opacity: 0.8 !important;
-	transition: opacity 0.3s !important;
+	opacity: 1 !important;
+	visibility: visible !important;
+	transition: all 0.3s !important;
+	cursor: pointer !important;
+	display: inline-block !important;
+	position: relative !important;
+	vertical-align: middle !important;
+	background: transparent !important;
+	border: none !important;
+	width: auto !important;
+	height: auto !important;
+	padding: 4px 8px !important;
+	line-height: 1.5 !important;
+	float: none !important;
+	clear: none !important;
+	white-space: nowrap !important;
+}
+
+.calendar-wrapper .datepicker table thead tr:first-child th.prev,
+.calendar-wrapper .datepicker table thead tr:first-child th.next {
+	display: table-cell !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+}
+
+.calendar-wrapper .datepicker table thead tr:first-child th.prev .prev,
+.calendar-wrapper .datepicker table thead tr:first-child th.next .next {
+	display: inline-block !important;
+	visibility: visible !important;
+	opacity: 1 !important;
 }
 
 .calendar-wrapper .datepicker .prev:hover,
 .calendar-wrapper .datepicker .next:hover {
 	opacity: 1 !important;
-	background: rgba(255, 255, 255, 0.1) !important;
+	visibility: visible !important;
+	background: rgba(37, 99, 235, 0.1) !important;
+	color: #1e40af !important;
+	transform: scale(1.1) !important;
+}
+
+/* Ensure next button is always visible and properly positioned */
+.calendar-wrapper .datepicker table thead tr:first-child th.next,
+.calendar-wrapper .datepicker table thead tr:first-child th.next *,
+.calendar-wrapper .datepicker table thead tr:first-child th.next::before,
+.calendar-wrapper .datepicker table thead tr:first-child th.next::after {
+	visibility: visible !important;
+	opacity: 1 !important;
+	display: inline-block !important;
+}
+
+.calendar-wrapper .datepicker table thead tr:first-child th.next {
+	min-width: 40px !important;
 }
 
 .calendar-wrapper .datepicker .datepicker-switch {
-	color: white !important;
-	font-weight: 600 !important;
+	color: #2563eb !important;
+	font-weight: 700 !important;
 	font-size: 15px !important;
+	opacity: 1 !important;
+	visibility: visible !important;
+	display: block !important;
+	text-shadow: none !important;
 }
 
 .calendar-wrapper .datepicker .datepicker-switch:hover {
-	background: rgba(255, 255, 255, 0.1) !important;
+	background: rgba(37, 99, 235, 0.1) !important;
+	opacity: 1 !important;
+	color: #1e40af !important;
 }
 
 .timeslot-wrapper {
@@ -890,6 +1066,11 @@
 	
 	.calendar-wrapper, .timeslot-wrapper {
 		padding: 15px;
+		min-height: auto;
+	}
+	
+	.calendar-wrapper .datepicker.datepicker-inline {
+		min-height: auto !important;
 	}
 	
 	.selected-date-display {

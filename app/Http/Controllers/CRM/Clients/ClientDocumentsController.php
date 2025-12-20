@@ -1532,6 +1532,61 @@ class ClientDocumentsController extends Controller
     }
 
     /**
+     * Delete Personal Document Category (Superadmin only, empty categories only)
+     */
+    public function deletePersonalDocCategory(Request $request) {
+        try {
+            // Check if user is superadmin (role = 1)
+            if (Auth::user()->role !== 1) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Only superadmin can delete categories.'
+                ]);
+            }
+
+            $request->validate([
+                'id' => 'required|exists:personal_document_types,id',
+            ]);
+
+            $category = PersonalDocumentType::findOrFail($request->id);
+
+            // Check if category is empty (no documents with this folder_name)
+            $documentCount = Document::where('folder_name', $category->id)
+                ->where('doc_type', 'personal')
+                ->count();
+
+            if ($documentCount > 0) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Cannot delete category. It contains ' . $documentCount . ' document(s). Please remove all documents first.'
+                ]);
+            }
+
+            // Delete the category
+            $categoryTitle = $category->title;
+            $category->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Category "' . $categoryTitle . '" deleted successfully.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error deleting personal document category', [
+                'category_id' => $request->id ?? null,
+                'user_id' => Auth::user()->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Error deleting category: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Get auto-checklist matches for bulk upload
      */
     public function getAutoChecklistMatches(Request $request) {

@@ -2,7 +2,7 @@
 namespace App\Http\Controllers\CRM;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
+// use App\Models\Product; // TODO: Product model not found - commented out to fix Intelephense error
 use Illuminate\Http\Request;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 
@@ -17,7 +17,7 @@ use App\Models\Branch;
 use App\Models\ApplicationActivitiesLog;
 use App\Models\BookingAppointment;
 use App\Services\BansalAppointmentSync\BansalApiClient;
-use Auth;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
@@ -114,7 +114,8 @@ class AppointmentsController extends Controller
     public function store(Request $request)
     {
         $request->validate(['name' => 'required','detail' => 'required',]);
-        Product::create($request->all());
+        // TODO: Product model not found - this appears to be unused/dead code
+        // Product::create($request->all());
         return redirect()->route('appointment.index')->with('success','Product created successfully.');
     }
 
@@ -550,7 +551,7 @@ public function update_appointment_status(Request $request){
     if($saved){
         $objs = new AppointmentLog;
         $objs->title = 'changed status from '.$status.' to '.$request->statusname;
-        $objs->created_by = \Auth::user()->id;
+        $objs->created_by = Auth::user()->id;
         $objs->appointment_id = $request->id;
 
         $saved = $objs->save();
@@ -597,7 +598,7 @@ public function update_appointment_priority(Request $request){
     if($saved){
         $objs = new AppointmentLog;
         $objs->title = 'changed priority from '.$status.' to '.$request->status;
-        $objs->created_by = \Auth::user()->id;
+        $objs->created_by = Auth::user()->id;
         $objs->appointment_id = $request->id;
 
         $saved = $objs->save();
@@ -618,12 +619,12 @@ public function change_assignee(Request $request){
     $saved = $objs->save();
     if($saved){
         $o = new \App\Models\Notification;
-        $o->sender_id = \Auth::user()->id;
+        $o->sender_id = Auth::user()->id;
         $o->receiver_id = $request->assinee;
         $o->module_id = $request->id;
-        $o->url = \URL::to('/appointments');
+        $o->url = URL::to('/appointments');
         $o->notification_type = 'appointment';
-        $o->message = $objs->title.' Appointments Assigned by '.\Auth::user()->first_name.' '.\Auth::user()->last_name;
+        $o->message = $objs->title.' Appointments Assigned by '.Auth::user()->first_name.' '.Auth::user()->last_name;
         $o->save();
         $response['status'] 	= 	true;
         $response['message']	=	'Updated successfully';
@@ -637,7 +638,7 @@ public function change_assignee(Request $request){
 public function update_apppointment_comment(Request $request){
     $objs = new AppointmentLog;
     $objs->title = 'has commented';
-    $objs->created_by = \Auth::user()->id;
+    $objs->created_by = Auth::user()->id;
     $objs->appointment_id = $request->id;
     $objs->message = $request->visit_comment;
     $saved = $objs->save();
@@ -658,7 +659,7 @@ public function update_apppointment_comment(Request $request){
         if($saved){
             $objs = new AppointmentLog;
             $objs->title = 'changed description';
-            $objs->created_by = \Auth::user()->id;
+            $objs->created_by = Auth::user()->id;
             $objs->appointment_id = $request->id;
             $objs->message = $request->visit_purpose;
             $saved = $objs->save();
@@ -825,13 +826,31 @@ public function update_apppointment_comment(Request $request){
             ? Carbon::createFromFormat('H:i:s', $appointmentTimeStart24)->format('H:i')
             : null;
 
+
+           
+        if( isset($request->appointment_details) && $request->appointment_details != ""){
+            if($request->appointment_details == "phone"){
+                $appointmentDetailsWebsite = 'phone';
+                $appointmentDetailsCrm = 'phone';
+            } else if($request->appointment_details == "in_person"){
+                $appointmentDetailsWebsite = 'in-person';
+                $appointmentDetailsCrm = 'in_person';
+            } else if($request->appointment_details == "video_call"){
+                $appointmentDetailsWebsite = 'video-call';
+                $appointmentDetailsCrm = 'video';
+            } else {
+                $appointmentDetailsWebsite = 'in-person';
+                $appointmentDetailsCrm = 'in_person';
+            }
+        }
+
         $apiPayload = [
             'full_name' => $client?->full_name,
             'email' => $client?->email,
             'phone' => $client?->phone,
             'client_reference' => $request->client_unique_id,
             'location' => $location,
-            'meeting_type' => $request->appointment_details,
+            'meeting_type' =>  $appointmentDetailsWebsite,
             'preferred_language' => $request->preferred_language,
 
             'enquiry_type' => $enquiryType,
@@ -906,7 +925,7 @@ public function update_apppointment_comment(Request $request){
         $timeslotFull = $apiAppointmentData['appointment_time'];
         $durationMinutes = $apiAppointmentData['duration_minutes'] ?? $serviceDuration;
         $location = $apiAppointmentData['location'] ?? $location;
-        $meetingType = $apiAppointmentData['meeting_type'] ?? $request->appointment_details;
+        $meetingType = $appointmentDetailsCrm;
         $preferredLanguage = $apiAppointmentData['preferred_language'] ?? $request->preferred_language;
         $status = $apiAppointmentData['status'] ?? 'pending';
         $enquiryType = $apiAppointmentData['enquiry_type'] ?? $enquiryType;
@@ -1094,11 +1113,18 @@ public function update_apppointment_comment(Request $request){
             if(isset($requestData['inperson_address']) && $requestData['inperson_address'] != ""){
                 if($requestData['inperson_address'] == 1){
                     $inperson_address = "ADELAIDE (Unit 5 5/55 Gawler Pl, Adelaide SA 5000)";
+                    $contact_phone = "08 8317 1340"; // Adelaide phone number
                 } else if($requestData['inperson_address'] == 2){
                     $inperson_address = "MELBOURNE (Next to flight Center, Level 8/278 Collins St, Melbourne VIC 3000, Australia)";
+                    $contact_phone = "03 9602 1330"; // Melbourne phone number
+                } else {
+                    $inperson_address = "MELBOURNE (Next to flight Center, Level 8/278 Collins St, Melbourne VIC 3000, Australia)";
+                    $contact_phone = "03 9602 1330"; // Default to Melbourne
                 }
             } else {
-                $inperson_address = "";
+                
+                $inperson_address = "MELBOURNE (Next to flight Center, Level 8/278 Collins St, Melbourne VIC 3000, Australia)";
+                $contact_phone = "03 9602 1330"; // Default to Melbourne
             }
 
             $details = [
@@ -1115,6 +1141,7 @@ public function update_apppointment_comment(Request $request){
                 'appointment_id'=> $bookingAppointment->id,  //booking appointment id
                 'appointment_details'=> $appointment_details,
                 'inperson_address'=> $inperson_address,
+                'contact_phone'=> $contact_phone, // Location-based phone number
                 'service_type'=> $request->service_id,
                 'client_id'=> $request->client_id,
                 'preferred_language'=> $request->preferred_language
@@ -1603,7 +1630,7 @@ public function update_apppointment_comment(Request $request){
 		$obj = Appointment::find($request->id);
 		if($obj){
 			?>
-			<form method="post" action="<?php echo \URL::to('/editappointment'); ?>" name="editappointment" id="editappointment" autocomplete="off" enctype="multipart/form-data">
+			<form method="post" action="<?php echo URL::to('/editappointment'); ?>" name="editappointment" id="editappointment" autocomplete="off" enctype="multipart/form-data">
 
 				<input type="hidden" name="_token" value="<?php echo csrf_token(); ?>">
 				<input type="hidden" name="client_id" value="<?php echo $obj->client_id; ?>">

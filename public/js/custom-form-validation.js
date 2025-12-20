@@ -2482,7 +2482,8 @@ function customValidate(formName, savetype = '')
 						success: function(response){
 							console.log('Note form success callback reached');
 							$('.popuploader').hide();
-							var obj = $.parseJSON(response);
+							// Handle both string and already-parsed JSON responses
+							var obj = typeof response === 'string' ? $.parseJSON(response) : response;
 							console.log('Parsed response:', obj);
 							if(obj.status){
 								console.log('Note added successfully, client_id:', client_id);
@@ -2564,7 +2565,8 @@ function customValidate(formName, savetype = '')
 							success: function(response){
 								console.log('notetermform_n success callback');
 								$('.popuploader').hide();
-								var obj = $.parseJSON(response);
+								// Handle both string and already-parsed JSON responses
+								var obj = typeof response === 'string' ? $.parseJSON(response) : response;
 								console.log('notetermform_n parsed response:', obj);
 
 								if(obj.status){

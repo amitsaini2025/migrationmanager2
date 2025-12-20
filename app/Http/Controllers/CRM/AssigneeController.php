@@ -602,6 +602,7 @@ class AssigneeController extends Controller
             }
             $objs->followup_date = @$appointment->followup_datetime;
             $objs->task_group = @$appointment->task_group;
+            $objs->task_status = 0;
             $objs->pin = 0;
             $objs->save();
             return redirect()->route('assignee.assigned_by_me')->with('success','Activity deleted successfully');
@@ -642,6 +643,7 @@ class AssigneeController extends Controller
             }
             $objs->followup_date = @$appointment->followup_datetime;
             $objs->task_group = @$appointment->task_group;
+            $objs->task_status = 0;
             $objs->pin = 0;
             $objs->save();
             echo json_encode(array('success' => true, 'message' => 'Activity deleted successfully'));
@@ -675,6 +677,7 @@ class AssigneeController extends Controller
             }
             $objs->followup_date = @$appointment->followup_datetime;
             $objs->task_group = @$appointment->task_group;
+            $objs->task_status = 0;
             $objs->pin = 0;
             $objs->save();
             return redirect()->route('assignee.action_completed')->with('success','Action deleted successfully');

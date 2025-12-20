@@ -1331,6 +1331,7 @@ public function update_apppointment_comment(Request $request){
 				</p></div>';
 				$objs->subject = $subject;
 				$objs->task_status = 0;
+				$objs->pin = 0;
 				$objs->save();
 				//return Redirect::to('/appointments-cal')->with('success', 'Appointment updated successfully.');
                 return redirect()->back()->withInput()->with('success', 'Appointment updated successfully.');
@@ -1514,6 +1515,7 @@ public function update_apppointment_comment(Request $request){
             }
             $objs->subject = $subject;
             $objs->task_status = 0;
+            $objs->pin = 0;
             $objs->save();
             //return Redirect::to('/appointments-cal')->with('success', 'Appointment updated successfully.');
             return Redirect()->back()->with('success', 'Appointment updated successfully.');
@@ -1792,6 +1794,7 @@ public function update_apppointment_comment(Request $request){
 				</p></div>';
 				$objs->subject = $subject;
 				$objs->task_status = 0;
+				$objs->pin = 0;
 				$objs->save();
 			$response['status'] 	= 	true;
 			$response['data']	=	$data;

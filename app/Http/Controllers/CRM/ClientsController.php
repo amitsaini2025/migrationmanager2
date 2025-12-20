@@ -5527,6 +5527,8 @@ class ClientsController extends Controller
                     $objs->created_by = Auth::user()->id;
                     $objs->description = '';
                     $objs->subject = $subject;
+                    $objs->task_status = 0;
+                    $objs->pin = 0;
                     $objs->save();
                 }
             } //end foreach
@@ -6216,6 +6218,8 @@ class ClientsController extends Controller
                     $objs->created_by = Auth::user()->id;
                     $objs->description = $dest_doc_client_unique_id.'-'.$client_matter_info['client_unique_matter_no'];
                     $objs->subject = $subject;
+                    $objs->task_status = 0;
+                    $objs->pin = 0;
                     $objs->save();
                 }
 
@@ -6295,6 +6299,8 @@ class ClientsController extends Controller
                     $objs->created_by = Auth::user()->id;
                     $objs->description = $dest_doc_client_unique_id.'-'.$client_matter_info['client_unique_matter_no'];
                     $objs->subject = $subject;
+                    $objs->task_status = 0;
+                    $objs->pin = 0;
                     $objs->save();
                 }
 
@@ -7024,6 +7030,8 @@ class ClientsController extends Controller
             $activity->created_by = Auth::user()->id;
             $activity->subject = 'created visa agreement';
             $activity->description = '<p>Visa agreement has been created for matter: <strong>' . $matterName . '</strong></p>';
+            $activity->task_status = 0;
+            $activity->pin = 0;
             $activity->save();
             
             // Return the download URL as JSON
@@ -7475,6 +7483,8 @@ class ClientsController extends Controller
                 $activity->created_by = Auth::user()->id;
                 $activity->subject = $action . ' cost assignment form';
                 $activity->description = '<p>Cost assignment form has been ' . $action . ' for matter: <strong>' . $matterName . '</strong></p>';
+                $activity->task_status = 0;
+                $activity->pin = 0;
                 $activity->save();
             }
         }
@@ -7515,6 +7525,8 @@ class ClientsController extends Controller
             $activity->created_by = Auth::user()->id;
             $activity->subject = 'deleted cost assignment form';
             $activity->description = '<p>Cost assignment form has been deleted for matter: <strong>' . $matterName . '</strong></p>';
+            $activity->task_status = 0;
+            $activity->pin = 0;
             $activity->save();
 
             return response()->json([
@@ -8097,6 +8109,8 @@ class ClientsController extends Controller
             $log->created_by = Auth::user()->id;
             $log->description = '';
             $log->subject = 'Finalized visa agreement uploaded as PDF';
+            $log->task_status = 0;
+            $log->pin = 0;
             $log->save();
         }
 
@@ -8158,6 +8172,8 @@ class ClientsController extends Controller
 				$activityLog->created_by = Auth::user()->id;
 				$activityLog->description = '<span class="text-semi-bold">Activity Converted to Note</span><p>Activity "' . $activity->subject . '" has been converted to a note.</p>';
 				$activityLog->subject = 'converted activity to note';
+				$activityLog->task_status = 0;
+				$activityLog->pin = 0;
 				$activityLog->save();
 
 				// Update client matter timestamp

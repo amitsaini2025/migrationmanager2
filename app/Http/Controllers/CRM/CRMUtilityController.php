@@ -1232,6 +1232,8 @@ class CRMUtilityController extends Controller
                 $objs->client_id = $obj->to_mail;
                 $objs->created_by = Auth::user()->id;
                 $objs->subject = "Checklist sent to client";
+                $objs->task_status = 0;
+                $objs->pin = 0;
                 $objs->save();
             }
         }
@@ -1242,6 +1244,8 @@ class CRMUtilityController extends Controller
                 $objs->client_id = $obj->to_mail;
                 $objs->created_by = Auth::user()->id;
                 $objs->subject = "Document Checklist sent to client";
+                $objs->task_status = 0;
+                $objs->pin = 0;
                 $objs->save();
             }
         }

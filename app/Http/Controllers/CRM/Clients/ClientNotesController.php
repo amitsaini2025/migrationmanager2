@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Log;
 use App\Models\Admin;
 use App\Models\Note;
 use App\Models\ActivitiesLog;
@@ -47,6 +48,7 @@ class ClientNotesController extends Controller
     public function createnote(Request $request)
     { 
         //dd($request->all());
+        $response = []; // Initialize response array
         $isUpdate = isset($request->noteid) && $request->noteid != '';
         $changedFields = [];
         $oldNote = null;
@@ -56,13 +58,15 @@ class ClientNotesController extends Controller
             $oldNote = $obj->replicate(); // Keep a copy of old values for tracking changes
         }else{
             $obj = new Note;
-            $obj->title = $request->title;
+            // Title field may not exist in simple form, use default if not provided
+            $obj->title = $request->title ?? '';
             $obj->matter_id = $request->matter_id;
         }
 
         // Track changes for updates
         if($isUpdate && $oldNote) {
-            if($oldNote->title !== $request->title) {
+            // Only track title changes if title is provided in request
+            if(isset($request->title) && $oldNote->title !== $request->title) {
                 $changedFields['Title'] = [
                     'old' => $oldNote->title,
                     'new' => $request->title
@@ -96,94 +100,130 @@ class ClientNotesController extends Controller
         } else {
             $obj->note_deadline = NULL;
         }*/
-        $obj->mobile_number = $request->mobileNumber; // Add this line
+        $obj->mobile_number = $request->mobileNumber ?? null; // Handle case when mobileNumber is not provided
         $obj->task_group = $request->task_group;
-        $saved = $obj->save();
-		if($saved){
-            if($request->vtype == 'client'){
-                // Get note type for enhanced subject line with proper formatting
-                $taskGroup = $request->task_group ?? 'General';
-                $noteTypeFormatted = ucfirst(strtolower($taskGroup));
-                
-                // Get matter reference (like TGV_1)
-                $matterReference = '';
-                if(isset($request->matter_id) && $request->matter_id != "") {
-                    $matter = ClientMatter::find($request->matter_id);
-                    if($matter && $matter->client_unique_matter_no) {
-                        $matterReference = $matter->client_unique_matter_no;
-                    }
-                }
-                
-                // If no matter reference found, try to get the latest active matter for this client
-                if(empty($matterReference)) {
-                    $latestMatter = ClientMatter::where('client_id', $request->client_id)
-                        ->where('matter_status', 1)
-                        ->orderBy('id', 'desc')
-                        ->first();
-                    if($latestMatter && $latestMatter->client_unique_matter_no) {
-                        $matterReference = $latestMatter->client_unique_matter_no;
-                    }
-                }
-                
-                // Format subject line with action word
-                if($isUpdate) {
-                    // "updated Call Notes - TGV_1"
-                    $subjectLine = !empty($matterReference) 
-                        ? "updated {$noteTypeFormatted} Notes - {$matterReference}"
-                        : "updated {$noteTypeFormatted} Notes";
+        
+        // PostgreSQL NOT NULL constraints - must set these fields
+        if(!$isUpdate) {
+            $obj->pin = 0; // Default to not pinned
+            $obj->folloup = 0; // Default to not a follow-up
+            $obj->status = '0'; // Default status
+        }
+        
+        try {
+            $saved = $obj->save();
+            
+            if($saved){
+                if($request->vtype == 'client'){
+                    try {
+                        // Get note type for enhanced subject line with proper formatting
+                        $taskGroup = $request->task_group ?? 'General';
+                        $noteTypeFormatted = ucfirst(strtolower($taskGroup));
                         
-                    // Enhanced update logging with change tracking
-                    if(!empty($changedFields)) {
-                        $this->logClientActivityWithChanges(
-                            $request->client_id,
-                            $subjectLine,
-                            $changedFields,
-                            'note'
-                        );
-                    } else {
-                        // Log full description without truncation
-                        $description = $request->description;
-                        $this->logClientActivity(
-                            $request->client_id,
-                            $subjectLine,
-                            $description,
-                            'note'
-                        );
-                    }
-                } else {
-                    // "added Call Notes - TGV_1"
-                    $subjectLine = !empty($matterReference) 
-                        ? "added {$noteTypeFormatted} Notes - {$matterReference}"
-                        : "added {$noteTypeFormatted} Notes";
+                        // Get matter reference (like TGV_1)
+                        $matterReference = '';
+                        if(isset($request->matter_id) && $request->matter_id != "") {
+                            $matter = ClientMatter::find($request->matter_id);
+                            if($matter && $matter->client_unique_matter_no) {
+                                $matterReference = $matter->client_unique_matter_no;
+                            }
+                        }
                         
-                    // Enhanced create logging - Log full description without truncation
-                    $description = $request->description;
-                    $this->logClientActivity(
-                        $request->client_id,
-                        $subjectLine,
-                        $description,
-                        'note'
-                    );
-                }
+                        // If no matter reference found, try to get the latest active matter for this client
+                        if(empty($matterReference)) {
+                            $latestMatter = ClientMatter::where('client_id', $request->client_id)
+                                ->where('matter_status', 1)
+                                ->orderBy('id', 'desc')
+                                ->first();
+                            if($latestMatter && $latestMatter->client_unique_matter_no) {
+                                $matterReference = $latestMatter->client_unique_matter_no;
+                            }
+                        }
+                        
+                        // Format subject line with action word
+                        if($isUpdate) {
+                            // "updated Call Notes - TGV_1"
+                            $subjectLine = !empty($matterReference) 
+                                ? "updated {$noteTypeFormatted} Notes - {$matterReference}"
+                                : "updated {$noteTypeFormatted} Notes";
+                                
+                            // Enhanced update logging with change tracking
+                            if(!empty($changedFields)) {
+                                $this->logClientActivityWithChanges(
+                                    $request->client_id,
+                                    $subjectLine,
+                                    $changedFields,
+                                    'note'
+                                );
+                            } else {
+                                // Log full description without truncation
+                                $description = $request->description;
+                                $this->logClientActivity(
+                                    $request->client_id,
+                                    $subjectLine,
+                                    $description,
+                                    'note'
+                                );
+                            }
+                        } else {
+                            // "added Call Notes - TGV_1"
+                            $subjectLine = !empty($matterReference) 
+                                ? "added {$noteTypeFormatted} Notes - {$matterReference}"
+                                : "added {$noteTypeFormatted} Notes";
+                                
+                            // Enhanced create logging - Log full description without truncation
+                            $description = $request->description;
+                            $this->logClientActivity(
+                                $request->client_id,
+                                $subjectLine,
+                                $description,
+                                'note'
+                            );
+                        }
+                    } catch (\Exception $logError) {
+                        // Log the error but don't fail the note creation
+                        Log::warning('Error logging note activity: ' . $logError->getMessage(), [
+                            'note_id' => $obj->id ?? null,
+                            'client_id' => $request->client_id,
+                            'trace' => $logError->getTraceAsString()
+                        ]);
+                    }
 
-                //Update date in client matter table
-                if( isset($request->matter_id) && $request->matter_id != ""){
-                    $obj1 = ClientMatter::find($request->matter_id);
-                    $obj1->updated_at = date('Y-m-d H:i:s');
-                    $obj1->save();
+                    //Update date in client matter table
+                    if( isset($request->matter_id) && $request->matter_id != ""){
+                        try {
+                            $obj1 = ClientMatter::find($request->matter_id);
+                            if($obj1) {
+                                $obj1->updated_at = date('Y-m-d H:i:s');
+                                $obj1->save();
+                            }
+                        } catch (\Exception $matterError) {
+                            // Log but don't fail
+                            Log::warning('Error updating matter timestamp: ' . $matterError->getMessage());
+                        }
+                    }
                 }
+                $response['status'] 	= 	true;
+                if($isUpdate){
+                    $response['message']	=	'You have successfully updated Note';
+                }else{
+                    $response['message']	=	'You have successfully added Note';
+                }
+            } else {
+                $response['status'] 	= 	false;
+                $response['message']	=	'Please try again';
             }
-            $response['status'] 	= 	true;
-            if($isUpdate){
-                $response['message']	=	'You have successfully updated Note';
-            }else{
-                $response['message']	=	'You have successfully added Note';
-            }
-		}else{
-			$response['status'] 	= 	false;
-			$response['message']	=	'Please try again';
-		}
-        echo json_encode($response);
+        } catch (\Exception $e) {
+            Log::error('Error saving note: ' . $e->getMessage(), [
+                'request_data' => $request->all(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            $response['status'] = false;
+            $response['message'] = 'Error saving note. Please try again.';
+        }
+        
+        // Use proper Laravel response to prevent HTML error output
+        return response()->json($response, 200, [], JSON_UNESCAPED_UNICODE);
 	}
 
     /**

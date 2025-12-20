@@ -750,6 +750,8 @@ class ClientPersonalDetailsController extends Controller
                 $objs->created_by = Auth::user()->id;
                 $objs->description = '';
                 $objs->subject = 'updated client matter assignee';
+                $objs->task_status = 0;
+                $objs->pin = 0;
                 $objs->save();
 
                 $response['status'] 	= 	true;

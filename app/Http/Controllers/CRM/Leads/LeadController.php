@@ -61,7 +61,8 @@ class LeadController extends Controller
             });
 
             $query->when($request->filled('name'), function ($q) use ($request) {
-                return $q->where('first_name', 'LIKE', '%' . $request->input('name') . '%');
+                $nameLower = strtolower($request->input('name'));
+                return $q->whereRaw('LOWER(first_name) LIKE ?', ['%' . $nameLower . '%']);
             });
 
             $query->when($request->filled('email'), function ($q) use ($request) {

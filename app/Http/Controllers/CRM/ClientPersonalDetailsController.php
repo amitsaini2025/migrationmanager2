@@ -700,9 +700,10 @@ class ClientPersonalDetailsController extends Controller
         // Test search
         $searchResults = Admin::where('role', '7')
             ->where(function ($q) use ($query) {
-                $q->where('first_name', 'like', '%' . $query . '%')
-                  ->orWhere('last_name', 'like', '%' . $query . '%')
-                  ->orWhere('email', 'like', '%' . $query . '%');
+                $queryLower = strtolower($query);
+                $q->whereRaw('LOWER(first_name) LIKE ?', ['%' . $queryLower . '%'])
+                  ->orWhereRaw('LOWER(last_name) LIKE ?', ['%' . $queryLower . '%'])
+                  ->orWhereRaw('LOWER(email) LIKE ?', ['%' . $queryLower . '%']);
             })
             ->select('id', 'first_name', 'last_name', 'email', 'phone', 'client_id')
             ->get();

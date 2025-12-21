@@ -40,7 +40,8 @@
                     ->leftJoin('admins', 'activities_logs.created_by', '=', 'admins.id')
                     ->where('activities_logs.client_id', $fetchedData->id)
                     ->where(function($query) use ($user_search) {
-                        $query->where('admins.first_name', 'like', '%'.$user_search.'%');
+                        $userSearchLower = strtolower($user_search);
+                        $query->whereRaw('LOWER(admins.first_name) LIKE ?', ['%'.$userSearchLower.'%']);
                     })
                     ->where(function($query) use ($keyword_search) {
                         $query->where('activities_logs.description', 'like', '%'.$keyword_search.'%');
@@ -64,7 +65,8 @@
                     ->leftJoin('admins', 'activities_logs.created_by', '=', 'admins.id')
                     ->where('activities_logs.client_id', $fetchedData->id)
                     ->where(function($query) use ($user_search) {
-                        $query->where('admins.first_name', 'like', '%'.$user_search.'%');
+                        $userSearchLower = strtolower($user_search);
+                        $query->whereRaw('LOWER(admins.first_name) LIKE ?', ['%'.$userSearchLower.'%']);
                     })
                     ->orderby('activities_logs.created_at', 'DESC')
                     ->get();

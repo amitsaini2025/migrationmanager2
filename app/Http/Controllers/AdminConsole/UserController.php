@@ -546,8 +546,9 @@ class UserController extends Controller
             $query 		= Admin::Where('role', '!=', '7')
             ->Where('status', '=', 1)
             ->where(function($q) use($search_by) {
-                $q->where('first_name', 'LIKE', '%'.$search_by.'%')
-                ->orWhere('last_name', 'LIKE', '%'.$search_by.'%');
+                $searchLower = strtolower($search_by);
+                $q->whereRaw('LOWER(first_name) LIKE ?', ['%'.$searchLower.'%'])
+                ->orWhereRaw('LOWER(last_name) LIKE ?', ['%'.$searchLower.'%']);
             })->with(['usertype']);
 
         } else {

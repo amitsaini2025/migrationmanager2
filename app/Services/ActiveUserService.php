@@ -69,9 +69,10 @@ class ActiveUserService
             // Apply search filter
             if ($search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('first_name', 'like', "%{$search}%")
-                      ->orWhere('last_name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                    $searchLower = strtolower($search);
+                    $q->whereRaw('LOWER(first_name) LIKE ?', ["%{$searchLower}%"])
+                      ->orWhereRaw('LOWER(last_name) LIKE ?', ["%{$searchLower}%"])
+                      ->orWhereRaw('LOWER(email) LIKE ?', ["%{$searchLower}%"]);
                 });
             }
 

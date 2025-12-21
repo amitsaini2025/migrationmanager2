@@ -177,10 +177,11 @@ class ClientsController extends Controller
             if ($request->has('name')) {
                 $name = trim($request->input('name'));
                 if ($name != '') {
-                    $query->where(function ($q) use ($name) {
-                        $q->where('ad.first_name', 'LIKE', '%' . $name . '%')
-                          ->orWhere('ad.last_name', 'LIKE', '%' . $name . '%')
-                          ->orWhereRaw("(COALESCE(ad.first_name, '') || ' ' || COALESCE(ad.last_name, '')) LIKE ?", ["%{$name}%"]);
+                    $nameLower = strtolower($name);
+                    $query->where(function ($q) use ($nameLower) {
+                        $q->whereRaw('LOWER(ad.first_name) LIKE ?', ['%' . $nameLower . '%'])
+                          ->orWhereRaw('LOWER(ad.last_name) LIKE ?', ['%' . $nameLower . '%'])
+                          ->orWhereRaw("LOWER(COALESCE(ad.first_name, '') || ' ' || COALESCE(ad.last_name, '')) LIKE ?", ['%' . $nameLower . '%']);
                     });
                 }
             }
@@ -413,10 +414,11 @@ class ClientsController extends Controller
             if ($request->has('name')) {
                 $name = trim($request->input('name'));
                 if ($name != '') {
-                    $query->where(function ($q) use ($name) {
-                        $q->where('first_name', 'LIKE', '%' . $name . '%')
-                          ->orWhere('last_name', 'LIKE', '%' . $name . '%')
-                          ->orWhereRaw("(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?", ["%{$name}%"]);
+                    $nameLower = strtolower($name);
+                    $query->where(function ($q) use ($nameLower) {
+                        $q->whereRaw('LOWER(first_name) LIKE ?', ['%' . $nameLower . '%'])
+                          ->orWhereRaw('LOWER(last_name) LIKE ?', ['%' . $nameLower . '%'])
+                          ->orWhereRaw("LOWER(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?", ['%' . $nameLower . '%']);
                     });
                 }
             }
@@ -4677,13 +4679,18 @@ class ClientsController extends Controller
 		$squery = $request->q;
 		if($squery != ''){
 				$d = '';
+			 $squeryLower = strtolower($squery);
 			 $clients = \App\Models\Admin::where('is_archived', '=', 0)
        ->where('role', '=', 7)
        ->where(
-           function($query) use ($squery) {
+           function($query) use ($squeryLower) {
              return $query
-                    ->where('email', 'LIKE', '%'.$squery.'%')
-                    ->orwhere('first_name', 'LIKE','%'.$squery.'%')->orwhere('last_name', 'LIKE','%'.$squery.'%')->orwhere('client_id', 'LIKE','%'.$squery.'%')->orwhere('phone', 'LIKE','%'.$squery.'%')  ->orWhere(DB::raw("(COALESCE(first_name, '') || ' ' || COALESCE(last_name, ''))"), 'LIKE', "%".$squery."%");
+                    ->whereRaw('LOWER(email) LIKE ?', ['%'.$squeryLower.'%'])
+                    ->orWhereRaw('LOWER(first_name) LIKE ?', ['%'.$squeryLower.'%'])
+                    ->orWhereRaw('LOWER(last_name) LIKE ?', ['%'.$squeryLower.'%'])
+                    ->orWhereRaw('LOWER(client_id) LIKE ?', ['%'.$squeryLower.'%'])
+                    ->orWhereRaw('LOWER(phone) LIKE ?', ['%'.$squeryLower.'%'])
+                    ->orWhereRaw("LOWER(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?", ['%'.$squeryLower.'%']);
             })
             ->get();
 
@@ -4718,9 +4725,14 @@ class ClientsController extends Controller
 			->where('role', '=', 7)
 			->where(
            function($query) use ($squery) {
+             	$squeryLower = strtolower($squery);
              	return $query
-                    ->where('email', 'LIKE', '%'.$squery.'%')
-                    ->orwhere('first_name', 'LIKE','%'.$squery.'%')->orwhere('last_name', 'LIKE','%'.$squery.'%')->orwhere('client_id', 'LIKE','%'.$squery.'%')->orwhere('phone', 'LIKE','%'.$squery.'%')  ->orWhere(DB::raw("(COALESCE(first_name, '') || ' ' || COALESCE(last_name, ''))"), 'LIKE', "%".$squery."%");
+                    ->whereRaw('LOWER(email) LIKE ?', ['%'.$squeryLower.'%'])
+                    ->orWhereRaw('LOWER(first_name) LIKE ?', ['%'.$squeryLower.'%'])
+                    ->orWhereRaw('LOWER(last_name) LIKE ?', ['%'.$squeryLower.'%'])
+                    ->orWhereRaw('LOWER(client_id) LIKE ?', ['%'.$squeryLower.'%'])
+                    ->orWhereRaw('LOWER(phone) LIKE ?', ['%'.$squeryLower.'%'])
+                    ->orWhereRaw("LOWER(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?", ['%'.$squeryLower.'%']);
             })
             ->get();
 
@@ -4769,17 +4781,18 @@ class ClientsController extends Controller
                 }
             }
 
+            $squeryLower = strtolower($squery);
             $clients = \App\Models\Admin::where('role', '=', 7)
                 ->whereNull('is_deleted')
-                ->where(function ($query) use ($squery, $d) {
-                    $query->orWhere('email', 'LIKE', "%$squery%")
-                        ->orWhere('first_name', 'LIKE', "%$squery%")
-                        ->orWhere('last_name', 'LIKE', "%$squery%")
-                        ->orWhere('client_id', 'LIKE', "%$squery%")
-                        ->orWhere('att_email', 'LIKE', "%$squery%")
-                        ->orWhere('att_phone', 'LIKE', "%$squery%")
-                        ->orWhere('phone', 'LIKE', "%$squery%")
-                        ->orWhere(DB::raw("(COALESCE(first_name, '') || ' ' || COALESCE(last_name, ''))"), 'LIKE', "%$squery%");
+                ->where(function ($query) use ($squery, $squeryLower, $d) {
+                    $query->orWhereRaw('LOWER(email) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(first_name) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(last_name) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(client_id) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(att_email) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(att_phone) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(phone) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw("LOWER(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?", ["%$squeryLower%"]);
                     if ($d != "") {
                         $query->orWhere('dob', '=', $d);
                     }
@@ -4848,17 +4861,18 @@ class ClientsController extends Controller
                 ->leftJoin('client_contacts', 'admins.id', '=', 'client_contacts.client_id')
                 ->leftJoin('client_emails', 'admins.id', '=', 'client_emails.client_id')
                 ->where(function ($query) use ($squery, $d) {
-                    $query->orWhere('admins.email', 'LIKE', "%$squery%")
-                        ->orWhere('admins.first_name', 'LIKE', "%$squery%")
-                        ->orWhere('admins.last_name', 'LIKE', "%$squery%")
-                        ->orWhere('admins.client_id', 'LIKE', "%$squery%")
-                        ->orWhere('admins.att_email', 'LIKE', "%$squery%")
-                        ->orWhere('admins.att_phone', 'LIKE', "%$squery%")
-                        ->orWhere('admins.phone', 'LIKE', "%$squery%")
-                        ->orWhere('admins.emergency_contact_no', 'LIKE', "%$squery%")
-                        ->orWhere(DB::raw("(COALESCE(admins.first_name, '') || ' ' || COALESCE(admins.last_name, ''))"), 'LIKE', "%$squery%")
-                        ->orWhere('client_contacts.phone', 'LIKE', "%$squery%")
-                        ->orWhere('client_emails.email', 'LIKE', "%$squery%");
+                    $squeryLower = strtolower($squery);
+                    $query->orWhereRaw('LOWER(admins.email) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(admins.first_name) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(admins.last_name) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(admins.client_id) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(admins.att_email) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(admins.att_phone) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(admins.phone) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(admins.emergency_contact_no) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw("LOWER(COALESCE(admins.first_name, '') || ' ' || COALESCE(admins.last_name, '')) LIKE ?", ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(client_contacts.phone) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(client_emails.email) LIKE ?', ["%$squeryLower%"]);
                     if ($d != "") {
                         $query->orWhere('admins.dob', '=', $d);
                     }
@@ -5003,20 +5017,23 @@ class ClientsController extends Controller
                 ->where('admins.role', 7)
                 ->whereNull('admins.is_deleted')
                 ->leftJoin('client_contacts', function($join) use ($squery) {
+                    $squeryLower = strtolower($squery);
                     $join->on('client_contacts.client_id', '=', 'admins.id')
-                         ->where('client_contacts.phone', 'LIKE', "%{$squery}%");
+                         ->whereRaw('LOWER(client_contacts.phone) LIKE ?', ["%{$squeryLower}%"]);
                 })
                 ->leftJoin('client_emails', function($join) use ($squery) {
+                    $squeryLower = strtolower($squery);
                     $join->on('client_emails.client_id', '=', 'admins.id')
-                         ->where('client_emails.email', 'LIKE', "%{$squery}%");
+                         ->whereRaw('LOWER(client_emails.email) LIKE ?', ["%{$squeryLower}%"]);
                 })
                 ->where(function ($query) use ($squery, $d) {
-                    $query->where('admins.email', 'LIKE', "%$squery%")
-                        ->orWhere('admins.first_name', 'LIKE', "%$squery%")
-                        ->orWhere('admins.last_name', 'LIKE', "%$squery%")
-                        ->orWhere('admins.client_id', 'LIKE', "%$squery%")
-                        ->orWhere('admins.phone', 'LIKE', "%$squery%")
-                        ->orWhere(DB::raw("(COALESCE(admins.first_name, '') || ' ' || COALESCE(admins.last_name, ''))"), 'LIKE', "%$squery%")
+                    $squeryLower = strtolower($squery);
+                    $query->whereRaw('LOWER(admins.email) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(admins.first_name) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(admins.last_name) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(admins.client_id) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw('LOWER(admins.phone) LIKE ?', ["%$squeryLower%"])
+                        ->orWhereRaw("LOWER(COALESCE(admins.first_name, '') || ' ' || COALESCE(admins.last_name, '')) LIKE ?", ["%$squeryLower%"])
                         ->orWhereNotNull('client_contacts.client_id')  // Matches phone search
                         ->orWhereNotNull('client_emails.client_id');    // Matches email search
 
@@ -5129,7 +5146,7 @@ class ClientsController extends Controller
 
     public function getAllUser(Request $request, Admin $product) {
             $products = $request->q
-                ? Admin::select('id', 'first_name')->where('first_name', 'LIKE', "%$request->q%")
+                ? Admin::select('id', 'first_name')->whereRaw('LOWER(first_name) LIKE ?', ['%' . strtolower($request->q) . '%'])
                 : new Admin();
 
             return $products->paginate(10, ['*'], 'page', $request->page)->toArray();

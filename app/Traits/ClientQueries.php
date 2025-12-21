@@ -59,10 +59,11 @@ trait ClientQueries
         if ($request->has('name')) {
             $name = trim($request->input('name'));
             if ($name != '') {
-                $query->where(function ($q) use ($name) {
-                    $q->where('first_name', 'LIKE', '%' . $name . '%')
-                      ->orWhere('last_name', 'LIKE', '%' . $name . '%')
-                      ->orWhereRaw("(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?", ["%{$name}%"]);
+                $nameLower = strtolower($name);
+                $query->where(function ($q) use ($nameLower) {
+                    $q->whereRaw('LOWER(first_name) LIKE ?', ['%' . $nameLower . '%'])
+                      ->orWhereRaw('LOWER(last_name) LIKE ?', ['%' . $nameLower . '%'])
+                      ->orWhereRaw("LOWER(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?", ['%' . $nameLower . '%']);
                 });
             }
         }

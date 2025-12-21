@@ -1422,12 +1422,13 @@ class CRMUtilityController extends Controller
             // Apply search filter if provided
             if (!empty($squery)) {
                 $query->where(function($q) use ($squery) {
-                    $q->where('email', 'LIKE', '%'.$squery.'%')
-                      ->orWhere('first_name', 'LIKE', '%'.$squery.'%')
-                      ->orWhere('last_name', 'LIKE', '%'.$squery.'%')
-                      ->orWhere('client_id', 'LIKE', '%'.$squery.'%')
-                      ->orWhere('phone', 'LIKE', '%'.$squery.'%')
-                      ->orWhere(DB::raw("(COALESCE(first_name, '') || ' ' || COALESCE(last_name, ''))"), 'LIKE', "%".$squery."%");
+                    $squeryLower = strtolower($squery);
+                    $q->whereRaw('LOWER(email) LIKE ?', ['%'.$squeryLower.'%'])
+                      ->orWhereRaw('LOWER(first_name) LIKE ?', ['%'.$squeryLower.'%'])
+                      ->orWhereRaw('LOWER(last_name) LIKE ?', ['%'.$squeryLower.'%'])
+                      ->orWhereRaw('LOWER(client_id) LIKE ?', ['%'.$squeryLower.'%'])
+                      ->orWhereRaw('LOWER(phone) LIKE ?', ['%'.$squeryLower.'%'])
+                      ->orWhereRaw("LOWER(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?", ['%'.$squeryLower.'%']);
                 });
             }
             

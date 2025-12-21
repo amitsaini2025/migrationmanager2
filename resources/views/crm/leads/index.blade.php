@@ -205,14 +205,14 @@
                 <div class="card-body">
                     <ul class="nav nav-pills" id="client_tabs" role="tablist">
                         <li class="nav-item is_checked_client" style="display:none;">
-                            <a class="btn btn-primary emailmodal" id=""  href="javascript:;"  >Send Mail</a>
+                            <a class="btn btn-primary emailmodal" href="javascript:;">Send Mail</a>
                         </li>
                         <li class="nav-item is_checked_client" style="display:none;">
-                            <a class="btn btn-primary " id=""  href="javascript:;"  >Change Assignee</a>
+                            <a class="btn btn-primary" href="javascript:;">Change Assignee</a>
                         </li>
 
                         <li class="nav-item is_checked_client_merge" style="display:none;">
-                            <a class="btn btn-primary " id=""  href="javascript:;"  >Merge</a>
+                            <a class="btn btn-primary" href="javascript:;">Merge</a>
                         </li>
 
                         <li class="nav-item is_checked_clientn">

@@ -286,7 +286,7 @@
 				<div class="form-group row">
 					<div class="col-sm-12">
 						<input id="note_type" name="note_type" type="hidden" value="">
-						<input id="" name="lead_id" type="hidden" value="{{base64_encode(convert_uuencode(@$fetchedData->id))}}">
+						<input name="lead_id" type="hidden" value="{{base64_encode(convert_uuencode(@$fetchedData->id))}}">
 						<textarea id="description" name="description" class="form-control summernote-simple" placeholder="Add note" style=""></textarea>
 					</div>
 				</div>
@@ -326,7 +326,7 @@
 			<div class="modal-body">
 				<form action="#" method="POST" name="add-compose" autocomplete="off" enctype="multipart/form-data" id="addnoteform">
 					@csrf
-				<input id="" name="lead_id" type="hidden" value="{{base64_encode(convert_uuencode(@$fetchedData->id))}}">
+				<input name="lead_id" type="hidden" value="{{base64_encode(convert_uuencode(@$fetchedData->id))}}">
 					<div class="row">
 						
 						<div class="col-12 col-md-6 col-lg-6">

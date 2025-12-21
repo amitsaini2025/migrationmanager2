@@ -58,7 +58,7 @@
                                     <label class="form-check-label" for="general_matter_checkbox_new">General Matter</label>
                                 </div>
 
-                                <label class="form-check-label" for="">Or Select any option</label>
+                                <label class="form-check-label">Or Select any option</label>
 
                                 <select data-valid="required" class="form-control select2" name="matter_id" id="sel_matter_id">
                                     <option value="">Select Matter</option>

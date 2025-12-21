@@ -53,7 +53,7 @@
 
 										<div class="col-md-4">
 											<div class="form-group">
-												<label for="" class="col-form-label">Stage</label>
+												<label class="col-form-label">Stage</label>
 												<select class="form-control" name="stage">
 												    <option value="">Select Stage</option>
 												    @foreach($allstages as $allstage)

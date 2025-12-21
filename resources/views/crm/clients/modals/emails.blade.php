@@ -15,19 +15,19 @@
 					<div class="row">
 						<div class="col-md-12">
 							<div class="form-group">
-								<label for="">From <span class="span_req">*</span></label>
+								<label>From <span class="span_req">*</span></label>
 								<input type="text" data-valid="required" name="from" class="form-control">
 							</div>
 						</div>
 						<div class="col-md-12">
 							<div class="form-group">
-								<label for="">To <span class="span_req">*</span></label>
+								<label>To <span class="span_req">*</span></label>
 								<input type="text" data-valid="required" name="to" class="form-control">
 							</div>
 						</div>
 						<div class="col-md-12">
 							<div class="form-group">
-								<label for="">Subject <span class="span_req">*</span></label>
+								<label>Subject <span class="span_req">*</span></label>
 								<input type="text" data-valid="required" name="subject" class="form-control">
 							</div>
 						</div>

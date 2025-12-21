@@ -24,7 +24,7 @@
 							<div class="row">
 								<div class="col-12 col-md-12 col-lg-12">
 									<div class="form-group"> 
-										<label for="" class="col-form-label">Is your business registered for GST?</label><br>
+										<label class="col-form-label">Is your business registered for GST?</label><br>
 										<label class="mr-3"><input type="radio" value="yes" <?php if(@Auth::user()->is_business_gst == 'yes'){ echo 'checked'; } ?> name="is_business_gst"> Yes</label>
 										<label><input type="radio" <?php if(@Auth::user()->is_business_gst != ''){ if(Auth::user()->is_business_gst == 'no'){ echo 'checked'; } }else{ echo 'checked'; } ?> value="no" name="is_business_gst"> No</label>
 										@if ($errors->has('name'))

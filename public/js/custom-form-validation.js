@@ -821,7 +821,57 @@ function customValidate(formName, savetype = '')
 								alert('Invoice No - '+ obj.invoice_no + ' is generated');
 								$('#createreceiptmodal').modal('hide');
                                 localStorage.setItem('activeTab', 'accounts');
-                                location.reload();
+                                
+                                // Get the matter ID that was used to create the invoice
+                                var matterIdUsed = $('#client_matter_id_invoice').val();
+                                
+                                // Extract encoded client ID from current URL (already properly encoded)
+                                // URL structure: /clients/detail/{encoded_client_id}/{matter_ref?}/{tab?}
+                                var currentPath = window.location.pathname;
+                                var pathMatch = currentPath.match(/\/clients\/detail\/([^\/]+)/);
+                                var encodedClientId = pathMatch ? pathMatch[1] : null;
+                                
+                                if (!encodedClientId) {
+                                    // Fallback: just reload if we can't determine client ID
+                                    console.error('Could not extract client ID from URL, using location.reload()');
+                                    location.reload();
+                                    return;
+                                }
+                                
+                                // Get matter reference number from the selected matter option
+                                var matterRefNo = '';
+                                if (matterIdUsed && matterIdUsed !== '' && matterIdUsed !== 'null') {
+                                    // Try to find the matter reference from the dropdown
+                                    var $selectedOption = $('#sel_matter_id_client_detail option[value="' + matterIdUsed + '"]');
+                                    if ($selectedOption.length) {
+                                        matterRefNo = $selectedOption.data('clientuniquematterno') || '';
+                                    }
+                                    
+                                    // If not found in dropdown, check current URL for matter reference
+                                    if (!matterRefNo) {
+                                        var urlSegments = window.location.pathname.split('/');
+                                        // URL structure: /clients/detail/{client_id}/{matter_ref}/{tab}
+                                        if (urlSegments.length > 4 && urlSegments[4] && urlSegments[4] !== 'account' && urlSegments[4] !== 'personaldetails' && urlSegments[4] !== 'notes' && urlSegments[4] !== 'emails') {
+                                            matterRefNo = urlSegments[4];
+                                        }
+                                    }
+                                } else {
+                                    // No matter selected - check current URL for matter reference
+                                    var urlSegments = window.location.pathname.split('/');
+                                    if (urlSegments.length > 4 && urlSegments[4] && urlSegments[4] !== 'account' && urlSegments[4] !== 'personaldetails' && urlSegments[4] !== 'notes' && urlSegments[4] !== 'emails') {
+                                        matterRefNo = urlSegments[4];
+                                    }
+                                }
+                                
+                                // Build the URL with matter reference to preserve context
+                                var baseUrl = window.location.origin + '/clients/detail/' + encodedClientId;
+                                if (matterRefNo) {
+                                    baseUrl += '/' + encodeURIComponent(matterRefNo);
+                                }
+                                baseUrl += '/account';
+                                
+                                // Navigate to the URL with matter context preserved
+                                window.location.href = baseUrl;
 								if(obj.status)
 								{
 									if(obj.function_type == 'add')

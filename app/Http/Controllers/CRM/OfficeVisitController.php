@@ -523,6 +523,9 @@ class OfficeVisitController extends Controller
 	    	$o->url = \URL::to('/office-visits/'.$t);
 	    	$o->notification_type = 'officevisit';
 	    	$o->message = 'Office Visit Assigned by '.Auth::user()->first_name.' '.Auth::user()->last_name;
+	    	$o->seen = 0;              // Mark as unseen
+	    	$o->receiver_status = 0;   // Mark as unread by receiver
+	    	$o->sender_status = 1;     // Mark as sent by sender
 	    	$o->save();
 	    	
 	    	// Get client information for the notification
@@ -580,6 +583,9 @@ class OfficeVisitController extends Controller
 	    	$o->url = \URL::to('/office-visits/'.$t);
 	    	$o->notification_type = 'officevisit';
 	    	$o->message = 'Office Visit Assigned by '.Auth::user()->first_name.' '.Auth::user()->last_name;
+	    	$o->seen = 0;              // Mark as unseen
+	    	$o->receiver_status = 0;   // Mark as unread by receiver
+	    	$o->sender_status = 1;     // Mark as sent by sender
 	    	$o->save();
 	    	
 	    	// Get client information for the notification

@@ -4411,7 +4411,18 @@ $(document).ready(function() {
                 contact_id: contactId
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            // Check if response is OK before parsing JSON
+            if (!response.ok) {
+                // Try to parse JSON error response, fallback to status text
+                return response.json().then(data => {
+                    throw { status: response.status, data: data };
+                }).catch(() => {
+                    throw { status: response.status, data: { message: 'Server error occurred' } };
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 showOTPSuccessMessage('Verification code sent to client! Please ask them to provide the code.');
@@ -4423,7 +4434,9 @@ $(document).ready(function() {
         })
         .catch(error => {
             console.error('Error sending OTP:', error);
-            showOTPErrorMessage('Network error. Please try again.');
+            // Show error message from server if available, otherwise generic message
+            const errorMessage = error.data?.message || 'Network error. Please try again.';
+            showOTPErrorMessage(errorMessage);
         });
     }
 
@@ -4454,7 +4467,18 @@ $(document).ready(function() {
                 otp_code: otpCode
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            // Check if response is OK before parsing JSON
+            if (!response.ok) {
+                // Try to parse JSON error response, fallback to status text
+                return response.json().then(data => {
+                    throw { status: response.status, data: data };
+                }).catch(() => {
+                    throw { status: response.status, data: { message: 'Server error occurred' } };
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 showOTPSuccessMessage('Phone number verified successfully!');
@@ -4477,7 +4501,9 @@ $(document).ready(function() {
         })
         .catch(error => {
             console.error('Error verifying OTP:', error);
-            showOTPErrorMessage('Network error. Please try again.');
+            // Show error message from server if available, otherwise generic message
+            const errorMessage = error.data?.message || 'Network error. Please try again.';
+            showOTPErrorMessage(errorMessage);
             document.getElementById('verifyOTPBtn').disabled = false;
         });
     }
@@ -4501,7 +4527,18 @@ $(document).ready(function() {
                 contact_id: currentContactId
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            // Check if response is OK before parsing JSON
+            if (!response.ok) {
+                // Try to parse JSON error response, fallback to status text
+                return response.json().then(data => {
+                    throw { status: response.status, data: data };
+                }).catch(() => {
+                    throw { status: response.status, data: { message: 'Server error occurred' } };
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 showOTPSuccessMessage('New verification code sent to client! Please ask them for the updated code.');
@@ -4515,7 +4552,9 @@ $(document).ready(function() {
         })
         .catch(error => {
             console.error('Error resending OTP:', error);
-            showOTPErrorMessage('Network error. Please try again.');
+            // Show error message from server if available, otherwise generic message
+            const errorMessage = error.data?.message || 'Network error. Please try again.';
+            showOTPErrorMessage(errorMessage);
             document.getElementById('resendOTPBtn').disabled = false;
         });
     }
@@ -5153,7 +5192,12 @@ const activeEmailPollingIntervals = new Map();
 
 // Check email verification status
 function checkEmailVerificationStatus(emailId) {
-    if (!emailId || emailId === 'pending') return;
+    // Validate email ID before making request
+    if (!isValidEmailId(emailId)) {
+        console.warn(`Invalid email ID for status check: ${emailId}`);
+        stopEmailVerificationPolling(emailId);
+        return;
+    }
     
     fetch(`/clients/email/status/${emailId}`, {
         method: 'GET',
@@ -5162,28 +5206,74 @@ function checkEmailVerificationStatus(emailId) {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        // Check if response is ok (status 200-299)
+        if (!response.ok) {
+            // Handle 404 - email record doesn't exist
+            if (response.status === 404) {
+                console.warn(`Email record with ID ${emailId} not found (404). Stopping polling.`);
+                stopEmailVerificationPolling(emailId);
+                
+                // Update UI to show error state
+                const verifyBtn = document.querySelector(`button[data-email-id="${emailId}"]`);
+                if (verifyBtn) {
+                    verifyBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Email Not Found';
+                    verifyBtn.disabled = true;
+                    verifyBtn.style.opacity = '0.6';
+                    verifyBtn.title = 'Email record not found. Please refresh the page.';
+                }
+                return null;
+            }
+            // For other errors, throw to be caught by catch block
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
+        // Skip if data is null (404 was handled above)
+        if (!data) return;
+        
         if (data.success && data.is_verified) {
             updateEmailVerificationStatus(emailId, true);
             
             // Show success notification
             showNotification('Email verified successfully!', 'success');
             
+            // Stop polling since email is verified
+            stopEmailVerificationPolling(emailId);
+            
             // Refresh the page after a short delay to update all views
             setTimeout(() => {
                 window.location.reload();
             }, 2000);
+        } else if (data.success === false && data.message) {
+            // Handle other error responses from the API
+            console.warn(`Email status check failed: ${data.message}`);
+            // Don't stop polling for other errors, just log them
         }
     })
     .catch(error => {
         console.error('Error checking email verification status:', error);
+        // Don't stop polling on network errors, they might be temporary
     });
+}
+
+// Stop polling for email verification status
+function stopEmailVerificationPolling(emailId) {
+    if (activeEmailPollingIntervals.has(emailId)) {
+        clearInterval(activeEmailPollingIntervals.get(emailId));
+        activeEmailPollingIntervals.delete(emailId);
+        console.log(`  ↳ Stopped polling for email ID ${emailId}`);
+    }
 }
 
 // Start polling for email verification status
 function startEmailVerificationPolling(emailId) {
-    if (!emailId || emailId === 'pending') return;
+    // Validate email ID before starting polling
+    if (!isValidEmailId(emailId)) {
+        console.warn(`Cannot start polling: Invalid email ID ${emailId}`);
+        return;
+    }
     
     // Stop any existing polling for this email ID
     if (activeEmailPollingIntervals.has(emailId)) {

@@ -22,20 +22,35 @@ class PhoneVerificationController extends Controller
      */
     public function sendOTP(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'contact_id' => 'required|exists:client_contacts,id'
-        ]);
+        try {
+            $validator = Validator::make($request->all(), [
+                'contact_id' => 'required|exists:client_contacts,id'
+            ]);
 
-        if ($validator->fails()) {
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $validator->errors()->first()
+                ], 422);
+            }
+
+            $result = $this->verificationService->sendOTP($request->contact_id);
+
+            return response()->json($result, $result['success'] ? 200 : 400);
+        } catch (\Exception $e) {
+            \Log::error('OTP Send Error', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
-                'message' => $validator->errors()->first()
-            ], 422);
+                'message' => 'An error occurred while sending the verification code. Please try again.',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         }
-
-        $result = $this->verificationService->sendOTP($request->contact_id);
-
-        return response()->json($result, $result['success'] ? 200 : 400);
     }
 
     /**

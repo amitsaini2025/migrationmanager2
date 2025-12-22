@@ -69,6 +69,9 @@ class PhoneVerificationService
             'otp_code' => $otpCode,
             'otp_sent_at' => now(),
             'otp_expires_at' => $expiresAt,
+            'is_verified' => false,
+            'attempts' => 0,
+            'max_attempts' => 3,
         ]);
 
         // Send SMS

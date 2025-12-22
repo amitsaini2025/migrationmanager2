@@ -93,12 +93,29 @@ class UnifiedSmsManager
                 }
             }
 
+            // Extract country code from phone number or contact
+            $countryCode = '+61'; // Default to Australia
+            // Try to get from contact if available
+            if (!empty($context['contact_id'])) {
+                $contact = \App\Models\ClientContact::find($context['contact_id']);
+                if ($contact && $contact->country_code) {
+                    $countryCode = $contact->country_code;
+                }
+            }
+            // Fallback: extract from phone number string
+            if ($countryCode === '+61' && preg_match('/^(\+\d{1,3})/', $to, $matches)) {
+                $countryCode = $matches[1];
+            } elseif ($countryCode === '+61' && preg_match('/^(\+\d{1,3})/', $formatted, $matches)) {
+                $countryCode = $matches[1];
+            }
+
             // Log SMS activity to database
             $smsLog = $this->logSmsActivity([
                 'client_id' => $context['client_id'] ?? null,
                 'client_contact_id' => $context['contact_id'] ?? null,
                 'sender_id' => $context['sender_id'] ?? Auth::id(), // Allow override via context
                 'recipient_phone' => $to,
+                'country_code' => $countryCode,
                 'formatted_phone' => $formatted,
                 'message_content' => $message,
                 'message_type' => $type,
@@ -107,11 +124,14 @@ class UnifiedSmsManager
                 'provider_message_id' => $providerMessageId,
                 'status' => $result['success'] ? 'sent' : 'failed',
                 'error_message' => $result['success'] ? null : ($result['message'] ?? $result['error'] ?? 'Unknown error'),
+                'cost' => 0,
                 'sent_at' => $result['success'] ? now() : null,
             ]);
 
-            // Add SMS log ID to result
-            $result['sms_log_id'] = $smsLog->id;
+            // Add SMS log ID to result (if logging succeeded)
+            if (isset($smsLog->id)) {
+                $result['sms_log_id'] = $smsLog->id;
+            }
 
             return $result;
 
@@ -206,24 +226,37 @@ class UnifiedSmsManager
      */
     protected function logSmsActivity($data)
     {
-        // Create SMS log entry
-        $smsLog = SmsLog::create($data);
+        try {
+            // Create SMS log entry
+            $smsLog = SmsLog::create($data);
 
-        // Auto-create activity log entry for client timeline
-        if ($data['client_id']) {
-            ActivitiesLog::create([
-                'client_id' => $data['client_id'],
-                'created_by' => $data['sender_id'],
-                'subject' => $this->getActivitySubject($data['message_type'], $data['status']),
-                'description' => $this->formatActivityDescription($data),
-                'sms_log_id' => $smsLog->id,
-                'activity_type' => 'sms',
-                'task_status' => 0,
-                'pin' => 0,
+            // Auto-create activity log entry for client timeline
+            if (!empty($data['client_id'])) {
+                ActivitiesLog::create([
+                    'client_id' => $data['client_id'],
+                    'created_by' => $data['sender_id'],
+                    'subject' => $this->getActivitySubject($data['message_type'], $data['status']),
+                    'description' => $this->formatActivityDescription($data),
+                    'sms_log_id' => $smsLog->id,
+                    'activity_type' => 'sms',
+                    'task_status' => 0,
+                    'pin' => 0,
+                ]);
+            }
+
+            return $smsLog;
+        } catch (\Exception $e) {
+            // Log the error but don't fail the SMS sending
+            Log::error('UnifiedSmsManager: Failed to log SMS activity', [
+                'error' => $e->getMessage(),
+                'data' => $data,
+                'trace' => $e->getTraceAsString()
             ]);
-        }
 
-        return $smsLog;
+            // Return a dummy log entry to prevent breaking the flow
+            // The SMS was sent successfully, just logging failed
+            return (object)['id' => null];
+        }
     }
 
     /**

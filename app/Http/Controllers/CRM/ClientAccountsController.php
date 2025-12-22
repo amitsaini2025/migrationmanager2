@@ -293,26 +293,51 @@ class ClientAccountsController extends Controller
    
                 if ($invoiceInfo) {
                     $invoiceWithdrawAmount = floatval($invoiceInfo->withdraw_amount);
-                    $currentPartialPaid = floatval($invoiceInfo->partial_paid_amount ?? 0);
-                    $currentBalance = floatval($invoiceInfo->balance_amount ?? $invoiceWithdrawAmount);
-   
+                    
+                    // Recalculate current total payments from all sources (office receipts + fee transfers)
+                    // This ensures we have accurate data even if office receipts were applied first
+                    $currentTotalPaidOffice = DB::table('account_client_receipts')
+                        ->where('receipt_type', 2)
+                        ->where('invoice_no', $invoiceNo)
+                        ->where('client_id', $requestData['client_id'])
+                        ->where('save_type', 'final')
+                        ->sum('deposit_amount');
+                    
+                    $currentTotalPaidFeeTransfer = DB::table('account_client_receipts')
+                        ->where('receipt_type', 1)
+                        ->where('client_fund_ledger_type', 'Fee Transfer')
+                        ->where('invoice_no', $invoiceNo)
+                        ->where('client_id', $requestData['client_id'])
+                        ->where(function($q) {
+                            $q->whereNull('void_fee_transfer')
+                              ->orWhere('void_fee_transfer', 0);
+                        })
+                        ->sum('withdraw_amount');
+                    
+                    $currentTotalPaid = $currentTotalPaidOffice + $currentTotalPaidFeeTransfer;
+                    $currentBalance = $invoiceWithdrawAmount - $currentTotalPaid;
+
                     // Process Fee Transfers
                     $remainingWithdraw = $totalWithdrawAmount;
-                    $newPartialPaid = $currentPartialPaid;
-   
+                    $totalNewFeeTransferAmount = 0; // Track total amount of new fee transfers being created
+
                     foreach ($feeTransfers as $feeTransfer) {
                         $i = $feeTransfer['index'];
                         if ($remainingWithdraw <= 0) break;
-   
+
                         $amountToUse = min($remainingWithdraw, $feeTransfer['withdraw_amount']);
                         if ($amountToUse <= 0) continue;
-   
+
                         // Adjust amount if it exceeds the invoice's withdraw amount
-                        if ($newPartialPaid + $amountToUse > $invoiceWithdrawAmount) {
-                            $amountToUse = $invoiceWithdrawAmount - $newPartialPaid;
+                        // Use recalculated current total + new fee transfer amount
+                        if ($currentTotalPaid + $totalNewFeeTransferAmount + $amountToUse > $invoiceWithdrawAmount) {
+                            $amountToUse = $invoiceWithdrawAmount - $currentTotalPaid - $totalNewFeeTransferAmount;
                         }
-   
+
                         if ($amountToUse <= 0) continue;
+                        
+                        // Track this amount for next iteration
+                        $totalNewFeeTransferAmount += $amountToUse;
    
                         $trans_no = $this->createTransactionNumber('Fee Transfer');
                         $deposit = 0;
@@ -356,62 +381,99 @@ class ClientAccountsController extends Controller
                             'withdraw_amount' => $amountToUse,
                             'balance_amount' => $running_balance,
                         ];
-   
-                        $newPartialPaid += $amountToUse;
+
                         $remainingWithdraw -= $amountToUse;
                     }
    
                     // Handle excess amount by creating additional Fee Transfer linked to the same invoice
                     if ($remainingWithdraw > 0) {
-                        $trans_no = $this->createTransactionNumber('Fee Transfer');
-                        $deposit = 0;
-                        $withdraw = $remainingWithdraw;
-   
-                        $running_balance += $deposit - $withdraw;
-   
-                        $saved = DB::table('account_client_receipts')->insert([
-                            'user_id' => $requestData['loggedin_userid'],
-                            'client_id' => $requestData['client_id'],
-                            'client_matter_id' => $requestData['client_matter_id'] ?? null,
-                            'receipt_id' => $receipt_id,
-                            'receipt_type' => $requestData['receipt_type'],
-                            'trans_date' => $feeTransfers[0]['trans_date'],
-                            'entry_date' => $feeTransfers[0]['entry_date'],
-                            'invoice_no' => $invoiceNo,
-                            'trans_no' => $trans_no,
-                            'client_fund_ledger_type' => 'Fee Transfer',
-                            'description' => $feeTransfers[0]['description'],
-                            'deposit_amount' => $deposit,
-                            'withdraw_amount' => $withdraw,
-                            'balance_amount' => $running_balance,
-                            'uploaded_doc_id' => $insertedDocId,
-                            'extra_amount_receipt' => 'exceed',
-                            'validate_receipt' => 0,
-                            'void_invoice' => 0,
-                            'invoice_status' => 0,
-                            'save_type' => 'final',
-                            'hubdoc_sent' => 0,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-   
-                        $finalArr[] = [
-                            'trans_date' => $feeTransfers[0]['trans_date'],
-                            'entry_date' => $feeTransfers[0]['entry_date'],
-                            'client_fund_ledger_type' => 'Fee Transfer',
-                            'trans_no' => $trans_no,
-                            'invoice_no' => $invoiceNo,
-                            'description' => $feeTransfers[0]['description'],
-                            'deposit_amount' => $deposit,
-                            'withdraw_amount' => $withdraw,
-                            'balance_amount' => $running_balance,
-                            'extra_amount_receipt' => 'exceed'
-                        ];
+                        // Check if remaining amount would exceed invoice
+                        $maxAllowed = $invoiceWithdrawAmount - $currentTotalPaid - $totalNewFeeTransferAmount;
+                        if ($maxAllowed > 0) {
+                            $withdraw = min($remainingWithdraw, $maxAllowed);
+                        } else {
+                            $withdraw = 0; // Invoice already fully paid
+                        }
+                        
+                        if ($withdraw > 0) {
+                            $trans_no = $this->createTransactionNumber('Fee Transfer');
+                            $deposit = 0;
+
+                            $running_balance += $deposit - $withdraw;
+                            $totalNewFeeTransferAmount += $withdraw;
+
+                            $saved = DB::table('account_client_receipts')->insert([
+                                'user_id' => $requestData['loggedin_userid'],
+                                'client_id' => $requestData['client_id'],
+                                'client_matter_id' => $requestData['client_matter_id'] ?? null,
+                                'receipt_id' => $receipt_id,
+                                'receipt_type' => $requestData['receipt_type'],
+                                'trans_date' => $feeTransfers[0]['trans_date'],
+                                'entry_date' => $feeTransfers[0]['entry_date'],
+                                'invoice_no' => $invoiceNo,
+                                'trans_no' => $trans_no,
+                                'client_fund_ledger_type' => 'Fee Transfer',
+                                'description' => $feeTransfers[0]['description'],
+                                'deposit_amount' => $deposit,
+                                'withdraw_amount' => $withdraw,
+                                'balance_amount' => $running_balance,
+                                'uploaded_doc_id' => $insertedDocId,
+                                'extra_amount_receipt' => 'exceed',
+                                'validate_receipt' => 0,
+                                'void_invoice' => 0,
+                                'invoice_status' => 0,
+                                'save_type' => 'final',
+                                'hubdoc_sent' => 0,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+
+                            $finalArr[] = [
+                                'trans_date' => $feeTransfers[0]['trans_date'],
+                                'entry_date' => $feeTransfers[0]['entry_date'],
+                                'client_fund_ledger_type' => 'Fee Transfer',
+                                'trans_no' => $trans_no,
+                                'invoice_no' => $invoiceNo,
+                                'description' => $feeTransfers[0]['description'],
+                                'deposit_amount' => $deposit,
+                                'withdraw_amount' => $withdraw,
+                                'balance_amount' => $running_balance,
+                                'extra_amount_receipt' => 'exceed'
+                            ];
+                        }
                     }
-   
-                    // Update invoice status
-                    $newBalance = $invoiceWithdrawAmount - $newPartialPaid;
-                    $status = ($newBalance <= 0) ? 1 : 2; // Paid or Partial
+
+                    // Recalculate total payments from all sources after all fee transfers are inserted
+                    // This ensures accuracy even if office receipts exist
+                    $totalPaidOffice = DB::table('account_client_receipts')
+                        ->where('receipt_type', 2)
+                        ->where('invoice_no', $invoiceNo)
+                        ->where('client_id', $requestData['client_id'])
+                        ->where('save_type', 'final')
+                        ->sum('deposit_amount');
+                    
+                    $totalPaidFeeTransfer = DB::table('account_client_receipts')
+                        ->where('receipt_type', 1)
+                        ->where('client_fund_ledger_type', 'Fee Transfer')
+                        ->where('invoice_no', $invoiceNo)
+                        ->where('client_id', $requestData['client_id'])
+                        ->where(function($q) {
+                            $q->whereNull('void_fee_transfer')
+                              ->orWhere('void_fee_transfer', 0);
+                        })
+                        ->sum('withdraw_amount');
+                    
+                    $totalPaid = $totalPaidOffice + $totalPaidFeeTransfer;
+                    $newBalance = $invoiceWithdrawAmount - $totalPaid;
+                    
+                    // Determine new status: 0=Unpaid, 1=Paid, 2=Partial
+                    if ($newBalance <= 0) {
+                        $status = 1; // Paid
+                    } elseif ($totalPaid > 0) {
+                        $status = 2; // Partial
+                    } else {
+                        $status = 0; // Unpaid
+                    }
    
                     DB::table('account_client_receipts')
                         ->where('client_id', $requestData['client_id'])
@@ -419,8 +481,8 @@ class ClientAccountsController extends Controller
                         ->where('invoice_no', $invoiceNo)
                         ->update([
                             'invoice_status' => $status,
-                            'partial_paid_amount' => $newPartialPaid,
-                            'balance_amount' => $newBalance,
+                            'partial_paid_amount' => $totalPaid,
+                            'balance_amount' => max(0, $newBalance),
                             'updated_at' => now(),
                         ]);
    

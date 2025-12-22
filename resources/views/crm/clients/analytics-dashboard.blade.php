@@ -448,7 +448,7 @@
     /* FONT AWESOME SAFETY */
     /* ========================================================================= */
     .fas {
-        font-family: "Font Awesome 6 Free" !important;
+        font-family: "Font Awesome 5 Free" !important;
         font-weight: 900 !important;
         font-style: normal;
         font-variant: normal;
@@ -457,7 +457,7 @@
     }
 
     .far {
-        font-family: "Font Awesome 6 Free" !important;
+        font-family: "Font Awesome 5 Free" !important;
         font-weight: 400 !important;
         font-style: normal;
         font-variant: normal;
@@ -466,7 +466,7 @@
     }
 
     .fab {
-        font-family: "Font Awesome 6 Brands" !important;
+        font-family: "Font Awesome 5 Brands" !important;
         font-weight: 400 !important;
         font-style: normal;
         font-variant: normal;

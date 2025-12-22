@@ -372,7 +372,13 @@
                 $regionalCode.val(regionalInfo);
                 console.log('🔢 Regional code calculated:', regionalInfo, 'from postcode:', postcode);
             } else {
+                // Clear regional code if postcode is invalid or empty
                 $regionalCode.val('');
+                if (postcode) {
+                    console.warn('⚠️ Invalid postcode format:', postcode, '- regional code cleared');
+                } else {
+                    console.log('ℹ️ Postcode cleared - regional code also cleared');
+                }
             }
         });
     }
@@ -576,6 +582,25 @@
             }
         }
         
+        // Fallback postcode extraction from formatted_address
+        if (!postcode && result.formatted_address) {
+            // Try to extract 4-digit Australian postcode from formatted address
+            const postcodeMatch = result.formatted_address.match(/\b(\d{4})\b/);
+            if (postcodeMatch) {
+                postcode = postcodeMatch[1];
+                console.log('📮 Postcode extracted from formatted address:', postcode);
+            }
+        }
+        
+        // If still no postcode, try to get from place name itself
+        if (!postcode && result.name) {
+            const postcodeMatch = result.name.match(/\b(\d{4})\b/);
+            if (postcodeMatch) {
+                postcode = postcodeMatch[1];
+                console.log('📮 Postcode extracted from place name:', postcode);
+            }
+        }
+        
         console.log('🏠 Final address mapping:', {
             addressLine1: addressLine1.trim(),
             suburb: suburb,
@@ -596,17 +621,35 @@
             const regionalInfo = window.getRegionalCodeInfo(postcode);
             $wrapper.find('input[name="regional_code[]"]').val(regionalInfo);
             console.log('🔢 Regional code auto-filled:', regionalInfo, 'from postcode:', postcode);
+        } else {
+            // Clear regional code if no valid postcode
+            $wrapper.find('input[name="regional_code[]"]').val('');
+            console.log('⚠️ No valid postcode - regional code cleared');
         }
         
-        // Show success message
-        const successMessage = $('<div class="autocomplete-success" style="color: #28a745; font-size: 12px; margin-top: 5px;">✓ Address populated successfully</div>');
-        $wrapper.find('.autocomplete-success').remove();
-        $wrapper.find('.address-search-container').append(successMessage);
-        
-        // Remove message after 3 seconds
-        setTimeout(() => {
-            successMessage.fadeOut(() => successMessage.remove());
-        }, 3000);
+        // Show appropriate message based on completeness
+        if (!postcode) {
+            const warningMessage = $('<div class="autocomplete-warning" style="color: #ff9800; font-size: 12px; margin-top: 5px;">⚠ Address populated but postcode is missing. Please enter manually.</div>');
+            $wrapper.find('.autocomplete-warning, .autocomplete-success, .autocomplete-message').remove();
+            $wrapper.find('.address-search-container').append(warningMessage);
+            
+            // Highlight the postcode field
+            $wrapper.find('input[name="zip[]"]').css('border', '2px solid #ff9800');
+            
+            setTimeout(() => {
+                warningMessage.fadeOut(() => warningMessage.remove());
+                $wrapper.find('input[name="zip[]"]').css('border', '');
+            }, 5000);
+        } else {
+            // Show success message only if complete
+            const successMessage = $('<div class="autocomplete-success" style="color: #28a745; font-size: 12px; margin-top: 5px;">✓ Address populated successfully</div>');
+            $wrapper.find('.autocomplete-success, .autocomplete-warning, .autocomplete-message').remove();
+            $wrapper.find('.address-search-container').append(successMessage);
+            
+            setTimeout(() => {
+                successMessage.fadeOut(() => successMessage.remove());
+            }, 3000);
+        }
     }
     
     /**

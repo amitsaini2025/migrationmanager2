@@ -539,13 +539,20 @@ class ClientPersonalDetailsController extends Controller
                 ];
             }
             
-            // Find postcode (usually a 4-digit number)
+            // Enhanced: Find postcode (4-digit number anywhere in description)
             $postcode = '';
+            // First, search through all parts for a 4-digit number
             foreach ($parts as $part) {
-                if (is_numeric($part) && strlen($part) == 4) {
-                    $postcode = $part;
+                $part = trim($part);
+                if (preg_match('/\b(\d{4})\b/', $part, $matches)) {
+                    $postcode = $matches[1];
                     break;
                 }
+            }
+            
+            // If not found in parts, search the entire description
+            if (!$postcode && preg_match('/\b(\d{4})\b/', $description, $matches)) {
+                $postcode = $matches[1];
             }
             
             if ($postcode) {

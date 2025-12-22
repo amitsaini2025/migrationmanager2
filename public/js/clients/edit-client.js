@@ -2576,17 +2576,26 @@ window.saveAddressInfo = function() {
         const hasAnyData = addressLine1 || suburb || state || zip || country;
         
         if (hasAnyData) {
-            // Only require country and suburb - other fields are optional
+            // Require suburb, country, and postcode for Australian addresses
             const missingFields = [];
             if (!suburb) missingFields.push('Suburb');
             if (!country) missingFields.push('Country');
+            
+            // Require postcode for Australian addresses
+            if (country && country.toLowerCase().includes('australia') && !zip) {
+                missingFields.push('Postcode');
+            }
+            // Validate postcode format if provided for Australian addresses
+            if (zip && country && country.toLowerCase().includes('australia') && !/^\d{4}$/.test(zip)) {
+                missingFields.push('Postcode (must be 4 digits)');
+            }
             
             if (missingFields.length > 0) {
                 validationErrors.push(`Address ${idx + 1} is incomplete. Missing: ${missingFields.join(', ')}`);
                 console.warn(`⚠️ Address ${idx + 1} incomplete:`, missingFields);
             } else {
                 hasAtLeastOneValidAddress = true;
-                console.log(`✅ Address ${idx + 1} is valid (has suburb and country)`);
+                console.log(`✅ Address ${idx + 1} is valid (has suburb, country${country && country.toLowerCase().includes('australia') ? ', and postcode' : ''})`);
             }
         } else {
             console.log(`ℹ️ Address ${idx + 1} is empty (will be skipped)`);

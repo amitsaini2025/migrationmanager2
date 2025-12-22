@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Log;
 
 use App\Models\Admin;
 use App\Models\CheckinLog;
@@ -32,58 +33,195 @@ class OfficeVisitController extends Controller
      */
 
 	public function checkin(Request $request){
-		$requestData 		= 	$request->all();
-		$obj = new \App\Models\CheckinLog;
-		$obj->client_id = $requestData['contact'];
-		$obj->user_id = $requestData['assignee'];
-		$obj->visit_purpose = $requestData['message'];
-		$obj->office = $requestData['office'];
-		$obj->contact_type = $requestData['utype'];
-		$obj->status = 0;
-		$obj->date = date('Y-m-d');
-		$saved = $obj->save();
-        if(!$saved)
-		{
-			return redirect()->back()->with('error', config('constants.server_error'));
-		}
-		else
-		{
-		    $o = new \App\Models\Notification;
-	    	$o->sender_id = Auth::user()->id;
-	    	$o->receiver_id = $requestData['assignee'];
-	    	$o->module_id = $obj->id;
-	    	$o->url = \URL::to('/office-visits/waiting');
-	    	$o->notification_type = 'officevisit';
-	    	$o->message = 'Office visit Assigned by '.Auth::user()->first_name.' '.Auth::user()->last_name;
-	    	$o->save();
-	    	
-	    	// Get client information for the notification
-	    	$client = $requestData['utype'] == 'Lead' 
-	    	    ? \App\Models\Lead::find($requestData['contact'])
-	    	    : Admin::where('role', '7')->find($requestData['contact']);
-	    	
-	    	// Broadcast real-time notification via Reverb
-	    	broadcast(new OfficeVisitNotificationCreated(
-	    	    $o->id,
-	    	    $o->receiver_id,
-	    	    [
-	    	        'id' => $o->id,
-	    	        'checkin_id' => $obj->id,
-	    	        'message' => $o->message,
-	    	        'sender_name' => Auth::user()->first_name . ' ' . Auth::user()->last_name,
-	    	        'client_name' => $client ? $client->first_name . ' ' . $client->last_name : 'Unknown Client',
-	    	        'visit_purpose' => $obj->visit_purpose,
-	    	        'created_at' => $o->created_at ? $o->created_at->format('d/m/Y h:i A') : now()->format('d/m/Y h:i A'),
-	    	        'url' => $o->url
-	    	    ]
-	    	));
-	    	
-			$objs = new CheckinHistory;
-			$objs->subject = 'has created check-in';
-			$objs->created_by = Auth::user()->id;
-			$objs->checkin_id = $obj->id;
-			$objs->save();
-			return redirect()->back()->with('success', 'Checkin updated successfully');
+		try {
+			// Handle Select2 multiple select - get first value if array
+			$contactValue = $request->input('contact');
+			if (is_array($contactValue)) {
+				$contactValue = !empty($contactValue) ? $contactValue[0] : null;
+			}
+			
+			// Validate required fields - use custom validation for contact since it might be array
+			$rules = [
+				'assignee' => 'required|integer',
+				'message' => 'required|string',
+				'office' => 'required|integer',
+				'utype' => 'required|string',
+			];
+			
+			$messages = [
+				'assignee.required' => 'Please select an assignee.',
+				'assignee.integer' => 'Invalid assignee selected.',
+				'message.required' => 'Visit purpose is required.',
+				'office.required' => 'Please select an office.',
+				'office.integer' => 'Invalid office selected.',
+				'utype.required' => 'Contact type is required. Please select a contact.',
+			];
+			
+			// Validate contact separately
+			if (empty($contactValue)) {
+				return redirect()->back()
+					->withErrors(['contact' => 'Please select a contact.'])
+					->withInput();
+			}
+			
+			$contactId = (int) $contactValue;
+			if ($contactId <= 0) {
+				return redirect()->back()
+					->withErrors(['contact' => 'Please select a valid contact.'])
+					->withInput();
+			}
+			
+			// Validate other fields
+			$validated = $request->validate($rules, $messages);
+
+			// Get validated data with null coalescing for safety
+			$assigneeId = (int) $validated['assignee'];
+			$officeId = (int) $validated['office'];
+			$visitPurpose = trim($validated['message'] ?? '');
+			
+			// Normalize contact type (handle both lowercase and capitalized)
+			$utypeRaw = strtolower(trim($validated['utype'] ?? ''));
+			if ($utypeRaw === 'lead') {
+				$contactType = 'Lead';
+			} elseif ($utypeRaw === 'client') {
+				$contactType = 'Client';
+			} else {
+				// If utype is something unexpected, try to infer from contact
+				// Default to Client if we can't determine
+				$contactType = 'Client';
+			}
+
+			// Verify contact exists based on type
+			if ($contactType == 'Lead') {
+				$clientExists = \App\Models\Lead::where('id', $contactId)->exists();
+			} else {
+				$clientExists = Admin::where('role', '7')->where('id', $contactId)->exists();
+			}
+
+			if (!$clientExists) {
+				return redirect()->back()->with('error', 'Selected contact does not exist.');
+			}
+
+			// Verify assignee exists
+			$assigneeExists = Admin::where('role', '!=', '7')->where('id', $assigneeId)->exists();
+			if (!$assigneeExists) {
+				return redirect()->back()->with('error', 'Selected assignee does not exist.');
+			}
+
+			// Verify office exists
+			$officeExists = \App\Models\Branch::where('id', $officeId)->exists();
+			if (!$officeExists) {
+				return redirect()->back()->with('error', 'Selected office does not exist.');
+			}
+
+			// Wrap all database operations in a transaction
+			DB::beginTransaction();
+
+			try {
+				// Create CheckinLog
+				$obj = new \App\Models\CheckinLog;
+				$obj->client_id = $contactId;
+				$obj->user_id = $assigneeId;
+				$obj->visit_purpose = $visitPurpose;
+				$obj->office = $officeId;
+				$obj->contact_type = $contactType;
+				$obj->status = 0;
+				$obj->is_archived = 0; // Required: PostgreSQL NOT NULL constraint
+				$obj->date = date('Y-m-d');
+				
+				if (!$obj->save()) {
+					throw new \Exception('Failed to save check-in log.');
+				}
+
+			// Create Notification
+			$notification = new \App\Models\Notification;
+			$notification->sender_id = Auth::user()->id;
+			$notification->receiver_id = $assigneeId;
+			$notification->module_id = $obj->id;
+			$notification->url = \URL::to('/office-visits/waiting');
+			$notification->notification_type = 'officevisit';
+			$notification->message = 'Office visit Assigned by ' . Auth::user()->first_name . ' ' . Auth::user()->last_name;
+			$notification->seen = 0;              // Mark as unseen
+			$notification->receiver_status = 0;   // Mark as unread by receiver
+			$notification->sender_status = 1;     // Mark as sent by sender
+			
+			if (!$notification->save()) {
+				throw new \Exception('Failed to save notification.');
+			}
+
+				// Get client information for the notification
+				$client = $contactType == 'Lead' 
+					? \App\Models\Lead::find($contactId)
+					: Admin::where('role', '7')->find($contactId);
+
+				// Broadcast real-time notification via Reverb (wrap in try-catch to prevent failures)
+				try {
+					broadcast(new OfficeVisitNotificationCreated(
+						$notification->id,
+						$notification->receiver_id,
+						[
+							'id' => $notification->id,
+							'checkin_id' => $obj->id,
+							'message' => $notification->message,
+							'sender_name' => Auth::user()->first_name . ' ' . Auth::user()->last_name,
+							'client_name' => $client ? $client->first_name . ' ' . $client->last_name : 'Unknown Client',
+							'visit_purpose' => $obj->visit_purpose,
+							'created_at' => $notification->created_at ? $notification->created_at->format('d/m/Y h:i A') : now()->format('d/m/Y h:i A'),
+							'url' => $notification->url
+						]
+					));
+				} catch (\Exception $broadcastException) {
+					// Log broadcast error but don't fail the entire operation
+					Log::warning('Failed to broadcast office visit notification', [
+						'notification_id' => $notification->id,
+						'error' => $broadcastException->getMessage()
+					]);
+				}
+
+				// Create CheckinHistory
+				$checkinHistory = new CheckinHistory;
+				$checkinHistory->subject = 'has created check-in';
+				$checkinHistory->created_by = Auth::user()->id;
+				$checkinHistory->checkin_id = $obj->id;
+				
+				if (!$checkinHistory->save()) {
+					throw new \Exception('Failed to save check-in history.');
+				}
+
+				// Commit transaction
+				DB::commit();
+
+				return redirect()->back()->with('success', 'Checkin updated successfully');
+
+			} catch (\Exception $e) {
+				// Rollback transaction on any error
+				DB::rollBack();
+				
+				// Log the error for debugging
+				Log::error('Checkin creation failed', [
+					'error' => $e->getMessage(),
+					'trace' => $e->getTraceAsString(),
+					'request_data' => $request->except(['_token'])
+				]);
+
+				return redirect()->back()->with('error', 'Failed to create check-in. Please try again.');
+			}
+
+		} catch (\Illuminate\Validation\ValidationException $e) {
+			// Return validation errors
+			return redirect()->back()
+				->withErrors($e->errors())
+				->withInput();
+				
+		} catch (\Exception $e) {
+			// Log unexpected errors
+			Log::error('Unexpected error in checkin method', [
+				'error' => $e->getMessage(),
+				'trace' => $e->getTraceAsString(),
+				'request_data' => $request->except(['_token'])
+			]);
+
+			return redirect()->back()->with('error', config('constants.server_error') ?? 'An unexpected error occurred. Please try again.');
 		}
 	}
 

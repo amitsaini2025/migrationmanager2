@@ -303,15 +303,8 @@ class AssigneeController extends Controller
                     }
                 }
 
-                // Apply search functionality
-                if ($request->has('search') && !empty($request->search)) {
-                    $searchTerm = $request->search;
-                    $query->where(function ($q) use ($searchTerm) {
-                        $q->where('notes.followup_date', 'LIKE', '%' . $searchTerm . '%')
-                        ->orWhere('notes.task_group', 'LIKE', '%' . $searchTerm . '%')
-                        ->orWhere('notes.description', 'LIKE', '%' . $searchTerm . '%');
-                    });
-                }
+                // Note: Search functionality is now handled by Yajra DataTables filterColumn() definitions
+                // The custom 'd.search' parameter from frontend is handled by DataTables' built-in search
 
                 // Apply sorting - simplified to avoid join issues
                 if ($request->has('order')) {
@@ -438,7 +431,24 @@ class AssigneeController extends Controller
                             return '';
                         }
                     })
-                    ->rawColumns(['done_task', 'client_reference', 'note_description', 'action']);
+                    ->rawColumns(['done_task', 'client_reference', 'note_description', 'action'])
+                    // Define how to filter computed columns
+                    ->filterColumn('assigner_name', function($query, $keyword) {
+                        $keywordLower = strtolower($keyword);
+                        $query->whereHas('noteUser', function($q) use ($keywordLower) {
+                            $q->whereRaw('LOWER(first_name) LIKE ?', ['%' . $keywordLower . '%'])
+                              ->orWhereRaw('LOWER(last_name) LIKE ?', ['%' . $keywordLower . '%'])
+                              ->orWhereRaw("LOWER(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?", ['%' . $keywordLower . '%']);
+                        });
+                    })
+                    ->filterColumn('client_reference', function($query, $keyword) {
+                        $keywordLower = strtolower($keyword);
+                        $query->whereHas('noteClient', function($q) use ($keywordLower) {
+                            $q->whereRaw('LOWER(client_id) LIKE ?', ['%' . $keywordLower . '%'])
+                              ->orWhereRaw('LOWER(first_name) LIKE ?', ['%' . $keywordLower . '%'])
+                              ->orWhereRaw('LOWER(last_name) LIKE ?', ['%' . $keywordLower . '%']);
+                        });
+                    });
 
                 // Get the response and ensure UTF-8 encoding
                 $response = $dataTable->make(true);

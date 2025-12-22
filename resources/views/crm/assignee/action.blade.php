@@ -1115,7 +1115,7 @@ $(function () {
             data: function(d) {
                 var $activeTab = $('.tab-button.active');
                 d.filter = $activeTab.length ? ($activeTab.data('filter') || 'all') : 'all';
-                d.search = $('#searchInput').val() || ''; // Pass the search term to the server
+                d.search.value = $('#searchInput').val() || ''; // Pass the search term to the server in DataTables format
             },
             error: function(xhr, error, thrown) {
                 console.error('DataTables Ajax Error:', error, thrown);

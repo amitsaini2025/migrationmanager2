@@ -2269,7 +2269,24 @@
             $('.js-data-example-ajax-check').on("select2:select", function(e) {
                 var data = e.params.data;
                 console.log(data);
-                $('#utype').val(data.status);
+                // Ensure status is set, default to 'Client' if not provided
+                var contactType = data.status || data.type || 'client';
+                // Normalize to lowercase first, then capitalize
+                contactType = contactType.toLowerCase();
+                if (contactType === 'lead') {
+                    contactType = 'Lead';
+                } else if (contactType === 'client') {
+                    contactType = 'Client';
+                } else {
+                    // If status is something else (like 'archived'), default to 'Client'
+                    contactType = 'Client';
+                }
+                $('#utype').val(contactType);
+            });
+
+            // Also handle when selection is cleared
+            $('.js-data-example-ajax-check').on("select2:clear", function(e) {
+                $('#utype').val('');
             });
 
             $('.js-data-example-ajax-check').select2({

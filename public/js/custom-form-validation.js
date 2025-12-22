@@ -2822,6 +2822,34 @@ function customValidate(formName, savetype = '')
 						});
                     }
 
+					else if(formName == 'checkinmodalsave')
+					{
+						// Validate that utype is set before submitting
+						var utype = $('#utype').val();
+						if(!utype || utype.trim() === '') {
+							$('.popuploader').hide();
+							// Show error near the contact field
+							var contactField = $('.js-data-example-ajax-check');
+							if(contactField.length) {
+								contactField.after('<span class="custom-error" role="alert"><strong>Please select a contact to set the contact type.</strong></span>');
+							} else {
+								alert('Please select a contact before submitting.');
+							}
+							$('html, body').animate({scrollTop:0}, 'slow');
+							return false;
+						}
+						// Validate that contact is selected
+						var contactValue = $('.js-data-example-ajax-check').val();
+						if(!contactValue || contactValue.length === 0) {
+							$('.popuploader').hide();
+							var contactField = $('.js-data-example-ajax-check');
+							contactField.after('<span class="custom-error" role="alert"><strong>Please select a contact.</strong></span>');
+							$('html, body').animate({scrollTop:0}, 'slow');
+							return false;
+						}
+						$("form[name="+formName+"]").submit();
+						return true;
+					}
                     else
 					{
 						if(formName == 'invoiceform')

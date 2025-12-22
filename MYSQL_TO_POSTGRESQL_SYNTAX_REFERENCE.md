@@ -35,7 +35,41 @@ This document serves as a quick reference for syntax changes made during the MyS
 **PostgreSQL Solution:**
 ```php
 // ✅ PostgreSQL - Convert VARCHAR to DATE using TO_DATE()
+// CRITICAL: Filter NULL values first - TO_DATE() fails on NULL values
+->whereNotNull('trans_date')
 ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDate, $endDate])
+```
+
+**CRITICAL: NULL Value Handling**
+
+PostgreSQL's `TO_DATE()` function will throw an error if the input value is NULL. This causes a 500 Internal Server Error when querying tables that contain NULL date values. **Always filter out NULL values before using TO_DATE()**.
+
+**Broken Pattern:**
+```php
+// ❌ PostgreSQL - This will fail with 500 error if trans_date is NULL
+->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDate, $endDate])
+```
+
+**Fixed Pattern:**
+```php
+// ✅ PostgreSQL - Filter NULL values first
+->whereNotNull('trans_date')
+->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDate, $endDate])
+```
+
+**For JOIN queries:**
+```php
+// ✅ PostgreSQL - Use table alias prefix for whereNotNull
+->whereNotNull('acr.trans_date')
+->whereRaw("TO_DATE(acr.trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDate, $endDate])
+```
+
+**For raw SQL subqueries:**
+```php
+// ✅ PostgreSQL - Add IS NOT NULL check in raw SQL
+DB::raw('(SELECT ... FROM account_client_receipts 
+    WHERE trans_date IS NOT NULL
+    AND TO_DATE(trans_date, \'DD/MM/YYYY\') BETWEEN ...)')
 ```
 
 **Examples from Codebase:**
@@ -45,7 +79,9 @@ This document serves as a quick reference for syntax changes made during the MyS
    - **Lines:** 63-67
    ```php
    $applyDateFilter = function($query, $start, $end) {
-       return $query->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$start, $end]);
+       // CRITICAL: Filter NULL values first - TO_DATE() fails on NULL values
+       return $query->whereNotNull('trans_date')
+           ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$start, $end]);
    };
    ```
 
@@ -64,28 +100,36 @@ This document serves as a quick reference for syntax changes made during the MyS
    - **Fixed Pattern:**
      ```php
      // ✅ PostgreSQL - Convert to dd/mm/yyyy and use TO_DATE()
+     // CRITICAL: Filter NULL values first
      $startDateStr = $startDate->format('d/m/Y');
      $endDateStr = $endDate->format('d/m/Y');
-     $query->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr]);
+     $query->whereNotNull('trans_date')
+         ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr]);
      ```
    - **For Custom Date Ranges:** Dates from datepicker are already in `dd/mm/yyyy` format:
      ```php
      // ✅ PostgreSQL - Use TO_DATE() directly with datepicker input
+     // CRITICAL: Filter NULL values first
      if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $fromDate) && preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $toDate)) {
-         $query->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$fromDate, $toDate]);
+         $query->whereNotNull('trans_date')
+             ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$fromDate, $toDate]);
      }
      ```
    - **For Financial Year:** Convert Carbon dates to `dd/mm/yyyy` format:
      ```php
      // ✅ PostgreSQL - Convert financial year dates to dd/mm/yyyy
+     // CRITICAL: Filter NULL values first
      $fyStartDate = \Carbon\Carbon::createFromDate($years[0], 7, 1)->startOfDay();
      $fyEndDate = \Carbon\Carbon::createFromDate($years[1], 6, 30)->endOfDay();
      $startDateStr = $fyStartDate->format('d/m/Y');
      $endDateStr = $fyEndDate->format('d/m/Y');
-     $query->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr]);
+     $query->whereNotNull('trans_date')
+         ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr]);
      ```
 
 **Safety:** 🔴 **CRITICAL** - Date filters using `whereBetween()` with wrong format will **fail silently** or return incorrect results in PostgreSQL. This must be fixed for date filtering to work correctly.
+
+**Safety:** 🔴 **CRITICAL** - Queries using `TO_DATE()` on columns that may contain NULL values will **fail immediately** with a 500 Internal Server Error. Always add `->whereNotNull('column_name')` before `whereRaw()` with `TO_DATE()`. This is a common cause of 500 errors in analytics dashboards and financial reports.
 
 **Notes:**
 - Format string is case-sensitive: `'DD/MM/YYYY'` (uppercase)
@@ -95,6 +139,9 @@ This document serves as a quick reference for syntax changes made during the MyS
 - When using Carbon dates, use `->format('d/m/Y')` not `->format('Y-m-d')`
 - Datepicker inputs are already in `dd/mm/yyyy` format, so use them directly
 - For financial year calculations, create Carbon dates first, then format as `dd/mm/yyyy`
+- **CRITICAL:** Always filter NULL values with `->whereNotNull('trans_date')` before using `TO_DATE()` - PostgreSQL throws an error if TO_DATE() receives NULL
+- For JOIN queries, use table alias prefix: `->whereNotNull('acr.trans_date')`
+- For raw SQL subqueries, add `WHERE column_name IS NOT NULL` before TO_DATE() usage
 
 ---
 
@@ -1056,6 +1103,16 @@ grep -r "whereBetween.*trans_date" app/Http/Controllers/
 grep -r "whereBetween.*'trans_date'" app/Http/Controllers/
 grep -r "format('Y-m-d')" app/Http/Controllers/ | grep -i "date"
 # Should use TO_DATE() with dd/mm/yyyy format instead
+
+# Check for TO_DATE() usage without whereNotNull (NULL handling issue)
+grep -r "TO_DATE.*trans_date" app/ | grep -v "whereNotNull"
+grep -r "whereRaw.*TO_DATE.*trans_date" app/ | grep -v "whereNotNull"
+# Should have ->whereNotNull('trans_date') before whereRaw() with TO_DATE()
+
+# Check for TO_DATE() usage without whereNotNull (NULL handling issue)
+grep -r "TO_DATE.*trans_date" app/ | grep -v "whereNotNull"
+grep -r "whereRaw.*TO_DATE.*trans_date" app/ | grep -v "whereNotNull"
+# Should have ->whereNotNull('trans_date') before whereRaw() with TO_DATE()
 ```
 
 ---
@@ -1066,7 +1123,7 @@ grep -r "format('Y-m-d')" app/Http/Controllers/ | grep -i "date"
 |-------------|-------------------|--------------|-------|
 | `DATE_FORMAT(date, '%Y-%m')` | `TO_CHAR(date, 'YYYY-MM')` | 🔴 Critical | Must convert format codes |
 | `STR_TO_DATE(str, '%d/%m/%Y')` | `TO_DATE(str, 'DD/MM/YYYY')` | 🔴 Critical | Different format syntax |
-| `whereBetween('trans_date', ['Y-m-d', 'Y-m-d'])` on VARCHAR dd/mm/yyyy | `whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", ['d/m/Y', 'd/m/Y'])` | 🔴 Critical | VARCHAR dates stored as dd/mm/yyyy must use TO_DATE() with correct format |
+| `whereBetween('trans_date', ['Y-m-d', 'Y-m-d'])` on VARCHAR dd/mm/yyyy | `whereNotNull('trans_date')->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", ['d/m/Y', 'd/m/Y'])` | 🔴 Critical | VARCHAR dates stored as dd/mm/yyyy must use TO_DATE() with correct format. **CRITICAL:** Must filter NULL values first with `whereNotNull()` |
 | `GROUP_CONCAT(col)` | `STRING_AGG(col, ', ')` | 🔴 Critical | Requires delimiter |
 | `column != '0000-00-00'` | `column IS NOT NULL` | 🔴 Critical | PostgreSQL rejects invalid dates |
 | `column = '0000-00-00'` | `column IS NULL` | 🔴 Critical | Same as above |
@@ -1105,6 +1162,7 @@ When pulling new code from MySQL, check for:
 - [ ] `DATE_FORMAT()` → Change to `TO_CHAR()` with updated format codes
 - [ ] `GROUP_CONCAT()` → Change to `STRING_AGG()` with delimiter
 - [ ] VARCHAR date comparisons → Use `TO_DATE()` for proper comparison
+- [ ] **NULL handling for TO_DATE():** Always add `->whereNotNull('trans_date')` before `whereRaw()` with `TO_DATE()` - PostgreSQL throws error if TO_DATE() receives NULL
 - [ ] **VARCHAR date field filtering:** Check for `whereBetween('trans_date', [...])` or similar with `Y-m-d` format → Must use `whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", ['d/m/Y', 'd/m/Y'])` for VARCHAR fields stored as dd/mm/yyyy
 - [ ] **Date format in filters:** When filtering VARCHAR dates (like `trans_date`), ensure dates are formatted as `d/m/Y` (not `Y-m-d`) before using in TO_DATE() queries
 - [ ] `ORDER BY` with date columns → Consider adding `NULLS LAST`

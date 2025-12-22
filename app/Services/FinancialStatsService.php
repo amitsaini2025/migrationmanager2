@@ -63,7 +63,9 @@ class FinancialStatsService
         $applyDateFilter = function($query, $start, $end) {
             // Since trans_date is VARCHAR in dd/mm/yyyy format, we need to convert for PostgreSQL
             // PostgreSQL: TO_DATE(trans_date, 'DD/MM/YYYY')
-            return $query->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$start, $end]);
+            // CRITICAL: Filter NULL values first - TO_DATE() fails on NULL values
+            return $query->whereNotNull('trans_date')
+                ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$start, $end]);
         };
 
         // Total deposits this month (Client Receipts - receipt_type 1)
@@ -203,6 +205,7 @@ class FinancialStatsService
         // Unallocated receipts count (within date range)
         $unallocatedCount = DB::table('account_client_receipts')
             ->where('receipt_type', 1)
+            ->whereNotNull('trans_date')
             ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr])
             ->where(function($q) {
                 $q->whereNull('validate_receipt')
@@ -217,6 +220,7 @@ class FinancialStatsService
         // Total allocated receipts (within date range)
         $allocatedCount = DB::table('account_client_receipts')
             ->where('receipt_type', 1)
+            ->whereNotNull('trans_date')
             ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr])
             ->where('validate_receipt', 1)
             ->count();
@@ -224,6 +228,7 @@ class FinancialStatsService
         // Total client receipts (within date range)
         $totalClientReceipts = DB::table('account_client_receipts')
             ->where('receipt_type', 1)
+            ->whereNotNull('trans_date')
             ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr])
             ->count();
 
@@ -270,6 +275,7 @@ class FinancialStatsService
         // Total invoices (by receipt_id, not individual records) within date range
         $totalInvoices = DB::table('account_client_receipts')
             ->where('receipt_type', 3)
+            ->whereNotNull('trans_date')
             ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr])
             ->where(function($q) {
                 $q->whereNull('void_invoice')
@@ -281,6 +287,7 @@ class FinancialStatsService
         // Unpaid invoices (invoice_status != 2) within date range
         $unpaidInvoices = DB::table('account_client_receipts')
             ->where('receipt_type', 3)
+            ->whereNotNull('trans_date')
             ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr])
             ->where(function($q) {
                 $q->whereNull('void_invoice')
@@ -296,6 +303,7 @@ class FinancialStatsService
         // Overdue invoices (trans_date in past and not fully paid) within date range
         $overdueInvoices = DB::table('account_client_receipts')
             ->where('receipt_type', 3)
+            ->whereNotNull('trans_date')
             ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr])
             ->where(function($q) {
                 $q->whereNull('void_invoice')
@@ -312,6 +320,7 @@ class FinancialStatsService
         // Paid invoices within date range
         $paidInvoices = DB::table('account_client_receipts')
             ->where('receipt_type', 3)
+            ->whereNotNull('trans_date')
             ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr])
             ->where('invoice_status', 2)
             ->where(function($q) {
@@ -325,7 +334,8 @@ class FinancialStatsService
         $unpaidAmount = DB::table(DB::raw('(SELECT receipt_id, MAX(balance_amount) as balance_amount 
             FROM account_client_receipts 
             WHERE receipt_type = 3 
-            AND TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(\'' . $startDateStr . '\', \'DD/MM/YYYY\') AND TO_DATE(\'' . $endDateStr . '\', \'DD/MM/YYYY\')
+            AND trans_date IS NOT NULL
+            AND TO_DATE(trans_date, \'DD/MM/YYYY\') BETWEEN TO_DATE(\'' . $startDateStr . '\', \'DD/MM/YYYY\') AND TO_DATE(\'' . $endDateStr . '\', \'DD/MM/YYYY\')
             AND (void_invoice IS NULL OR void_invoice != 1)
             AND (invoice_status != 2 OR invoice_status IS NULL)
             GROUP BY receipt_id) as unpaid_invoices'))
@@ -371,6 +381,7 @@ class FinancialStatsService
         // Get receipts that have been validated within date range
         $validatedReceipts = DB::table('account_client_receipts')
             ->where('receipt_type', 1)
+            ->whereNotNull('trans_date')
             ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr])
             ->where('validate_receipt', 1)
             ->whereNotNull('created_at')
@@ -398,6 +409,7 @@ class FinancialStatsService
         // Get receipts older than 30 days that are unallocated (within date range)
         $oldUnallocated = DB::table('account_client_receipts')
             ->where('receipt_type', 1)
+            ->whereNotNull('trans_date')
             ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr])
             ->where(function($q) {
                 $q->whereNull('validate_receipt')
@@ -440,6 +452,7 @@ class FinancialStatsService
             $deposits[] = ($receiptType === null || $receiptType == 1)
                 ? DB::table('account_client_receipts')
                     ->where('receipt_type', 1)
+                    ->whereNotNull('trans_date')
                     ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr])
                     ->sum('deposit_amount')
                 : 0;
@@ -448,6 +461,7 @@ class FinancialStatsService
             $officeReceipts[] = ($receiptType === null || $receiptType == 2)
                 ? DB::table('account_client_receipts')
                     ->where('receipt_type', 2)
+                    ->whereNotNull('trans_date')
                     ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr])
                     ->sum('deposit_amount')
                 : 0;
@@ -456,6 +470,7 @@ class FinancialStatsService
             $invoices[] = ($receiptType === null || $receiptType == 3)
                 ? DB::table('account_client_receipts')
                     ->where('receipt_type', 3)
+                    ->whereNotNull('trans_date')
                     ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr])
                     ->where(function($q) {
                         $q->whereNull('void_invoice')
@@ -468,6 +483,7 @@ class FinancialStatsService
             $journalReceipts[] = ($receiptType === null || $receiptType == 4)
                 ? DB::table('account_client_receipts')
                     ->where('receipt_type', 4)
+                    ->whereNotNull('trans_date')
                     ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr])
                     ->sum('deposit_amount')
                 : 0;
@@ -507,6 +523,7 @@ class FinancialStatsService
                 DB::raw('SUM(acr.deposit_amount) as total_deposits'),
                 DB::raw('COUNT(*) as transaction_count')
             )
+            ->whereNotNull('acr.trans_date')
             ->whereRaw("TO_DATE(acr.trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr]);
         
         // Apply receipt_type filter if provided
@@ -571,6 +588,7 @@ class FinancialStatsService
         $breakdown = DB::table('account_client_receipts')
             ->select('payment_method', DB::raw('COUNT(*) as count'), DB::raw('SUM(deposit_amount) as total'))
             ->whereNotNull('payment_method')
+            ->whereNotNull('trans_date')
             ->whereRaw("TO_DATE(trans_date, 'DD/MM/YYYY') BETWEEN TO_DATE(?, 'DD/MM/YYYY') AND TO_DATE(?, 'DD/MM/YYYY')", [$startDateStr, $endDateStr])
             ->groupBy('payment_method')
             ->orderByDesc('total')

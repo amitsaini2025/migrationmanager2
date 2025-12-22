@@ -54,6 +54,7 @@ class EmailVerificationService
             'client_id' => $clientEmail->client_id,
             'email' => $clientEmail->email,
             'verification_token' => $token,
+            'is_verified' => false,
             'token_sent_at' => now(),
             'token_expires_at' => $expiresAt,
         ]);

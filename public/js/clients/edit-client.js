@@ -1966,7 +1966,7 @@ window.saveSectionData = function(sectionName, formData, successCallback) {
     })
     .then(data => {
         if (data.success) {
-            successCallback();
+            successCallback(data);  // Pass the response data to the callback
             showNotification(data.message || `${sectionName} updated successfully!`, 'success');
         } else {
             showNotification(data.message || `Error updating ${sectionName}`, 'error');
@@ -2168,21 +2168,25 @@ window.saveEmailAddresses = function() {
     const formData = new FormData();
     formData.append('emails', JSON.stringify(emails));
     
-    saveSectionData('emailAddresses', formData, function() {
+    saveSectionData('emailAddresses', formData, function(response) {
+        // Use the email IDs returned from the server (not the old ones)
+        const savedEmails = response && response.emails ? response.emails : [];
+        
         // Update summary view on success
         const summaryView = document.getElementById('emailAddressesSummary');
         const summaryGrid = summaryView.querySelector('.summary-grid');
         
-        if (emails.length > 0) {
-            summaryGrid.innerHTML = emails.map((email, index) => {
+        if (savedEmails.length > 0) {
+            summaryGrid.innerHTML = savedEmails.map((email, index) => {
                 // Show verify button only for saved emails with valid ID
                 let verificationButton = '';
                 if (email.is_verified) {
                     verificationButton = `<span class="verified-badge">
                         <i class="fas fa-check-circle"></i> Verified
                      </span>`;
-                } else if (email.email_id && email.email_id !== 'pending') {
-                    verificationButton = `<button type="button" class="btn-verify-email" onclick="sendEmailVerification('${email.email_id}', '${email.email}')" data-email-id="${email.email_id}">
+                } else if (email.id && email.id > 0) {
+                    // Use email.id from server response (guaranteed to be correct)
+                    verificationButton = `<button type="button" class="btn-verify-email" onclick="sendEmailVerification(${email.id}, '${email.email}')" data-email-id="${email.id}">
                         <i class="fas fa-lock"></i> Verify
                      </button>`;
                 } else {
@@ -2212,16 +2216,9 @@ window.saveEmailAddresses = function() {
             newEmailVerifyButtons.forEach(button => {
                 const emailId = button.getAttribute('data-email-id');
                 
-                // Same comprehensive validation
-                if (emailId && 
-                    emailId !== 'pending' && 
-                    emailId !== 'null' && 
-                    emailId !== 'undefined' &&
-                    emailId !== '' &&
-                    emailId !== '0' &&
-                    !isNaN(parseInt(emailId)) && 
-                    parseInt(emailId) > 0) {
-                    
+                // Validate email ID before starting polling
+                if (isValidEmailId(emailId)) {
+                    console.log(`Starting polling for newly saved email ID: ${emailId}`);
                     startEmailVerificationPolling(parseInt(emailId));
                 }
             });

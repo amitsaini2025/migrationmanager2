@@ -2114,9 +2114,24 @@ class ClientPersonalDetailsController extends Controller
                 );
             }
 
+            // Get the newly saved emails with their IDs
+            $savedEmails = ClientEmail::where('client_id', $client->id)
+                ->orderBy('id', 'asc')
+                ->get()
+                ->map(function($email) {
+                    return [
+                        'id' => $email->id,
+                        'email' => $email->email,
+                        'email_type' => $email->email_type,
+                        'is_verified' => $email->is_verified,
+                        'verified_at' => $email->verified_at
+                    ];
+                });
+
             return response()->json([
                 'success' => true,
-                'message' => 'Email addresses updated successfully'
+                'message' => 'Email addresses updated successfully',
+                'emails' => $savedEmails
             ]);
         } catch (\Exception $e) {
             return response()->json([

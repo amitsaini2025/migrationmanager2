@@ -480,7 +480,8 @@
                     },
                     success: function(response) {
                         $('.popuploader').hide();
-                        var obj = $.parseJSON(response);
+                        // Parse response if it's a string (fallback for older jQuery versions)
+                        var obj = (typeof response === 'string') ? $.parseJSON(response) : response;
                         if (obj.success) {
                             $("[data-role=popover]").each(function() {
                                 (($(this).popover('hide').data('bs.popover') || {}).inState || {}).click = false;
@@ -490,6 +491,11 @@
                             alert(obj.message);
                             location.reload();
                         }
+                    },
+                    error: function(xhr, status, error) {
+                        $('.popuploader').hide();
+                        console.error('Error updating task:', xhr.responseText);
+                        alert('An error occurred while updating the task. Please try again.');
                     }
                 });
             } else {

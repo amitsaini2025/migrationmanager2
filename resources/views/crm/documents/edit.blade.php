@@ -712,28 +712,34 @@
         });
 
         let isSubmitting = false;
-        document.getElementById('signature-form').addEventListener('submit', function(e) {
-            if (!isSubmitting) {
-                e.preventDefault(); // Prevent default submission on first click
-                
-                // Ensure the latest fields are rendered
-                updateForm();
-                
-                // Validate that we have at least one signature field
-                if (signatureFields.length === 0) {
-                    alert('Please add at least one signature field before saving.');
-                    return;
+        const signatureForm = document.getElementById('signature-form');
+        if (signatureForm) {
+            signatureForm.addEventListener('submit', function(e) {
+                if (!isSubmitting) {
+                    e.preventDefault(); // Prevent default submission on first click
+                    
+                    // Ensure the latest fields are rendered
+                    updateForm();
+                    
+                    // Validate that we have at least one signature field
+                    if (signatureFields.length === 0) {
+                        alert('Please add at least one signature field before saving.');
+                        isSubmitting = false; // Reset flag
+                        return;
+                    }
+                    
+                    // Set flag and submit the form programmatically after DOM updates
+                    isSubmitting = true;
+                    
+                    // Use setTimeout to ensure DOM updates are complete
+                    // Store form reference to avoid context loss
+                    const form = signatureForm;
+                    setTimeout(() => {
+                        form.submit();
+                    }, 100);
                 }
-                
-                // Set flag and submit the form programmatically after DOM updates
-                isSubmitting = true;
-                
-                // Use setTimeout to ensure DOM updates are complete
-                setTimeout(() => {
-                    this.submit();
-                }, 100);
-            }
-        });
+            });
+        }
     </script>
 </body>
 </html>

@@ -94,28 +94,28 @@
                 
                 <!-- Quick Filter Chips -->
                 <div class="quick-filters" style="margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 8px;">
-                    <span class="quick-filter-chip account-quick-filter" data-filter="today" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;">
+                    <span class="quick-filter-chip account-quick-filter" data-filter="today" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;">
                         <i class="fas fa-calendar-day"></i> Today
                     </span>
-                    <span class="quick-filter-chip account-quick-filter" data-filter="this_week" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;">
+                    <span class="quick-filter-chip account-quick-filter" data-filter="this_week" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;">
                         <i class="fas fa-calendar-week"></i> This Week
                     </span>
-                    <span class="quick-filter-chip account-quick-filter" data-filter="this_month" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;">
+                    <span class="quick-filter-chip account-quick-filter" data-filter="this_month" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;">
                         <i class="fas fa-calendar"></i> This Month
                     </span>
-                    <span class="quick-filter-chip account-quick-filter" data-filter="last_month" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;">
+                    <span class="quick-filter-chip account-quick-filter" data-filter="last_month" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;">
                         <i class="fas fa-calendar-minus"></i> Last Month
                     </span>
-                    <span class="quick-filter-chip account-quick-filter" data-filter="last_30_days" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;">
+                    <span class="quick-filter-chip account-quick-filter" data-filter="last_30_days" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;">
                         <i class="fas fa-calendar-alt"></i> Last 30 Days
                     </span>
-                    <span class="quick-filter-chip account-quick-filter" data-filter="last_90_days" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;">
+                    <span class="quick-filter-chip account-quick-filter" data-filter="last_90_days" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;">
                         <i class="fas fa-calendar-alt"></i> Last 90 Days
                     </span>
-                    <span class="quick-filter-chip account-quick-filter" data-filter="this_year" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;">
+                    <span class="quick-filter-chip account-quick-filter" data-filter="this_year" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;">
                         <i class="fas fa-calendar-alt"></i> This Year
                     </span>
-                    <span class="quick-filter-chip account-quick-filter" data-filter="last_year" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;">
+                    <span class="quick-filter-chip account-quick-filter" data-filter="last_year" style="padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;">
                         <i class="fas fa-calendar-minus"></i> Last Year
                     </span>
                 </div>
@@ -194,7 +194,7 @@
                                 $rowClass = 'strike-through';
                             }
                             ?>
-                        <tr class="drow_account_ledger ledger-row {{$rowClass}}" data-type="{{$rec_val->client_fund_ledger_type}}" data-matterid="{{$rec_val->client_matter_id}}">
+                        <tr class="drow_account_ledger ledger-row {{$rowClass}}" data-type="{{$rec_val->client_fund_ledger_type}}" data-matterid="{{$rec_val->client_matter_id}}" data-trans-date="<?php echo htmlspecialchars($rec_val->trans_date, ENT_QUOTES, 'UTF-8'); ?>">
                             <td style="text-align: left; vertical-align: middle;">
                                 <span style="display: inline-flex; align-items: center;">
                                     <?php
@@ -949,34 +949,206 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('✅ Modal reset for next use');
     });
     
+    // Helper function to parse dd/mm/yyyy date string to Date object
+    function parseDateDDMMYYYY(dateStr) {
+        if (!dateStr || !dateStr.trim()) return null;
+        const parts = dateStr.split('/');
+        if (parts.length !== 3) return null;
+        // month is 0-based in JavaScript Date
+        return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    }
+    
+    // Helper function to check if a date is within a range
+    function isDateInRange(dateStr, startDate, endDate) {
+        if (!dateStr) return false;
+        const rowDate = parseDateDDMMYYYY(dateStr);
+        if (!rowDate) return false;
+        
+        if (startDate && rowDate < startDate) return false;
+        if (endDate && rowDate > endDate) return false;
+        return true;
+    }
+    
+    // Helper function to get date range for quick filter
+    function getDateRangeForFilter(filterType) {
+        const now = new Date();
+        let startDate = null;
+        let endDate = null;
+        
+        switch(filterType) {
+            case 'today':
+                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+                break;
+            case 'this_week':
+                const dayOfWeek = now.getDay();
+                const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Monday
+                startDate = new Date(now.getFullYear(), now.getMonth(), diff);
+                endDate = new Date(now.getFullYear(), now.getMonth(), diff + 6, 23, 59, 59);
+                break;
+            case 'this_month':
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+                break;
+            case 'last_month':
+                startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+                break;
+            case 'last_30_days':
+                startDate = new Date(now);
+                startDate.setDate(startDate.getDate() - 30);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(now);
+                endDate.setHours(23, 59, 59, 999);
+                break;
+            case 'last_90_days':
+                startDate = new Date(now);
+                startDate.setDate(startDate.getDate() - 90);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(now);
+                endDate.setHours(23, 59, 59, 999);
+                break;
+            case 'this_year':
+                startDate = new Date(now.getFullYear(), 0, 1);
+                endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+                break;
+            case 'last_year':
+                startDate = new Date(now.getFullYear() - 1, 0, 1);
+                endDate = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59);
+                break;
+        }
+        
+        return { startDate, endDate };
+    }
+    
+    // Combined filter function that handles both type and date filters
+    function applyAllFilters() {
+        const depositsEl = document.getElementById('filter-deposits');
+        const transfersEl = document.getElementById('filter-transfers');
+        const refundsEl = document.getElementById('filter-refunds');
+        const fromDateEl = document.getElementById('account-from-date');
+        const toDateEl = document.getElementById('account-to-date');
+        const dateFilterType = document.getElementById('account-date-filter-type');
+        
+        // Get type filter states
+        const showDeposits = depositsEl ? depositsEl.checked : false;
+        const showTransfers = transfersEl ? transfersEl.checked : false;
+        const showRefunds = refundsEl ? refundsEl.checked : false;
+        
+        // Get date filter states
+        let dateStart = null;
+        let dateEnd = null;
+        const quickFilterType = dateFilterType ? dateFilterType.value : '';
+        const fromDateStr = fromDateEl ? fromDateEl.value.trim() : '';
+        const toDateStr = toDateEl ? toDateEl.value.trim() : '';
+        
+        // Determine date range
+        if (quickFilterType) {
+            const dateRange = getDateRangeForFilter(quickFilterType);
+            dateStart = dateRange.startDate;
+            dateEnd = dateRange.endDate;
+        } else if (fromDateStr || toDateStr) {
+            if (fromDateStr) {
+                dateStart = parseDateDDMMYYYY(fromDateStr);
+            }
+            if (toDateStr) {
+                dateEnd = parseDateDDMMYYYY(toDateStr);
+                if (dateEnd) {
+                    dateEnd.setHours(23, 59, 59, 999);
+                }
+            }
+        }
+        
+        const rows = document.querySelectorAll('.ledger-row');
+        
+        rows.forEach(row => {
+            const type = row.getAttribute('data-type');
+            const transDate = row.getAttribute('data-trans-date');
+            
+            let show = true;
+            
+            // Apply type filter
+            if (showDeposits || showTransfers || showRefunds) {
+                show = false;
+                if (showDeposits && type === 'Deposit') show = true;
+                if (showTransfers && type === 'Fee Transfer') show = true;
+                if (showRefunds && type === 'Refund') show = true;
+            }
+            
+            // Apply date filter if any date filter is active
+            if (show && (dateStart || dateEnd)) {
+                if (!isDateInRange(transDate, dateStart, dateEnd)) {
+                    show = false;
+                }
+            }
+            
+            row.style.display = show ? '' : 'none';
+        });
+    }
+    
     // FIX 3: Filter functionality with guards for getElementById
     const applyFiltersBtn = document.getElementById('apply-filters');
     if (applyFiltersBtn) {
         applyFiltersBtn.addEventListener('click', function() {
-            const depositsEl = document.getElementById('filter-deposits');
-            const transfersEl = document.getElementById('filter-transfers');
-            const refundsEl = document.getElementById('filter-refunds');
-            
-            // Guard against missing elements
-            const showDeposits = depositsEl ? depositsEl.checked : false;
-            const showTransfers = transfersEl ? transfersEl.checked : false;
-            const showRefunds = refundsEl ? refundsEl.checked : false;
-            
-            const rows = document.querySelectorAll('.ledger-row');
-            
-            rows.forEach(row => {
-                const type = row.getAttribute('data-type');
-                let show = true;
-                
-                if (showDeposits || showTransfers || showRefunds) {
-                    show = false;
-                    if (showDeposits && type === 'Deposit') show = true;
-                    if (showTransfers && type === 'Fee Transfer') show = true;
-                    if (showRefunds && type === 'Refund') show = true;
-                }
-                
-                row.style.display = show ? '' : 'none';
-            });
+            applyAllFilters();
+        });
+    }
+    
+    // Date filter: Quick filter chips
+    $('.account-quick-filter').on('click', function() {
+        const filterType = $(this).data('filter');
+        
+        // Remove active class from all chips
+        $('.account-quick-filter').removeClass('active').css({
+            'background': '#e9ecef',
+            'border-color': '#ced4da',
+            'color': 'inherit'
+        });
+        
+        // Add active class to clicked chip
+        $(this).addClass('active').css({
+            'background': '#007bff',
+            'border-color': '#007bff',
+            'color': '#ffffff'
+        });
+        
+        // Set the hidden input value
+        const dateFilterType = document.getElementById('account-date-filter-type');
+        if (dateFilterType) {
+            dateFilterType.value = filterType;
+        }
+        
+        // Clear custom date fields when using quick filters
+        $('#account-from-date').val('');
+        $('#account-to-date').val('');
+        
+        // Apply filters immediately
+        applyAllFilters();
+    });
+    
+    // Date filter: Custom date range inputs
+    $('#account-from-date, #account-to-date').on('change', function() {
+        // Clear quick filter when custom dates are entered
+        $('.account-quick-filter').removeClass('active').css({
+            'background': '#e9ecef',
+            'border-color': '#ced4da',
+            'color': 'inherit'
+        });
+        const dateFilterType = document.getElementById('account-date-filter-type');
+        if (dateFilterType) {
+            dateFilterType.value = '';
+        }
+        
+        // Apply filters immediately
+        applyAllFilters();
+    });
+    
+    // Initialize datepickers for account date filters
+    if ($('.account-datepicker').length) {
+        $('.account-datepicker').datepicker({
+            format: 'dd/mm/yyyy',
+            autoclose: true,
+            todayHighlight: true
         });
     }
     
@@ -986,12 +1158,28 @@ document.addEventListener('DOMContentLoaded', function() {
             const depositsEl = document.getElementById('filter-deposits');
             const transfersEl = document.getElementById('filter-transfers');
             const refundsEl = document.getElementById('filter-refunds');
+            const fromDateEl = document.getElementById('account-from-date');
+            const toDateEl = document.getElementById('account-to-date');
+            const dateFilterType = document.getElementById('account-date-filter-type');
             
-            // Guard against missing elements
+            // Reset type filters
             if (depositsEl) depositsEl.checked = false;
             if (transfersEl) transfersEl.checked = false;
             if (refundsEl) refundsEl.checked = false;
             
+            // Reset date filters
+            if (fromDateEl) fromDateEl.value = '';
+            if (toDateEl) toDateEl.value = '';
+            if (dateFilterType) dateFilterType.value = '';
+            
+            // Clear quick filter active state
+            $('.account-quick-filter').removeClass('active').css({
+                'background': '#e9ecef',
+                'border-color': '#ced4da',
+                'color': 'inherit'
+            });
+            
+            // Show all rows
             document.querySelectorAll('.ledger-row').forEach(row => {
                 row.style.display = '';
             });
@@ -2270,6 +2458,14 @@ document.addEventListener('DOMContentLoaded', function() {
 .account-section .dropdown-menu {
     max-width: none !important;
     overflow: visible !important;
+}
+
+/* Account Date Filter Chips - Hover Effect */
+.account-quick-filter:hover:not(.active) {
+    background: #dee2e6 !important;
+    border-color: #adb5bd !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Unallocated Office Receipt - Red Background */

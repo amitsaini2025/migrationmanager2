@@ -8,8 +8,20 @@
                         </button>
                     </div>
 
-                    <!-- Redesigned Tabs -->
-                    <div class="subtab-header-container">
+                    <!-- Search Filter -->
+                    <div class="notes-search-container" style="margin: 10px 0 0 10px; padding: 10px 0;">
+                        <div class="input-group" style="max-width: 400px;">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text" style="background: #f8f9fa; border-right: none;">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                            </div>
+                            <input type="text" id="notes-search-input" class="form-control" placeholder="Search notes..." style="border-left: none;">
+                        </div>
+                    </div>
+
+                    <!-- Redesigned Tabs (Hidden) -->
+                    <div class="subtab-header-container" style="display: none;">
                         <nav class="subtabs8 note-pills" style="margin: 10px 0 0 10px; display: flex; gap: 10px;">
                             <button class="subtab8-button pill-tab active" data-subtab8="All">All</button>
                             <button class="subtab8-button pill-tab" data-subtab8="Call">Call</button>
@@ -17,7 +29,6 @@
                             <button class="subtab8-button pill-tab" data-subtab8="In-Person">In-Person</button>
                             <button class="subtab8-button pill-tab" data-subtab8="Others">Others</button>
                             <button class="subtab8-button pill-tab" data-subtab8="Attention">Attention</button>
-                            <button class="subtab8-button pill-tab" data-subtab8="Uncategorized">Uncategorized</button>
                         </nav>
                     </div>
 
@@ -40,21 +51,22 @@
                             background: #e0e7ef;
                         }
                         .note-card-redesign {
-                            background: #f9f9f9;
+                            background: #ffffff;
                             border-radius: 16px;
-                            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+                            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
                             padding: 24px 28px 20px 28px;
                             margin-bottom: 18px;
-                            border: none;
+                            border: 1px solid #e0e0e0;
                             position: relative;
+                            overflow: visible;
                         }
                         .note-type-label {
                             display: inline-block;
-                            font-size: 0.95rem;
+                            font-size: 0.75rem;
                             font-weight: 600;
-                            border-radius: 16px;
-                            padding: 6px 18px;
-                            margin-bottom: 5px;
+                            border-radius: 12px;
+                            padding: 4px 12px;
+                            margin-bottom: 0;
                         }
                         .note-type-inperson { background: #e6f4ea; color: #219653; }
                         .note-type-call { background: #e3f0fd; color: #2563eb; }
@@ -74,9 +86,14 @@
                             margin-bottom: 8px;
                         }
                         .note-content-redesign {
-                            color: #444;
-                            font-size: 1.01rem;
-                            margin-bottom: 8px;
+                            color: #1a1a1a;
+                            font-size: 1.15rem;
+                            line-height: 1.6;
+                            margin-top: 0;
+                            margin-bottom: 0;
+                        }
+                        .note-content-redesign p {
+                            color: #1a1a1a;
                         }
                         .viewnote {
                             color: #2563eb;
@@ -85,23 +102,69 @@
                             cursor: pointer;
                         }
                         .author-name-created {
-                            font-size:0.67rem;
-                            color:#6c757d;
+                            font-size: 0.85rem;
+                            color: #1a1a1a;
+                            font-weight: 500;
+                        }
+                        .note-type-inline {
+                            font-weight: 700;
+                            font-size: 0.85rem;
+                            margin-left: 4px;
+                        }
+                        .note-type-inline.call { color: #2563eb; }
+                        .note-type-inline.email { color: #e74c3c; }
+                        .note-type-inline.inperson { color: #219653; }
+                        .note-type-inline.attention { color: #8e44ad; }
+                        .note-type-inline.others { color: #888; }
+                        .date-time-menu-container {
+                            position: absolute;
+                            top: 22px;
+                            right: -22px;
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
                         }
                         .author-updated-date-time {
-                            font-size:0.67rem;
-                            color:#6c757d;
+                            font-size: 0.75rem;
+                            color: #6c757d;
+                            line-height: 1.2;
+                            white-space: nowrap;
                         }
                         .note-card-info {
                             display: flex;
+                            flex-direction: row;
                             align-items: center;
-                            gap: 12px;
-                            margin-bottom:rgba(41, 31, 31, 0.07)
+                            gap: 0;
+                            margin-top: 0;
+                            margin-bottom: 12px;
+                            padding-top: 0;
+                            padding-bottom: 12px;
+                            border-bottom: 1px solid #e0e0e0;
+                            padding-right: 150px;
+                            line-height: 1.2;
+                        }
+                        .note-category-top {
+                            position: absolute;
+                            top: 18px;
+                            right: 50px;
                         }
                         .note-toggle-btn-div {
-                            position:absolute;
-                            top:18px;
-                            right:18px;
+                            display: flex;
+                            align-items: center;
+                            line-height: 1.2;
+                        }
+                        .note-toggle-btn-div .btn-link {
+                            padding: 0;
+                            color: #6c757d;
+                            font-size: 0.75rem;
+                            line-height: 1.2;
+                            vertical-align: baseline;
+                            display: flex;
+                            align-items: center;
+                        }
+                        .note-toggle-btn-div .fa-ellipsis-v {
+                            font-size: 0.75rem;
+                            vertical-align: baseline;
                         }
                         .note-toggle-btn-div-type {
                             display:inline-grid;
@@ -109,8 +172,13 @@
                         }
                         .pined_note {
                             position: absolute;
-                            top: 1px;
-                            right: 65px;
+                            top: 24px;
+                            right: 180px;
+                            z-index: 1;
+                        }
+                        .pined_note i {
+                            color: #6c757d;
+                            font-size: 1rem;
                         }
                     </style>
 
@@ -127,19 +195,41 @@
                             $admin = \App\Models\Admin::where('id', $list->user_id)->first();
                             // Determine type label and color
                             if($list->task_group === null || $list->task_group === '') {
-                                // Handle NULL or empty task_group - assign to "Uncategorized"
-                                $typeLabel = 'Uncategorized';
-                                $typeClass = 'note-type-uncategorized';
+                                // Handle NULL or empty task_group - assign to "Others"
+                                $typeLabel = 'Others';
+                                $typeClass = 'note-type-others';
+                                $typeInlineClass = 'others';
                             } else {
                                 $type = strtolower($list->task_group);
                                 $typeLabel = 'Others';
                                 $typeClass = 'note-type-others';
+                                $typeInlineClass = 'others';
 
-                                if(strpos($type, 'call') !== false) { $typeLabel = 'Call'; $typeClass = 'note-type-call'; }
-                                else if(strpos($type, 'email') !== false) { $typeLabel = 'Email'; $typeClass = 'note-type-email'; }
-                                else if(strpos($type, 'in-person') !== false) { $typeLabel = 'In-Person'; $typeClass = 'note-type-inperson'; }
-                                else if(strpos($type, 'others') !== false) { $typeLabel = 'Others'; $typeClass = 'note-type-others'; }
-                                else if(strpos($type, 'attention') !== false) { $typeLabel = 'Attention'; $typeClass = 'note-type-attention'; }
+                                if(strpos($type, 'call') !== false) { 
+                                    $typeLabel = 'Call'; 
+                                    $typeClass = 'note-type-call'; 
+                                    $typeInlineClass = 'call';
+                                }
+                                else if(strpos($type, 'email') !== false) { 
+                                    $typeLabel = 'Email'; 
+                                    $typeClass = 'note-type-email'; 
+                                    $typeInlineClass = 'email';
+                                }
+                                else if(strpos($type, 'in-person') !== false) { 
+                                    $typeLabel = 'In-Person'; 
+                                    $typeClass = 'note-type-inperson'; 
+                                    $typeInlineClass = 'inperson';
+                                }
+                                else if(strpos($type, 'others') !== false) { 
+                                    $typeLabel = 'Others'; 
+                                    $typeClass = 'note-type-others'; 
+                                    $typeInlineClass = 'others';
+                                }
+                                else if(strpos($type, 'attention') !== false) { 
+                                    $typeLabel = 'Attention'; 
+                                    $typeClass = 'note-type-attention'; 
+                                    $typeInlineClass = 'attention';
+                                }
                             }
 
                             //$desc = strip_tags($list->description);
@@ -151,11 +241,33 @@
                                 </div>
                             <?php } ?>
 
-                            <div class="note-card-info">
-                                <span class="note-type-label {{ $typeClass }}">{{ $typeLabel }}</span>
-                                <span class="author-name-created">{{ $admin->first_name ?? 'NA' }} {{ $admin->last_name ?? 'NA' }}</span>
+                            <div class="date-time-menu-container">
                                 <span class="author-updated-date-time">{{date('d/m/Y h:i A', strtotime($list->updated_at))}}</span>
+                                <div class="note-toggle-btn-div">
+                                    <div class="dropdown">
+                                        <button class="btn btn-link dropdown-toggle note-toggle-btn-div-type" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            <i class="fa fa-ellipsis-v"></i>
+                                        </button>
+                                        <div class="dropdown-menu">
+                                            <a class="dropdown-item opennoteform" data-id="{{$list->id}}" href="javascript:;">Edit</a>
+                                            @if(Auth::user()->role == 1 || Auth::user()->role == 16)
+                                                <a class="dropdown-item editdatetime" data-id="{{$list->id}}" href="javascript:;">Edit Date Time</a>
+                                            @endif
+                                            <a data-id="{{$list->id}}" data-href="deletenote" class="dropdown-item deletenote" href="javascript:;">Delete</a>
+                                            <?php if($list->pin == 1) { ?>
+                                                <a data-id="{{$list->id}}" class="dropdown-item pinnote" href="javascript:;">Unpin</a>
+                                            <?php } else { ?>
+                                                <a data-id="{{$list->id}}" class="dropdown-item pinnote" href="javascript:;">Pin</a>
+                                            <?php } ?>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+                            
+                            <div class="note-card-info">
+                                <span class="author-name-created">{{ $admin->first_name ?? 'NA' }} {{ $admin->last_name ?? 'NA' }} added the</span><span class="note-type-inline {{ $typeInlineClass }}">{{ $typeLabel }} notes</span>
+                            </div>
+
                             <!--<div class="note-content-redesign">{--!! nl2br(e($desc)) !!--}</div>-->
                             <div class="note-content-redesign">
                                 @if(!empty($list->description))
@@ -170,25 +282,6 @@
                                     @endif
                                 @endif
                             </div>
-                            <div class="note-toggle-btn-div">
-                                <div class="dropdown">
-                                    <button class="btn btn-link dropdown-toggle note-toggle-btn-div-type" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                        <i class="fa fa-ellipsis-v"></i>
-                                    </button>
-                                    <div class="dropdown-menu">
-                                        <a class="dropdown-item opennoteform" data-id="{{$list->id}}" href="javascript:;">Edit</a>
-                                        @if(Auth::user()->role == 1 || Auth::user()->role == 16)
-                                            <a class="dropdown-item editdatetime" data-id="{{$list->id}}" href="javascript:;">Edit Date Time</a>
-                                        @endif
-                                        <a data-id="{{$list->id}}" data-href="deletenote" class="dropdown-item deletenote" href="javascript:;">Delete</a>
-                                        <?php if($list->pin == 1) { ?>
-                                            <a data-id="{{$list->id}}" class="dropdown-item pinnote" href="javascript:;">Unpin</a>
-                                        <?php } else { ?>
-                                            <a data-id="{{$list->id}}" class="dropdown-item pinnote" href="javascript:;">Pin</a>
-                                        <?php } ?>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                         <?php } ?>
                     </div>
@@ -196,49 +289,80 @@
             </div>
 
             <script>
+            // Make filterNotes globally accessible
+            window.filterNotes = function() {
+                    // Get search text
+                    const searchText = document.getElementById('notes-search-input')?.value.toLowerCase().trim() || '';
+                    
+                    // Get selected matter
+                    let selectedMatter;
+                    if ($('.general_matter_checkbox_client_detail').is(':checked')) {
+                        selectedMatter = $('.general_matter_checkbox_client_detail').val();
+                    } else {
+                        selectedMatter = $('#sel_matter_id_client_detail').val();
+                    }
+                    
+                    // Get active type (default to 'All' if no active tab)
+                    const activeTab = document.querySelector('.subtab8-button.pill-tab.active');
+                    const type = activeTab ? activeTab.getAttribute('data-subtab8') : 'All';
+                    
+                    // Filter notes
+                    document.querySelectorAll('.note-card-redesign').forEach(card => {
+                        const cardType = card.getAttribute('data-type');
+                        const cardMatter = card.getAttribute('data-matterid');
+                        
+                        // Type matching
+                        const typeMatch = (type === 'All' || cardType === type);
+                        
+                        // Matter matching
+                        let matterMatch = false;
+                        if (selectedMatter && selectedMatter !== "" && selectedMatter !== null && selectedMatter !== undefined) {
+                            matterMatch = (cardMatter == selectedMatter || cardMatter == '' || cardMatter == null);
+                        } else {
+                            matterMatch = true;
+                        }
+                        
+                        // Text search matching
+                        let searchMatch = true;
+                        if (searchText) {
+                            // Get all text content from the note card
+                            const noteText = card.textContent.toLowerCase();
+                            searchMatch = noteText.includes(searchText);
+                        }
+                        
+                        // Show/hide based on all conditions
+                        if (typeMatch && matterMatch && searchMatch) {
+                            card.style.display = '';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+                };
+            
             document.addEventListener('DOMContentLoaded', function() {
+                // Search input event listener
+                const searchInput = document.getElementById('notes-search-input');
+                if (searchInput) {
+                    searchInput.addEventListener('input', function() {
+                        window.filterNotes();
+                    });
+                    
+                    // Also trigger on keyup for better responsiveness
+                    searchInput.addEventListener('keyup', function() {
+                        window.filterNotes();
+                    });
+                }
+                
+                // Keep existing tab click handlers (for compatibility with other scripts)
                 document.querySelectorAll('.subtab8-button.pill-tab').forEach(function(tab) {
                     tab.addEventListener('click', function() {
-                        // Get selected matter
-                        let selectedMatter;
-                        if ($('.general_matter_checkbox_client_detail').is(':checked')) {
-                            selectedMatter = $('.general_matter_checkbox_client_detail').val();
-                        } else {
-                            selectedMatter = $('#sel_matter_id_client_detail').val();
-                        }
                         // Remove active from all tabs
                         document.querySelectorAll('.subtab8-button.pill-tab').forEach(t => t.classList.remove('active'));
                         this.classList.add('active');
-                        const type = this.getAttribute('data-subtab8');
-                        console.log('Selected Matter:', selectedMatter, 'Type:', type);
-                        // Show/hide notes based on type and matter
-                        document.querySelectorAll('.note-card-redesign').forEach(card => {
-                            const cardType = card.getAttribute('data-type');
-                            const cardMatter = card.getAttribute('data-matterid');
-                            const typeMatch = (type === 'All' || cardType === type);
-                            
-                            let matterMatch = false;
-                            // Matter filtering logic
-                            if (selectedMatter && selectedMatter !== "" && selectedMatter !== null && selectedMatter !== undefined) {
-                                // Show notes that match the selected matter OR notes with no matter_id
-                                matterMatch = (cardMatter == selectedMatter || cardMatter == '' || cardMatter == null);
-                            } else {
-                                // Show all notes when no matter is selected
-                                matterMatch = true;
-                            }
-                            
-                            console.log('Note:', cardType, 'Matter:', cardMatter, 'TypeMatch:', typeMatch, 'MatterMatch:', matterMatch);
-                            
-                            if (typeMatch && matterMatch) {
-                                card.style.display = '';
-                                console.log('SHOWING note:', cardType);
-                            } else {
-                                card.style.display = 'none';
-                                console.log('HIDING note:', cardType);
-                            }
-                        });
+                        window.filterNotes();
                     });
                 });
+                
                 // On page load, ensure All tab is active and shows all notes
                 setTimeout(function() {
                     const allTab = document.querySelector('.subtab8-button.pill-tab[data-subtab8="All"]');
@@ -249,47 +373,11 @@
                         // Make All tab active
                         allTab.classList.add('active');
                         
-                        // Get selected matter
-                        let selectedMatter;
-                        if ($('.general_matter_checkbox_client_detail').is(':checked')) {
-                            selectedMatter = $('.general_matter_checkbox_client_detail').val();
-                        } else {
-                            selectedMatter = $('#sel_matter_id_client_detail').val();
-                        }
-                        
-                        console.log('Page load - Selected Matter:', selectedMatter, 'Type: All');
-                        
-                        // Show/hide notes based on All type and matter
-                        document.querySelectorAll('.note-card-redesign').forEach(card => {
-                            const cardType = card.getAttribute('data-type');
-                            const cardMatter = card.getAttribute('data-matterid');
-                            const typeMatch = true; // All tab shows all types
-                            
-                            let matterMatch = false;
-                            // Matter filtering logic
-                            if (selectedMatter && selectedMatter !== "" && selectedMatter !== null && selectedMatter !== undefined) {
-                                // Show notes that match the selected matter OR notes with no matter_id
-                                matterMatch = (cardMatter == selectedMatter || cardMatter == '' || cardMatter == null);
-                            } else {
-                                // Show all notes when no matter is selected
-                                matterMatch = true;
-                            }
-                            
-                            console.log('Page load - Note:', cardType, 'Matter:', cardMatter, 'TypeMatch:', typeMatch, 'MatterMatch:', matterMatch);
-                            
-                            if (typeMatch && matterMatch) {
-                                card.style.display = '';
-                                console.log('Page load - SHOWING note:', cardType);
-                            } else {
-                                card.style.display = 'none';
-                                console.log('Page load - HIDING note:', cardType);
-                            }
-                        });
+                        // Apply initial filter
+                        window.filterNotes();
                         
                         console.log('Page load - All tab activated and notes filtered');
                     }
                 }, 200);
-                
-
             });
             </script>

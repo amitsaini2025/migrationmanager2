@@ -80,8 +80,8 @@ class ClientNotesController extends Controller
             }
             if($oldNote->task_group !== $request->task_group) {
                 $changedFields['Note Type'] = [
-                    'old' => $oldNote->task_group ?? 'Uncategorized',
-                    'new' => $request->task_group ?? 'Uncategorized'
+                    'old' => $oldNote->task_group ?? 'Others',
+                    'new' => $request->task_group ?? 'Others'
                 ];
             }
         }
@@ -359,9 +359,9 @@ class ClientNotesController extends Controller
 
             // Determine type label and color
             if($list->task_group === null || $list->task_group === '') {
-                // Handle NULL or empty task_group - assign to "Uncategorized"
-                $typeLabel = 'Uncategorized';
-                $typeClass = 'note-type-uncategorized';
+                // Handle NULL or empty task_group - assign to "Others"
+                $typeLabel = 'Others';
+                $typeClass = 'note-type-others';
             } else {
                 $type11 = strtolower($list->task_group);
                 $typeLabel = 'Others';

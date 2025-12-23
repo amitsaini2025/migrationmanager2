@@ -1016,6 +1016,37 @@ class ClientsController extends Controller
                         ]);
                     }
                 }
+                
+                // Log activity for travel history creation
+                $newTravels = ClientTravelInformation::where('client_id', $client->id)->get();
+                $travelDisplay = [];
+                foreach ($newTravels as $travel) {
+                    $display = [];
+                    if ($travel->travel_country_visited) {
+                        $display[] = 'Country: ' . $travel->travel_country_visited;
+                    }
+                    if ($travel->travel_arrival_date) {
+                        $display[] = 'Arrival: ' . date('d/m/Y', strtotime($travel->travel_arrival_date));
+                    }
+                    if ($travel->travel_departure_date) {
+                        $display[] = 'Departure: ' . date('d/m/Y', strtotime($travel->travel_departure_date));
+                    }
+                    if ($travel->travel_purpose) {
+                        $display[] = 'Purpose: ' . $travel->travel_purpose;
+                    }
+                    $travelDisplay[] = !empty($display) ? implode(', ', $display) : 'Travel record';
+                }
+                $travelDisplayStr = !empty($travelDisplay) ? implode(' | ', $travelDisplay) : '(empty)';
+                
+                $this->logClientActivityWithChanges(
+                    $client->id,
+                    'added travel information',
+                    ['Travel Information' => [
+                        'old' => '(empty)',
+                        'new' => $travelDisplayStr
+                    ]],
+                    'activity'
+                );
             }
 
             // Save qualifications
@@ -2860,6 +2891,27 @@ class ClientsController extends Controller
                 }
             }
 
+            // Get existing travel records BEFORE any changes for activity logging
+            $existingTravels = ClientTravelInformation::where('client_id', $obj->id)->get();
+            $oldTravelDisplay = [];
+            foreach ($existingTravels as $existing) {
+                $display = [];
+                if ($existing->travel_country_visited) {
+                    $display[] = 'Country: ' . $existing->travel_country_visited;
+                }
+                if ($existing->travel_arrival_date) {
+                    $display[] = 'Arrival: ' . date('d/m/Y', strtotime($existing->travel_arrival_date));
+                }
+                if ($existing->travel_departure_date) {
+                    $display[] = 'Departure: ' . date('d/m/Y', strtotime($existing->travel_departure_date));
+                }
+                if ($existing->travel_purpose) {
+                    $display[] = 'Purpose: ' . $existing->travel_purpose;
+                }
+                $oldTravelDisplay[] = !empty($display) ? implode(', ', $display) : 'Travel record';
+            }
+            $oldTravelDisplayStr = !empty($oldTravelDisplay) ? implode(' | ', $oldTravelDisplay) : '(empty)';
+
             // Handle Travel Deletion
             if (isset($requestData['delete_travel_ids']) && is_array($requestData['delete_travel_ids'])) {
                 foreach ($requestData['delete_travel_ids'] as $travelId) {
@@ -2926,6 +2978,40 @@ class ClientsController extends Controller
                         }
                     }
                 }
+            }
+
+            // Get new travel records after changes for activity logging
+            $newTravels = ClientTravelInformation::where('client_id', $obj->id)->get();
+            $newTravelDisplay = [];
+            foreach ($newTravels as $newTravel) {
+                $display = [];
+                if ($newTravel->travel_country_visited) {
+                    $display[] = 'Country: ' . $newTravel->travel_country_visited;
+                }
+                if ($newTravel->travel_arrival_date) {
+                    $display[] = 'Arrival: ' . date('d/m/Y', strtotime($newTravel->travel_arrival_date));
+                }
+                if ($newTravel->travel_departure_date) {
+                    $display[] = 'Departure: ' . date('d/m/Y', strtotime($newTravel->travel_departure_date));
+                }
+                if ($newTravel->travel_purpose) {
+                    $display[] = 'Purpose: ' . $newTravel->travel_purpose;
+                }
+                $newTravelDisplay[] = !empty($display) ? implode(', ', $display) : 'Travel record';
+            }
+            $newTravelDisplayStr = !empty($newTravelDisplay) ? implode(' | ', $newTravelDisplay) : '(empty)';
+
+            // Log activity if travel information changed
+            if ($oldTravelDisplayStr !== $newTravelDisplayStr) {
+                $this->logClientActivityWithChanges(
+                    $obj->id,
+                    'updated travel information',
+                    ['Travel Information' => [
+                        'old' => $oldTravelDisplayStr,
+                        'new' => $newTravelDisplayStr
+                    ]],
+                    'activity'
+                );
             }
 
             // Updated Address Handling

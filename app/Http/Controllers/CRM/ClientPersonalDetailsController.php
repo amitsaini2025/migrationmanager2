@@ -2059,22 +2059,49 @@ class ClientPersonalDetailsController extends Controller
             }
             $oldEmailDisplayStr = !empty($oldEmailDisplay) ? implode(', ', $oldEmailDisplay) : '(empty)';
 
-            // Delete existing emails for this client
-            ClientEmail::where('client_id', $client->id)->delete();
-
-            // Insert new emails and update admins table
+            // Track which email IDs should be kept (both updated and newly created)
+            $emailIdsToKeep = [];
             $primaryEmail = null;
             $primaryEmailType = 'Personal';
-            
+
+            // Process each email record (update existing or create new)
             foreach ($emails as $emailData) {
                 if (!empty($emailData['email'])) {
-                    ClientEmail::create([
-                        'client_id' => $client->id,
-                        'admin_id' => Auth::user()->id,
-                        'email_type' => $emailData['email_type'],
-                        'email' => $emailData['email'],
-                        'is_verified' => false
-                    ]);
+                    $emailId = $emailData['id'] ?? null;
+                    $emailId = !empty($emailId) ? (int)$emailId : null;
+                    
+                    if ($emailId) {
+                        // Update existing email
+                        $existingEmail = ClientEmail::find($emailId);
+                        if ($existingEmail && $existingEmail->client_id == $client->id) {
+                            $existingEmail->update([
+                                'admin_id' => Auth::user()->id,
+                                'email_type' => $emailData['email_type'],
+                                'email' => $emailData['email']
+                            ]);
+                            $emailIdsToKeep[] = $emailId;
+                        } else {
+                            // ID provided but doesn't exist, create new
+                            $newEmail = ClientEmail::create([
+                                'client_id' => $client->id,
+                                'admin_id' => Auth::user()->id,
+                                'email_type' => $emailData['email_type'],
+                                'email' => $emailData['email'],
+                                'is_verified' => false
+                            ]);
+                            $emailIdsToKeep[] = $newEmail->id;
+                        }
+                    } else {
+                        // Create new email
+                        $newEmail = ClientEmail::create([
+                            'client_id' => $client->id,
+                            'admin_id' => Auth::user()->id,
+                            'email_type' => $emailData['email_type'],
+                            'email' => $emailData['email'],
+                            'is_verified' => false
+                        ]);
+                        $emailIdsToKeep[] = $newEmail->id;
+                    }
                     
                     // Set primary email for admins table update
                     if ($emailData['email_type'] === 'Personal' || empty($primaryEmail)) {
@@ -2082,6 +2109,13 @@ class ClientPersonalDetailsController extends Controller
                         $primaryEmailType = $emailData['email_type'];
                     }
                 }
+            }
+            
+            // Delete email records that were not in the request
+            if (!empty($emailIdsToKeep)) {
+                ClientEmail::where('client_id', $client->id)
+                    ->whereNotIn('id', $emailIdsToKeep)
+                    ->delete();
             }
             
             // Update admins table with primary email
@@ -2093,32 +2127,48 @@ class ClientPersonalDetailsController extends Controller
 
             // Get new emails for change tracking
             $newEmails = ClientEmail::where('client_id', $client->id)->get();
-            $newEmailDisplay = [];
-            foreach ($newEmails as $newEmail) {
-                $display = $newEmail->email;
-                if ($newEmail->email_type) {
-                    $display .= ' (' . $newEmail->email_type . ')';
+
+            // Log activity with intelligent diff showing only actual changes
+            try {
+                $diffResult = $this->buildEmailDiff($existingEmails, $newEmails);
+                
+                if (!empty($diffResult['added']) || !empty($diffResult['removed']) || !empty($diffResult['modified'])) {
+                    $description = $this->formatEmailDiffForActivityLog($diffResult);
+                    
+                    $this->logClientActivity(
+                        $client->id,
+                        'updated email addresses',
+                        $description,
+                        'activity'
+                    );
                 }
-                $newEmailDisplay[] = $display;
-            }
-            $newEmailDisplayStr = !empty($newEmailDisplay) ? implode(', ', $newEmailDisplay) : '(empty)';
-
-            // Log activity with before/after values
-            $changedFields = [];
-            if ($oldEmailDisplayStr !== $newEmailDisplayStr) {
-                $changedFields['Email Addresses'] = [
-                    'old' => $oldEmailDisplayStr,
-                    'new' => $newEmailDisplayStr
-                ];
-            }
-
-            if (!empty($changedFields)) {
-                $this->logClientActivityWithChanges(
-                    $client->id,
-                    'updated email addresses',
-                    $changedFields,
-                    'activity'
-                );
+            } catch (\Exception $e) {
+                // Fallback to simple comparison if diff fails
+                \Log::warning('Email diff failed, using simple comparison', [
+                    'error' => $e->getMessage()
+                ]);
+                
+                $newEmailDisplay = [];
+                foreach ($newEmails as $newEmail) {
+                    $display = $newEmail->email;
+                    if ($newEmail->email_type) {
+                        $display .= ' (' . $newEmail->email_type . ')';
+                    }
+                    $newEmailDisplay[] = $display;
+                }
+                $newEmailDisplayStr = !empty($newEmailDisplay) ? implode(', ', $newEmailDisplay) : '(empty)';
+                
+                if ($oldEmailDisplayStr !== $newEmailDisplayStr) {
+                    $this->logClientActivityWithChanges(
+                        $client->id,
+                        'updated email addresses',
+                        ['Email Addresses' => [
+                            'old' => $oldEmailDisplayStr,
+                            'new' => $newEmailDisplayStr
+                        ]],
+                        'activity'
+                    );
+                }
             }
 
             // Get the newly saved emails with their IDs
@@ -2181,21 +2231,10 @@ class ClientPersonalDetailsController extends Controller
             }
             $oldPassportDisplayStr = !empty($oldPassportDisplay) ? implode(' | ', $oldPassportDisplay) : '(empty)';
 
-            // Delete existing passport records for this client
-            ClientPassportInformation::where('client_id', $client->id)->delete();
+            // Track which passport IDs should be kept (both updated and newly created)
+            $passportIdsToKeep = [];
 
-            // Get the first passport's country as the primary passport country
-            $primaryPassportCountry = null;
-            if (!empty($passports) && !empty($passports[0]['passport_country'])) {
-                $primaryPassportCountry = $passports[0]['passport_country'];
-            }
-
-            // Update client's primary passport country (column name is country_passport)
-            // Always update the country_passport field - set to null if no passports exist
-            $client->country_passport = $primaryPassportCountry;
-            $client->save();
-
-            // Insert new passport records
+            // Process each passport record (update existing or create new)
             foreach ($passports as $passportData) {
                 if (!empty($passportData['passport_number']) || !empty($passportData['passport_country'])) {
                     // Convert date format from d/m/Y to Y-m-d if needed
@@ -2212,54 +2251,120 @@ class ClientPersonalDetailsController extends Controller
                         $expiryDate = $expiryDate ? $expiryDate->format('Y-m-d') : null;
                     }
                     
-                    ClientPassportInformation::create([
-                        'client_id' => $client->id,
-                        'admin_id' => Auth::user()->id,
-                        'passport_country' => $passportData['passport_country'] ?? null,
-                        'passport' => $passportData['passport_number'] ?? null,
-                        'passport_issue_date' => $issueDate,
-                        'passport_expiry_date' => $expiryDate
-                    ]);
+                    $passportId = $passportData['id'] ?? null;
+                    $passportId = !empty($passportId) ? (int)$passportId : null;
+                    
+                    if ($passportId) {
+                        // Update existing passport
+                        $existingPassport = ClientPassportInformation::find($passportId);
+                        if ($existingPassport && $existingPassport->client_id == $client->id) {
+                            $existingPassport->update([
+                                'admin_id' => Auth::user()->id,
+                                'passport_country' => $passportData['passport_country'] ?? null,
+                                'passport' => $passportData['passport_number'] ?? null,
+                                'passport_issue_date' => $issueDate,
+                                'passport_expiry_date' => $expiryDate
+                            ]);
+                            $passportIdsToKeep[] = $passportId;
+                        } else {
+                            // ID provided but doesn't exist, create new
+                            $newPassport = ClientPassportInformation::create([
+                                'client_id' => $client->id,
+                                'admin_id' => Auth::user()->id,
+                                'passport_country' => $passportData['passport_country'] ?? null,
+                                'passport' => $passportData['passport_number'] ?? null,
+                                'passport_issue_date' => $issueDate,
+                                'passport_expiry_date' => $expiryDate
+                            ]);
+                            $passportIdsToKeep[] = $newPassport->id;
+                        }
+                    } else {
+                        // Create new passport
+                        $newPassport = ClientPassportInformation::create([
+                            'client_id' => $client->id,
+                            'admin_id' => Auth::user()->id,
+                            'passport_country' => $passportData['passport_country'] ?? null,
+                            'passport' => $passportData['passport_number'] ?? null,
+                            'passport_issue_date' => $issueDate,
+                            'passport_expiry_date' => $expiryDate
+                        ]);
+                        $passportIdsToKeep[] = $newPassport->id;
+                    }
                 }
             }
+            
+            // Delete passport records that were not in the request
+            if (!empty($passportIdsToKeep)) {
+                ClientPassportInformation::where('client_id', $client->id)
+                    ->whereNotIn('id', $passportIdsToKeep)
+                    ->delete();
+            }
+
+            // Get the first passport's country as the primary passport country
+            $primaryPassportCountry = null;
+            $firstPassport = ClientPassportInformation::where('client_id', $client->id)->first();
+            if ($firstPassport && !empty($firstPassport->passport_country)) {
+                $primaryPassportCountry = $firstPassport->passport_country;
+            }
+
+            // Update client's primary passport country (column name is country_passport)
+            // Always update the country_passport field - set to null if no passports exist
+            $client->country_passport = $primaryPassportCountry;
+            $client->save();
 
             // Get new passports for change tracking
             $newPassports = ClientPassportInformation::where('client_id', $client->id)->get();
-            $newPassportDisplay = [];
-            foreach ($newPassports as $newPassport) {
-                $display = [];
-                if ($newPassport->passport_country) {
-                    $display[] = 'Country: ' . $newPassport->passport_country;
-                }
-                if ($newPassport->passport) {
-                    $display[] = 'Number: ' . $newPassport->passport;
-                }
-                if ($newPassport->passport_issue_date) {
-                    $display[] = 'Issue: ' . date('d/m/Y', strtotime($newPassport->passport_issue_date));
-                }
-                if ($newPassport->passport_expiry_date) {
-                    $display[] = 'Expiry: ' . date('d/m/Y', strtotime($newPassport->passport_expiry_date));
-                }
-                $newPassportDisplay[] = !empty($display) ? implode(', ', $display) : 'Passport record';
-            }
-            $newPassportDisplayStr = !empty($newPassportDisplay) ? implode(' | ', $newPassportDisplay) : '(empty)';
 
-            // Log activity with before/after values
-            $changedFields = [];
-            if ($oldPassportDisplayStr !== $newPassportDisplayStr) {
-                $changedFields['Passport Information'] = [
-                    'old' => $oldPassportDisplayStr,
-                    'new' => $newPassportDisplayStr
-                ];
-            }
-
-            if (!empty($changedFields)) {
-                $this->logClientActivityWithChanges(
-                    $client->id,
-                    'updated passport information',
-                    $changedFields,
-                    'activity'
-                );
+            // Log activity with intelligent diff showing only actual changes
+            try {
+                $diffResult = $this->buildPassportDiff($existingPassports, $newPassports);
+                
+                if (!empty($diffResult['added']) || !empty($diffResult['removed']) || !empty($diffResult['modified'])) {
+                    $description = $this->formatPassportDiffForActivityLog($diffResult);
+                    
+                    $this->logClientActivity(
+                        $client->id,
+                        'updated passport information',
+                        $description,
+                        'activity'
+                    );
+                }
+            } catch (\Exception $e) {
+                // Fallback to simple comparison if diff fails
+                \Log::warning('Passport diff failed, using simple comparison', [
+                    'error' => $e->getMessage()
+                ]);
+                
+                $newPassportDisplay = [];
+                foreach ($newPassports as $newPassport) {
+                    $display = [];
+                    if ($newPassport->passport_country) {
+                        $display[] = 'Country: ' . $newPassport->passport_country;
+                    }
+                    if ($newPassport->passport) {
+                        $display[] = 'Number: ' . $newPassport->passport;
+                    }
+                    if ($newPassport->passport_issue_date) {
+                        $display[] = 'Issue: ' . date('d/m/Y', strtotime($newPassport->passport_issue_date));
+                    }
+                    if ($newPassport->passport_expiry_date) {
+                        $display[] = 'Expiry: ' . date('d/m/Y', strtotime($newPassport->passport_expiry_date));
+                    }
+                    $newPassportDisplay[] = !empty($display) ? implode(', ', $display) : 'Passport record';
+                }
+                $newPassportDisplayStr = !empty($newPassportDisplay) ? implode(' | ', $newPassportDisplay) : '(empty)';
+                
+                if ($oldPassportDisplayStr !== $newPassportDisplayStr) {
+                    $this->logClientActivityWithChanges(
+                        $client->id,
+                        'updated passport information',
+                        ['Passport Information' => [
+                            'old' => $oldPassportDisplayStr,
+                            'new' => $newPassportDisplayStr
+                        ]],
+                        'activity'
+                    );
+                }
             }
 
             return response()->json([
@@ -2321,10 +2426,10 @@ class ClientPersonalDetailsController extends Controller
             }
             $client->save();
 
-            // Delete existing visa records for this client
-            ClientVisaCountry::where('client_id', $client->id)->delete();
+            // Track which visa IDs should be kept (both updated and newly created)
+            $visaIdsToKeep = [];
 
-            // Insert new visa records
+            // Process each visa record (update existing or create new)
             foreach ($visas as $visaData) {
                 if (!empty($visaData['visa_type_hidden'])) {
                     // Convert date format from d/m/Y to Y-m-d if needed
@@ -2341,58 +2446,114 @@ class ClientPersonalDetailsController extends Controller
                         $grantDate = $grantDate ? $grantDate->format('Y-m-d') : null;
                     }
                     
-                    ClientVisaCountry::create([
-                        'client_id' => $client->id,
-                        'admin_id' => \Auth::user()->id,
-                        'visa_country' => $client->country_passport ?? '',
-                        'visa_type' => $visaData['visa_type_hidden'],
-                        'visa_expiry_date' => $expiryDate,
-                        'visa_grant_date' => $grantDate,
-                        'visa_description' => $visaData['visa_description'] ?? null
-                    ]);
+                    $visaId = $visaData['id'] ?? null;
+                    $visaId = !empty($visaId) ? (int)$visaId : null;
+                    
+                    if ($visaId) {
+                        // Update existing visa
+                        $existingVisa = ClientVisaCountry::find($visaId);
+                        if ($existingVisa && $existingVisa->client_id == $client->id) {
+                            $existingVisa->update([
+                                'admin_id' => \Auth::user()->id,
+                                'visa_country' => $client->country_passport ?? '',
+                                'visa_type' => $visaData['visa_type_hidden'],
+                                'visa_expiry_date' => $expiryDate,
+                                'visa_grant_date' => $grantDate,
+                                'visa_description' => $visaData['visa_description'] ?? null
+                            ]);
+                            $visaIdsToKeep[] = $visaId;
+                        } else {
+                            // ID provided but doesn't exist, create new
+                            $newVisa = ClientVisaCountry::create([
+                                'client_id' => $client->id,
+                                'admin_id' => \Auth::user()->id,
+                                'visa_country' => $client->country_passport ?? '',
+                                'visa_type' => $visaData['visa_type_hidden'],
+                                'visa_expiry_date' => $expiryDate,
+                                'visa_grant_date' => $grantDate,
+                                'visa_description' => $visaData['visa_description'] ?? null
+                            ]);
+                            $visaIdsToKeep[] = $newVisa->id;
+                        }
+                    } else {
+                        // Create new visa
+                        $newVisa = ClientVisaCountry::create([
+                            'client_id' => $client->id,
+                            'admin_id' => \Auth::user()->id,
+                            'visa_country' => $client->country_passport ?? '',
+                            'visa_type' => $visaData['visa_type_hidden'],
+                            'visa_expiry_date' => $expiryDate,
+                            'visa_grant_date' => $grantDate,
+                            'visa_description' => $visaData['visa_description'] ?? null
+                        ]);
+                        $visaIdsToKeep[] = $newVisa->id;
+                    }
                 }
+            }
+            
+            // Delete visa records that were not in the request
+            if (!empty($visaIdsToKeep)) {
+                ClientVisaCountry::where('client_id', $client->id)
+                    ->whereNotIn('id', $visaIdsToKeep)
+                    ->delete();
             }
 
             // Get new visas for change tracking
             $newVisas = ClientVisaCountry::where('client_id', $client->id)->get();
-            $newVisaDisplay = [];
-            foreach ($newVisas as $newVisa) {
-                $display = [];
-                if ($newVisa->visa_type) {
-                    $display[] = 'Type: ' . $newVisa->visa_type;
-                }
-                if ($newVisa->visa_country) {
-                    $display[] = 'Country: ' . $newVisa->visa_country;
-                }
-                if ($newVisa->visa_grant_date) {
-                    $display[] = 'Grant: ' . date('d/m/Y', strtotime($newVisa->visa_grant_date));
-                }
-                if ($newVisa->visa_expiry_date) {
-                    $display[] = 'Expiry: ' . date('d/m/Y', strtotime($newVisa->visa_expiry_date));
-                }
-                if ($newVisa->visa_description) {
-                    $display[] = 'Desc: ' . $newVisa->visa_description;
-                }
-                $newVisaDisplay[] = !empty($display) ? implode(', ', $display) : 'Visa record';
-            }
-            $newVisaDisplayStr = !empty($newVisaDisplay) ? implode(' | ', $newVisaDisplay) : '(empty)';
 
-            // Log activity with before/after values
-            $changedFields = [];
-            if ($oldVisaDisplayStr !== $newVisaDisplayStr) {
-                $changedFields['Visa Information'] = [
-                    'old' => $oldVisaDisplayStr,
-                    'new' => $newVisaDisplayStr
-                ];
-            }
-
-            if (!empty($changedFields)) {
-                $this->logClientActivityWithChanges(
-                    $client->id,
-                    'updated visa information',
-                    $changedFields,
-                    'activity'
-                );
+            // Log activity with intelligent diff showing only actual changes
+            try {
+                $diffResult = $this->buildVisaDiff($existingVisas, $newVisas);
+                
+                if (!empty($diffResult['added']) || !empty($diffResult['removed']) || !empty($diffResult['modified'])) {
+                    $description = $this->formatVisaDiffForActivityLog($diffResult);
+                    
+                    $this->logClientActivity(
+                        $client->id,
+                        'updated visa information',
+                        $description,
+                        'activity'
+                    );
+                }
+            } catch (\Exception $e) {
+                // Fallback to simple comparison if diff fails
+                \Log::warning('Visa diff failed, using simple comparison', [
+                    'error' => $e->getMessage()
+                ]);
+                
+                $newVisaDisplay = [];
+                foreach ($newVisas as $newVisa) {
+                    $display = [];
+                    if ($newVisa->visa_type) {
+                        $display[] = 'Type: ' . $newVisa->visa_type;
+                    }
+                    if ($newVisa->visa_country) {
+                        $display[] = 'Country: ' . $newVisa->visa_country;
+                    }
+                    if ($newVisa->visa_grant_date) {
+                        $display[] = 'Grant: ' . date('d/m/Y', strtotime($newVisa->visa_grant_date));
+                    }
+                    if ($newVisa->visa_expiry_date) {
+                        $display[] = 'Expiry: ' . date('d/m/Y', strtotime($newVisa->visa_expiry_date));
+                    }
+                    if ($newVisa->visa_description) {
+                        $display[] = 'Desc: ' . $newVisa->visa_description;
+                    }
+                    $newVisaDisplay[] = !empty($display) ? implode(', ', $display) : 'Visa record';
+                }
+                $newVisaDisplayStr = !empty($newVisaDisplay) ? implode(' | ', $newVisaDisplay) : '(empty)';
+                
+                if ($oldVisaDisplayStr !== $newVisaDisplayStr) {
+                    $this->logClientActivityWithChanges(
+                        $client->id,
+                        'updated visa information',
+                        ['Visa Information' => [
+                            'old' => $oldVisaDisplayStr,
+                            'new' => $newVisaDisplayStr
+                        ]],
+                        'activity'
+                    );
+                }
             }
 
             return response()->json([
@@ -2705,37 +2866,7 @@ class ClientPersonalDetailsController extends Controller
                 ], 400);
             }
 
-            // Delete existing travel records for this client
-            ClientTravelInformation::where('client_id', $client->id)->delete();
-
-            // Insert new travel records
-            foreach ($travels as $travelData) {
-                if (!empty($travelData['country_visited'])) {
-                    // Convert date format from d/m/Y to Y-m-d if needed
-                    $arrivalDate = null;
-                    $departureDate = null;
-                    
-                    if (!empty($travelData['arrival_date'])) {
-                        $arrivalDate = \DateTime::createFromFormat('d/m/Y', $travelData['arrival_date']);
-                        $arrivalDate = $arrivalDate ? $arrivalDate->format('Y-m-d') : null;
-                    }
-                    
-                    if (!empty($travelData['departure_date'])) {
-                        $departureDate = \DateTime::createFromFormat('d/m/Y', $travelData['departure_date']);
-                        $departureDate = $departureDate ? $departureDate->format('Y-m-d') : null;
-                    }
-                    
-                    ClientTravelInformation::create([
-                        'client_id' => $client->id,
-                        'travel_country_visited' => $travelData['country_visited'],
-                        'travel_arrival_date' => $arrivalDate,
-                        'travel_departure_date' => $departureDate,
-                        'travel_purpose' => $travelData['purpose'] ?? null
-                    ]);
-                }
-            }
-
-            // Get existing travels before update for change tracking
+            // Get existing travels BEFORE update for change tracking
             $existingTravels = ClientTravelInformation::where('client_id', $client->id)->get();
             $oldTravelDisplay = [];
             foreach ($existingTravels as $existing) {
@@ -2756,43 +2887,125 @@ class ClientPersonalDetailsController extends Controller
             }
             $oldTravelDisplayStr = !empty($oldTravelDisplay) ? implode(' | ', $oldTravelDisplay) : '(empty)';
 
+            // Track which travel IDs should be kept (both updated and newly created)
+            $travelIdsToKeep = [];
+
+            // Process each travel record (update existing or create new)
+            foreach ($travels as $travelData) {
+                if (!empty($travelData['country_visited'])) {
+                    // Convert date format from d/m/Y to Y-m-d if needed
+                    $arrivalDate = null;
+                    $departureDate = null;
+                    
+                    if (!empty($travelData['arrival_date'])) {
+                        $arrivalDate = \DateTime::createFromFormat('d/m/Y', $travelData['arrival_date']);
+                        $arrivalDate = $arrivalDate ? $arrivalDate->format('Y-m-d') : null;
+                    }
+                    
+                    if (!empty($travelData['departure_date'])) {
+                        $departureDate = \DateTime::createFromFormat('d/m/Y', $travelData['departure_date']);
+                        $departureDate = $departureDate ? $departureDate->format('Y-m-d') : null;
+                    }
+                    
+                    $travelId = $travelData['id'] ?? null;
+                    $travelId = !empty($travelId) ? (int)$travelId : null;
+                    
+                    if ($travelId) {
+                        // Update existing travel
+                        $existingTravel = ClientTravelInformation::find($travelId);
+                        if ($existingTravel && $existingTravel->client_id == $client->id) {
+                            $existingTravel->update([
+                                'travel_country_visited' => $travelData['country_visited'],
+                                'travel_arrival_date' => $arrivalDate,
+                                'travel_departure_date' => $departureDate,
+                                'travel_purpose' => $travelData['purpose'] ?? null
+                            ]);
+                            $travelIdsToKeep[] = $travelId;
+                        } else {
+                            // ID provided but doesn't exist, create new
+                            $newTravel = ClientTravelInformation::create([
+                                'client_id' => $client->id,
+                                'travel_country_visited' => $travelData['country_visited'],
+                                'travel_arrival_date' => $arrivalDate,
+                                'travel_departure_date' => $departureDate,
+                                'travel_purpose' => $travelData['purpose'] ?? null
+                            ]);
+                            $travelIdsToKeep[] = $newTravel->id;
+                        }
+                    } else {
+                        // Create new travel
+                        $newTravel = ClientTravelInformation::create([
+                            'client_id' => $client->id,
+                            'travel_country_visited' => $travelData['country_visited'],
+                            'travel_arrival_date' => $arrivalDate,
+                            'travel_departure_date' => $departureDate,
+                            'travel_purpose' => $travelData['purpose'] ?? null
+                        ]);
+                        $travelIdsToKeep[] = $newTravel->id;
+                    }
+                }
+            }
+            
+            // Delete travel records that were not in the request
+            if (!empty($travelIdsToKeep)) {
+                ClientTravelInformation::where('client_id', $client->id)
+                    ->whereNotIn('id', $travelIdsToKeep)
+                    ->delete();
+            }
+
             // Get new travels for change tracking
             $newTravels = ClientTravelInformation::where('client_id', $client->id)->get();
-            $newTravelDisplay = [];
-            foreach ($newTravels as $newTravel) {
-                $display = [];
-                if ($newTravel->travel_country_visited) {
-                    $display[] = 'Country: ' . $newTravel->travel_country_visited;
-                }
-                if ($newTravel->travel_arrival_date) {
-                    $display[] = 'Arrival: ' . date('d/m/Y', strtotime($newTravel->travel_arrival_date));
-                }
-                if ($newTravel->travel_departure_date) {
-                    $display[] = 'Departure: ' . date('d/m/Y', strtotime($newTravel->travel_departure_date));
-                }
-                if ($newTravel->travel_purpose) {
-                    $display[] = 'Purpose: ' . $newTravel->travel_purpose;
-                }
-                $newTravelDisplay[] = !empty($display) ? implode(', ', $display) : 'Travel record';
-            }
-            $newTravelDisplayStr = !empty($newTravelDisplay) ? implode(' | ', $newTravelDisplay) : '(empty)';
 
-            // Log activity with before/after values
-            $changedFields = [];
-            if ($oldTravelDisplayStr !== $newTravelDisplayStr) {
-                $changedFields['Travel Information'] = [
-                    'old' => $oldTravelDisplayStr,
-                    'new' => $newTravelDisplayStr
-                ];
-            }
-
-            if (!empty($changedFields)) {
-                $this->logClientActivityWithChanges(
-                    $client->id,
-                    'updated travel information',
-                    $changedFields,
-                    'activity'
-                );
+            // Log activity with intelligent diff showing only actual changes
+            try {
+                $diffResult = $this->buildTravelDiff($existingTravels, $newTravels);
+                
+                if (!empty($diffResult['added']) || !empty($diffResult['removed']) || !empty($diffResult['modified'])) {
+                    $description = $this->formatTravelDiffForActivityLog($diffResult);
+                    
+                    $this->logClientActivity(
+                        $client->id,
+                        'updated travel information',
+                        $description,
+                        'activity'
+                    );
+                }
+            } catch (\Exception $e) {
+                // Fallback to simple comparison if diff fails
+                \Log::warning('Travel diff failed, using simple comparison', [
+                    'error' => $e->getMessage()
+                ]);
+                
+                $newTravelDisplay = [];
+                foreach ($newTravels as $newTravel) {
+                    $display = [];
+                    if ($newTravel->travel_country_visited) {
+                        $display[] = 'Country: ' . $newTravel->travel_country_visited;
+                    }
+                    if ($newTravel->travel_arrival_date) {
+                        $display[] = 'Arrival: ' . date('d/m/Y', strtotime($newTravel->travel_arrival_date));
+                    }
+                    if ($newTravel->travel_departure_date) {
+                        $display[] = 'Departure: ' . date('d/m/Y', strtotime($newTravel->travel_departure_date));
+                    }
+                    if ($newTravel->travel_purpose) {
+                        $display[] = 'Purpose: ' . $newTravel->travel_purpose;
+                    }
+                    $newTravelDisplay[] = !empty($display) ? implode(', ', $display) : 'Travel record';
+                }
+                $newTravelDisplayStr = !empty($newTravelDisplay) ? implode(' | ', $newTravelDisplay) : '(empty)';
+                
+                if ($oldTravelDisplayStr !== $newTravelDisplayStr) {
+                    $this->logClientActivityWithChanges(
+                        $client->id,
+                        'updated travel information',
+                        ['Travel Information' => [
+                            'old' => $oldTravelDisplayStr,
+                            'new' => $newTravelDisplayStr
+                        ]],
+                        'activity'
+                    );
+                }
             }
 
             return response()->json([
@@ -2973,47 +3186,63 @@ class ClientPersonalDetailsController extends Controller
 
             // Get new qualifications for change tracking
             $newQualifications = ClientQualification::where('client_id', $client->id)->get();
-            $newQualDisplay = [];
-            foreach ($newQualifications as $newQual) {
-                $display = [];
-                if ($newQual->level) {
-                    $display[] = 'Level: ' . $newQual->level;
-                }
-                if ($newQual->name) {
-                    $display[] = 'Name: ' . $newQual->name;
-                }
-                if ($newQual->qual_college_name) {
-                    $display[] = 'College: ' . $newQual->qual_college_name;
-                }
-                if ($newQual->country) {
-                    $display[] = 'Country: ' . $newQual->country;
-                }
-                if ($newQual->start_date) {
-                    $display[] = 'Start: ' . date('d/m/Y', strtotime($newQual->start_date));
-                }
-                if ($newQual->finish_date) {
-                    $display[] = 'Finish: ' . date('d/m/Y', strtotime($newQual->finish_date));
-                }
-                $newQualDisplay[] = !empty($display) ? implode(', ', $display) : 'Qualification record';
-            }
-            $newQualDisplayStr = !empty($newQualDisplay) ? implode(' | ', $newQualDisplay) : '(empty)';
 
-            // Log activity with before/after values
-            $changedFields = [];
-            if ($oldQualDisplayStr !== $newQualDisplayStr) {
-                $changedFields['Educational Qualifications'] = [
-                    'old' => $oldQualDisplayStr,
-                    'new' => $newQualDisplayStr
-                ];
-            }
-
-            if (!empty($changedFields)) {
-                $this->logClientActivityWithChanges(
-                    $client->id,
-                    'updated educational qualifications',
-                    $changedFields,
-                    'activity'
-                );
+            // Log activity with intelligent diff showing only actual changes
+            try {
+                $diffResult = $this->buildQualificationDiff($existingQualifications, $newQualifications);
+                
+                if (!empty($diffResult['added']) || !empty($diffResult['removed']) || !empty($diffResult['modified'])) {
+                    $description = $this->formatQualificationDiffForActivityLog($diffResult);
+                    
+                    $this->logClientActivity(
+                        $client->id,
+                        'updated educational qualifications',
+                        $description,
+                        'activity'
+                    );
+                }
+            } catch (\Exception $e) {
+                // Fallback to simple comparison if diff fails
+                \Log::warning('Qualification diff failed, using simple comparison', [
+                    'error' => $e->getMessage()
+                ]);
+                
+                $newQualDisplay = [];
+                foreach ($newQualifications as $newQual) {
+                    $display = [];
+                    if ($newQual->level) {
+                        $display[] = 'Level: ' . $newQual->level;
+                    }
+                    if ($newQual->name) {
+                        $display[] = 'Name: ' . $newQual->name;
+                    }
+                    if ($newQual->qual_college_name) {
+                        $display[] = 'College: ' . $newQual->qual_college_name;
+                    }
+                    if ($newQual->country) {
+                        $display[] = 'Country: ' . $newQual->country;
+                    }
+                    if ($newQual->start_date) {
+                        $display[] = 'Start: ' . date('d/m/Y', strtotime($newQual->start_date));
+                    }
+                    if ($newQual->finish_date) {
+                        $display[] = 'Finish: ' . date('d/m/Y', strtotime($newQual->finish_date));
+                    }
+                    $newQualDisplay[] = !empty($display) ? implode(', ', $display) : 'Qualification record';
+                }
+                $newQualDisplayStr = !empty($newQualDisplay) ? implode(' | ', $newQualDisplay) : '(empty)';
+                
+                if ($oldQualDisplayStr !== $newQualDisplayStr) {
+                    $this->logClientActivityWithChanges(
+                        $client->id,
+                        'updated educational qualifications',
+                        ['Educational Qualifications' => [
+                            'old' => $oldQualDisplayStr,
+                            'new' => $newQualDisplayStr
+                        ]],
+                        'activity'
+                    );
+                }
             }
 
             return response()->json([
@@ -3067,10 +3296,10 @@ class ClientPersonalDetailsController extends Controller
             }
             $oldExpDisplayStr = !empty($oldExpDisplay) ? implode(' | ', $oldExpDisplay) : '(empty)';
 
-            // Delete existing experiences for this client
-            ClientExperience::where('client_id', $client->id)->delete();
+            // Track which experience IDs should be kept (both updated and newly created)
+            $experienceIdsToKeep = [];
 
-            // Insert new experiences
+            // Process each experience (update existing or create new)
             foreach ($experiences as $expData) {
                 if (!empty($expData['job_title']) || !empty($expData['job_code']) || !empty($expData['job_emp_name'])) {
                     // Convert date format from d/m/Y to Y-m-d if needed
@@ -3087,66 +3316,131 @@ class ClientPersonalDetailsController extends Controller
                         $endDate = $endDate ? $endDate->format('Y-m-d') : null;
                     }
                     
-                    ClientExperience::create([
-                        'client_id' => $client->id,
-                        'admin_id' => Auth::user()->id,
-                        'job_title' => $expData['job_title'] ?? null,
-                        'job_code' => $expData['job_code'] ?? null,
-                        'job_country' => $expData['job_country'] ?? null,
-                        'job_start_date' => $startDate,
-                        'job_finish_date' => $endDate,
-                        'relevant_experience' => $expData['relevant_experience'] ?? 0,
-                        'job_emp_name' => $expData['job_emp_name'] ?? null,
-                        'job_state' => $expData['job_state'] ?? null,
-                        'job_type' => $expData['job_type'] ?? null,
-                        'fte_multiplier' => 1.00
-                    ]);
+                    $experienceId = $expData['id'] ?? null;
+                    $experienceId = !empty($experienceId) ? (int)$experienceId : null;
+                    
+                    if ($experienceId) {
+                        // Update existing experience
+                        $existingExp = ClientExperience::find($experienceId);
+                        if ($existingExp && $existingExp->client_id == $client->id) {
+                            $existingExp->update([
+                                'admin_id' => Auth::user()->id,
+                                'job_title' => $expData['job_title'] ?? null,
+                                'job_code' => $expData['job_code'] ?? null,
+                                'job_country' => $expData['job_country'] ?? null,
+                                'job_start_date' => $startDate,
+                                'job_finish_date' => $endDate,
+                                'relevant_experience' => $expData['relevant_experience'] ?? 0,
+                                'job_emp_name' => $expData['job_emp_name'] ?? null,
+                                'job_state' => $expData['job_state'] ?? null,
+                                'job_type' => $expData['job_type'] ?? null
+                            ]);
+                            $experienceIdsToKeep[] = $experienceId;
+                        } else {
+                            // ID provided but doesn't exist, create new
+                            $newExp = ClientExperience::create([
+                                'client_id' => $client->id,
+                                'admin_id' => Auth::user()->id,
+                                'job_title' => $expData['job_title'] ?? null,
+                                'job_code' => $expData['job_code'] ?? null,
+                                'job_country' => $expData['job_country'] ?? null,
+                                'job_start_date' => $startDate,
+                                'job_finish_date' => $endDate,
+                                'relevant_experience' => $expData['relevant_experience'] ?? 0,
+                                'job_emp_name' => $expData['job_emp_name'] ?? null,
+                                'job_state' => $expData['job_state'] ?? null,
+                                'job_type' => $expData['job_type'] ?? null,
+                                'fte_multiplier' => 1.00
+                            ]);
+                            $experienceIdsToKeep[] = $newExp->id;
+                        }
+                    } else {
+                        // Create new experience
+                        $newExp = ClientExperience::create([
+                            'client_id' => $client->id,
+                            'admin_id' => Auth::user()->id,
+                            'job_title' => $expData['job_title'] ?? null,
+                            'job_code' => $expData['job_code'] ?? null,
+                            'job_country' => $expData['job_country'] ?? null,
+                            'job_start_date' => $startDate,
+                            'job_finish_date' => $endDate,
+                            'relevant_experience' => $expData['relevant_experience'] ?? 0,
+                            'job_emp_name' => $expData['job_emp_name'] ?? null,
+                            'job_state' => $expData['job_state'] ?? null,
+                            'job_type' => $expData['job_type'] ?? null,
+                            'fte_multiplier' => 1.00
+                        ]);
+                        $experienceIdsToKeep[] = $newExp->id;
+                    }
                 }
+            }
+            
+            // Delete experiences that were not in the request
+            if (!empty($experienceIdsToKeep)) {
+                ClientExperience::where('client_id', $client->id)
+                    ->whereNotIn('id', $experienceIdsToKeep)
+                    ->delete();
             }
 
             // Get new experiences for change tracking
             $newExperiences = ClientExperience::where('client_id', $client->id)->get();
-            $newExpDisplay = [];
-            foreach ($newExperiences as $newExp) {
-                $display = [];
-                if ($newExp->job_title) {
-                    $display[] = 'Title: ' . $newExp->job_title;
-                }
-                if ($newExp->job_code) {
-                    $display[] = 'Code: ' . $newExp->job_code;
-                }
-                if ($newExp->job_emp_name) {
-                    $display[] = 'Employer: ' . $newExp->job_emp_name;
-                }
-                if ($newExp->job_country) {
-                    $display[] = 'Country: ' . $newExp->job_country;
-                }
-                if ($newExp->job_start_date) {
-                    $display[] = 'Start: ' . date('d/m/Y', strtotime($newExp->job_start_date));
-                }
-                if ($newExp->job_finish_date) {
-                    $display[] = 'Finish: ' . date('d/m/Y', strtotime($newExp->job_finish_date));
-                }
-                $newExpDisplay[] = !empty($display) ? implode(', ', $display) : 'Experience record';
-            }
-            $newExpDisplayStr = !empty($newExpDisplay) ? implode(' | ', $newExpDisplay) : '(empty)';
 
-            // Log activity with before/after values
-            $changedFields = [];
-            if ($oldExpDisplayStr !== $newExpDisplayStr) {
-                $changedFields['Work Experience'] = [
-                    'old' => $oldExpDisplayStr,
-                    'new' => $newExpDisplayStr
-                ];
-            }
-
-            if (!empty($changedFields)) {
-                $this->logClientActivityWithChanges(
-                    $client->id,
-                    'updated work experience',
-                    $changedFields,
-                    'activity'
-                );
+            // Log activity with intelligent diff showing only actual changes
+            try {
+                $diffResult = $this->buildExperienceDiff($existingExperiences, $newExperiences);
+                
+                if (!empty($diffResult['added']) || !empty($diffResult['removed']) || !empty($diffResult['modified'])) {
+                    $description = $this->formatExperienceDiffForActivityLog($diffResult);
+                    
+                    $this->logClientActivity(
+                        $client->id,
+                        'updated work experience',
+                        $description,
+                        'activity'
+                    );
+                }
+            } catch (\Exception $e) {
+                // Fallback to simple comparison if diff fails
+                \Log::warning('Experience diff failed, using simple comparison', [
+                    'error' => $e->getMessage()
+                ]);
+                
+                $newExpDisplay = [];
+                foreach ($newExperiences as $newExp) {
+                    $display = [];
+                    if ($newExp->job_title) {
+                        $display[] = 'Title: ' . $newExp->job_title;
+                    }
+                    if ($newExp->job_code) {
+                        $display[] = 'Code: ' . $newExp->job_code;
+                    }
+                    if ($newExp->job_emp_name) {
+                        $display[] = 'Employer: ' . $newExp->job_emp_name;
+                    }
+                    if ($newExp->job_country) {
+                        $display[] = 'Country: ' . $newExp->job_country;
+                    }
+                    if ($newExp->job_start_date) {
+                        $display[] = 'Start: ' . date('d/m/Y', strtotime($newExp->job_start_date));
+                    }
+                    if ($newExp->job_finish_date) {
+                        $display[] = 'Finish: ' . date('d/m/Y', strtotime($newExp->job_finish_date));
+                    }
+                    $newExpDisplay[] = !empty($display) ? implode(', ', $display) : 'Experience record';
+                }
+                $newExpDisplayStr = !empty($newExpDisplay) ? implode(' | ', $newExpDisplay) : '(empty)';
+                
+                if ($oldExpDisplayStr !== $newExpDisplayStr) {
+                    $this->logClientActivityWithChanges(
+                        $client->id,
+                        'updated work experience',
+                        ['Work Experience' => [
+                            'old' => $oldExpDisplayStr,
+                            'new' => $newExpDisplayStr
+                        ]],
+                        'activity'
+                    );
+                }
             }
 
             return response()->json([
@@ -3359,30 +3653,89 @@ class ClientPersonalDetailsController extends Controller
                 ], 400);
             }
 
-            // Delete existing character records for this client
-            ClientCharacter::where('client_id', $client->id)->delete();
+            // Get existing characters before update for change tracking
+            $existingCharacters = ClientCharacter::where('client_id', $client->id)->get();
 
-            // Insert new character records
-            $characterCount = 0;
+            // Track which character IDs should be kept (both updated and newly created)
+            $characterIdsToKeep = [];
+
+            // Process each character record (update existing or create new)
             foreach ($characters as $charData) {
                 if (!empty($charData['detail']) && !empty($charData['type_of_character'])) {
-                    ClientCharacter::create([
-                        'client_id' => $client->id,
-                        'admin_id' => auth()->id(),
-                        'type_of_character' => $charData['type_of_character'],
-                        'character_detail' => $charData['detail']
-                    ]);
-                    $characterCount++;
+                    $characterId = $charData['id'] ?? null;
+                    $characterId = !empty($characterId) ? (int)$characterId : null;
+                    
+                    if ($characterId) {
+                        // Update existing character
+                        $existingChar = ClientCharacter::find($characterId);
+                        if ($existingChar && $existingChar->client_id == $client->id) {
+                            $existingChar->update([
+                                'admin_id' => auth()->id(),
+                                'type_of_character' => $charData['type_of_character'],
+                                'character_detail' => $charData['detail']
+                            ]);
+                            $characterIdsToKeep[] = $characterId;
+                        } else {
+                            // ID provided but doesn't exist, create new
+                            $newChar = ClientCharacter::create([
+                                'client_id' => $client->id,
+                                'admin_id' => auth()->id(),
+                                'type_of_character' => $charData['type_of_character'],
+                                'character_detail' => $charData['detail']
+                            ]);
+                            $characterIdsToKeep[] = $newChar->id;
+                        }
+                    } else {
+                        // Create new character
+                        $newChar = ClientCharacter::create([
+                            'client_id' => $client->id,
+                            'admin_id' => auth()->id(),
+                            'type_of_character' => $charData['type_of_character'],
+                            'character_detail' => $charData['detail']
+                        ]);
+                        $characterIdsToKeep[] = $newChar->id;
+                    }
                 }
             }
+            
+            // Delete character records that were not in the request
+            if (!empty($characterIdsToKeep)) {
+                ClientCharacter::where('client_id', $client->id)
+                    ->whereNotIn('id', $characterIdsToKeep)
+                    ->delete();
+            }
 
-            // Log activity for character information update
-            $this->logClientActivity(
-                $client->id,
-                'updated character information',
-                "Updated {$characterCount} character record(s)",
-                'activity'
-            );
+            // Get new characters for change tracking
+            $newCharacters = ClientCharacter::where('client_id', $client->id)->get();
+
+            // Log activity with intelligent diff showing only actual changes
+            try {
+                $diffResult = $this->buildCharacterDiff($existingCharacters, $newCharacters);
+                
+                if (!empty($diffResult['added']) || !empty($diffResult['removed']) || !empty($diffResult['modified'])) {
+                    $description = $this->formatCharacterDiffForActivityLog($diffResult);
+                    
+                    $this->logClientActivity(
+                        $client->id,
+                        'updated character information',
+                        $description,
+                        'activity'
+                    );
+                }
+            } catch (\Exception $e) {
+                // Fallback to simple count if diff fails
+                \Log::warning('Character diff failed, using simple count', [
+                    'error' => $e->getMessage()
+                ]);
+                
+                $characterCount = $newCharacters->count();
+                $this->logClientActivity(
+                    $client->id,
+                    'updated character information',
+                    "Updated {$characterCount} character record(s)",
+                    'activity'
+                );
+            }
 
             return response()->json([
                 'success' => true,
@@ -5130,6 +5483,742 @@ class ClientPersonalDetailsController extends Controller
         
         $html .= '</div>';
         
+        return $html;
+    }
+
+    /**
+     * Build qualification diff showing only actual changes
+     */
+    private function buildQualificationDiff($oldQualifications, $newQualifications)
+    {
+        $added = [];
+        $removed = [];
+        $modified = [];
+        
+        $oldNormalized = $this->normalizeQualificationsForComparison($oldQualifications);
+        $newNormalized = $this->normalizeQualificationsForComparison($newQualifications);
+        
+        // Find added qualifications
+        foreach ($newNormalized as $newKey => $newQual) {
+            if (!isset($oldNormalized[$newKey])) {
+                $added[] = $this->formatQualificationForDisplay($newQual);
+            }
+        }
+        
+        // Find removed qualifications
+        foreach ($oldNormalized as $oldKey => $oldQual) {
+            if (!isset($newNormalized[$oldKey])) {
+                $removed[] = $this->formatQualificationForDisplay($oldQual);
+            }
+        }
+        
+        // Find modified qualifications
+        foreach ($oldNormalized as $key => $oldQual) {
+            if (isset($newNormalized[$key])) {
+                $newQual = $newNormalized[$key];
+                if ($this->isQualificationModified($oldQual, $newQual)) {
+                    $modified[] = [
+                        'old' => $this->formatQualificationForDisplay($oldQual),
+                        'new' => $this->formatQualificationForDisplay($newQual)
+                    ];
+                }
+            }
+        }
+        
+        return ['added' => $added, 'removed' => $removed, 'modified' => $modified];
+    }
+
+    private function normalizeQualificationsForComparison($qualifications)
+    {
+        $normalized = [];
+        foreach ($qualifications as $qual) {
+            $key = strtolower(trim(
+                ($qual->level ?? '') . '|' .
+                ($qual->name ?? '') . '|' .
+                ($qual->qual_college_name ?? '')
+            ));
+            $normalized[$key] = $qual;
+        }
+        return $normalized;
+    }
+
+    private function formatQualificationForDisplay($qual)
+    {
+        $parts = [];
+        if (!empty($qual->level)) $parts[] = 'Level: ' . $qual->level;
+        if (!empty($qual->name)) $parts[] = 'Name: ' . $qual->name;
+        if (!empty($qual->qual_college_name)) $parts[] = 'College: ' . $qual->qual_college_name;
+        if (!empty($qual->country)) $parts[] = 'Country: ' . $qual->country;
+        if (!empty($qual->start_date)) $parts[] = 'Start: ' . date('d/m/Y', strtotime($qual->start_date));
+        if (!empty($qual->finish_date)) $parts[] = 'Finish: ' . date('d/m/Y', strtotime($qual->finish_date));
+        return !empty($parts) ? implode(', ', $parts) : 'Qualification record';
+    }
+
+    private function isQualificationModified($oldQual, $newQual)
+    {
+        $fieldsToCompare = ['qual_campus', 'qual_state', 'country', 'start_date', 'finish_date', 'relevant_qualification'];
+        foreach ($fieldsToCompare as $field) {
+            if (($oldQual->$field ?? null) !== ($newQual->$field ?? null)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function formatQualificationDiffForActivityLog($diffResult)
+    {
+        $html = '<div style="margin-top: 5px;">';
+        
+        foreach ($diffResult['removed'] as $qual) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #dc3545; text-decoration: line-through;">';
+            $html .= htmlspecialchars($qual);
+            $html .= '</span></div>';
+        }
+        
+        foreach ($diffResult['modified'] as $mod) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #dc3545; text-decoration: line-through;">';
+            $html .= htmlspecialchars($mod['old']);
+            $html .= '</span> <span style="color: #666;">→</span> ';
+            $html .= '<span style="color: #28a745; font-weight: 600;">';
+            $html .= htmlspecialchars($mod['new']);
+            $html .= '</span></div>';
+        }
+        
+        foreach ($diffResult['added'] as $qual) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #28a745; font-weight: 600;">';
+            $html .= htmlspecialchars($qual);
+            $html .= '</span></div>';
+        }
+        
+        $html .= '</div>';
+        return $html;
+    }
+
+    /**
+     * Build experience diff showing only actual changes
+     */
+    private function buildExperienceDiff($oldExperiences, $newExperiences)
+    {
+        $added = [];
+        $removed = [];
+        $modified = [];
+        
+        $oldNormalized = $this->normalizeExperiencesForComparison($oldExperiences);
+        $newNormalized = $this->normalizeExperiencesForComparison($newExperiences);
+        
+        // Find added experiences
+        foreach ($newNormalized as $newKey => $newExp) {
+            if (!isset($oldNormalized[$newKey])) {
+                $added[] = $this->formatExperienceForDisplay($newExp);
+            }
+        }
+        
+        // Find removed experiences
+        foreach ($oldNormalized as $oldKey => $oldExp) {
+            if (!isset($newNormalized[$oldKey])) {
+                $removed[] = $this->formatExperienceForDisplay($oldExp);
+            }
+        }
+        
+        // Find modified experiences
+        foreach ($oldNormalized as $key => $oldExp) {
+            if (isset($newNormalized[$key])) {
+                $newExp = $newNormalized[$key];
+                if ($this->isExperienceModified($oldExp, $newExp)) {
+                    $modified[] = [
+                        'old' => $this->formatExperienceForDisplay($oldExp),
+                        'new' => $this->formatExperienceForDisplay($newExp)
+                    ];
+                }
+            }
+        }
+        
+        return ['added' => $added, 'removed' => $removed, 'modified' => $modified];
+    }
+
+    private function normalizeExperiencesForComparison($experiences)
+    {
+        $normalized = [];
+        foreach ($experiences as $exp) {
+            $key = strtolower(trim(
+                ($exp->job_title ?? '') . '|' .
+                ($exp->job_code ?? '') . '|' .
+                ($exp->job_emp_name ?? '')
+            ));
+            $normalized[$key] = $exp;
+        }
+        return $normalized;
+    }
+
+    private function formatExperienceForDisplay($exp)
+    {
+        $parts = [];
+        if (!empty($exp->job_title)) $parts[] = 'Title: ' . $exp->job_title;
+        if (!empty($exp->job_code)) $parts[] = 'Code: ' . $exp->job_code;
+        if (!empty($exp->job_emp_name)) $parts[] = 'Employer: ' . $exp->job_emp_name;
+        if (!empty($exp->job_country)) $parts[] = 'Country: ' . $exp->job_country;
+        if (!empty($exp->job_start_date)) $parts[] = 'Start: ' . date('d/m/Y', strtotime($exp->job_start_date));
+        if (!empty($exp->job_finish_date)) $parts[] = 'Finish: ' . date('d/m/Y', strtotime($exp->job_finish_date));
+        return !empty($parts) ? implode(', ', $parts) : 'Experience record';
+    }
+
+    private function isExperienceModified($oldExp, $newExp)
+    {
+        $fieldsToCompare = ['job_country', 'job_state', 'job_type', 'job_start_date', 'job_finish_date', 'relevant_experience'];
+        foreach ($fieldsToCompare as $field) {
+            if (($oldExp->$field ?? null) !== ($newExp->$field ?? null)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function formatExperienceDiffForActivityLog($diffResult)
+    {
+        $html = '<div style="margin-top: 5px;">';
+        
+        foreach ($diffResult['removed'] as $exp) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #dc3545; text-decoration: line-through;">';
+            $html .= htmlspecialchars($exp);
+            $html .= '</span></div>';
+        }
+        
+        foreach ($diffResult['modified'] as $mod) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #dc3545; text-decoration: line-through;">';
+            $html .= htmlspecialchars($mod['old']);
+            $html .= '</span> <span style="color: #666;">→</span> ';
+            $html .= '<span style="color: #28a745; font-weight: 600;">';
+            $html .= htmlspecialchars($mod['new']);
+            $html .= '</span></div>';
+        }
+        
+        foreach ($diffResult['added'] as $exp) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #28a745; font-weight: 600;">';
+            $html .= htmlspecialchars($exp);
+            $html .= '</span></div>';
+        }
+        
+        $html .= '</div>';
+        return $html;
+    }
+
+    /**
+     * Build travel diff showing only actual changes
+     */
+    private function buildTravelDiff($oldTravels, $newTravels)
+    {
+        $added = [];
+        $removed = [];
+        $modified = [];
+        
+        $oldNormalized = $this->normalizeTravelsForComparison($oldTravels);
+        $newNormalized = $this->normalizeTravelsForComparison($newTravels);
+        
+        foreach ($newNormalized as $newKey => $newTravel) {
+            if (!isset($oldNormalized[$newKey])) {
+                $added[] = $this->formatTravelForDisplay($newTravel);
+            }
+        }
+        
+        foreach ($oldNormalized as $oldKey => $oldTravel) {
+            if (!isset($newNormalized[$oldKey])) {
+                $removed[] = $this->formatTravelForDisplay($oldTravel);
+            }
+        }
+        
+        foreach ($oldNormalized as $key => $oldTravel) {
+            if (isset($newNormalized[$key])) {
+                $newTravel = $newNormalized[$key];
+                if ($this->isTravelModified($oldTravel, $newTravel)) {
+                    $modified[] = [
+                        'old' => $this->formatTravelForDisplay($oldTravel),
+                        'new' => $this->formatTravelForDisplay($newTravel)
+                    ];
+                }
+            }
+        }
+        
+        return ['added' => $added, 'removed' => $removed, 'modified' => $modified];
+    }
+
+    private function normalizeTravelsForComparison($travels)
+    {
+        $normalized = [];
+        foreach ($travels as $travel) {
+            $key = strtolower(trim(
+                ($travel->travel_country_visited ?? '') . '|' .
+                ($travel->travel_arrival_date ?? '') . '|' .
+                ($travel->travel_departure_date ?? '')
+            ));
+            $normalized[$key] = $travel;
+        }
+        return $normalized;
+    }
+
+    private function formatTravelForDisplay($travel)
+    {
+        $parts = [];
+        if (!empty($travel->travel_country_visited)) $parts[] = 'Country: ' . $travel->travel_country_visited;
+        if (!empty($travel->travel_arrival_date)) $parts[] = 'Arrival: ' . date('d/m/Y', strtotime($travel->travel_arrival_date));
+        if (!empty($travel->travel_departure_date)) $parts[] = 'Departure: ' . date('d/m/Y', strtotime($travel->travel_departure_date));
+        if (!empty($travel->travel_purpose)) $parts[] = 'Purpose: ' . $travel->travel_purpose;
+        return !empty($parts) ? implode(', ', $parts) : 'Travel record';
+    }
+
+    private function isTravelModified($oldTravel, $newTravel)
+    {
+        $fieldsToCompare = ['travel_purpose'];
+        foreach ($fieldsToCompare as $field) {
+            if (($oldTravel->$field ?? null) !== ($newTravel->$field ?? null)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function formatTravelDiffForActivityLog($diffResult)
+    {
+        $html = '<div style="margin-top: 5px;">';
+        
+        foreach ($diffResult['removed'] as $travel) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #dc3545; text-decoration: line-through;">';
+            $html .= htmlspecialchars($travel);
+            $html .= '</span></div>';
+        }
+        
+        foreach ($diffResult['modified'] as $mod) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #dc3545; text-decoration: line-through;">';
+            $html .= htmlspecialchars($mod['old']);
+            $html .= '</span> <span style="color: #666;">→</span> ';
+            $html .= '<span style="color: #28a745; font-weight: 600;">';
+            $html .= htmlspecialchars($mod['new']);
+            $html .= '</span></div>';
+        }
+        
+        foreach ($diffResult['added'] as $travel) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #28a745; font-weight: 600;">';
+            $html .= htmlspecialchars($travel);
+            $html .= '</span></div>';
+        }
+        
+        $html .= '</div>';
+        return $html;
+    }
+
+    /**
+     * Build passport diff showing only actual changes
+     */
+    private function buildPassportDiff($oldPassports, $newPassports)
+    {
+        $added = [];
+        $removed = [];
+        $modified = [];
+        
+        $oldNormalized = $this->normalizePassportsForComparison($oldPassports);
+        $newNormalized = $this->normalizePassportsForComparison($newPassports);
+        
+        foreach ($newNormalized as $newKey => $newPassport) {
+            if (!isset($oldNormalized[$newKey])) {
+                $added[] = $this->formatPassportForDisplay($newPassport);
+            }
+        }
+        
+        foreach ($oldNormalized as $oldKey => $oldPassport) {
+            if (!isset($newNormalized[$oldKey])) {
+                $removed[] = $this->formatPassportForDisplay($oldPassport);
+            }
+        }
+        
+        foreach ($oldNormalized as $key => $oldPassport) {
+            if (isset($newNormalized[$key])) {
+                $newPassport = $newNormalized[$key];
+                if ($this->isPassportModified($oldPassport, $newPassport)) {
+                    $modified[] = [
+                        'old' => $this->formatPassportForDisplay($oldPassport),
+                        'new' => $this->formatPassportForDisplay($newPassport)
+                    ];
+                }
+            }
+        }
+        
+        return ['added' => $added, 'removed' => $removed, 'modified' => $modified];
+    }
+
+    private function normalizePassportsForComparison($passports)
+    {
+        $normalized = [];
+        foreach ($passports as $passport) {
+            $key = strtolower(trim(
+                ($passport->passport_country ?? '') . '|' .
+                ($passport->passport ?? '')
+            ));
+            $normalized[$key] = $passport;
+        }
+        return $normalized;
+    }
+
+    private function formatPassportForDisplay($passport)
+    {
+        $parts = [];
+        if (!empty($passport->passport_country)) $parts[] = 'Country: ' . $passport->passport_country;
+        if (!empty($passport->passport)) $parts[] = 'Number: ' . $passport->passport;
+        if (!empty($passport->passport_issue_date)) $parts[] = 'Issue: ' . date('d/m/Y', strtotime($passport->passport_issue_date));
+        if (!empty($passport->passport_expiry_date)) $parts[] = 'Expiry: ' . date('d/m/Y', strtotime($passport->passport_expiry_date));
+        return !empty($parts) ? implode(', ', $parts) : 'Passport record';
+    }
+
+    private function isPassportModified($oldPassport, $newPassport)
+    {
+        $fieldsToCompare = ['passport_issue_date', 'passport_expiry_date'];
+        foreach ($fieldsToCompare as $field) {
+            if (($oldPassport->$field ?? null) !== ($newPassport->$field ?? null)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function formatPassportDiffForActivityLog($diffResult)
+    {
+        $html = '<div style="margin-top: 5px;">';
+        
+        foreach ($diffResult['removed'] as $passport) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #dc3545; text-decoration: line-through;">';
+            $html .= htmlspecialchars($passport);
+            $html .= '</span></div>';
+        }
+        
+        foreach ($diffResult['modified'] as $mod) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #dc3545; text-decoration: line-through;">';
+            $html .= htmlspecialchars($mod['old']);
+            $html .= '</span> <span style="color: #666;">→</span> ';
+            $html .= '<span style="color: #28a745; font-weight: 600;">';
+            $html .= htmlspecialchars($mod['new']);
+            $html .= '</span></div>';
+        }
+        
+        foreach ($diffResult['added'] as $passport) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #28a745; font-weight: 600;">';
+            $html .= htmlspecialchars($passport);
+            $html .= '</span></div>';
+        }
+        
+        $html .= '</div>';
+        return $html;
+    }
+
+    /**
+     * Build visa diff showing only actual changes
+     */
+    private function buildVisaDiff($oldVisas, $newVisas)
+    {
+        $added = [];
+        $removed = [];
+        $modified = [];
+        
+        $oldNormalized = $this->normalizeVisasForComparison($oldVisas);
+        $newNormalized = $this->normalizeVisasForComparison($newVisas);
+        
+        foreach ($newNormalized as $newKey => $newVisa) {
+            if (!isset($oldNormalized[$newKey])) {
+                $added[] = $this->formatVisaForDisplay($newVisa);
+            }
+        }
+        
+        foreach ($oldNormalized as $oldKey => $oldVisa) {
+            if (!isset($newNormalized[$oldKey])) {
+                $removed[] = $this->formatVisaForDisplay($oldVisa);
+            }
+        }
+        
+        foreach ($oldNormalized as $key => $oldVisa) {
+            if (isset($newNormalized[$key])) {
+                $newVisa = $newNormalized[$key];
+                if ($this->isVisaModified($oldVisa, $newVisa)) {
+                    $modified[] = [
+                        'old' => $this->formatVisaForDisplay($oldVisa),
+                        'new' => $this->formatVisaForDisplay($newVisa)
+                    ];
+                }
+            }
+        }
+        
+        return ['added' => $added, 'removed' => $removed, 'modified' => $modified];
+    }
+
+    private function normalizeVisasForComparison($visas)
+    {
+        $normalized = [];
+        foreach ($visas as $visa) {
+            $key = strtolower(trim(
+                ($visa->visa_type ?? '') . '|' .
+                ($visa->visa_country ?? '')
+            ));
+            $normalized[$key] = $visa;
+        }
+        return $normalized;
+    }
+
+    private function formatVisaForDisplay($visa)
+    {
+        $parts = [];
+        if (!empty($visa->visa_type)) $parts[] = 'Type: ' . $visa->visa_type;
+        if (!empty($visa->visa_country)) $parts[] = 'Country: ' . $visa->visa_country;
+        if (!empty($visa->visa_grant_date)) $parts[] = 'Grant: ' . date('d/m/Y', strtotime($visa->visa_grant_date));
+        if (!empty($visa->visa_expiry_date)) $parts[] = 'Expiry: ' . date('d/m/Y', strtotime($visa->visa_expiry_date));
+        if (!empty($visa->visa_description)) $parts[] = 'Desc: ' . $visa->visa_description;
+        return !empty($parts) ? implode(', ', $parts) : 'Visa record';
+    }
+
+    private function isVisaModified($oldVisa, $newVisa)
+    {
+        $fieldsToCompare = ['visa_grant_date', 'visa_expiry_date', 'visa_description'];
+        foreach ($fieldsToCompare as $field) {
+            if (($oldVisa->$field ?? null) !== ($newVisa->$field ?? null)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function formatVisaDiffForActivityLog($diffResult)
+    {
+        $html = '<div style="margin-top: 5px;">';
+        
+        foreach ($diffResult['removed'] as $visa) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #dc3545; text-decoration: line-through;">';
+            $html .= htmlspecialchars($visa);
+            $html .= '</span></div>';
+        }
+        
+        foreach ($diffResult['modified'] as $mod) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #dc3545; text-decoration: line-through;">';
+            $html .= htmlspecialchars($mod['old']);
+            $html .= '</span> <span style="color: #666;">→</span> ';
+            $html .= '<span style="color: #28a745; font-weight: 600;">';
+            $html .= htmlspecialchars($mod['new']);
+            $html .= '</span></div>';
+        }
+        
+        foreach ($diffResult['added'] as $visa) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #28a745; font-weight: 600;">';
+            $html .= htmlspecialchars($visa);
+            $html .= '</span></div>';
+        }
+        
+        $html .= '</div>';
+        return $html;
+    }
+
+    /**
+     * Build email diff showing only actual changes
+     */
+    private function buildEmailDiff($oldEmails, $newEmails)
+    {
+        $added = [];
+        $removed = [];
+        $modified = [];
+        
+        $oldNormalized = $this->normalizeEmailsForComparison($oldEmails);
+        $newNormalized = $this->normalizeEmailsForComparison($newEmails);
+        
+        foreach ($newNormalized as $newKey => $newEmail) {
+            if (!isset($oldNormalized[$newKey])) {
+                $added[] = $this->formatEmailForDisplay($newEmail);
+            }
+        }
+        
+        foreach ($oldNormalized as $oldKey => $oldEmail) {
+            if (!isset($newNormalized[$oldKey])) {
+                $removed[] = $this->formatEmailForDisplay($oldEmail);
+            }
+        }
+        
+        foreach ($oldNormalized as $key => $oldEmail) {
+            if (isset($newNormalized[$key])) {
+                $newEmail = $newNormalized[$key];
+                if ($this->isEmailModified($oldEmail, $newEmail)) {
+                    $modified[] = [
+                        'old' => $this->formatEmailForDisplay($oldEmail),
+                        'new' => $this->formatEmailForDisplay($newEmail)
+                    ];
+                }
+            }
+        }
+        
+        return ['added' => $added, 'removed' => $removed, 'modified' => $modified];
+    }
+
+    private function normalizeEmailsForComparison($emails)
+    {
+        $normalized = [];
+        foreach ($emails as $email) {
+            $key = strtolower(trim($email->email ?? ''));
+            $normalized[$key] = $email;
+        }
+        return $normalized;
+    }
+
+    private function formatEmailForDisplay($email)
+    {
+        $display = $email->email ?? '';
+        if (!empty($email->email_type)) {
+            $display .= ' (' . $email->email_type . ')';
+        }
+        return $display;
+    }
+
+    private function isEmailModified($oldEmail, $newEmail)
+    {
+        return ($oldEmail->email_type ?? null) !== ($newEmail->email_type ?? null);
+    }
+
+    private function formatEmailDiffForActivityLog($diffResult)
+    {
+        $html = '<div style="margin-top: 5px;">';
+        
+        foreach ($diffResult['removed'] as $email) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #dc3545; text-decoration: line-through;">';
+            $html .= htmlspecialchars($email);
+            $html .= '</span></div>';
+        }
+        
+        foreach ($diffResult['modified'] as $mod) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #dc3545; text-decoration: line-through;">';
+            $html .= htmlspecialchars($mod['old']);
+            $html .= '</span> <span style="color: #666;">→</span> ';
+            $html .= '<span style="color: #28a745; font-weight: 600;">';
+            $html .= htmlspecialchars($mod['new']);
+            $html .= '</span></div>';
+        }
+        
+        foreach ($diffResult['added'] as $email) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #28a745; font-weight: 600;">';
+            $html .= htmlspecialchars($email);
+            $html .= '</span></div>';
+        }
+        
+        $html .= '</div>';
+        return $html;
+    }
+
+    /**
+     * Build character diff showing only actual changes
+     */
+    private function buildCharacterDiff($oldCharacters, $newCharacters)
+    {
+        $added = [];
+        $removed = [];
+        $modified = [];
+        
+        $oldNormalized = $this->normalizeCharactersForComparison($oldCharacters);
+        $newNormalized = $this->normalizeCharactersForComparison($newCharacters);
+        
+        foreach ($newNormalized as $newKey => $newChar) {
+            if (!isset($oldNormalized[$newKey])) {
+                $added[] = $this->formatCharacterForDisplay($newChar);
+            }
+        }
+        
+        foreach ($oldNormalized as $oldKey => $oldChar) {
+            if (!isset($newNormalized[$oldKey])) {
+                $removed[] = $this->formatCharacterForDisplay($oldChar);
+            }
+        }
+        
+        foreach ($oldNormalized as $key => $oldChar) {
+            if (isset($newNormalized[$key])) {
+                $newChar = $newNormalized[$key];
+                if ($this->isCharacterModified($oldChar, $newChar)) {
+                    $modified[] = [
+                        'old' => $this->formatCharacterForDisplay($oldChar),
+                        'new' => $this->formatCharacterForDisplay($newChar)
+                    ];
+                }
+            }
+        }
+        
+        return ['added' => $added, 'removed' => $removed, 'modified' => $modified];
+    }
+
+    private function normalizeCharactersForComparison($characters)
+    {
+        $normalized = [];
+        foreach ($characters as $char) {
+            $key = strtolower(trim(
+                ($char->type_of_character ?? '') . '|' .
+                substr($char->character_detail ?? '', 0, 50)
+            ));
+            $normalized[$key] = $char;
+        }
+        return $normalized;
+    }
+
+    private function formatCharacterForDisplay($char)
+    {
+        $parts = [];
+        if (!empty($char->type_of_character)) $parts[] = 'Type: ' . $char->type_of_character;
+        if (!empty($char->character_detail)) {
+            $detail = strlen($char->character_detail) > 100 
+                ? substr($char->character_detail, 0, 100) . '...' 
+                : $char->character_detail;
+            $parts[] = 'Detail: ' . $detail;
+        }
+        return !empty($parts) ? implode(', ', $parts) : 'Character record';
+    }
+
+    private function isCharacterModified($oldChar, $newChar)
+    {
+        return ($oldChar->character_detail ?? null) !== ($newChar->character_detail ?? null);
+    }
+
+    private function formatCharacterDiffForActivityLog($diffResult)
+    {
+        $html = '<div style="margin-top: 5px;">';
+        
+        foreach ($diffResult['removed'] as $char) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #dc3545; text-decoration: line-through;">';
+            $html .= htmlspecialchars($char);
+            $html .= '</span></div>';
+        }
+        
+        foreach ($diffResult['modified'] as $mod) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #dc3545; text-decoration: line-through;">';
+            $html .= htmlspecialchars($mod['old']);
+            $html .= '</span> <span style="color: #666;">→</span> ';
+            $html .= '<span style="color: #28a745; font-weight: 600;">';
+            $html .= htmlspecialchars($mod['new']);
+            $html .= '</span></div>';
+        }
+        
+        foreach ($diffResult['added'] as $char) {
+            $html .= '<div style="margin-bottom: 4px;">';
+            $html .= '<span style="color: #28a745; font-weight: 600;">';
+            $html .= htmlspecialchars($char);
+            $html .= '</span></div>';
+        }
+        
+        $html .= '</div>';
         return $html;
     }
 }

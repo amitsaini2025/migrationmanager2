@@ -5,11 +5,8 @@ Admin.php
 AdminMeta.php
 AgentDetails.php
 Application.php
-ApplicationActivitiesLog.php
 ApplicationDocument.php
 ApplicationDocumentList.php
-ApplicationFeeOption.php
-ApplicationFeeOptionType.php
 Appointment.php
 AppointmentLog.php
 Attachment.php

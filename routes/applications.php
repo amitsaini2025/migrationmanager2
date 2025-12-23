@@ -66,9 +66,6 @@ Route::post('/application/application_ownership', [ApplicationsController::class
 Route::get('/superagent', [ApplicationsController::class, 'superagent']);
 Route::get('/subagent', [ApplicationsController::class, 'subagent']);
 
-/*---------- Application Fees ----------*/
-Route::post('/applicationsavefee', [ApplicationsController::class, 'applicationsavefee']);
-
 /*---------- Application Documents ----------*/
 Route::get('/application/export/pdf/{id}', [ApplicationsController::class, 'exportapplicationpdf']);
 Route::post('/add-checklists', [ApplicationsController::class, 'addchecklists']);

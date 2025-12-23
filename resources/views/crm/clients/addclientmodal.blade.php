@@ -6,8 +6,7 @@
 <!-- All Note-Related Modals moved to resources/views/Admin/clients/modals/notes.blade.php -->
 @include('crm.clients.modals.notes')
 
-<!-- All Task-Related Modals moved to resources/views/Admin/clients/modals/tasks.blade.php -->
-@include('crm.clients.modals.tasks')
+<!-- All Task-Related Modals removed - old Task system no longer used -->
 
 <!-- Education Modal moved to resources/views/Admin/clients/modals/education.blade.php -->
 @include('crm.clients.modals.education')

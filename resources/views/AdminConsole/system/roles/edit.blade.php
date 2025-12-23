@@ -153,9 +153,6 @@
 												<li><label><input type="checkbox" name="module_access[24]" <?php if(array_key_exists('24',  $module_access)) { echo "checked"; } ?> class="clients">  Can delete client.</label></li>
 												<li><label><input type="checkbox" name="module_access[25]" <?php if(array_key_exists('25',  $module_access)) { echo "checked"; } ?> class="clients">  Can delete client's comments.</label></li>
 												<li><label><input type="checkbox" name="module_access[26]" <?php if(array_key_exists('26',  $module_access)) { echo "checked"; } ?> class="clients">  Can delete client's interested services.</label></li>
-												<li><label><input type="checkbox" name="module_access[27]" <?php if(array_key_exists('27',  $module_access)) { echo "checked"; } ?> class="clients">  Can view, edit and archive enquiries.</label></li>
-												<li><label><input type="checkbox" name="module_access[28]" <?php if(array_key_exists('28',  $module_access)) { echo "checked"; } ?> class="clients">  Can view archived enquiries.</label></li>
-												<li><label><input type="checkbox" name="module_access[29]" <?php if(array_key_exists('29',  $module_access)) { echo "checked"; } ?> class="clients">  Can restore archived enquiries.</label></li>
 											</ul>
 										</div>
 									</div>
@@ -195,9 +192,8 @@
 												<li><label><input type="checkbox" name="module_access[39]" <?php if(array_key_exists('39',  $module_access)) { echo "checked"; } ?> class="applications"> Can delete a payment schedule.</label></li>
 												<li><label><input type="checkbox" name="module_access[40]" <?php if(array_key_exists('40',  $module_access)) { echo "checked"; } ?> class="applications"> Can view/edit assigned and added application by the users of primary office.</label></li>
 												<li><label><input type="checkbox" name="module_access[41]" <?php if(array_key_exists('41',  $module_access)) { echo "checked"; } ?> class="applications"> Can view/edit assigned and added application by the users of secondary office.</label></li>
-												<li><label><input type="checkbox" name="module_access[42]" <?php if(array_key_exists('42',  $module_access)) { echo "checked"; } ?> class="applications"> Can view commission in product fees and payment schedule of application.</label></li>
-												<li><label><input type="checkbox" name="module_access[43]" <?php if(array_key_exists('43',  $module_access)) { echo "checked"; } ?> class="applications"> Can edit commission in product fees and payment schedule of application.</label></li>
 									{{-- Removed legacy sales forecast permissions (applications) --}}
+									{{-- Removed application fee permissions (module_access[42], [43]) - fee options feature removed --}}
 											</ul>
 										</div>
 									</div>

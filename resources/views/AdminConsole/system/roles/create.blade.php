@@ -147,9 +147,6 @@
 												<li><label><input type="checkbox" name="module_access[24]" class="clients">  Can delete client.</label></li>
 												<li><label><input type="checkbox" name="module_access[25]" class="clients">  Can delete client's comments.</label></li>
 												<li><label><input type="checkbox" name="module_access[26]" class="clients">  Can delete client's interested services.</label></li>
-												<li><label><input type="checkbox" name="module_access[27]" class="clients">  Can view, edit and archive enquiries.</label></li>
-												<li><label><input type="checkbox" name="module_access[28]" class="clients">  Can view archived enquiries.</label></li>
-												<li><label><input type="checkbox" name="module_access[29]" class="clients">  Can restore archived enquiries.</label></li>
 											</ul>
 										</div>
 									</div>
@@ -189,9 +186,8 @@
 												<li><label><input type="checkbox" name="module_access[39]" class="applications"> Can delete a payment schedule.</label></li>
 												<li><label><input type="checkbox" name="module_access[40]" class="applications"> Can view/edit assigned and added application by the users of primary office.</label></li>
 												<li><label><input type="checkbox" name="module_access[41]" class="applications"> Can view/edit assigned and added application by the users of secondary office.</label></li>
-												<li><label><input type="checkbox" name="module_access[42]" class="applications"> Can view commission in product fees and payment schedule of application.</label></li>
-												<li><label><input type="checkbox" name="module_access[43]" class="applications"> Can edit commission in product fees and payment schedule of application.</label></li>
 									{{-- Removed legacy sales forecast permissions (applications) --}}
+									{{-- Removed application fee permissions (module_access[42], [43]) - fee options feature removed --}}
 											</ul>
 										</div>
 									</div>

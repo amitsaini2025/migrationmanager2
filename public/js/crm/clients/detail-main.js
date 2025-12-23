@@ -8823,31 +8823,21 @@ Bansal Immigration`;
 
 
 
+        // Old task modal removed - Task table/model no longer exists
+        /*
         $(document).delegate('.opentaskview', 'click', function(){
-
             $('#opentaskview').modal('show');
-
             var v = $(this).attr('id');
-
             $.ajax({
-
                 url: site_url+'/get-task-detail',
-
                 type:'GET',
-
                 data:{task_id:v},
-
                 success: function(responses){
-
-
-
                     $('.taskview').html(responses);
-
                 }
-
             });
-
         });
+        */
         function getallnotes(){
 
             $.ajax({
@@ -9952,33 +9942,22 @@ Bansal Immigration`;
 
 
 
+        // Old task modal removed - Task table/model no longer exists
+        /*
         $(document).delegate('.opentaskmodal', 'click', function(){
-
             $('#opentaskmodal').modal('show');
-
             $('#opentaskmodal input[name="mailid"]').val(0);
-
             $('#opentaskmodal input[name="title"]').val('');
-
             $('#opentaskmodal #appliationModalLabel').html('Create Note');
-
             $('#opentaskmodal input[name="attachments"]').val('');
-
             $('#opentaskmodal input[name="title"]').val('');
-
             $('#opentaskmodal .showattachment').val('Choose file');
-
-
-
             var datasubject = $(this).attr('datasubject');
-
             var datamailid = $(this).attr('datamailid');
-
             $('#opentaskmodal input[name="title"]').val(datasubject);
-
             $('#opentaskmodal input[name="mailid"]').val(datamailid);
-
         });
+        */
 
 
 

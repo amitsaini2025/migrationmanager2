@@ -118,14 +118,14 @@
 				</thead>
 				<tbody>
 					<?php
-					$applicationlists = \App\Models\ApplicationActivitiesLog::where('app_id', $applications->id)->where('stage','Application')->orderby('created_at', 'DESC')->get();
+					$applicationlists = \App\Models\ActivitiesLog::where('client_id', $applications->client_id)->where('use_for','application')->where('subject', 'like', '%Stage: Application%')->orderby('created_at', 'DESC')->get();
 					foreach($applicationlists as $applicationlist){ 
-					$admin = \App\Models\Admin::where('id',$applicationlist->user_id)->first();
+					$admin = \App\Models\Admin::where('id',$applicationlist->created_by)->first();
 					?>
 						<tr style="font-size:12px;line-height:18px;margin-top:50px;">
 							<td colspan="5">
-							<b ><?php if (strpos($applicationlist->comment, 'moved the stage') !== false) { ?>Application Stage Moved <?php }else if (strpos($applicationlist->comment, 'sent an email') !== false) { echo 'Application Mail sent'; }else if (strpos($applicationlist->comment, 'added a note') !== false) { echo 'Application Note added'; } ?></b><br>
-							<span >{{$admin->first_name}} {!! $applicationlist->comment !!}</span></span></td>
+							<b ><?php if (strpos($applicationlist->description, 'moved the stage') !== false) { ?>Application Stage Moved <?php }else if (strpos($applicationlist->description, 'sent an email') !== false) { echo 'Application Mail sent'; }else if (strpos($applicationlist->description, 'added a note') !== false) { echo 'Application Note added'; } ?></b><br>
+							<span >{{$admin->first_name}} {!! $applicationlist->description !!}</span></span></td>
 						</tr>
 					<?php } ?>
 				</tbody>
@@ -143,14 +143,14 @@
 				</thead>
 				<tbody>
 					<?php
-					$applicationlists = \App\Models\ApplicationActivitiesLog::where('app_id', $applications->id)->where('stage','Acceptance')->orderby('created_at', 'DESC')->get();
+					$applicationlists = \App\Models\ActivitiesLog::where('client_id', $applications->client_id)->where('use_for','application')->where('subject', 'like', '%Stage: Acceptance%')->orderby('created_at', 'DESC')->get();
 					foreach($applicationlists as $applicationlist){ 
-					$admin = \App\Models\Admin::where('id',$applicationlist->user_id)->first();
+					$admin = \App\Models\Admin::where('id',$applicationlist->created_by)->first();
 					?>
 						<tr style="font-size:12px;line-height:18px;margin-top:50px;">
 							<td colspan="5">
-							<b ><?php if (strpos($applicationlist->comment, 'moved the stage') !== false) { ?>Application Stage Moved <?php }else if (strpos($applicationlist->comment, 'sent an email') !== false) { echo 'Application Mail sent'; }else if (strpos($applicationlist->comment, 'added a note') !== false) { echo 'Application Note added'; } ?></b><br>
-							<span >{{$admin->first_name}} {!! $applicationlist->comment !!}</span></span></td>
+							<b ><?php if (strpos($applicationlist->description, 'moved the stage') !== false) { ?>Application Stage Moved <?php }else if (strpos($applicationlist->description, 'sent an email') !== false) { echo 'Application Mail sent'; }else if (strpos($applicationlist->description, 'added a note') !== false) { echo 'Application Note added'; } ?></b><br>
+							<span >{{$admin->first_name}} {!! $applicationlist->description !!}</span></span></td>
 						</tr>
 					<?php } ?>
 				</tbody>
@@ -169,14 +169,14 @@
 				</thead>
 				<tbody>
 					<?php
-					$applicationlists = \App\Models\ApplicationActivitiesLog::where('app_id', $applications->id)->where('stage','Payment')->orderby('created_at', 'DESC')->get();
+					$applicationlists = \App\Models\ActivitiesLog::where('client_id', $applications->client_id)->where('use_for','application')->where('subject', 'like', '%Stage: Payment%')->orderby('created_at', 'DESC')->get();
 					foreach($applicationlists as $applicationlist){ 
-					$admin = \App\Models\Admin::where('id',$applicationlist->user_id)->first();
+					$admin = \App\Models\Admin::where('id',$applicationlist->created_by)->first();
 					?>
 						<tr style="font-size:12px;line-height:18px;margin-top:50px;">
 							<td colspan="5">
-							<b ><?php if (strpos($applicationlist->comment, 'moved the stage') !== false) { ?>Application Stage Moved <?php }else if (strpos($applicationlist->comment, 'sent an email') !== false) { echo 'Application Mail sent'; }else if (strpos($applicationlist->comment, 'added a note') !== false) { echo 'Application Note added'; } ?></b><br>
-							<span >{{$admin->first_name}} {!! $applicationlist->comment !!}</span></span></td>
+							<b ><?php if (strpos($applicationlist->description, 'moved the stage') !== false) { ?>Application Stage Moved <?php }else if (strpos($applicationlist->description, 'sent an email') !== false) { echo 'Application Mail sent'; }else if (strpos($applicationlist->description, 'added a note') !== false) { echo 'Application Note added'; } ?></b><br>
+							<span >{{$admin->first_name}} {!! $applicationlist->description !!}</span></span></td>
 						</tr>
 					<?php } ?>
 				</tbody>
@@ -194,14 +194,14 @@
 				</thead>
 				<tbody>
 					<?php
-					$applicationlists = \App\Models\ApplicationActivitiesLog::where('app_id', $applications->id)->where('stage','Form I 20')->orderby('created_at', 'DESC')->get();
+					$applicationlists = \App\Models\ActivitiesLog::where('client_id', $applications->client_id)->where('use_for','application')->where('subject', 'like', '%Stage: Form I 20%')->orderby('created_at', 'DESC')->get();
 					foreach($applicationlists as $applicationlist){ 
-					$admin = \App\Models\Admin::where('id',$applicationlist->user_id)->first();
+					$admin = \App\Models\Admin::where('id',$applicationlist->created_by)->first();
 					?>
 						<tr style="font-size:12px;line-height:18px;margin-top:50px;">
 							<td colspan="5">
-							<b ><?php if (strpos($applicationlist->comment, 'moved the stage') !== false) { ?>Application Stage Moved <?php }else if (strpos($applicationlist->comment, 'sent an email') !== false) { echo 'Application Mail sent'; }else if (strpos($applicationlist->comment, 'added a note') !== false) { echo 'Application Note added'; } ?></b><br>
-							<span >{{$admin->first_name}} {!! $applicationlist->comment !!}</span></span></td>
+							<b ><?php if (strpos($applicationlist->description, 'moved the stage') !== false) { ?>Application Stage Moved <?php }else if (strpos($applicationlist->description, 'sent an email') !== false) { echo 'Application Mail sent'; }else if (strpos($applicationlist->description, 'added a note') !== false) { echo 'Application Note added'; } ?></b><br>
+							<span >{{$admin->first_name}} {!! $applicationlist->description !!}</span></span></td>
 						</tr>
 					<?php } ?>
 				</tbody>
@@ -219,14 +219,14 @@
 				</thead>
 				<tbody>
 					<?php
-					$applicationlists = \App\Models\ApplicationActivitiesLog::where('app_id', $applications->id)->where('stage','Visa Application')->orderby('created_at', 'DESC')->get();
+					$applicationlists = \App\Models\ActivitiesLog::where('client_id', $applications->client_id)->where('use_for','application')->where('subject', 'like', '%Stage: Visa Application%')->orderby('created_at', 'DESC')->get();
 					foreach($applicationlists as $applicationlist){ 
-					$admin = \App\Models\Admin::where('id',$applicationlist->user_id)->first();
+					$admin = \App\Models\Admin::where('id',$applicationlist->created_by)->first();
 					?>
 						<tr style="font-size:12px;line-height:18px;margin-top:50px;">
 							<td colspan="5">
-							<b ><?php if (strpos($applicationlist->comment, 'moved the stage') !== false) { ?>Application Stage Moved <?php }else if (strpos($applicationlist->comment, 'sent an email') !== false) { echo 'Application Mail sent'; }else if (strpos($applicationlist->comment, 'added a note') !== false) { echo 'Application Note added'; } ?></b><br>
-							<span >{{$admin->first_name}} {!! $applicationlist->comment !!}</span></span></td>
+							<b ><?php if (strpos($applicationlist->description, 'moved the stage') !== false) { ?>Application Stage Moved <?php }else if (strpos($applicationlist->description, 'sent an email') !== false) { echo 'Application Mail sent'; }else if (strpos($applicationlist->description, 'added a note') !== false) { echo 'Application Note added'; } ?></b><br>
+							<span >{{$admin->first_name}} {!! $applicationlist->description !!}</span></span></td>
 						</tr>
 					<?php } ?>
 				</tbody>
@@ -244,14 +244,14 @@
 				</thead>
 				<tbody>
 					<?php
-					$applicationlists = \App\Models\ApplicationActivitiesLog::where('app_id', $applications->id)->where('stage','Interview')->orderby('created_at', 'DESC')->get();
+					$applicationlists = \App\Models\ActivitiesLog::where('client_id', $applications->client_id)->where('use_for','application')->where('subject', 'like', '%Stage: Interview%')->orderby('created_at', 'DESC')->get();
 					foreach($applicationlists as $applicationlist){ 
-					$admin = \App\Models\Admin::where('id',$applicationlist->user_id)->first();
+					$admin = \App\Models\Admin::where('id',$applicationlist->created_by)->first();
 					?>
 						<tr style="font-size:12px;line-height:18px;margin-top:50px;">
 							<td colspan="5">
-							<b ><?php if (strpos($applicationlist->comment, 'moved the stage') !== false) { ?>Application Stage Moved <?php }else if (strpos($applicationlist->comment, 'sent an email') !== false) { echo 'Application Mail sent'; }else if (strpos($applicationlist->comment, 'added a note') !== false) { echo 'Application Note added'; } ?></b><br>
-							<span >{{$admin->first_name}} {!! $applicationlist->comment !!}</span></span></td>
+							<b ><?php if (strpos($applicationlist->description, 'moved the stage') !== false) { ?>Application Stage Moved <?php }else if (strpos($applicationlist->description, 'sent an email') !== false) { echo 'Application Mail sent'; }else if (strpos($applicationlist->description, 'added a note') !== false) { echo 'Application Note added'; } ?></b><br>
+							<span >{{$admin->first_name}} {!! $applicationlist->description !!}</span></span></td>
 						</tr>
 					<?php } ?>
 				</tbody>
@@ -269,14 +269,14 @@
 				</thead>
 				<tbody>
 					<?php
-					$applicationlists = \App\Models\ApplicationActivitiesLog::where('app_id', $applications->id)->where('stage','Enrolment')->orderby('created_at', 'DESC')->get();
+					$applicationlists = \App\Models\ActivitiesLog::where('client_id', $applications->client_id)->where('use_for','application')->where('subject', 'like', '%Stage: Enrolment%')->orderby('created_at', 'DESC')->get();
 					foreach($applicationlists as $applicationlist){ 
-					$admin = \App\Models\Admin::where('id',$applicationlist->user_id)->first();
+					$admin = \App\Models\Admin::where('id',$applicationlist->created_by)->first();
 					?>
 						<tr style="font-size:12px;line-height:18px;margin-top:50px;">
 							<td colspan="5">
-							<b ><?php if (strpos($applicationlist->comment, 'moved the stage') !== false) { ?>Application Stage Moved <?php }else if (strpos($applicationlist->comment, 'sent an email') !== false) { echo 'Application Mail sent'; }else if (strpos($applicationlist->comment, 'added a note') !== false) { echo 'Application Note added'; } ?></b><br>
-							<span >{{$admin->first_name}} {!! $applicationlist->comment !!}</span></span></td>
+							<b ><?php if (strpos($applicationlist->description, 'moved the stage') !== false) { ?>Application Stage Moved <?php }else if (strpos($applicationlist->description, 'sent an email') !== false) { echo 'Application Mail sent'; }else if (strpos($applicationlist->description, 'added a note') !== false) { echo 'Application Note added'; } ?></b><br>
+							<span >{{$admin->first_name}} {!! $applicationlist->description !!}</span></span></td>
 						</tr>
 					<?php } ?>
 				</tbody>
@@ -294,14 +294,14 @@
 				</thead>
 				<tbody>
 					<?php
-					$applicationlists = \App\Models\ApplicationActivitiesLog::where('app_id', $applications->id)->where('stage','Course Ongoing')->orderby('created_at', 'DESC')->get();
+					$applicationlists = \App\Models\ActivitiesLog::where('client_id', $applications->client_id)->where('use_for','application')->where('subject', 'like', '%Stage: Course Ongoing%')->orderby('created_at', 'DESC')->get();
 					foreach($applicationlists as $applicationlist){ 
-					$admin = \App\Models\Admin::where('id',$applicationlist->user_id)->first();
+					$admin = \App\Models\Admin::where('id',$applicationlist->created_by)->first();
 					?>
 						<tr style="font-size:12px;line-height:18px;margin-top:50px;">
 							<td colspan="5">
-							<b ><?php if (strpos($applicationlist->comment, 'moved the stage') !== false) { ?>Application Stage Moved <?php }else if (strpos($applicationlist->comment, 'sent an email') !== false) { echo 'Application Mail sent'; }else if (strpos($applicationlist->comment, 'added a note') !== false) { echo 'Application Note added'; } ?></b><br>
-							<span >{{$admin->first_name}} {!! $applicationlist->comment !!}</span></span></td>
+							<b ><?php if (strpos($applicationlist->description, 'moved the stage') !== false) { ?>Application Stage Moved <?php }else if (strpos($applicationlist->description, 'sent an email') !== false) { echo 'Application Mail sent'; }else if (strpos($applicationlist->description, 'added a note') !== false) { echo 'Application Note added'; } ?></b><br>
+							<span >{{$admin->first_name}} {!! $applicationlist->description !!}</span></span></td>
 						</tr>
 					<?php } ?>
 				</tbody>

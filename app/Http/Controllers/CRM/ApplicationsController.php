@@ -13,8 +13,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 use App\Models\Admin;
 use App\Models\Application;
-use App\Models\ApplicationFeeOptionType;
-use App\Models\ApplicationFeeOption;
+use App\Models\ActivitiesLog;
    use PDF;
 use Illuminate\Support\Str;
 use Auth;
@@ -192,12 +191,13 @@ class ApplicationsController extends Controller
 		$fetchData->progresswidth = $width;
 		$saved = $fetchData->save();
 		if($saved){
-			$obj = new \App\Models\ApplicationActivitiesLog;
-			$obj->stage = $workflowstage->name;
-			$obj->comment = @$comments;
-			$obj->app_id = $request->id;
-			$obj->type = 'stage';
-			$obj->user_id = Auth::user()->id;
+			$obj = new ActivitiesLog;
+			$obj->client_id = $fetchData->client_id;
+			$obj->created_by = Auth::user()->id;
+			$obj->subject = 'Stage: ' . $workflowstage->name;
+			$obj->description = @$comments;
+			$obj->activity_type = 'stage';
+			$obj->use_for = 'application';
 			$saved = $obj->save();
 			$displayback = false;
 			$workflowstage = \App\Models\WorkflowStage::where('w_id', $fetchData->workflow)->orderBy('id','desc')->first();
@@ -240,12 +240,13 @@ class ApplicationsController extends Controller
 			$saved = $fetchData->save();
 			if($saved){
 
-				$obj = new \App\Models\ApplicationActivitiesLog;
-				$obj->stage = $workflowstage->stage;
-				$obj->type = 'stage';
-				$obj->comment = $comments;
-				$obj->app_id = $request->id;
-				$obj->user_id = Auth::user()->id;
+				$obj = new ActivitiesLog;
+				$obj->client_id = $fetchData->client_id;
+				$obj->created_by = Auth::user()->id;
+				$obj->subject = 'Stage: ' . $workflowstage->stage;
+				$obj->description = $comments;
+				$obj->activity_type = 'stage';
+				$obj->use_for = 'application';
 				$saved = $obj->save();
 
 				$displayback = false;
@@ -310,23 +311,26 @@ class ApplicationsController extends Controller
 								</div>
 							</div>
 							<?php
-							$applicationlists = \App\Models\ApplicationActivitiesLog::where('app_id', $fetchData->id)->where('stage',$stages->name)->orderby('created_at', 'DESC')->get();
+							$applicationlists = \App\Models\ActivitiesLog::where('client_id', $fetchData->client_id)
+								->where('use_for', 'application')
+								->where('subject', 'like', '%Stage: ' . $stages->name . '%')
+								->orderby('created_at', 'DESC')->get();
 
 							?>
 							<div class="accordion-body collapse" id="<?php echo $stagname; ?>_accor" data-parent="#accordion" style="">
 								<div class="activity_list">
 								<?php foreach($applicationlists as $applicationlist){
-								$admin = \App\Models\Admin::where('id',$applicationlist->user_id)->first();
+								$admin = \App\Models\Admin::where('id',$applicationlist->created_by)->first();
 								?>
 									<div class="activity_col">
 										<div class="activity_txt_time">
-											<span class="span_txt"><b><?php echo $admin->first_name; ?></b> <?php echo $applicationlist->comment; ?></span>
+											<span class="span_txt"><b><?php echo $admin->first_name; ?></b> <?php echo $applicationlist->description; ?></span>
 											<span class="span_time"><?php echo date('d D, M Y h:i A', strtotime($applicationlist->created_at)); ?></span>
 										</div>
-										<?php if($applicationlist->title != ''){ ?>
+										<?php if($applicationlist->subject != ''){ ?>
 										<div class="app_description">
 											<div class="app_card">
-												<div class="app_title"><?php echo $applicationlist->title; ?></div>
+												<div class="app_title"><?php echo $applicationlist->subject; ?></div>
 											</div>
 											<?php if($applicationlist->description != ''){ ?>
 											<div class="log_desc">
@@ -347,16 +351,15 @@ class ApplicationsController extends Controller
 	public function addNote(Request $request){
 		$noteid =  $request->noteid;
 		$type =  $request->type;
+		$application = Application::find($noteid);
 
-		$obj = new \App\Models\ApplicationActivitiesLog;
-			$obj->stage = $type;
-			$obj->type = 'note';
-			$obj->comment = 'added a note';
-			$obj->title = $request->title;
-			$obj->description = $request->description;
-			$obj->app_id = $noteid;
-			$obj->user_id = Auth::user()->id;
-			$saved = $obj->save();
+		$obj = new ActivitiesLog;
+		$obj->client_id = $application ? $application->client_id : null;
+		$obj->created_by = Auth::user()->id;
+		$obj->subject = $request->title;
+		$obj->description = $request->description;
+		$obj->activity_type = 'note';
+		$obj->use_for = 'application';
 		$saved = $obj->save();
 		if($saved){
 			$response['status'] 	= 	true;
@@ -370,19 +373,23 @@ class ApplicationsController extends Controller
 
 	public function getapplicationnotes(Request $request){
 		$noteid =  $request->id;
+		$application = Application::find($noteid);
 
-		$lists = \App\Models\ApplicationActivitiesLog::where('type','note')->where('app_id',$noteid)->orderby('created_at', 'DESC')->get();
+		$lists = ActivitiesLog::where('activity_type','note')
+			->where('use_for','application')
+			->where('client_id', $application ? $application->client_id : null)
+			->orderby('created_at', 'DESC')->get();
 
 		ob_start();
 			?>
 			<div class="note_term_list">
 				<?php
 				foreach($lists as $list){
-					$admin = \App\Models\Admin::where('id', $list->user_id)->first();
+					$admin = \App\Models\Admin::where('id', $list->created_by)->first();
 				?>
 					<div class="note_col" id="note_id_<?php echo $list->id; ?>">
 						<div class="note_content">
-						<h4><a class="viewapplicationnote" data-id="<?php echo $list->id; ?>" href="javascript:;"><?php echo @$list->title == "" ? config('constants.empty') : Str::limit(@$list->title, 19, '...'); ?></a></h4>
+						<h4><a class="viewapplicationnote" data-id="<?php echo $list->id; ?>" href="javascript:;"><?php echo @$list->subject == "" ? config('constants.empty') : Str::limit(@$list->subject, 19, '...'); ?></a></h4>
 						<p><?php echo @$list->description == "" ? config('constants.empty') : Str::limit(@$list->description, 15, '...'); ?></p>
 						</div>
 						<div class="extra_content">
@@ -430,14 +437,14 @@ class ApplicationsController extends Controller
 			}
 				$sent = $this->send_compose_template($message, 'digitrex', $to, $subject, 'support@digitrex.live', $array, @$ccarray);
 			if($sent){
-				$objs = new \App\Models\ApplicationActivitiesLog;
-				$objs->stage = $request->type;
-				$objs->type = 'appointment';
-				$objs->comment = 'sent an email';
-				$objs->title = '<b>Subject : '.$subject.'</b>';
+				$application = Application::find($request->noteid);
+				$objs = new ActivitiesLog;
+				$objs->client_id = $application ? $application->client_id : null;
+				$objs->created_by = Auth::user()->id;
+				$objs->subject = '<b>Subject : '.$subject.'</b>';
 				$objs->description = '<b>To: '.$to.'</b></br>'.$message;
-				$objs->app_id = $request->noteid;
-				$objs->user_id = Auth::user()->id;
+				$objs->activity_type = 'email';
+				$objs->use_for = 'application';
 				$saved = $objs->save();
 				$response['status'] 	= 	true;
 				$response['message']	=	'Email Sent Successfully';
@@ -748,88 +755,12 @@ class ApplicationsController extends Controller
 
 
 	public function applicationsavefee(Request $request){
-		$requestData = $request->all();
-		if(ApplicationFeeOption::where('app_id', $request->id)->exists()){
-			$o = ApplicationFeeOption::where('app_id', $request->id)->first();
-			$obj = ApplicationFeeOption::find($o->id);
-			$obj->user_id = Auth::user()->id;
-			$obj->app_id = $request->id;
-			$obj->name = $requestData['fee_option_name'];
-			$obj->country = $requestData['country_residency'];
-			$obj->installment_type = $requestData['degree_level'];
-			$obj->discount_amount = $requestData['discount_amount'];
-			$obj->discount_sem = $requestData['discount_sem'];
-			$obj->total_discount = $requestData['total_discount'];
-			$saved = $obj->save();
-			if($saved){
-				ApplicationFeeOptionType::where('fee_id', $obj->id)->delete();
-				$course_fee_type = $requestData['course_fee_type'];
-				$totl = 0;
-				for($i = 0; $i< count($course_fee_type); $i++){
-					$totl += $requestData['total_fee'][$i];
-					$objs = new ApplicationFeeOptionType;
-					$objs->fee_id = $obj->id;
-					$objs->fee_type = $requestData['course_fee_type'][$i];
-					$objs->inst_amt = $requestData['semester_amount'][$i];
-					$objs->installment = $requestData['no_semester'][$i];
-					$objs->total_fee = $requestData['total_fee'][$i];
-					$objs->claim_term = $requestData['claimable_semester'][$i];
-					$objs->commission = $requestData['commission'][$i];
-
-					$saved = $objs->save();
-
-				}
-				$discount = 0.00;
-				if(@$obj->total_discount != ''){
-				$discount = @$obj->total_discount;
-				}
-				$response['status'] 	= 	true;
-					$response['message']	=	'Fee Option added successfully';
-					$response['totalfee']	=	$totl;
-					$response['discount']	=	$discount;
-			}else{
-				$response['status'] 	= 	false;
-				$response['message']	=	'Record not found';
-			}
-		}else{
-			$obj = new ApplicationFeeOption;
-			$obj->user_id = Auth::user()->id;
-			$obj->app_id = $request->id;
-			$obj->name = $requestData['fee_option_name'];
-			$obj->country = $requestData['country_residency'];
-			$obj->installment_type = $requestData['degree_level'];
-			$saved = $obj->save();
-			if($saved){
-				$course_fee_type = $requestData['course_fee_type'];
-				$totl = 0;
-				for($i = 0; $i< count($course_fee_type); $i++){
-					$totl += $requestData['total_fee'][$i];
-					$objs = new ApplicationFeeOptionType;
-					$objs->fee_id = $obj->id;
-					$objs->fee_type = $requestData['course_fee_type'][$i];
-					$objs->inst_amt = $requestData['semester_amount'][$i];
-					$objs->installment = $requestData['no_semester'][$i];
-					$objs->total_fee = $requestData['total_fee'][$i];
-					$objs->claim_term = $requestData['claimable_semester'][$i];
-					$objs->commission = $requestData['commission'][$i];
-
-					$saved = $objs->save();
-
-				}
-				$discount = 0.00;
-				if(@$obj->total_discount != ''){
-				$discount = @$obj->total_discount;
-				}
-				$response['status'] 	= 	true;
-					$response['message']	=	'Fee Option added successfully';
-					$response['totalfee']	=	$totl;
-					$response['discount']	=	$discount;
-			}else{
-				$response['status'] 	= 	false;
-				$response['message']	=	'Record not found';
-			}
-		}
-		echo json_encode($response);
+		// Fee options functionality has been removed
+		$response = [
+			'status' => false,
+			'message' => 'Application fee options feature has been removed.'
+		];
+		return response()->json($response);
 	}
 
 	public function exportapplicationpdf(Request $request, $id){

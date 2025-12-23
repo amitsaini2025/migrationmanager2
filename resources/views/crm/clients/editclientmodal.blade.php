@@ -112,7 +112,59 @@
 			</div>
 			<div class="modal-body">
 			<?php
-				$testscores = \App\Models\TestScore::where('client_id', $fetchedData->id)->where('type', 'client')->first();
+				// Fetch test scores using the new ClientTestScore model (old test_scores table was removed)
+				// Map multiple test score records to the old form structure
+				$testScoresCollection = \App\Models\ClientTestScore::where('client_id', $fetchedData->id)->get();
+				
+				// Create a compatibility object to match the old form structure
+				$testscores = new stdClass();
+				$testscores->toefl_Listening = '';
+				$testscores->toefl_Reading = '';
+				$testscores->toefl_Writing = '';
+				$testscores->toefl_Speaking = '';
+				$testscores->score_1 = '';
+				$testscores->toefl_Date = '';
+				$testscores->ilets_Listening = '';
+				$testscores->ilets_Reading = '';
+				$testscores->ilets_Writing = '';
+				$testscores->ilets_Speaking = '';
+				$testscores->score_2 = '';
+				$testscores->ilets_Date = '';
+				$testscores->pte_Listening = '';
+				$testscores->pte_Reading = '';
+				$testscores->pte_Writing = '';
+				$testscores->pte_Speaking = '';
+				$testscores->score_3 = '';
+				$testscores->pte_Date = '';
+				
+				// Map test scores by type (get the most recent one for each type)
+				foreach ($testScoresCollection as $score) {
+					$testType = strtoupper($score->test_type ?? '');
+					$testDate = $score->test_date ? date('d/m/Y', strtotime($score->test_date)) : '';
+					
+					if (stripos($testType, 'TOEFL') !== false) {
+						$testscores->toefl_Listening = $score->listening ?? '';
+						$testscores->toefl_Reading = $score->reading ?? '';
+						$testscores->toefl_Writing = $score->writing ?? '';
+						$testscores->toefl_Speaking = $score->speaking ?? '';
+						$testscores->score_1 = $score->overall_score ?? '';
+						$testscores->toefl_Date = $testDate;
+					} elseif (stripos($testType, 'IELTS') !== false) {
+						$testscores->ilets_Listening = $score->listening ?? '';
+						$testscores->ilets_Reading = $score->reading ?? '';
+						$testscores->ilets_Writing = $score->writing ?? '';
+						$testscores->ilets_Speaking = $score->speaking ?? '';
+						$testscores->score_2 = $score->overall_score ?? '';
+						$testscores->ilets_Date = $testDate;
+					} elseif (stripos($testType, 'PTE') !== false) {
+						$testscores->pte_Listening = $score->listening ?? '';
+						$testscores->pte_Reading = $score->reading ?? '';
+						$testscores->pte_Writing = $score->writing ?? '';
+						$testscores->pte_Speaking = $score->speaking ?? '';
+						$testscores->score_3 = $score->overall_score ?? '';
+						$testscores->pte_Date = $testDate;
+					}
+				}
 				?>
 				<form method="post" action="{{URL::to('/edit-test-scores')}}" name="testscoreform" autocomplete="off" id="testscoreform" enctype="multipart/form-data">
 				@csrf 

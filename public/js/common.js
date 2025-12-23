@@ -202,16 +202,6 @@ admin3=new Array
 ,"Payment Details","/affiliatepage.php",0,"",""
 )
 
-admin4=new Array
-(
-"Check Enquiries (QC)","/checkleads.php",0,"",""
-,"Check Junk Enquiries (QC)","/junk.php",0,"",""
-,"Edit Enquiries (QC)","/editlead.php",0,"",""
-,"Add Enquiries (QC)","/addlead.php",0,"",""
-,"Unlock Enquiries (QC)","/lockedleads_qc.php",0,"",""
-
-)
-
 admin5=new Array
 (
 "Website Master","/website.php",0,"",""

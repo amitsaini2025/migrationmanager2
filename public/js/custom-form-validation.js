@@ -369,46 +369,7 @@ function customValidate(formName, savetype = '')
 							}
 						});
 					}
-					else if(formName == 'taskform'){
-						var client_id = $('#tasktermform input[name="client_id"]').val();
-						var myform = document.getElementById('tasktermform');
-						var fd = new FormData(myform);
-						$.ajax({
-							type:'post',
-							url:$("form[name="+formName+"]").attr('action'),
-							processData: false,
-							contentType: false,
-							data: fd,
-							success: function(response){
-								$('.popuploader').hide();
-								var obj = $.parseJSON(response);
-								$('#opentaskmodal').modal('hide');
-								if(obj.status){
-									$('#create_note').modal('hide');
-									$('.custom-error-msg').html('<span class="alert alert-success">'+obj.message+'</span>');
-									$.ajax({
-										url: site_url+'/get-tasks',
-										type:'GET',
-										data:{clientid:client_id},
-										success: function(responses){
-											// $('#my-datatable').DataTable().destroy();
-											$('.taskdata').html(responses);
-											$('#my-datatable').DataTable({
-												"searching": false,
-												"lengthChange": false,
-												"columnDefs": [
-													{ "sortable": false, "targets": [0, 2, 3] }
-												],
-												order: [[1, "desc"]] //column indexes is zero based
-											}).draw();
-										}
-									});
-								}else{
-									$('.custom-error-msg').html('<span class="alert alert-danger">'+obj.message+'</span>');
-								}
-							}
-						});
-					}
+					// Old taskform removed - Task table/model no longer exists
                     else if(formName == 'mig_upload_form'){
 						var client_id = $('#mig_upload_form input[name="clientid"]').val();
                         var folder_name = $('#mig_upload_form input[name="folder_name"]').val();
@@ -1442,30 +1403,9 @@ function customValidate(formName, savetype = '')
 								}
 							}
 						});
+					// Application fee form has been removed
 					}else if(formName == 'applicationfeeform'){
-
-						var myform = document.getElementById('applicationfeeform');
-						var fd = new FormData(myform);
-						$.ajax({
-							type:'post',
-							url:$("form[name="+formName+"]").attr('action'),
-							processData: false,
-							contentType: false,
-							data: fd,
-							success: function(response){
-								$('.popuploader').hide();
-									$('#new_fee_option').modal('hide');
-								var obj = $.parseJSON(response);
-
-								if(obj.status){
-
-								$('.custom-error-msg').html('<span class="alert alert-success">'+obj.message+'</span>');
-									$('.product_totalfee').html(obj.totalfee);
-									$('.product_discount').html(obj.discount);
-									var t = parseFloat(obj.totalfee) - parseFloat(obj.discount);
-									$('.product_net_fee').html(t);
-								}else{
-									$('.custom-error-msg').html('<span class="alert alert-danger">'+obj.message+'</span>');
+						$('.custom-error-msg').html('<span class="alert alert-danger">Application fee options feature has been removed.</span>');
 
 								}
 							}

@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Admin;
 use App\Models\Note;
 use App\Models\ActivitiesLog;
-use App\Models\ApplicationActivitiesLog;
 use App\Models\OnlineForm;
 use App\Models\ClientMatter;
 use App\Traits\LogsClientActivity;
@@ -323,8 +322,8 @@ class ClientNotesController extends Controller
     public function viewapplicationnote(Request $request)
     {
 		$note_id = $request->note_id;
-		if(ApplicationActivitiesLog::where('type','note')->where('id',$note_id)->exists()){
-			$data = ApplicationActivitiesLog::select('title','description','user_id','updated_at')->where('type','note')->where('id',$note_id)->first();
+		if(\App\Models\ActivitiesLog::where('activity_type','note')->where('use_for','application')->where('id',$note_id)->exists()){
+			$data = \App\Models\ActivitiesLog::select('subject as title','description','created_by as user_id','updated_at')->where('activity_type','note')->where('use_for','application')->where('id',$note_id)->first();
 			$admin = Admin::where('id', $data->user_id)->first();
 			$s = substr(@$admin->first_name, 0, 1);
 			$data->admin = $s;

@@ -814,20 +814,6 @@ class CRMUtilityController extends Controller
 								$message = config('constants.server_error');
 							}
 						}
-						else if($requestData['table'] == 'currencies'){
-                            $isexist	=	$recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
-                            if($isexist){
-                                $response	=	DB::table($requestData['table'])->where('id', @$requestData['id'])->delete();
-                                if($response) {
-                                    $status = 1;
-                                    $message = 'Record has been deleted successfully.';
-                                } else {
-                                    $message = config('constants.server_error');
-                                }
-                            }else{
-                                $message = 'ID does not exist, please check it once again.';
-                            }
-						}
                         else if($requestData['table'] == 'templates'){
                             $isexist	=	$recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
                             if($isexist){

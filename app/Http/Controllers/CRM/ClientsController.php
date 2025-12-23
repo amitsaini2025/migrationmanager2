@@ -4580,6 +4580,139 @@ class ClientsController extends Controller
         }
     }
 
+    /**
+     * Handle legacy test scores form submission (old format with band_score fields)
+     * Converts legacy format to new ClientTestScore structure
+     */
+    public function editTestScores(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+            $clientId = $requestData['client_id'] ?? null;
+            
+            if (!$clientId) {
+                return redirect()->back()->withErrors(['error' => 'Client ID is required'])->withInput();
+            }
+
+            // Verify client exists
+            $client = Admin::find($clientId);
+            if (!$client || $client->role != 7) {
+                return redirect()->back()->withErrors(['error' => 'Client not found'])->withInput();
+            }
+
+            // Delete existing TOEFL, IELTS, and PTE test scores for this client (only the ones handled by this legacy form)
+            ClientTestScore::where('client_id', $clientId)
+                ->whereIn('test_type', ['TOEFL', 'IELTS', 'PTE'])
+                ->delete();
+
+            // Process TOEFL scores
+            if (!empty($requestData['band_score_1_1']) || !empty($requestData['band_score_2_1']) || 
+                !empty($requestData['band_score_3_1']) || !empty($requestData['band_score_4_1']) || 
+                !empty($requestData['score_1'])) {
+                
+                $testDate = $requestData['band_score_5_1'] ?? null;
+                $formattedDate = null;
+                if (!empty($testDate)) {
+                    try {
+                        $dateObj = \Carbon\Carbon::createFromFormat('d/m/Y', $testDate);
+                        $formattedDate = $dateObj->format('Y-m-d');
+                    } catch (\Exception $e) {
+                        // Invalid date format, skip
+                    }
+                }
+
+                if (!empty($requestData['band_score_1_1']) || !empty($requestData['band_score_2_1']) || 
+                    !empty($requestData['band_score_3_1']) || !empty($requestData['band_score_4_1']) || 
+                    !empty($requestData['score_1'])) {
+                    ClientTestScore::create([
+                        'admin_id' => Auth::user()->id,
+                        'client_id' => $clientId,
+                        'test_type' => 'TOEFL',
+                        'listening' => $requestData['band_score_1_1'] ?? null,
+                        'reading' => $requestData['band_score_2_1'] ?? null,
+                        'writing' => $requestData['band_score_3_1'] ?? null,
+                        'speaking' => $requestData['band_score_4_1'] ?? null,
+                        'overall_score' => $requestData['score_1'] ?? null,
+                        'test_date' => $formattedDate,
+                        'relevant_test' => 1
+                    ]);
+                }
+            }
+
+            // Process IELTS scores
+            if (!empty($requestData['band_score_5_2']) || !empty($requestData['band_score_6_2']) || 
+                !empty($requestData['band_score_7_2']) || !empty($requestData['band_score_8_2']) || 
+                !empty($requestData['score_2'])) {
+                
+                $testDate = $requestData['band_score_6_1'] ?? null;
+                $formattedDate = null;
+                if (!empty($testDate)) {
+                    try {
+                        $dateObj = \Carbon\Carbon::createFromFormat('d/m/Y', $testDate);
+                        $formattedDate = $dateObj->format('Y-m-d');
+                    } catch (\Exception $e) {
+                        // Invalid date format, skip
+                    }
+                }
+
+                if (!empty($requestData['band_score_5_2']) || !empty($requestData['band_score_6_2']) || 
+                    !empty($requestData['band_score_7_2']) || !empty($requestData['band_score_8_2']) || 
+                    !empty($requestData['score_2'])) {
+                    ClientTestScore::create([
+                        'admin_id' => Auth::user()->id,
+                        'client_id' => $clientId,
+                        'test_type' => 'IELTS',
+                        'listening' => $requestData['band_score_5_2'] ?? null,
+                        'reading' => $requestData['band_score_6_2'] ?? null,
+                        'writing' => $requestData['band_score_7_2'] ?? null,
+                        'speaking' => $requestData['band_score_8_2'] ?? null,
+                        'overall_score' => $requestData['score_2'] ?? null,
+                        'test_date' => $formattedDate,
+                        'relevant_test' => 1
+                    ]);
+                }
+            }
+
+            // Process PTE scores
+            if (!empty($requestData['band_score_9_3']) || !empty($requestData['band_score_10_3']) || 
+                !empty($requestData['band_score_11_3']) || !empty($requestData['band_score_12_3']) || 
+                !empty($requestData['score_3'])) {
+                
+                $testDate = $requestData['band_score_7_1'] ?? null;
+                $formattedDate = null;
+                if (!empty($testDate)) {
+                    try {
+                        $dateObj = \Carbon\Carbon::createFromFormat('d/m/Y', $testDate);
+                        $formattedDate = $dateObj->format('Y-m-d');
+                    } catch (\Exception $e) {
+                        // Invalid date format, skip
+                    }
+                }
+
+                if (!empty($requestData['band_score_9_3']) || !empty($requestData['band_score_10_3']) || 
+                    !empty($requestData['band_score_11_3']) || !empty($requestData['band_score_12_3']) || 
+                    !empty($requestData['score_3'])) {
+                    ClientTestScore::create([
+                        'admin_id' => Auth::user()->id,
+                        'client_id' => $clientId,
+                        'test_type' => 'PTE',
+                        'listening' => $requestData['band_score_9_3'] ?? null,
+                        'reading' => $requestData['band_score_10_3'] ?? null,
+                        'writing' => $requestData['band_score_11_3'] ?? null,
+                        'speaking' => $requestData['band_score_12_3'] ?? null,
+                        'overall_score' => $requestData['score_3'] ?? null,
+                        'test_date' => $formattedDate,
+                        'relevant_test' => 1
+                    ]);
+                }
+            }
+
+            return redirect()->back()->with('success', 'Test scores updated successfully');
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => 'Error updating test scores: ' . $e->getMessage()])->withInput();
+        }
+    }
+
     public function detail(Request $request, $id = NULL, $id1 = NULL, $tab = NULL)
     {
 
@@ -6045,42 +6178,6 @@ class ClientsController extends Controller
                             'attachments' => $mailval->attachments,
                             'mail_type' => $mailval->mail_type,
                             'client_id' => $request->merge_into
-                        ]
-                    );
-                }
-            }
-
-            //Tasks
-            $tasks = DB::table('tasks')->where('client_id', $request->merge_from)->get(); //dd($tasks);
-            if(!empty($tasks)){
-                foreach($tasks as $taskkey=>$taskval){
-                    DB::table('tasks')->insert(
-                        [
-                            'title' => $taskval->user_id,
-                            'category' => $taskval->from_mail,
-                            'assignee' => $taskval->to_mail,
-                            'priority' => $taskval->cc,
-                            'due_date' => $taskval->template_id,
-                            'due_time' => $taskval->subject,
-                            'description' => $taskval->message,
-                            'related_to' => $taskval->created_at,
-                            'contact_name' => $taskval->updated_at,
-                            'partner_name' => $taskval->type,
-                            'client_name' => $taskval->reciept_id,
-                            'application' => $taskval->attachments,
-                            'stage' => $taskval->mail_type,
-                            'followers' => $taskval->mail_type,
-                            'attachments' => $taskval->mail_type,
-                            'created_at' => $taskval->mail_type,
-                            'updated_at' => $taskval->mail_type,
-                            'mailid' => $taskval->mail_type,
-                            'user_id' => $taskval->mail_type,
-                            'client_id' => $request->merge_into,
-                            'status' => $taskval->mail_type,
-                            'type' => $taskval->mail_type,
-                            'priority_no' => $taskval->mail_type,
-                            'is_archived' => $taskval->mail_type,
-                            'group_id' => $taskval->mail_type
                         ]
                     );
                 }

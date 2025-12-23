@@ -32,6 +32,7 @@ Route::post('/clients/store', [ClientsController::class, 'store'])->name('client
 Route::get('/clients/edit/{id}', [ClientsController::class, 'edit'])->name('clients.edit');
 Route::post('/clients/edit', [ClientsController::class, 'edit'])->name('clients.update');
 Route::post('/clients/save-section', [ClientPersonalDetailsController::class, 'saveSection'])->name('clients.saveSection');
+Route::post('/edit-test-scores', [ClientsController::class, 'editTestScores'])->name('clients.editTestScores');
 Route::get('/clients/partner-eoi-data/{partnerId}', [ClientPersonalDetailsController::class, 'getPartnerEoiData'])->name('clients.partnerEoiData');
 
 /*---------- Phone & Email Verification ----------*/

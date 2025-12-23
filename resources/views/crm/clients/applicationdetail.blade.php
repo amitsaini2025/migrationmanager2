@@ -201,23 +201,26 @@ $workflow = \App\Models\Workflow::where('id', $fetchData->workflow)->first();
 								</div>
 							</div>
 							<?php
-							$applicationlists = \App\Models\ApplicationActivitiesLog::where('app_id', $fetchData->id)->where('stage',$stages->name)->orderby('created_at', 'DESC')->get();
+							$applicationlists = \App\Models\ActivitiesLog::where('client_id', $fetchData->client_id)
+								->where('use_for', 'application')
+								->where('subject', 'like', '%Stage: ' . $stages->name . '%')
+								->orderby('created_at', 'DESC')->get();
 							
 							?>
 							<div class="accordion-body collapse" id="<?php echo $stagname; ?>_accor" data-parent="#accordion" style="">
 								<div class="activity_list">
 								<?php foreach($applicationlists as $applicationlist){ 
-								$admin = \App\Models\Admin::where('id',$applicationlist->user_id)->first();
+								$admin = \App\Models\Admin::where('id',$applicationlist->created_by)->first();
 								?>
 									<div class="activity_col">
 										<div class="activity_txt_time">
-											<span class="span_txt"><b>{{$admin->first_name}}</b> {!! $applicationlist->comment !!}</span>
+											<span class="span_txt"><b>{{$admin->first_name}}</b> {!! $applicationlist->description !!}</span>
 											<span class="span_time"><?php echo date('d D, M Y h:i A', strtotime($applicationlist->created_at)); ?></span>
 										</div>
-										<?php if($applicationlist->title != ''){ ?>
+										<?php if($applicationlist->subject != ''){ ?>
 										<div class="app_description"> 
 											<div class="app_card">
-												<div class="app_title"><?php echo $applicationlist->title; ?></div>
+												<div class="app_title"><?php echo $applicationlist->subject; ?></div>
 											</div>
 											<?php if($applicationlist->description != ''){ ?>
 											<div class="log_desc">
@@ -376,7 +379,7 @@ $workflow = \App\Models\Workflow::where('id', $fetchData->workflow)->first();
 							<div class="accordion-header collapsed active" role="button" data-toggle="collapse" data-target="#<?php echo $stagname; ?>_accor" aria-expanded="false">
 								<h4><?php echo $stages->name; ?></h4>
 								<div class="accord_hover">
-									<a title="Add Task" class="opentaskmodal" href="javascript:;"><i class="fa fa-suitcase"></i></a>
+									<!-- Old task modal removed - use actions system instead -->
 								</div>
 							</div>
 							<!--<div class="accordion-body collapse" id="application_accor" data-parent="#taskaccordion" style="">
@@ -551,22 +554,8 @@ $workflow = \App\Models\Workflow::where('id', $fetchData->workflow)->first();
 			<div class="divider"></div>
 			<div class="setup_payment_sche">
 				<?php
-			$appfeeoption = \App\Models\ApplicationFeeOption::where('app_id', $fetchData->id)->first(); //dd($appfeeoption);
-			$totl = 0.00;
-            $commission_tot = 0.00;
-			$discount = 0.00;
-			if($appfeeoption){
-				$appfeeoptiontype = \App\Models\ApplicationFeeOptionType::where('fee_id', $appfeeoption->id)->get();
-				foreach($appfeeoptiontype as $fee){
-					$totl += $fee->total_fee;
-                    $commission_tot += $fee->commission;
-				}
-			}
-	
-			if(@$appfeeoption->total_discount != ''){
-				$discount = @$appfeeoption->total_discount;
-			}
-			$net = $totl -  $discount;
+			// Application fee options have been removed
+			$appfeeoption = null;
 			$invoiceschedule = \App\Models\InvoiceSchedule::where('application_id', $fetchData->id)->first();
 			?>
 				<a style="<?php if($invoiceschedule){ echo 'display:none;'; } ?>" href="javascript:;" data-id="{{$fetchData->id}}"  class="btn btn-outline-primary openpaymentschedule"><i class="fa fa-plus"></i> Setup Payment Schedule</a>
@@ -585,45 +574,27 @@ $workflow = \App\Models\Workflow::where('id', $fetchData->workflow)->first();
 			
             <p class="clearfix">
 				<span class="float-left">Total Course Fee</span>
-				<span class="float-right text-muted total_course_fee_amount"> 
-                  <?php 
-				if( isset($appfeeoption['total_course_fee_amount']) &&  $appfeeoption['total_course_fee_amount'] != ''){
-				echo $appfeeoption['total_course_fee_amount'];
-			} else { echo "0.00";} ?></span>
+				<span class="float-right text-muted total_course_fee_amount">0.00</span>
 			</p>
           
              <p class="clearfix">
 				<span class="float-left">Scholarship Fee</span>
-				<span class="float-right text-muted scholarship_fee_amount">
-                 <?php
-				if( isset($appfeeoption['scholarship_fee_amount']) &&  $appfeeoption['scholarship_fee_amount'] != ''){
-					echo $appfeeoption['scholarship_fee_amount'];
-				} else { echo "0.00";} ?></span>
+				<span class="float-right text-muted scholarship_fee_amount">0.00</span>
 			</p>
 
             <p class="clearfix">
 				<span class="float-left">Enrolment Fee</span>
-				<span class="float-right text-muted enrolment_fee_amount"> 
-                 <?php 
-				if( isset($appfeeoption['enrolment_fee_amount']) &&  $appfeeoption['enrolment_fee_amount'] != ''){
-					echo $appfeeoption['enrolment_fee_amount'];
-				} else { echo "0.00";} ?></span>
+				<span class="float-right text-muted enrolment_fee_amount">0.00</span>
 			</p>
 
             <p class="clearfix">
 				<span class="float-left">Material fees</span>
-				<span class="float-right text-muted material_fees"><?php 
-				if( isset($appfeeoption['material_fees']) &&  $appfeeoption['material_fees'] != ''){
-					echo $appfeeoption['material_fees'];
-				} else { echo "0.00";} ?></span>
+				<span class="float-right text-muted material_fees">0.00</span>
 			</p>
 
             <p class="clearfix">
 				<span class="float-left">Tution Fee</span>
-				<span class="float-right text-muted tution_fees"><?php 
-				if( isset($appfeeoption['tution_fees']) &&  $appfeeoption['tution_fees'] != ''){
-					echo $appfeeoption['tution_fees'];
-				} else { echo "0.00";} ?></span>
+				<span class="float-right text-muted tution_fees">0.00</span>
 			</p>
 
             <div class="divider"></div>
@@ -651,10 +622,7 @@ $workflow = \App\Models\Workflow::where('id', $fetchData->workflow)->first();
 
             <p class="clearfix appsaleforcast">
 				<span class="float-left">Total Fee Paid</span>
-				<span class="float-right text-muted fee_reported_by_college"><?php 
-				if( isset($appfeeoption['fee_reported_by_college']) &&  $appfeeoption['fee_reported_by_college'] != ''){
-					echo $appfeeoption['fee_reported_by_college'];
-				} else { echo "0.00";} ?></span>
+				<span class="float-right text-muted fee_reported_by_college">0.00</span>
 			</p>
 
 			<div class="form-group">

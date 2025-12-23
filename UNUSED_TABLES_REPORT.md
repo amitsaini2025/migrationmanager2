@@ -1,9 +1,9 @@
 # Unused Database Tables Report
 
 ## Summary
-- **Total tables in database:** 136
+- **Total tables in database:** 120 (after dropping 16 unused tables)
 - **Used tables:** 110
-- **Potentially unused tables:** 26
+- **Potentially unused tables:** 10
 
 ## List of Potentially Unused Tables
 
@@ -13,34 +13,86 @@ The following tables appear to be unused based on analysis of:
 - Foreign key relationships
 - Migration files
 
-### Unused Tables:
+### Remaining Unused Tables (10 total):
 
 1. **admin_to_client_mapping** - No model or code references found
 2. **api_tokens** - No model or code references found
 3. **application_notes** - No model or code references found
 4. **attachments** - No model or code references found (Note: There's an `Attachment` model but it may use a different table)
-5. **blog_categories** - No model or code references found
-6. **blogs** - No model or code references found
-7. **client_married_details** - No model or code references found
-8. **client_ratings** - No model or code references found
-9. **cms_pages** - No model or code references found
-10. **contacts** - No model or code references found (Note: There's a `Contact` model but it may use a different table)
-11. **currencies** - No model or code references found
-12. **email_attachments** - No model or code references found
-13. **email_uploads** - No model or code references found
-14. **enquiries** - No model or code references found
-15. **enquiry_sources** - No model or code references found
-16. **lead_services** - No model or code references found
-17. **leads** - No model or code references found (Note: The `Lead` model uses the `admins` table instead)
-18. **our_offices** - No model or code references found
-19. **password_resets** - No model or code references found (Note: Laravel may use `password_reset_tokens` instead)
-20. **personal_access_tokens** - No model or code references found (Note: This might be used by Laravel Sanctum)
-21. **responsible_people** - No model or code references found
-22. **task_logs** - No model or code references found
-23. **tbl_paid_appointment_payment** - No model or code references found
-24. **theme_options** - No model or code references found
-25. **verified_numbers** - No model or code references found
-26. **why_chooseuses** - No model or code references found
+5. **email_attachments** - No model or code references found
+6. **email_uploads** - No model or code references found
+7. **personal_access_tokens** - No model or code references found (Note: This might be used by Laravel Sanctum for API authentication)
+8. **responsible_people** - No model or code references found
+9. **task_logs** - No model or code references found
+10. **tbl_paid_appointment_payment** - No model or code references found
+
+### Legacy/Deprecated Tables:
+
+11. **sliders** ⚠️ **LEGACY/DEPRECATED**
+   - **Status:** Legacy code from an incomplete feature / A planned feature that was never implemented / Deprecated functionality
+   - **Evidence:**
+     - Model exists (`app/Models/Slider.php`) but is never actually used in the codebase
+     - Imported in `HomeController` but no `Slider::` queries found
+     - No migration file found for this table
+     - No controller methods or views reference this table
+   - **Recommendation:** Can be safely removed as it appears to be leftover from an incomplete or deprecated feature
+
+12. **testimonials** ⚠️ **LEGACY/DEPRECATED**
+   - **Status:** Legacy code from an incomplete feature / A planned feature that was never implemented / Deprecated functionality
+   - **Evidence:**
+     - Model exists (`app/Models/Testimonial.php`) but is never actually used in the codebase
+     - Imported in `HomeController` but no `Testimonial::` queries found
+     - No controller methods or views reference this table
+   - **Recommendation:** Can be safely removed as it appears to be leftover from an incomplete or deprecated feature
+
+13. **our_services** ⚠️ **LEGACY/DEPRECATED**
+   - **Status:** Legacy code from an incomplete feature / A planned feature that was never implemented / Deprecated functionality
+   - **Evidence:**
+     - Model exists (`app/Models/OurService.php`) but is never actually used in the codebase
+     - Imported in `HomeController` but no `OurService::` queries found
+     - No controller methods or views reference this table
+   - **Recommendation:** Can be safely removed as it appears to be leftover from an incomplete or deprecated feature
+
+## Verified Tables (Confirmed as IN USE)
+
+The following tables were verified and confirmed as actively used:
+
+1. **website_settings** ✅ **VERIFIED - IN USE**
+   - **Usage Evidence:**
+     - Used in `CRMUtilityController::websiteSetting()` method (lines 293, 297, 317)
+     - Has active controller method for creating/updating website settings
+     - Route: `/website_setting` (referenced in controller)
+     - View: `crm.website_setting` (referenced in controller)
+   - **Status:** ✅ **DO NOT DELETE** - Actively used for website configuration
+
+2. **settings** ✅ **VERIFIED - IN USE**
+   - **Usage Evidence:**
+     - Used via `Settings` helper class (`app/Helpers/Settings.php`)
+     - Helper queries: `Setting::where('office_id', '=', @Auth::user()->office_id)->first()`
+     - Used in views for date/time formatting: `Settings::sitedata('date_format')` and `Settings::sitedata('time_format')`
+     - Referenced in multiple blade templates (crm_client_detail.blade.php, etc.)
+     - Registered as facade in `config/app.php`: `'Settings' => App\Helpers\Settings::class`
+   - **Status:** ✅ **DO NOT DELETE** - Actively used for office-specific settings and date/time formatting
+
+### Tables Already Dropped (16 tables):
+
+The following tables were successfully dropped via migration `2025_12_23_175551_drop_unused_tables.php`:
+- ✅ blog_categories
+- ✅ blogs
+- ✅ client_married_details
+- ✅ client_ratings
+- ✅ cms_pages
+- ✅ contacts
+- ✅ currencies
+- ✅ theme_options
+- ✅ verified_numbers
+- ✅ why_chooseuses
+- ✅ enquiries
+- ✅ enquiry_sources
+- ✅ lead_services
+- ✅ leads
+- ✅ our_offices
+- ✅ password_resets
 
 ## Important Notes
 
@@ -132,6 +184,12 @@ WHERE TABLE_NAME = 'table_name'
 AND REFERENCED_TABLE_NAME IS NOT NULL;
 ```
 
+## Migration History
+
+- **2025-12-23:** Created migration `2025_12_23_175551_drop_unused_tables.php` to drop 16 unused tables
+- **2025-12-23:** Migration executed successfully - 16 tables removed from database
+
 ## Generated On
 Date: 2025-12-23 07:47:49
+Last Updated: 2025-12-23 (after dropping 16 tables)
 

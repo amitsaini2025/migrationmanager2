@@ -30,7 +30,7 @@
                                             <?= htmlspecialchars($catVal->title) ?>
                                         </button>
                                         <?php if ($isClientGenerated || $isSuperAdmin): ?>
-                                            <div class="action-buttons" style="display: none; position: absolute; top: 0; right: -8px; display: flex; gap: 2px;">
+                                            <div class="action-buttons" style="display: none; position: absolute; top: 0; right: -8px;">
                                                 <?php if ($isClientGenerated): ?>
                                                     <button class="btn btn-sm btn-warning update-personal-cat-title" data-id="<?= $id ?>" style="padding: 2px 0px 2px 6px;"><i class="fa fa-edit" aria-hidden="true"></i></button>
                                                 <?php endif; ?>

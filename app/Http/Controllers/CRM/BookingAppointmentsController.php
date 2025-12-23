@@ -79,7 +79,10 @@ class BookingAppointmentsController extends Controller
         }
         
         // Paginate appointments ordered by latest Bansal appointment ID
-        $appointments = $query->orderByDesc('bansal_appointment_id')->paginate(20);
+        // Preserve filter parameters in pagination links
+        $appointments = $query->orderByDesc('bansal_appointment_id')
+            ->paginate(20)
+            ->appends($request->except('page'));
 
         // Map latest matter reference for each appointment client
         $clientMatterRefs = [];

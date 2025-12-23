@@ -6,20 +6,6 @@
         <div class="icon-group">
             <a href="{{route('dashboard')}}" class="icon-btn" title="Dashboard"><i class="fas fa-tachometer-alt"></i></a>
             <a href="{{ route('signatures.index') }}" class="icon-btn" title="Signature Dashboard"><i class="fas fa-pen"></i></a>
-            {{-- <div class="icon-dropdown js-dropdown">
-                <a href="{{ route('appointments.index') }}" class="icon-btn" title="Appointments"><i class="fas fa-calendar-alt"></i></a>
-                <div class="icon-dropdown-menu">
-                    <a class="dropdown-item" href="{{ route('appointments.index') }}"><i class="far fa-calendar-alt mr-2"></i> Listings</a>
-                    <div class="dropdown-divider"></div>
-                    <a class="dropdown-item" href="{{route('appointments-others')}}"><i class="far fa-calendar-check mr-2"></i> Arun Calendar</a>
-                    <a class="dropdown-item" href="{{route('appointments-jrp')}}"><i class="far fa-calendar mr-2"></i> Tr Calendar</a>
-                    <a class="dropdown-item" href="{{route('appointments-education')}}"><i class="fas fa-graduation-cap mr-2"></i> Education</a>
-                    <a class="dropdown-item" href="{{route('appointments-tourist')}}"><i class="fas fa-plane mr-2"></i> Tourist Visa</a>
-                    <a class="dropdown-item" href="{{route('appointments-adelaide')}}"><i class="fas fa-city mr-2"></i> Adelaide</a>
-                    @if(Auth::user() && (Auth::user()->role == 1 || Auth::user()->role == 12))
-                    @endif
-                </div>
-            </div> --}}
             <div class="icon-dropdown js-dropdown">
                 <a href="{{ route('booking.appointments.index') }}" class="icon-btn" title="Website Bookings" style="position: relative;">
                     <i class="fas fa-globe"></i>

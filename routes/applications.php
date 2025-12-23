@@ -3,7 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CRM\ApplicationsController;
 use App\Http\Controllers\CRM\OfficeVisitController;
-use App\Http\Controllers\CRM\AppointmentsController;
+// WARNING: AppointmentsController has been deleted - old appointment system removed
+// use App\Http\Controllers\CRM\AppointmentsController;
 use App\Http\Controllers\CRM\BookingAppointmentsController;
 use App\Http\Controllers\HomeController;
 
@@ -105,48 +106,54 @@ Route::get('/office-visits/change_assignee', [OfficeVisitController::class, 'cha
 
 /*
 |--------------------------------------------------------------------------
-| Appointments Management
+| Appointments Management - OLD SYSTEM REMOVED
 |--------------------------------------------------------------------------
+| WARNING: All old appointment routes have been commented out.
+| The old appointment system (AppointmentsController) has been deleted.
+| The new booking system uses BookingAppointmentsController and is located
+| at /booking/appointments routes (see below).
+|
 | Consolidated from multiple locations in web.php (lines 303-311, 403-410, 653-661)
 */
 
 /*---------- Appointment Resource Routes ----------*/
-Route::resource('appointments', AppointmentsController::class);
+// Route::resource('appointments', AppointmentsController::class); // REMOVED - old system deleted
 
 /*---------- Appointment Type Views ----------*/
-Route::get('/appointments-education', [AppointmentsController::class, 'appointmentsEducation'])->name('appointments-education');
-Route::get('/appointments-jrp', [AppointmentsController::class, 'appointmentsJrp'])->name('appointments-jrp');
-Route::get('/appointments-tourist', [AppointmentsController::class, 'appointmentsTourist'])->name('appointments-tourist');
-Route::get('/appointments-others', [AppointmentsController::class, 'appointmentsOthers'])->name('appointments-others');
-Route::get('/appointments-adelaide', [AppointmentsController::class, 'appointmentsAdelaide'])->name('appointments-adelaide');
+// Route::get('/appointments-education', [AppointmentsController::class, 'appointmentsEducation'])->name('appointments-education'); // REMOVED
+// Route::get('/appointments-jrp', [AppointmentsController::class, 'appointmentsJrp'])->name('appointments-jrp'); // REMOVED
+// Route::get('/appointments-tourist', [AppointmentsController::class, 'appointmentsTourist'])->name('appointments-tourist'); // REMOVED
+// Route::get('/appointments-others', [AppointmentsController::class, 'appointmentsOthers'])->name('appointments-others'); // REMOVED
+// Route::get('/appointments-adelaide', [AppointmentsController::class, 'appointmentsAdelaide'])->name('appointments-adelaide'); // REMOVED
 
 /*---------- Appointment CRUD Operations ----------*/
-Route::get('/deleteappointment', [AppointmentsController::class, 'deleteappointment']);
-Route::post('/add-appointment', [AppointmentsController::class, 'addAppointment']);
-Route::post('/add-appointment-book', [AppointmentsController::class, 'addAppointmentBook']);
-Route::post('/editappointment', [AppointmentsController::class, 'editappointment']);
+// Route::get('/deleteappointment', [AppointmentsController::class, 'deleteappointment']); // REMOVED
+// Route::post('/add-appointment', [AppointmentsController::class, 'addAppointment']); // REMOVED
+// Route::post('/add-appointment-book', [AppointmentsController::class, 'addAppointmentBook']); // REMOVED
+// Route::post('/editappointment', [AppointmentsController::class, 'editappointment']); // REMOVED
 
 /*---------- Appointment Updates ----------*/
-Route::post('/updatefollowupschedule', [AppointmentsController::class, 'updatefollowupschedule']);
-Route::get('/updateappointmentstatus/{status}/{id}', [AppointmentsController::class, 'updateappointmentstatus']);
-Route::post('/update_appointment_status', [AppointmentsController::class, 'update_appointment_status']);
-Route::post('/update_appointment_priority', [AppointmentsController::class, 'update_appointment_priority']);
-Route::post('/update_apppointment_comment', [AppointmentsController::class, 'update_apppointment_comment']);
-Route::post('/update_apppointment_description', [AppointmentsController::class, 'update_apppointment_description']);
+// Route::post('/updatefollowupschedule', [AppointmentsController::class, 'updatefollowupschedule']); // REMOVED
+// Route::get('/updateappointmentstatus/{status}/{id}', [AppointmentsController::class, 'updateappointmentstatus']); // REMOVED
+// Route::post('/update_appointment_status', [AppointmentsController::class, 'update_appointment_status']); // REMOVED
+// Route::post('/update_appointment_priority', [AppointmentsController::class, 'update_appointment_priority']); // REMOVED
+// Route::post('/update_apppointment_comment', [AppointmentsController::class, 'update_apppointment_comment']); // REMOVED
+// Route::post('/update_apppointment_description', [AppointmentsController::class, 'update_apppointment_description']); // REMOVED
 
 /*---------- Appointment Data Retrieval ----------*/
-Route::get('/get-appointments', [AppointmentsController::class, 'getAppointments']);
-Route::get('/getAppointmentdetail', [AppointmentsController::class, 'getAppointmentdetail']);
-Route::get('/get-assigne-detail', [AppointmentsController::class, 'assignedetail']);
+// Route::get('/get-appointments', [AppointmentsController::class, 'getAppointments']); // REMOVED
+// Route::get('/getAppointmentdetail', [AppointmentsController::class, 'getAppointmentdetail']); // REMOVED
+// Route::get('/get-assigne-detail', [AppointmentsController::class, 'assignedetail']); // REMOVED
 
 /*---------- Appointment Assignment ----------*/
-Route::get('/change_assignee', [AppointmentsController::class, 'change_assignee']);
+// Route::get('/change_assignee', [AppointmentsController::class, 'change_assignee']); // REMOVED
 
 /*---------- Appointment Scheduling Backend ----------*/
-// Route::post('/getdatetimebackend', [HomeController::class, 'getdatetimebackend'])->name('getdatetimebackend'); // Commented out - now using AppointmentsController
-Route::post('/getdatetimebackend', [AppointmentsController::class, 'getDateTimeBackend'])->name('getdatetimebackend');
-// Route::post('/getdisableddatetime', [HomeController::class, 'getdisableddatetime'])->name('getdisableddatetime'); // Commented out - now using AppointmentsController
-Route::post('/getdisableddatetime', [AppointmentsController::class, 'getDisabledDateTime'])->name('getdisableddatetime');
+// WARNING: These methods used deleted models (BookService, BookServiceSlotPerPerson)
+// Route::post('/getdatetimebackend', [HomeController::class, 'getdatetimebackend'])->name('getdatetimebackend'); // REMOVED
+// Route::post('/getdatetimebackend', [AppointmentsController::class, 'getDateTimeBackend'])->name('getdatetimebackend'); // REMOVED - AppointmentsController deleted
+// Route::post('/getdisableddatetime', [HomeController::class, 'getdisableddatetime'])->name('getdisableddatetime'); // REMOVED
+// Route::post('/getdisableddatetime', [AppointmentsController::class, 'getDisabledDateTime'])->name('getdisableddatetime'); // REMOVED - AppointmentsController deleted
 
 /*
 |--------------------------------------------------------------------------

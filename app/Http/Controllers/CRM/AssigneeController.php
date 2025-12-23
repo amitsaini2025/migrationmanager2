@@ -7,9 +7,10 @@ use Illuminate\Http\Request;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Spatie\QueryBuilder\QueryBuilder;
 
-use App\Models\Appointment;
+// WARNING: Appointment and AppointmentLog models have been removed - old appointment system deleted
+// use App\Models\Appointment;
 use App\Models\Note;
-use App\Models\AppointmentLog;
+// use App\Models\AppointmentLog;
 use App\Models\Notification;
 use Carbon\Carbon;
 use App\Models\Admin;

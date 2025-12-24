@@ -1397,20 +1397,20 @@ $(document).ready(function() {
 <script>
     // Configuration object with all Blade variables needed for JavaScript
     window.ClientDetailConfig = {
-        clientId: '{{ $fetchedData->id }}',
-        encodeId: '{{ $encodeId }}',
-        matterId: '{{ $id1 ?? "" }}',
-        activeTab: '{{ $activeTab ?? "personaldetails" }}',
-        matterRefNo: '{{ $id1 ?? "" }}',
-        clientFirstName: '{{ $fetchedData->first_name ?? "user" }}',
+        clientId: @json($fetchedData->id ?? ''),
+        encodeId: @json($encodeId ?? ''),
+        matterId: @json($id1 ?? ''),
+        activeTab: @json($activeTab ?? 'personaldetails'),
+        matterRefNo: @json($id1 ?? ''),
+        clientFirstName: @json($fetchedData->first_name ?? 'user'),
         // SMS Template Variables
-        staffName: '{{ $staffName ?? "" }}',
-        matterNumber: '{{ $matterNumber ?? "" }}',
-        officePhone: '{{ $officePhone ?? "" }}',
-        officeCountryCode: '{{ $officeCountryCode ?? "+61" }}',
-        csrfToken: '{{ csrf_token() }}',
-        currentDate: '{{ date("Y-m-d") }}',
-        appId: '{{ $_GET["appid"] ?? "" }}',
+        staffName: @json($staffName ?? ''),
+        matterNumber: @json($matterNumber ?? ''),
+        officePhone: @json($officePhone ?? ''),
+        officeCountryCode: @json($officeCountryCode ?? '+61'),
+        csrfToken: @json(csrf_token() ?? ''),
+        currentDate: @json(date('Y-m-d') ?? ''),
+        appId: @json($_GET['appid'] ?? ''),
         urls: {
             base: '{{ URL::to("/") }}',
             admin: '{{ URL::to("/") }}',
@@ -1518,13 +1518,13 @@ $(document).ready(function() {
             'time' => $appointmentTime,
             'date' => $appointmentlist->appointment_datetime ? date('d D, M Y', strtotime($appointmentlist->appointment_datetime)) : '',
             'description' => htmlspecialchars($appointmentlist->enquiry_details ?? '', ENT_QUOTES, 'UTF-8'),
-            'createdby' => substr($first_name, 0, 1),
-            'createdname' => $first_name,
+            'createdby' => substr($first_name ?? '', 0, 1),
+            'createdname' => $first_name ?? 'N/A',
             'createdemail' => $admin->email ?? 'N/A',
         ];
     }
     @endphp
-    window.appointmentData = {!! json_encode($appointmentdata, JSON_FORCE_OBJECT) !!};
+    window.appointmentData = {!! json_encode($appointmentdata, JSON_FORCE_OBJECT | JSON_HEX_APOS | JSON_HEX_QUOT) !!};
     
     // Global function to load activities feed
     window.loadActivities = function() {
@@ -1535,6 +1535,15 @@ $(document).ready(function() {
             data: { id: window.ClientDetailConfig.clientId },
             success: function(response) {
                 if (response.status && response.data) {
+                    // Escape template literal special characters to prevent syntax errors
+                    function escapeTemplateLiteral(str) {
+                        if (!str) return '';
+                        return String(str)
+                            .replace(/\\/g, '\\\\')
+                            .replace(/`/g, '\\`')
+                            .replace(/\$\{/g, '\\${');
+                    }
+                    
                     var html = '';
                     
                     $.each(response.data, function (k, v) {
@@ -1542,7 +1551,7 @@ $(document).ready(function() {
                         var activityType = v.activity_type ?? 'note';
                         var subjectIcon;
                         var iconClass = '';
-                        var subject = v.subject ?? '';
+                        var subject = escapeTemplateLiteral(v.subject ?? '');
                         var subjectLower = subject.toLowerCase();
                         
                         if (activityType === 'sms') {
@@ -1564,28 +1573,31 @@ $(document).ready(function() {
                         } else {
                             subjectIcon = '<i class="fas fa-sticky-note"></i>';
                         }
-
-                        var description = v.message ?? '';
-                        var taskGroup = v.task_group ?? '';
-                        var followupDate = v.followup_date ?? '';
-                        var date = v.date ?? '';
-                        var fullName = v.name ?? '';
+                        
+                        var description = escapeTemplateLiteral(v.message ?? '');
+                        var taskGroup = escapeTemplateLiteral(v.task_group ?? '');
+                        var followupDate = escapeTemplateLiteral(v.followup_date ?? '');
+                        var date = escapeTemplateLiteral(v.date ?? '');
+                        var fullName = escapeTemplateLiteral(v.name ?? '');
                         var activityTypeClass = activityType ? 'activity-type-' + activityType : '';
 
-                        html += `
-                            <li class="feed-item feed-item--email activity ${activityTypeClass}" id="activity_${v.activity_id}">
-                                <span class="feed-icon ${iconClass}">
-                                    ${subjectIcon}
-                                </span>
-                                <div class="feed-content">
-                                    <p><strong>${fullName} ${subject}</strong></p>
-                                    ${description !== '' ? `<p>${description}</p>` : ''}
-                                    ${taskGroup !== '' ? `<p>${taskGroup}</p>` : ''}
-                                    ${followupDate !== '' ? `<p>${followupDate}</p>` : ''}
-                                    <span class="feed-timestamp">${date}</span>
-                                </div>
-                            </li>
-                        `;
+                        // Build HTML parts to avoid nested template literal issues
+                        var descriptionHtml = description !== '' ? '<p>' + description + '</p>' : '';
+                        var taskGroupHtml = taskGroup !== '' ? '<p>' + taskGroup + '</p>' : '';
+                        var followupDateHtml = followupDate !== '' ? '<p>' + followupDate + '</p>' : '';
+
+                        html += '<li class="feed-item feed-item--email activity ' + activityTypeClass + '" id="activity_' + v.activity_id + '">' +
+                            '<span class="feed-icon ' + iconClass + '">' +
+                                subjectIcon +
+                            '</span>' +
+                            '<div class="feed-content">' +
+                                '<p><strong>' + fullName + ' ' + subject + '</strong></p>' +
+                                descriptionHtml +
+                                taskGroupHtml +
+                                followupDateHtml +
+                                '<span class="feed-timestamp">' + date + '</span>' +
+                            '</div>' +
+                        '</li>';
                     });
 
                     $('.feed-list').html(html);
@@ -1840,8 +1852,24 @@ $('#sendSmsForm').on('submit', function(e) {
 // Handle appointment button click - switch to appointments tab
 $(document).on('click', '.show-appointments-tab', function(e) {
     e.preventDefault();
-    // Find and click the appointments tab button
-    $('.client-nav-button[data-tab="appointments"]').click();
+    
+    // Use SidebarTabs API if available (preferred method)
+    if (typeof SidebarTabs !== 'undefined' && typeof SidebarTabs.activateTab === 'function') {
+        SidebarTabs.activateTab('appointments');
+    } else {
+        // Fallback: Wait for initialization
+        var checkInit = setInterval(function() {
+            if (typeof SidebarTabs !== 'undefined' && typeof SidebarTabs.activateTab === 'function') {
+                clearInterval(checkInit);
+                SidebarTabs.activateTab('appointments');
+            }
+        }, 50);
+        
+        // Timeout after 2 seconds
+        setTimeout(function() {
+            clearInterval(checkInit);
+        }, 2000);
+    }
 });
 </script>
 

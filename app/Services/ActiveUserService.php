@@ -64,7 +64,7 @@ class ActiveUserService
             $query = Admin::query()
                 ->select(['id', 'first_name', 'last_name', 'email', 'role', 'team', 'office_id', 'profile_img', 'updated_at'])
                 ->whereIn('id', $adminIds)
-                ->with(['usertype.usertypedata']);
+                ->with(['usertype']);
 
             // Apply search filter
             if ($search) {
@@ -112,9 +112,7 @@ class ActiveUserService
                 $lastLogin = $this->resolveLastLogin($admin->id, $admin->updated_at);
                 $team = $admin->team ? $teams->get($admin->team) : null;
                 $office = $admin->office_id ? $offices->get($admin->office_id) : null;
-                $roleName = $admin->usertype && $admin->usertype->usertypedata 
-                    ? $admin->usertype->usertypedata->name 
-                    : null;
+                $roleName = $admin->usertype ? $admin->usertype->name : null;
 
                 return [
                     'id' => $admin->id,

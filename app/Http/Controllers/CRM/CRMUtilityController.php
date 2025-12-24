@@ -1369,24 +1369,6 @@ class CRMUtilityController extends Controller
         }
 	}
 
-
-	public function getsubcategories(Request $request){
-		$catid = $request->cat_id;
-		$lists = \App\Models\SubCategory::where('cat_id', $catid)->get();
-		ob_start();
-		?>
-
-		<?php
-		foreach($lists as $list){
-
-			?>
-			<option value="<?php echo $list->sub_id; ?>"><?php echo $list->name; ?></option>
-			<?php
-
-		}
-		echo ob_get_clean();
-	}
-
 		public function getpartnerajax(Request $request){
 	    // Partner functionality removed - no partners available
 	    $agents = array();

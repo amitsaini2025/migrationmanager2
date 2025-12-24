@@ -16,7 +16,7 @@ return new class extends Migration
      * - service_fee_options: Legacy fee options
      * - service_fee_option_types: Legacy fee option types
      * - sub_categories: Unused categorization
-     * - test_scores: Unused test score tracking
+     * - test_scores: Legacy test score table (migrated to client_testscore table, code uses ClientTestScore model)
      * - tasks: Unused task management
      * - users: Legacy user table (replaced by admins)
      */

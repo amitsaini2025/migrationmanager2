@@ -40,7 +40,7 @@ class AssigneeController extends Controller
     {
         $query = QueryBuilder::for(Note::class)
             ->allowedSorts(['first_name', 'followup_date', 'task_group', 'created_at'])
-            ->with(['noteUser','noteClient','lead.natureOfEnquiry','lead.service','assigned_user'])
+            ->with(['noteUser','noteClient','lead.service','assigned_user'])
             ->where('type','client')
             ->where('folloup',1)
             ->where('status','<>','1');
@@ -59,9 +59,9 @@ class AssigneeController extends Controller
     public function completed(Request $request)
     {
         if(Auth::user()->role == 1){
-            $assignees = \App\Models\Note::with(['noteUser','noteClient','lead.natureOfEnquiry','lead.service','assigned_user'])->where('type','client')->whereNotNull('client_id')->where('folloup',1)->where('status','1')->orderBy('created_at', 'desc')->latest()->paginate(20); //where('status','like','Closed')
+            $assignees = \App\Models\Note::with(['noteUser','noteClient','lead.service','assigned_user'])->where('type','client')->whereNotNull('client_id')->where('folloup',1)->where('status','1')->orderBy('created_at', 'desc')->latest()->paginate(20); //where('status','like','Closed')
         }else{
-            $assignees = \App\Models\Note::with(['noteUser','noteClient','lead.natureOfEnquiry','lead.service','assigned_user'])->where('assigned_to',Auth::user()->id)->where('type','client')->where('folloup',1)->where('status','1')->orderBy('created_at', 'desc')->latest()->paginate(20);
+            $assignees = \App\Models\Note::with(['noteUser','noteClient','lead.service','assigned_user'])->where('assigned_to',Auth::user()->id)->where('type','client')->where('folloup',1)->where('status','1')->orderBy('created_at', 'desc')->latest()->paginate(20);
         }  //dd( $assignees);
         return view('crm.assignee.completed',compact('assignees'))
          ->with('i', (request()->input('page', 1) - 1) * 20);
@@ -150,9 +150,9 @@ class AssigneeController extends Controller
      public function assigned_by_me(Request $request)
      {
         if(Auth::user()->role == 1){
-             $assignees_notCompleted = \App\Models\Note::with(['noteUser','noteClient','lead.natureOfEnquiry','lead.service','assigned_user'])->where('status','<>','1')->where('type','client')->whereNotNull('client_id')->where('folloup',1)->orderBy('created_at', 'desc')->latest()->paginate(20);
+             $assignees_notCompleted = \App\Models\Note::with(['noteUser','noteClient','lead.service','assigned_user'])->where('status','<>','1')->where('type','client')->whereNotNull('client_id')->where('folloup',1)->orderBy('created_at', 'desc')->latest()->paginate(20);
         } else {
-             $assignees_notCompleted = \App\Models\Note::with(['noteUser','noteClient','lead.natureOfEnquiry','lead.service','assigned_user'])->where('status','<>','1')->where('user_id',Auth::user()->id)->where('type','client')->where('folloup',1)->orderBy('created_at', 'desc')->latest()->paginate(20);
+             $assignees_notCompleted = \App\Models\Note::with(['noteUser','noteClient','lead.service','assigned_user'])->where('status','<>','1')->where('user_id',Auth::user()->id)->where('type','client')->where('folloup',1)->orderBy('created_at', 'desc')->latest()->paginate(20);
         }
          #dd($assignees_notCompleted);
          return view('crm.assignee.assign_by_me',compact('assignees_notCompleted'))
@@ -163,13 +163,13 @@ class AssigneeController extends Controller
     public function assigned_to_me(Request $request)
     {
         if(Auth::user()->role == 1){
-            $assignees_notCompleted = \App\Models\Note::with(['noteUser','noteClient','lead.natureOfEnquiry','lead.service','assigned_user'])->where('status','<>','1')->where('assigned_to',Auth::user()->id)->where('type','client')->whereNotNull('client_id')->where('folloup',1)->orderBy('created_at', 'desc')->latest()->paginate(20);//where('status','not like','Closed')
+            $assignees_notCompleted = \App\Models\Note::with(['noteUser','noteClient','lead.service','assigned_user'])->where('status','<>','1')->where('assigned_to',Auth::user()->id)->where('type','client')->whereNotNull('client_id')->where('folloup',1)->orderBy('created_at', 'desc')->latest()->paginate(20);//where('status','not like','Closed')
 
-            $assignees_completed = \App\Models\Note::with(['noteUser','noteClient','lead.natureOfEnquiry','lead.service','assigned_user'])->where('status','1')->where('assigned_to',Auth::user()->id)->where('type','client')->whereNotNull('client_id')->where('folloup',1)->orderBy('created_at', 'desc')->latest()->paginate(20);
+            $assignees_completed = \App\Models\Note::with(['noteUser','noteClient','lead.service','assigned_user'])->where('status','1')->where('assigned_to',Auth::user()->id)->where('type','client')->whereNotNull('client_id')->where('folloup',1)->orderBy('created_at', 'desc')->latest()->paginate(20);
         }else{
-            $assignees_notCompleted = \App\Models\Note::with(['noteUser','noteClient','lead.natureOfEnquiry','lead.service','assigned_user'])->where('status','<>','1')->where('assigned_to',Auth::user()->id)->where('type','client')->where('folloup',1)->orderBy('created_at', 'desc')->latest()->paginate(20);
+            $assignees_notCompleted = \App\Models\Note::with(['noteUser','noteClient','lead.service','assigned_user'])->where('status','<>','1')->where('assigned_to',Auth::user()->id)->where('type','client')->where('folloup',1)->orderBy('created_at', 'desc')->latest()->paginate(20);
 
-            $assignees_completed = \App\Models\Note::with(['noteUser','noteClient','lead.natureOfEnquiry','lead.service','assigned_user'])->where('status','1')->where('assigned_to',Auth::user()->id)->where('type','client')->where('folloup',1)->orderBy('created_at', 'desc')->latest()->paginate(20);
+            $assignees_completed = \App\Models\Note::with(['noteUser','noteClient','lead.service','assigned_user'])->where('status','1')->where('assigned_to',Auth::user()->id)->where('type','client')->where('folloup',1)->orderBy('created_at', 'desc')->latest()->paginate(20);
         }
         return view('crm.assignee.assign_to_me',compact('assignees_notCompleted','assignees_completed'))
          ->with('i', (request()->input('page', 1) - 1) * 20);
@@ -188,7 +188,6 @@ class AssigneeController extends Controller
         $assignees_completed = \App\Models\Note::with([
                 'noteUser',
                 'noteClient',
-                'lead.natureOfEnquiry',
                 'lead.service',
                 'assigned_user'
             ])

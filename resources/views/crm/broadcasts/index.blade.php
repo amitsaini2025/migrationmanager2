@@ -258,8 +258,8 @@
                                             <div class="col-md-3 col-lg-2">
                                                 <select class="form-control form-control-sm active-users-filter-select" id="active-users-role-filter">
                                                     <option value="">All Roles</option>
-                                                    @foreach(\App\Models\UserRole::with('usertypedata')->get() as $role)
-                                                        <option value="{{ $role->id }}">{{ $role->usertypedata->name ?? 'Role #' . $role->id }}</option>
+                                                    @foreach(\App\Models\UserRole::all() as $role)
+                                                        <option value="{{ $role->id }}">{{ $role->name ?? 'Role #' . $role->id }}</option>
                                                     @endforeach
                                                 </select>
                                             </div>

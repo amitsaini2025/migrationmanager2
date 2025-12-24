@@ -112,7 +112,7 @@
 			</div>
 			<div class="modal-body">
 			<?php
-				// Fetch test scores using the new ClientTestScore model (old test_scores table was removed)
+				// Fetch test scores using ClientTestScore model (migrated from old test_scores table to client_testscore table)
 				// Map multiple test score records to the old form structure
 				$testScoresCollection = \App\Models\ClientTestScore::where('client_id', $fetchedData->id)->get();
 				

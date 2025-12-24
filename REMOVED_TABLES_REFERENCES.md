@@ -135,7 +135,12 @@ This document lists all files that reference the following removed tables:
 ### Migrations
 - `database/migrations/2025_12_24_000001_drop_unused_legacy_tables.php` - Drop migration (already executed)
 
-**Note:** The system appears to have migrated from `test_scores` table to `client_testscore` table. Most code references are now using `ClientTestScore` model, but some string references to 'test_scores' still exist in code.
+**IMPORTANT NOTE:** 
+- The old `test_scores` table has been **migrated** to `client_testscore` table
+- All database operations use `ClientTestScore` model (points to `client_testscore` table)
+- The string `'test_scores'` in code (case statements, API tabs, form sections) is a **section identifier**, NOT a table reference
+- These string references are **intentional and should NOT be changed** - they identify which section of data to process
+- The old `test_scores` table is marked for removal in migration `2025_12_24_000001_drop_unused_legacy_tables.php`
 
 ---
 

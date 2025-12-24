@@ -126,7 +126,6 @@ Route::middleware(['auth:admin'])->group(function() {
     Route::post('/get_states', [CRMUtilityController::class, 'getStates']);
     Route::get('/settings/taxes/returnsetting', [CRMUtilityController::class, 'returnsetting'])->name('returnsetting');
     Route::post('/settings/taxes/savereturnsetting', [CRMUtilityController::class, 'returnsetting'])->name('savereturnsetting');
-    Route::get('/getsubcategories', [CRMUtilityController::class, 'getsubcategories']);
     Route::get('/getassigneeajax', [CRMUtilityController::class, 'getassigneeajax']);
     Route::get('/getpartnerajax', [CRMUtilityController::class, 'getpartnerajax']);
     Route::get('/checkclientexist', [CRMUtilityController::class, 'checkclientexist']);

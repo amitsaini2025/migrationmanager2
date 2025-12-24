@@ -1,6 +1,5 @@
 <?php
 namespace App\Imports;
-use App\Models\User;
 use App\Models\AgentDetails;
 use Maatwebsite\Excel\Concerns\ToModel;
 class ImportUser implements ToModel

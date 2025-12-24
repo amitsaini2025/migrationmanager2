@@ -64,9 +64,17 @@ class Note extends Model
         return $this->assignedUser();
     }
 
+    /**
+     * Legacy relationship - Appointment model has been removed
+     * This relationship is kept for backward compatibility but will return null
+     * 
+     * @deprecated Appointment system has been removed
+     */
     public function lead()
     {
-        return $this->belongsTo('App\\Models\\Appointment','lead_id','id');
+        // Appointment model no longer exists - old appointment system removed
+        // Returning null to prevent errors
+        return null;
     }
 
 }

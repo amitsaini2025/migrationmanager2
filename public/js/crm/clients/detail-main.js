@@ -5856,7 +5856,8 @@ Bansal Immigration`;
 
                 $('.services_row').show();
 
-                $('#myTab .nav-item #nature_of_enquiry-tab').addClass('disabled');
+                // Legacy appointment system code - nature_of_enquiry tab removed
+                // $('#myTab .nav-item #nature_of_enquiry-tab').addClass('disabled');
 
                 $('#myTab .nav-item #services-tab').removeClass('disabled');
 
@@ -5886,7 +5887,8 @@ Bansal Immigration`;
 
             } else {
 
-                var v = 'nature_of_enquiry';
+                // Legacy appointment system code - nature_of_enquiry functionality removed
+                // var v = 'nature_of_enquiry';
 
                 $('.services_row').hide();
 
@@ -5900,13 +5902,15 @@ Bansal Immigration`;
 
                 $('#myTab .nav-item #services-tab').addClass('disabled');
 
-                $('#myTab .nav-item #nature_of_enquiry-tab').removeClass('disabled');
+                // Legacy appointment system code - nature_of_enquiry tab removed
+                // $('#myTab .nav-item #nature_of_enquiry-tab').removeClass('disabled');
 
-                $('#myTab a[href="#'+v+'"]').trigger('click');
+                // $('#myTab a[href="#'+v+'"]').trigger('click');
 
             }
 
-            $('input[name="noe_id"]').val(id);
+            // Legacy appointment system - noe_id field removed
+            // $('input[name="noe_id"]').val(id);
 
         });
 

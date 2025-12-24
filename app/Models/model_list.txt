@@ -68,15 +68,11 @@ MailReport.php
 Matter.php
 MatterEmailTemplate.php
 MatterOtherEmailTemplate.php
-NatureOfEnquiry.php
 Note.php
 Notification.php
 OfficeVisit.php
 OnlineForm.php
 OurService.php
-Partner.php
-PartnerBranch.php
-PartnerType.php
 PasswordResetLink.php
 PersonalDocumentType.php
 Profile.php
@@ -91,7 +87,6 @@ SignatureField.php
 Signer.php
 Slider.php
 State.php
-SubCategory.php
 Subject.php
 Tag.php
 TaxRate.php

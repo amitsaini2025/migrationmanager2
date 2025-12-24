@@ -888,15 +888,67 @@ class DocumentController extends Controller
             // Remove old fields for this document
             $document->signatureFields()->delete();
 
+            // Get PDF path and page count for calculating positions
+            $pdfPath = null;
+            $pdfPages = 1;
+            $pagesDimensions = [];
+            
+            // Get PDF file path (similar to edit method)
+            $url = $document->myfile;
+            if ($url && filter_var($url, FILTER_VALIDATE_URL) && strpos($url, 's3') !== false) {
+                // S3 URL - download to temp file
+                $parsed = parse_url($url);
+                $s3Key = isset($parsed['path']) ? ltrim(urldecode($parsed['path']), '/') : null;
+                if ($s3Key && Storage::disk('s3')->exists($s3Key)) {
+                    $pdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
+                    $pdfStream = Storage::disk('s3')->get($s3Key);
+                    file_put_contents($pdfPath, $pdfStream);
+                }
+            } elseif ($url && file_exists(storage_path('app/public/' . $url))) {
+                // Local file
+                $pdfPath = storage_path('app/public/' . $url);
+            }
+            
+            // Get page count and dimensions if PDF path is available
+            if ($pdfPath && file_exists($pdfPath)) {
+                try {
+                    $pdfPages = $this->countPdfPages($pdfPath);
+                    if ($pdfPages > 0) {
+                        $pagesDimensions = $this->getPdfPageDimensions($pdfPath, $pdfPages);
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Error getting PDF dimensions in update method', ['error' => $e->getMessage()]);
+                }
+            }
+            
             $validatedSignatures = [];
             foreach ($request->signatures as $signature) {
-                // Sanitize to decimals (0-1)
+                $pageNumber = max(1, min(999, (int) $signature['page_number']));
+                
+                // Get dimensions for this specific page
+                $pageDims = $pagesDimensions[$pageNumber] ?? [
+                    'width' => 210, // Default A4 width in mm
+                    'height' => 297, // Default A4 height in mm
+                ];
+                
+                // Sanitize to decimals (0-1) for percentages
+                $x_percent = max(0, min(100, (float) $signature['x_percent'])) / 100;
+                $y_percent = max(0, min(100, (float) $signature['y_percent'])) / 100;
+                $width_percent = max(0, min(100, (float) ($signature['w_percent'] ?? 0))) / 100;
+                $height_percent = max(0, min(100, (float) ($signature['h_percent'] ?? 0))) / 100;
+                
+                // Calculate positions in millimeters (rounded to integers as database column is integer type)
+                $x_position = (int) round($x_percent * $pageDims['width']);
+                $y_position = (int) round($y_percent * $pageDims['height']);
+                
                 $sanitizedSignature = [
-                    'page_number' => max(1, min(999, (int) $signature['page_number'])),
-                    'x_percent' => max(0, min(100, (float) $signature['x_percent'])) / 100,
-                    'y_percent' => max(0, min(100, (float) $signature['y_percent'])) / 100,
-                    'width_percent' => max(0, min(100, (float) ($signature['w_percent'] ?? 0))) / 100,
-                    'height_percent' => max(0, min(100, (float) ($signature['h_percent'] ?? 0))) / 100,
+                    'page_number' => $pageNumber,
+                    'x_percent' => $x_percent,
+                    'y_percent' => $y_percent,
+                    'width_percent' => $width_percent,
+                    'height_percent' => $height_percent,
+                    'x_position' => $x_position,
+                    'y_position' => $y_position,
                 ];
                 $validatedSignatures[] = $sanitizedSignature;
             }
@@ -906,6 +958,8 @@ class DocumentController extends Controller
                 $document->signatureFields()->create([
                     'signer_id' => null, // Will be set when assigning a signer later
                     'page_number' => $signature['page_number'],
+                    'x_position' => $signature['x_position'],
+                    'y_position' => $signature['y_position'],
                     'x_percent' => $signature['x_percent'],
                     'y_percent' => $signature['y_percent'],
                     'width_percent' => $signature['width_percent'],
@@ -955,7 +1009,8 @@ class DocumentController extends Controller
             }
 
             // Update document status to indicate signatures have been placed
-            $document->update(['status' => 'signature_placed']);
+            // Note: status column is VARCHAR(6), so using 'placed' instead of 'signature_placed'
+            $document->update(['status' => 'placed']);
             
             // Redirect to the signature creation page where user can associate with client/lead and send
             return redirect()->route('signatures.create', ['document_id' => $document->id])
@@ -1038,7 +1093,8 @@ class DocumentController extends Controller
                         'email' => $signerEmail,
                         'name' => $signerName,
                         'token' => $token,
-                        'status' => 'pending'
+                        'status' => 'pending',
+                        'reminder_count' => 0, // PostgreSQL NOT NULL constraint - must set this field
                     ]);
                 }
             }
@@ -1050,6 +1106,7 @@ class DocumentController extends Controller
                     'name' => $signerName,
                     'token' => $token,
                     'status' => 'pending',
+                    'reminder_count' => 0, // PostgreSQL NOT NULL constraint - must set this field
                 ]);
             }
             //dd($token);
@@ -2244,7 +2301,11 @@ class DocumentController extends Controller
                 else
                 {
                     // Insert document in signer table
-                    $signer = $document->signers()->create(['token' => $token,'status' => 'pending']);
+                    $signer = $document->signers()->create([
+                        'token' => $token,
+                        'status' => 'pending',
+                        'reminder_count' => 0, // PostgreSQL NOT NULL constraint - must set this field
+                    ]);
                 }
             } else {
                 $signer = $document->signers()->where('token', $token)->first();

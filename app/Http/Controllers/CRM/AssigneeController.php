@@ -150,9 +150,9 @@ class AssigneeController extends Controller
      public function assigned_by_me(Request $request)
      {
         if(Auth::user()->role == 1){
-             $assignees_notCompleted = \App\Models\Note::with(['noteUser','noteClient','lead.service','assigned_user'])->where('status','<>','1')->where('type','client')->whereNotNull('client_id')->where('folloup',1)->orderBy('created_at', 'desc')->latest()->paginate(20);
+             $assignees_notCompleted = \App\Models\Note::with(['noteUser','noteClient','assigned_user'])->where('status','<>',1)->where('type','client')->whereNotNull('client_id')->where('folloup',1)->orderBy('created_at', 'desc')->latest()->paginate(20);
         } else {
-             $assignees_notCompleted = \App\Models\Note::with(['noteUser','noteClient','lead.service','assigned_user'])->where('status','<>','1')->where('user_id',Auth::user()->id)->where('type','client')->where('folloup',1)->orderBy('created_at', 'desc')->latest()->paginate(20);
+             $assignees_notCompleted = \App\Models\Note::with(['noteUser','noteClient','assigned_user'])->where('status','<>',1)->where('user_id',Auth::user()->id)->where('type','client')->where('folloup',1)->orderBy('created_at', 'desc')->latest()->paginate(20);
         }
          #dd($assignees_notCompleted);
          return view('crm.assignee.assign_by_me',compact('assignees_notCompleted'))
@@ -188,10 +188,9 @@ class AssigneeController extends Controller
         $assignees_completed = \App\Models\Note::with([
                 'noteUser',
                 'noteClient',
-                'lead.service',
                 'assigned_user'
             ])
-            ->where('status', '1')
+            ->where('status', 1)
             ->where('type', 'client')
             ->whereNotNull('client_id')
             ->where('folloup', 1)
@@ -220,7 +219,7 @@ class AssigneeController extends Controller
      */
     private function getCompletedTaskGroupCounts($user)
     {
-        $query = \App\Models\Note::where('status', '1')
+        $query = \App\Models\Note::where('status', 1)
             ->where('type', 'client')
             ->where('folloup', 1)
             ->when($user->role != 1, function ($query) use ($user) {

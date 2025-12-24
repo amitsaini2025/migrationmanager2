@@ -167,6 +167,7 @@ class SignatureDashboardController extends Controller
                 'name' => $request->signer_name,
                 'token' => Str::random(64),
                 'status' => 'pending',
+                'reminder_count' => 0, // PostgreSQL NOT NULL constraint - must set this field
                 'email_template' => $request->email_template ?? 'emails.signature.send',
                 'email_subject' => $request->email_subject,
                 'email_message' => $request->email_message,

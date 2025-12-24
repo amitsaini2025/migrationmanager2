@@ -7,13 +7,8 @@ AgentDetails.php
 Application.php
 ApplicationDocument.php
 ApplicationDocumentList.php
-Appointment.php
-AppointmentLog.php
 Attachment.php
 AuditLog.php
-BookService.php
-BookServiceDisableSlot.php
-BookServiceSlotPerPerson.php
 Branch.php
 CheckinHistory.php
 CheckinLog.php

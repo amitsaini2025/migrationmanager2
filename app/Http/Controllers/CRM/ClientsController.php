@@ -9549,4 +9549,142 @@ class ClientsController extends Controller
         }
     }
 
+    /**
+     * Get appointments HTML for a client (for AJAX refresh after booking)
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function getAppointments(Request $request)
+    {
+        $clientId = $request->input('clientid');
+        
+        if (!$clientId) {
+            return response()->json(['error' => 'Client ID is required'], 400);
+        }
+
+        // Get client
+        $client = Admin::find($clientId);
+        if (!$client) {
+            return response()->json(['error' => 'Client not found'], 404);
+        }
+
+        // Get appointments for this client
+        $appointmentlists = BookingAppointment::where('client_id', $clientId)
+            ->orderby('created_at', 'DESC')
+            ->get();
+
+        $appointmentlistslast = $appointmentlists->first();
+        $appointmentdata = [];
+
+        $html = '<div class="row">
+            <div class="col-md-5 appointment_grid_list">';
+
+        $rr = 0;
+        foreach ($appointmentlists as $appointmentlist) {
+            $admin = Admin::select('id', 'first_name', 'email')
+                ->where('id', $appointmentlist->user_id)
+                ->first();
+            $first_name = $admin->first_name ?? 'N/A';
+            $datetime = $appointmentlist->created_at;
+            $timeago = \App\Http\Controllers\Controller::time_elapsed_string($datetime);
+
+            // Extract start time from timeslot_full
+            $appointmentTime = '';
+            if ($appointmentlist->timeslot_full) {
+                $timeslotParts = explode(' - ', $appointmentlist->timeslot_full);
+                $appointmentTime = trim($timeslotParts[0] ?? '');
+            }
+
+            $appointmentdata[$appointmentlist->id] = [
+                'title' => $appointmentlist->service_type ?? 'N/A',
+                'time' => $appointmentTime,
+                'date' => $appointmentlist->appointment_datetime ? date('d D, M Y', strtotime($appointmentlist->appointment_datetime)) : '',
+                'description' => htmlspecialchars($appointmentlist->enquiry_details ?? '', ENT_QUOTES, 'UTF-8'),
+                'createdby' => substr($first_name, 0, 1),
+                'createdname' => $first_name,
+                'createdemail' => $admin->email ?? 'N/A',
+            ];
+
+            $activeClass = ($rr == 0) ? 'active' : '';
+            $appointmentDate = $appointmentlist->appointment_datetime ? date('d/m/Y', strtotime($appointmentlist->appointment_datetime)) : '';
+
+            $html .= '<div class="appointmentdata ' . $activeClass . '" data-id="' . $appointmentlist->id . '">
+                <div class="appointment_col">
+                    <div class="appointdate">
+                        <h5>' . $appointmentDate . '</h5>
+                        <p>' . $appointmentTime . '<br>
+                        <i><small>' . $timeago . '</small></i></p>
+                    </div>
+                    <div class="title_desc">
+                        <h5>' . htmlspecialchars($appointmentlist->service_type) . '</h5>
+                        <p>' . htmlspecialchars($appointmentlist->enquiry_details ?? '') . '</p>
+                    </div>
+                    <div class="appoint_created">
+                        <span class="span_label">Created By:
+                        <span>' . substr($first_name, 0, 1) . '</span></span>
+                    </div>
+                </div>
+            </div>';
+            
+            $rr++;
+        }
+
+        $html .= '</div>
+            <div class="col-md-7">
+                <div class="editappointment">';
+
+        if ($appointmentlistslast) {
+            $adminfirst = Admin::select('id', 'first_name', 'email')
+                ->where('id', $appointmentlistslast->user_id)
+                ->first();
+            
+            $displayTimeLast = '';
+            if ($appointmentlistslast->timeslot_full) {
+                $timeslotPartsLast = explode(' - ', $appointmentlistslast->timeslot_full);
+                $displayTimeLast = trim($timeslotPartsLast[0] ?? '');
+            }
+            
+            $appointmentDateLast = $appointmentlistslast->appointment_datetime 
+                ? date('d D, M Y', strtotime($appointmentlistslast->appointment_datetime)) 
+                : '';
+
+            $html .= '<div class="content">
+                <h4 class="appointmentname">' . htmlspecialchars($appointmentlistslast->service_type) . '</h4>
+                <div class="appitem">
+                    <i class="fa fa-clock"></i>
+                    <span class="appcontent appointmenttime">' . $displayTimeLast . '</span>
+                </div>
+                <div class="appitem">
+                    <i class="fa fa-calendar"></i>
+                    <span class="appcontent appointmentdate">' . $appointmentDateLast . '</span>
+                </div>
+                <div class="description appointmentdescription">
+                    <p>' . htmlspecialchars($appointmentlistslast->enquiry_details ?? '') . '</p>
+                </div>
+                <div class="created_by">
+                    <span class="label">Created By:</span>
+                    <div class="createdby">
+                        <span class="appointmentcreatedby">' . substr($adminfirst->first_name ?? 'N/A', 0, 1) . '</span>
+                    </div>
+                    <div class="createdinfo">
+                        <a href="" class="appointmentcreatedname">' . htmlspecialchars($adminfirst->first_name ?? 'N/A') . '</a>
+                        <p class="appointmentcreatedemail">' . htmlspecialchars($adminfirst->email ?? 'N/A') . '</p>
+                    </div>
+                </div>
+            </div>';
+        }
+
+        $html .= '</div>
+            </div>
+        </div>';
+
+        // Add JavaScript to update window.appointmentData
+        $html .= '<script>
+            window.appointmentData = ' . json_encode($appointmentdata, JSON_FORCE_OBJECT) . ';
+        </script>';
+
+        return $html;
+    }
+
 }

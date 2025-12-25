@@ -296,6 +296,7 @@ Route::post('/clients/getAllUser', 'CRM\ClientsController@getAllUser')->name('cl
 /*---------- Appointments ----------*/
 Route::post('/add-appointment', 'CRM\ClientsController@addAppointment');
 Route::post('/add-appointment-book', 'CRM\ClientsController@addAppointmentBook');
+Route::get('/get-appointments', 'CRM\ClientsController@getAppointments');
 
 /*---------- Client Portal ----------*/
 Route::post('/clients/toggle-client-portal', 'CRM\ClientPortalController@toggleClientPortal')->name('clients.toggleClientPortal');

@@ -16,6 +16,9 @@ yarn-error.log
 .env
 .phpunit.result.cache
 .github
+vite.config.js
+package-lock.json
+yarn.lock
 
 # Laravel bootstrap cache files
 bootstrap/cache/*.tmp

@@ -2,11 +2,11 @@
 <div class="modal fade add_appointment custom_modal" id="create_appoint" tabindex="-1" role="dialog" aria-labelledby="create_interestModalLabel" aria-hidden="true">
 	<div class="modal-dialog modal-lg">
 		<div class="modal-content">
-			<div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-bottom: none;">
-				<h5 class="modal-title" id="interestModalLabel" style="font-weight: 600;">
+			<div class="modal-header" style="background: linear-gradient(135deg, #0056b3 0%, #004085 100%); color: white; border-bottom: 2px solid rgba(255,255,255,0.2); padding: 18px 24px;">
+				<h5 class="modal-title" id="interestModalLabel" style="font-weight: 700; font-size: 18px;">
 					<i class="fas fa-calendar-plus mr-2"></i>Schedule Appointment
 				</h5>
-				<button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color: white; opacity: 0.8;">
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color: white; opacity: 0.9; font-size: 24px; font-weight: 300;">
 					<span aria-hidden="true">&times;</span>
 				</button>
 			</div>
@@ -56,40 +56,30 @@
 								<div class="row">
 									
 									<div class="col-md-6 mb-3 service-free-consultation">
-										<div class="service-card-compact" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px; transition: all 0.3s ease; cursor: pointer;" data-service-id="1">
-											<div class="d-flex align-items-start">
+										<div class="service-card-compact" style="border: 1.5px solid #dee2e6; border-radius: 8px; padding: 14px; background-color: #ffffff; cursor: pointer;" data-service-id="1">
+											<div class="d-flex align-items-center">
 												<input type="radio" class="services_item mt-1" name="radioGroup" value="1" id="service_1">
-												<div class="ml-3 flex-grow-1">
-													<div class="d-flex justify-content-between align-items-start mb-2">
-														<div class="flex-grow-1">
-															<h6 class="mb-1 font-weight-bold text-dark">Free Consultation</h6>
-															<small class="d-block mb-2">15 minutes</small>
-															<p class="mb-0" style="font-size: 12px; line-height: 1.5;">
-																Perfect for initial inquiries: Quick assessment of your immigration situation, basic visa pathway guidance, and preliminary advice. Available for clients currently within Australia only. Includes initial case evaluation and next steps recommendation.
-															</p>
-														</div>
-														<span class="badge badge-success font-weight-bold ml-2" style="white-space: nowrap;">Free</span>
+												<div class="ml-3 flex-grow-1 d-flex justify-content-between align-items-center">
+													<div>
+														<h6 class="mb-1 font-weight-bold" style="color: #212529; font-size: 15px;">Free Consultation</h6>
+														<small style="color: #6c757d; font-size: 13px;">15 minutes</small>
 													</div>
+													<span class="badge badge-success font-weight-bold ml-2" style="white-space: nowrap; padding: 6px 10px; font-size: 13px;">Free</span>
 												</div>
 											</div>
 										</div>
 									</div>
 
 										<div class="col-md-6 mb-3">
-											<div class="service-card-compact" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px; transition: all 0.3s ease; cursor: pointer;" data-service-id="2">
-												<div class="d-flex align-items-start">
+											<div class="service-card-compact" style="border: 1.5px solid #dee2e6; border-radius: 8px; padding: 14px; background-color: #ffffff; cursor: pointer;" data-service-id="2">
+												<div class="d-flex align-items-center">
 													<input type="radio" class="services_item mt-1" name="radioGroup" value="2" id="service_2">
-													<div class="ml-3 flex-grow-1">
-														<div class="d-flex justify-content-between align-items-start mb-2">
-															<div class="flex-grow-1">
-																<h6 class="mb-1 font-weight-bold text-dark">Comprehensive Migration Advice</h6>
-																<small class="d-block mb-2">30 minutes</small>
-																<p class="mb-0" style="font-size: 12px; line-height: 1.5;">
-																	In-depth professional consultation: Comprehensive case analysis, detailed migration strategy, complex visa applications, ART appeals, visa cancellations, protection visas, and personalized action plans. Suitable for overseas applicants and complex cases.
-																</p>
-															</div>
-															<span class="badge badge-success font-weight-bold ml-2" style="white-space: nowrap;">$150</span>
+													<div class="ml-3 flex-grow-1 d-flex justify-content-between align-items-center">
+														<div>
+															<h6 class="mb-1 font-weight-bold" style="color: #212529; font-size: 15px;">Comprehensive Migration Advice</h6>
+															<small style="color: #6c757d; font-size: 13px;">30 minutes</small>
 														</div>
+														<span class="badge badge-success font-weight-bold ml-2" style="white-space: nowrap; padding: 6px 10px; font-size: 13px;">$150</span>
 													</div>
 												</div>
 											</div>
@@ -97,20 +87,15 @@
 
 
 										<div class="col-md-6 mb-3">
-											<div class="service-card-compact" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px; transition: all 0.3s ease; cursor: pointer;" data-service-id="3">
-												<div class="d-flex align-items-start">
+											<div class="service-card-compact" style="border: 1.5px solid #dee2e6; border-radius: 8px; padding: 14px; background-color: #ffffff; cursor: pointer;" data-service-id="3">
+												<div class="d-flex align-items-center">
 													<input type="radio" class="services_item mt-1" name="radioGroup" value="3" id="service_3">
-													<div class="ml-3 flex-grow-1">
-														<div class="d-flex justify-content-between align-items-start mb-2">
-															<div class="flex-grow-1">
-																<h6 class="mb-1 font-weight-bold text-dark">Overseas Applicant Enquiry</h6>
-																<small class="d-block mb-2">30 minutes</small>
-																<p class="mb-0" style="font-size: 12px; line-height: 1.5;">
-																	In-depth professional consultation: Comprehensive case analysis, detailed migration strategy, complex visa applications, ART appeals, visa cancellations, protection visas, and personalized action plans. Suitable for overseas applicants and complex cases.
-																</p>
-															</div>
-															<span class="badge badge-success font-weight-bold ml-2" style="white-space: nowrap;">$150</span>
+													<div class="ml-3 flex-grow-1 d-flex justify-content-between align-items-center">
+														<div>
+															<h6 class="mb-1 font-weight-bold" style="color: #212529; font-size: 15px;">Overseas Applicant Enquiry</h6>
+															<small style="color: #6c757d; font-size: 13px;">30 minutes</small>
 														</div>
+														<span class="badge badge-success font-weight-bold ml-2" style="white-space: nowrap; padding: 6px 10px; font-size: 13px;">$150</span>
 													</div>
 												</div>
 											</div>
@@ -333,633 +318,360 @@
 </div>
 
 <style>
-/* Enhanced Appointment Modal Styling */
+/* Appointment Modal - Enhanced Design */
 .add_appointment .modal-content {
-	border: none;
-	border-radius: 12px;
-	box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+	border-radius: 8px;
+	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .add_appointment .modal-body {
-	padding: 25px;
-	background: #fafbfc;
+	padding: 24px;
+	background-color: #ffffff;
 }
 
 .add_appointment .form-group {
-	margin-bottom: 20px;
+	margin-bottom: 18px;
 }
 
 .add_appointment .form-control {
-	border: 1px solid #d1d5db;
-	border-radius: 8px;
-	padding: 10px 15px;
-	transition: all 0.3s ease;
+	border: 1.5px solid #ced4da;
+	border-radius: 6px;
+	padding: 10px 14px;
+	color: #212529;
+	background-color: #ffffff;
+	transition: all 0.2s ease;
 }
 
 .add_appointment .form-control:focus {
-	border-color: #667eea;
-	box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+	border-color: #0056b3;
+	box-shadow: 0 0 0 3px rgba(0, 86, 179, 0.15);
+	outline: none;
 }
 
-/* Service Selection Cards */
+.add_appointment .form-control::placeholder {
+	color: #6c757d;
+}
+
+/* Service Cards */
 .service-card-compact {
-	transition: all 0.3s ease;
+	min-height: 65px;
+	transition: all 0.2s ease;
 }
 
 .service-card-compact:hover {
-	border-color: #667eea !important;
-	box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-	transform: translateY(-2px);
+	border-color: #0056b3 !important;
+	box-shadow: 0 2px 8px rgba(0, 86, 179, 0.15);
+	transform: translateY(-1px);
 }
 
 .service-card-compact.selected {
-	border-color: #667eea !important;
-	background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+	border-color: #0056b3 !important;
+	border-width: 2px;
+	background-color: #e7f3ff;
+	box-shadow: 0 2px 6px rgba(0, 86, 179, 0.2);
 }
 
 /* Location Selection */
 .inperson_address_title {
-	padding: 12px 16px;
-	border: 2px solid #e9ecef;
-	border-radius: 8px;
-	margin-right: 15px;
+	padding: 12px 18px;
+	border: 2px solid #dee2e6;
+	border-radius: 6px;
+	margin-right: 12px;
 	cursor: pointer;
-	transition: all 0.3s ease;
+	transition: all 0.2s ease;
+	background-color: #ffffff;
 }
 
 .inperson_address_title:hover {
-	border-color: #667eea;
-	background: rgba(102, 126, 234, 0.05);
+	border-color: #0056b3;
+	background-color: #f8f9fa;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 .inperson_address:checked + .inperson_address_title_span {
-	color: #667eea;
+	color: #0056b3;
 	font-weight: 600;
 }
 
 /* Form Labels */
 .add_appointment .col-form-label {
 	font-weight: 600;
-	color: #374151;
+	color: #343a40;
+	font-size: 14px;
+}
+
+.add_appointment .heading_title {
+	font-weight: 700;
+	color: #212529;
+	font-size: 15px;
+	margin-bottom: 10px;
+	display: block;
 }
 
 .add_appointment .span_req {
-	color: #ef4444;
+	color: #dc3545;
+	font-weight: 700;
 }
 
-/* Modern DateTime Container - Wider Version */
-.modern-datetime-container-wrapper {
-	width: 100%;
-	margin: 0 auto;
-}
-
+/* DateTime Container */
 .modern-datetime-container {
-	background: white;
+	border: 1.5px solid #dee2e6;
 	border-radius: 8px;
-	overflow: hidden;
-	border: 1px solid #e2e8f0;
-	width: 100%;
+	background: #ffffff;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .datetime-content {
 	display: flex;
-	min-height: 350px;
-	width: 100%;
+	min-height: 320px;
 }
 
 .calendar-section {
 	flex: 0 0 45%;
-	padding: 8px;
-	border-right: 1px solid #e2e8f0;
-	background: white;
-	min-width: 0;
-	display: flex;
-	flex-direction: column;
+	padding: 18px;
+	border-right: 1.5px solid #e9ecef;
+	background-color: #fafbfc;
 }
 
 .timeslot-section {
 	flex: 0 0 55%;
-	padding: 8px;
-	background: white;
+	padding: 18px;
+	background-color: #ffffff;
 }
 
 .section-header {
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	margin-bottom: 8px;
-	padding-bottom: 6px;
-	border-bottom: 1px solid #e2e8f0;
+	gap: 10px;
+	margin-bottom: 14px;
+	padding-bottom: 10px;
+	border-bottom: 2px solid #e9ecef;
 }
 
 .section-header i {
-	color: #667eea;
+	color: #0056b3;
 	font-size: 16px;
 }
 
 .section-header span {
-	font-weight: 600;
-	color: #374151;
-	font-size: 16px;
+	font-weight: 700;
+	font-size: 15px;
+	color: #212529;
+	letter-spacing: 0.3px;
 }
 
 .calendar-wrapper {
-	background: white;
-	border-radius: 6px;
-	padding: 6px;
-	border: 1px solid #e2e8f0;
-	min-height: 300px;
-	width: 100%;
-	display: block;
-	overflow: visible;
+	padding: 12px;
+	min-height: 260px;
 }
 
-/* Modern Bootstrap Datepicker Styling */
+/* Calendar Styling */
 .calendar-wrapper .datepicker {
-	border: none !important;
-	box-shadow: none !important;
-	background: transparent !important;
-	padding: 0 !important;
-	margin: 0 !important;
-	position: relative !important;
-	display: block !important;
-}
-
-.calendar-wrapper .datepicker.datepicker-inline {
-	width: 100% !important;
-	display: block !important;
-	min-height: 280px !important;
-}
-
-.calendar-wrapper .datepicker table {
-	width: 100% !important;
-	border-collapse: separate !important;
-	border-spacing: 4px !important;
-	margin: 0 !important;
-	table-layout: fixed !important;
-	display: table !important;
-}
-
-/* Ensure table header row stays in single line */
-.calendar-wrapper .datepicker table thead {
-	display: table-header-group !important;
-	width: 100% !important;
-}
-
-.calendar-wrapper .datepicker table thead tr {
-	display: table-row !important;
-	width: 100% !important;
-	white-space: nowrap !important;
-}
-
-.calendar-wrapper .datepicker table thead {
-	display: table-header-group !important;
-	width: 100% !important;
-}
-
-.calendar-wrapper .datepicker table thead tr {
-	display: table-row !important;
-	width: 100% !important;
-}
-
-.calendar-wrapper .datepicker table thead {
-	background: white !important;
-	border-radius: 8px !important;
-	display: table-header-group !important;
-	border: 1px solid #e2e8f0 !important;
-}
-
-.calendar-wrapper .datepicker table thead tr {
-	display: table-row !important;
-}
-
-.calendar-wrapper .datepicker table thead tr th {
-	display: table-cell !important;
-}
-
-/* Ensure month/year text is always visible */
-.calendar-wrapper .datepicker table thead tr:first-child th,
-.calendar-wrapper .datepicker table thead tr:first-child th * {
-	color: #2563eb !important;
-	opacity: 1 !important;
-	visibility: visible !important;
-}
-
-/* Force single-row layout for calendar header */
-.calendar-wrapper .datepicker table thead tr:first-child {
-	display: table-row !important;
-	width: 100% !important;
-	table-layout: fixed !important;
-	white-space: nowrap !important;
-}
-
-.calendar-wrapper .datepicker table thead tr:first-child th {
-	background: white !important;
-	color: #2563eb !important;
-	border: none !important;
-	border-radius: 8px 8px 0 0 !important;
-	padding: 12px 8px !important;
-	font-weight: 700 !important;
-	font-size: 15px !important;
-	opacity: 1 !important;
-	visibility: visible !important;
-	display: table-cell !important;
-	position: relative !important;
-	vertical-align: middle !important;
-	white-space: nowrap !important;
-	float: none !important;
-	line-height: 1.5 !important;
-}
-
-/* Previous button - Left side */
-.calendar-wrapper .datepicker table thead tr:first-child th.prev {
-	text-align: left !important;
-	width: 15% !important;
-	min-width: 50px !important;
-	padding-left: 12px !important;
-	padding-right: 4px !important;
-}
-
-/* Month/Year name - Center */
-.calendar-wrapper .datepicker table thead tr:first-child th.datepicker-switch {
-	text-align: center !important;
-	width: 70% !important;
-	padding: 12px 4px !important;
-	white-space: nowrap !important;
-	overflow: hidden !important;
-	text-overflow: ellipsis !important;
-}
-
-/* Next button - Right side */
-.calendar-wrapper .datepicker table thead tr:first-child th.next {
-	text-align: right !important;
-	width: 15% !important;
-	min-width: 50px !important;
-	display: table-cell !important;
-	visibility: visible !important;
-	opacity: 1 !important;
-	padding-right: 12px !important;
-	padding-left: 4px !important;
-}
-
-.calendar-wrapper .datepicker table thead tr:first-child th.next,
-.calendar-wrapper .datepicker table thead tr:first-child th.next * {
-	display: inline-block !important;
-	visibility: visible !important;
-	opacity: 1 !important;
-}
-
-.calendar-wrapper .datepicker table thead tr:first-child th .datepicker-switch,
-.calendar-wrapper .datepicker table thead tr:first-child th.datepicker-switch {
-	color: #2563eb !important;
-	opacity: 1 !important;
-	visibility: visible !important;
-	display: block !important;
-	text-shadow: none !important;
-	font-weight: 700 !important;
-	text-align: center !important;
-	width: 100% !important;
+	border: none;
+	background: transparent;
+	padding: 0;
 }
 
 .calendar-wrapper .datepicker table thead tr:last-child th {
-	background: #667eea !important;
-	color: white !important;
-	border: none !important;
-	padding: 10px 8px !important;
-	font-weight: 600 !important;
-	font-size: 13px !important;
-}
-
-.calendar-wrapper .datepicker table tbody {
-	display: table-row-group !important;
-}
-
-.calendar-wrapper .datepicker table tbody td {
-	border: none !important;
-	padding: 2px !important;
-	text-align: center !important;
-	display: table-cell !important;
-	vertical-align: middle !important;
+	background: #0056b3;
+	color: #ffffff;
+	padding: 10px 8px;
+	font-weight: 700;
+	font-size: 13px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
 }
 
 .calendar-wrapper .datepicker table tbody td.day {
-	width: 36px !important;
-	height: 36px !important;
-	line-height: 36px !important;
-	font-weight: 500 !important;
-	color: #374151 !important;
-	background: #f8fafc !important;
-	border: 1px solid #e2e8f0 !important;
-	border-radius: 8px !important;
-	transition: all 0.3s ease !important;
-	cursor: pointer !important;
+	padding: 8px 5px;
+	text-align: center;
+	cursor: pointer;
+	border-radius: 6px;
+	color: #212529;
+	font-weight: 500;
+	transition: all 0.2s ease;
 }
 
 .calendar-wrapper .datepicker table tbody td.day:hover {
-	background: #667eea !important;
-	color: white !important;
-	border-color: #667eea !important;
-	transform: scale(1.1) !important;
+	background: #cfe2ff;
+	color: #004085;
+	font-weight: 600;
 }
 
 .calendar-wrapper .datepicker table tbody td.active,
-.calendar-wrapper .datepicker table tbody td.active.active,
 .calendar-wrapper .datepicker table tbody td.selected {
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-	color: white !important;
-	border-color: #667eea !important;
-	font-weight: 700 !important;
-	transform: scale(1.1) !important;
-	box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3) !important;
+	background: #0056b3;
+	color: #ffffff;
+	font-weight: 700;
+	box-shadow: 0 2px 4px rgba(0, 86, 179, 0.3);
 }
 
-.calendar-wrapper .datepicker table tbody td.old,
-.calendar-wrapper .datepicker table tbody td.new {
-	color: #cbd5e1 !important;
-	background: #f1f5f9 !important;
-	opacity: 0.6 !important;
-}
-
-.calendar-wrapper .datepicker table tbody td.disabled,
-.calendar-wrapper .datepicker table tbody td.disabled.day {
-	color: #cbd5e1 !important;
-	background: #f1f5f9 !important;
-	cursor: not-allowed !important;
-	opacity: 0.4 !important;
-	position: relative !important;
-}
-
-.calendar-wrapper .datepicker table tbody td.disabled::after {
-	content: '✕' !important;
-	position: absolute !important;
-	top: 50% !important;
-	left: 50% !important;
-	transform: translate(-50%, -50%) !important;
-	color: #ef4444 !important;
-	font-weight: bold !important;
-	font-size: 14px !important;
+.calendar-wrapper .datepicker table tbody td.disabled {
+	color: #adb5bd;
+	background-color: #f8f9fa;
+	cursor: not-allowed;
+	opacity: 0.6;
 }
 
 .calendar-wrapper .datepicker table tbody td.disabled:hover {
-	background: #f1f5f9 !important;
-	color: #cbd5e1 !important;
-	transform: none !important;
+	background-color: #f8f9fa;
+	color: #adb5bd;
 }
 
 .calendar-wrapper .datepicker .prev,
 .calendar-wrapper .datepicker .next {
-	color: #2563eb !important;
-	font-size: 18px !important;
-	font-weight: bold !important;
-	opacity: 1 !important;
-	visibility: visible !important;
-	transition: all 0.3s !important;
-	cursor: pointer !important;
-	display: inline-block !important;
-	position: relative !important;
-	vertical-align: middle !important;
-	background: transparent !important;
-	border: none !important;
-	width: auto !important;
-	height: auto !important;
-	padding: 4px 8px !important;
-	line-height: 1.5 !important;
-	float: none !important;
-	clear: none !important;
-	white-space: nowrap !important;
-}
-
-.calendar-wrapper .datepicker table thead tr:first-child th.prev,
-.calendar-wrapper .datepicker table thead tr:first-child th.next {
-	display: table-cell !important;
-	visibility: visible !important;
-	opacity: 1 !important;
-}
-
-.calendar-wrapper .datepicker table thead tr:first-child th.prev .prev,
-.calendar-wrapper .datepicker table thead tr:first-child th.next .next {
-	display: inline-block !important;
-	visibility: visible !important;
-	opacity: 1 !important;
+	cursor: pointer;
+	padding: 6px 10px;
+	color: #0056b3;
+	font-weight: 700;
+	border-radius: 4px;
+	transition: all 0.2s ease;
 }
 
 .calendar-wrapper .datepicker .prev:hover,
 .calendar-wrapper .datepicker .next:hover {
-	opacity: 1 !important;
-	visibility: visible !important;
-	background: rgba(37, 99, 235, 0.1) !important;
-	color: #1e40af !important;
-	transform: scale(1.1) !important;
+	background: #e7f3ff;
+	color: #004085;
 }
 
-/* Ensure next button is always visible and properly positioned */
-.calendar-wrapper .datepicker table thead tr:first-child th.next,
-.calendar-wrapper .datepicker table thead tr:first-child th.next *,
-.calendar-wrapper .datepicker table thead tr:first-child th.next::before,
-.calendar-wrapper .datepicker table thead tr:first-child th.next::after {
-	visibility: visible !important;
-	opacity: 1 !important;
-	display: inline-block !important;
-}
-
-.calendar-wrapper .datepicker table thead tr:first-child th.next {
-	min-width: 40px !important;
-}
-
-.calendar-wrapper .datepicker .datepicker-switch {
-	color: #2563eb !important;
-	font-weight: 700 !important;
-	font-size: 15px !important;
-	opacity: 1 !important;
-	visibility: visible !important;
-	display: block !important;
-	text-shadow: none !important;
-}
-
-.calendar-wrapper .datepicker .datepicker-switch:hover {
-	background: rgba(37, 99, 235, 0.1) !important;
-	opacity: 1 !important;
-	color: #1e40af !important;
-}
-
+/* Timeslots */
 .timeslot-wrapper {
-	background: white;
-	border-radius: 6px;
-	padding: 6px;
-	border: 1px solid #e2e8f0;
-	min-height: 250px;
+	min-height: 260px;
+	position: relative;
 }
 
 .selected-date-display {
-	background: #667eea;
-	color: white;
-	padding: 8px;
-	border-radius: 4px;
-	margin-bottom: 8px;
+	background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+	color: #ffffff;
+	padding: 12px 16px;
+	border-radius: 6px;
+	margin-bottom: 14px;
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 10px;
+	box-shadow: 0 2px 4px rgba(0, 86, 179, 0.2);
 }
 
 .date-icon {
-	width: 30px;
-	height: 30px;
-	background: rgba(255, 255, 255, 0.3);
+	width: 28px;
+	height: 28px;
+	font-size: 14px;
+	background: rgba(255, 255, 255, 0.2);
 	border-radius: 4px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 12px;
 }
 
 .date-info .modern-selected-date {
-	font-weight: 600;
-	font-size: 14px;
-	margin: 0;
-	line-height: 1.2;
+	font-weight: 700;
+	font-size: 15px;
+	color: #ffffff;
 }
 
 .date-info .modern-selected-day {
-	font-size: 12px;
-	opacity: 0.9;
-	margin: 0;
-	line-height: 1.2;
+	font-size: 13px;
+	color: rgba(255, 255, 255, 0.9);
 }
 
 .timeslots-grid {
-	display: grid !important;
-	grid-template-columns: repeat(2, 1fr) !important;
-	grid-template-rows: repeat(auto-fit, 35px) !important;
-	gap: 8px !important;
-	max-height: 180px;
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 10px;
+	max-height: 220px;
 	overflow-y: auto;
-	padding-right: 4px;
+	padding: 4px;
 }
 
 .timeslots-grid::-webkit-scrollbar {
-	width: 4px;
+	width: 6px;
 }
 
 .timeslots-grid::-webkit-scrollbar-track {
-	background: #f1f5f9;
-	border-radius: 2px;
+	background: #f1f3f5;
+	border-radius: 3px;
 }
 
 .timeslots-grid::-webkit-scrollbar-thumb {
-	background: #cbd5e1;
-	border-radius: 2px;
+	background: #adb5bd;
+	border-radius: 3px;
 }
 
 .timeslots-grid::-webkit-scrollbar-thumb:hover {
-	background: #94a3b8;
+	background: #868e96;
 }
 
 .timeslots-grid .timeslot {
-	background: white;
-	color: #374151;
-	border: 1px solid #e2e8f0;
-	border-radius: 4px;
-	padding: 6px 8px;
-	font-size: 12px;
-	font-weight: 500;
-	cursor: pointer;
-	transition: border-color 0.2s ease;
+	border: 1.5px solid #dee2e6;
+	border-radius: 6px;
+	padding: 10px 12px;
 	text-align: center;
-	position: relative;
-	overflow: hidden;
-	white-space: nowrap;
-	height: 30px;
-	line-height: 18px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.timeslots-grid .timeslot::before {
-	content: '';
-	position: absolute;
-	top: 0;
-	left: -100%;
-	width: 100%;
-	height: 100%;
-	background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-	transition: left 0.5s;
-}
-
-.timeslots-grid .timeslot:hover::before {
-	left: 100%;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 500;
+	color: #212529;
+	background-color: #ffffff;
+	transition: all 0.2s ease;
 }
 
 .timeslots-grid .timeslot:hover {
-	border-color: #667eea;
-	background: #667eea;
-	color: white;
+	border-color: #0056b3;
+	background: #e7f3ff;
+	color: #004085;
+	font-weight: 600;
+	transform: translateY(-1px);
+	box-shadow: 0 2px 4px rgba(0, 86, 179, 0.15);
 }
 
 .timeslots-grid .timeslot.selected {
-	border-color: #667eea;
-	background: #667eea;
-	color: white;
-	font-weight: 600;
+	border-color: #0056b3;
+	background: #0056b3;
+	color: #ffffff;
+	font-weight: 700;
+	box-shadow: 0 2px 6px rgba(0, 86, 179, 0.3);
 }
 
 .timeslots-grid .timeslot.disabled {
-	background: #f8fafc;
-	color: #94a3b8;
-	border-color: #e2e8f0;
+	color: #adb5bd;
+	background-color: #f8f9fa;
+	border-color: #e9ecef;
 	cursor: not-allowed;
 	opacity: 0.6;
-	position: relative;
-}
-
-.timeslots-grid .timeslot.disabled::after {
-	content: '✕';
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	color: #ef4444;
-	font-weight: bold;
-	font-size: 16px;
 }
 
 .timeslots-grid .timeslot.disabled:hover {
-	border-color: #e2e8f0;
-	background: white;
+	transform: none;
+	box-shadow: none;
+	border-color: #e9ecef;
+	background-color: #f8f9fa;
+	color: #adb5bd;
 }
 
 .no-slots-message {
 	text-align: center;
-	padding: 40px 20px;
+	padding: 40px 24px;
 	display: none;
-	background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-	border-radius: 12px;
-	border: 2px dashed #cbd5e1;
+	border: 2px dashed #dee2e6;
+	border-radius: 8px;
+	background-color: #f8f9fa;
 }
 
 .no-slots-icon {
-	color: #94a3b8;
-	font-size: 48px;
-	margin-bottom: 15px;
+	color: #868e96;
+	font-size: 40px;
+	margin-bottom: 12px;
 }
 
 .no-slots-text h6 {
-	color: #64748b;
-	font-weight: 600;
-	margin-bottom: 5px;
-	font-size: 18px;
+	color: #495057;
+	font-weight: 700;
+	margin-bottom: 6px;
+	font-size: 16px;
 }
 
 .no-slots-text p {
-	color: #94a3b8;
+	color: #6c757d;
 	font-size: 14px;
-	margin: 0;
-}
-
-/* Ensure proper spacing */
-.timeslot-wrapper {
-	position: relative;
-	min-height: 300px;
 }
 
 .timeslot-wrapper .no-slots-message {
@@ -967,175 +679,60 @@
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	width: calc(100% - 40px);
-	margin: 0;
+	width: calc(100% - 24px);
 }
 
-/* Slot Overwrite Section Styling */
+/* Slot Overwrite */
 .slot-overwrite-section {
-	padding: 6px 10px;
-	background: #f8fafc;
-	border-radius: 4px;
-	border: 1px solid #e2e8f0;
-	margin-top: 10px;
+	padding: 12px 14px;
+	background: #f8f9fa;
+	border: 1.5px solid #dee2e6;
+	border-radius: 6px;
+	margin-top: 14px;
 }
 
 .slot-overwrite-section .custom-control-label {
-	font-weight: 500;
-	color: #374151;
 	cursor: pointer;
+	color: #495057;
+	font-weight: 500;
 }
 
 .slot-overwrite-section .custom-control-label i {
-	color: #667eea;
+	color: #0056b3;
+	margin-right: 6px;
 }
 
 .slot-overwrite-section .custom-control-input:checked ~ .custom-control-label {
-	color: #667eea;
-	font-weight: 600;
+	color: #0056b3;
+	font-weight: 700;
 }
 
-/* Date & Time Label Styling */
-.form-group > label[style*="font-size: 16px"] {
-	display: block;
-	padding-bottom: 6px;
-	border-bottom: 1px solid #e2e8f0;
-	margin-bottom: 10px !important;
-}
-
-/* Responsive improvements */
+/* Responsive */
 @media (max-width: 768px) {
-	.modern-datetime-container {
-		margin: 10px;
-		border-radius: 12px;
-	}
-	
 	.datetime-content {
 		flex-direction: column;
-		min-height: auto;
 	}
 	
 	.calendar-section {
-		flex: 1 1 auto;
 		border-right: none;
-		border-bottom: 1px solid #e2e8f0;
-		padding: 20px;
-	}
-	
-	.timeslot-section {
-		flex: 1 1 auto;
-		padding: 20px;
+		border-bottom: 1.5px solid #e9ecef;
 	}
 	
 	.timeslots-grid {
-		grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-		gap: 10px;
-	}
-	
-	.timeslots-grid .timeslot {
-		font-size: 13px;
-		padding: 10px 12px;
-	}
-	
-	.datetime-header {
-		padding: 15px;
-	}
-	
-	.datetime-icon {
-		width: 40px;
-		height: 40px;
-		font-size: 16px;
-	}
-	
-	.datetime-title h6 {
-		font-size: 16px;
-	}
-	
-	.datetime-title p {
-		font-size: 13px;
-	}
-	
-	.section-header {
-		margin-bottom: 15px;
-		padding-bottom: 10px;
-	}
-	
-	.section-header span {
-		font-size: 15px;
-	}
-	
-	.calendar-wrapper, .timeslot-wrapper {
-		padding: 15px;
-		min-height: auto;
-	}
-	
-	.calendar-wrapper .datepicker.datepicker-inline {
-		min-height: auto !important;
-	}
-	
-	.selected-date-display {
-		padding: 12px;
-		margin-bottom: 15px;
-	}
-	
-	.date-icon {
-		width: 35px;
-		height: 35px;
-	}
-	
-	.add_appointment .modal-dialog {
-		margin: 10px;
-		max-width: calc(100% - 20px);
-	}
-	
-	.service-card-compact {
-		margin-bottom: 15px;
+		grid-template-columns: repeat(2, 1fr);
 	}
 	
 	.inperson_address_header {
 		flex-direction: column;
-		gap: 10px;
 	}
 	
 	.inperson_address_title {
 		margin-right: 0;
-		margin-bottom: 10px;
-		width: 100%;
-	}
-}
-
-@media (max-width: 480px) {
-	.datetime-content {
-		padding: 15px;
+		margin-bottom: 12px;
 	}
 	
-	.calendar-section, .timeslot-section {
-		padding: 15px;
-	}
-	
-	.timeslots-grid {
-		grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-		gap: 8px;
-	}
-	
-	.timeslots-grid .timeslot {
-		font-size: 12px;
-		padding: 8px 10px;
-	}
-	
-	.datetime-header {
-		padding: 12px;
-		flex-direction: column;
-		text-align: center;
-		gap: 10px;
-	}
-	
-	.datetime-title h6 {
-		font-size: 15px;
-	}
-	
-	.datetime-title p {
-		font-size: 12px;
+	.add_appointment .modal-body {
+		padding: 18px;
 	}
 }
 </style>

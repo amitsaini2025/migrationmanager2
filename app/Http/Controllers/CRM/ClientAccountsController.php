@@ -1089,12 +1089,28 @@ class ClientAccountsController extends Controller
                     DB::table('account_all_invoice_receipts')->whereIn('id', $deletedIds)->delete();
                 }
    
-                // Step 2: Process all entries (update existing and add new ones)
+                // Step 2: Get existing invoice number if editing (preserve invoice number)
+                $existingInvoice = DB::table('account_client_receipts')
+                    ->where('receipt_type', 3)
+                    ->where('receipt_id', $requestData['receipt_id'])
+                    ->first();
+                
+                $invoice_no = null;
+                if ($existingInvoice && !empty($existingInvoice->invoice_no)) {
+                    // Preserve existing invoice number when editing
+                    $invoice_no = $existingInvoice->invoice_no;
+                } else {
+                    // Only generate new invoice number if it doesn't exist (new invoice)
+                    $invoiceType = 'INV';
+                    $invoice_no = $this->createInvoiceNumber($invoiceType);
+                }
+
+                // Step 3: Process all entries (update existing and add new ones)
                 $totalWithdrawAmount = 0;
                 $lastEntryData = null;
                 $processedEntries = []; // To store entries for response
                 $currentTimestamp = now(); // Get current timestamp for created_at and updated_at
-   
+
                 foreach ($requestData['trans_date'] as $index => $transDate) {
                     // Calculate unit price and withdraw amount based on GST
                     /*$unitPrice = floatval($requestData['withdraw_amount'][$index]);
@@ -1103,8 +1119,6 @@ class ClientAccountsController extends Controller
                         $withdrawAmount = $unitPrice * 1.10; // Add 10% GST
                     }*/
                     $withdrawAmount = floatval($requestData['withdraw_amount'][$index]);
-                    $invoiceType = 'INV';
-                    $invoice_no = $this->createInvoiceNumber($invoiceType);
    
                     $entryData = [
                         'user_id' => $requestData['loggedin_userid'],
@@ -1591,7 +1605,7 @@ class ClientAccountsController extends Controller
                       // Get the invoice
                       $invoice = DB::table('account_client_receipts')
                           ->where('receipt_type', 3)
-                          ->where('trans_no', $invoiceNo)
+                          ->where('invoice_no', $invoiceNo)
                           ->where('client_id', $requestData['client_id'])
                           ->first();
 
@@ -1641,7 +1655,7 @@ class ClientAccountsController extends Controller
                           // Update invoice status and balance
                           DB::table('account_client_receipts')
                               ->where('receipt_type', 3)
-                              ->where('trans_no', $invoiceNo)
+                              ->where('invoice_no', $invoiceNo)
                               ->where('client_id', $requestData['client_id'])
                               ->update([
                                   'invoice_status' => $newStatus,
@@ -1738,7 +1752,7 @@ class ClientAccountsController extends Controller
                   $invoiceNo = $firstReceiptWithInvoice['invoice_no'];
                   $invoice = DB::table('account_client_receipts')
                       ->where('receipt_type', 3)
-                      ->where('trans_no', $invoiceNo)
+                      ->where('invoice_no', $invoiceNo)
                       ->where('client_id', $requestData['client_id'])
                       ->first();
 
@@ -1887,7 +1901,7 @@ class ClientAccountsController extends Controller
               // Get the invoice
               $invoice = DB::table('account_client_receipts')
                   ->where('receipt_type', 3)
-                  ->where('trans_no', $invoiceNo)
+                  ->where('invoice_no', $invoiceNo)
                   ->where('client_id', $receipt->client_id)
                   ->first();
               
@@ -1976,7 +1990,7 @@ class ClientAccountsController extends Controller
                   // Update invoice status and balance
                   DB::table('account_client_receipts')
                       ->where('receipt_type', 3)
-                      ->where('trans_no', $invoiceNo)
+                      ->where('invoice_no', $invoiceNo)
                       ->where('client_id', $receipt->client_id)
                       ->update([
                           'invoice_status' => $newStatus,
@@ -2366,7 +2380,7 @@ class ClientAccountsController extends Controller
           // Get the invoice
           $invoice = DB::table('account_client_receipts')
               ->where('receipt_type', 3)
-              ->where('trans_no', $invoiceNo)
+              ->where('invoice_no', $invoiceNo)
               ->where('client_id', $clientId)
               ->first();
           
@@ -2408,7 +2422,7 @@ class ClientAccountsController extends Controller
               // Update invoice status and balance
               DB::table('account_client_receipts')
                   ->where('receipt_type', 3)
-                  ->where('trans_no', $invoiceNo)
+                  ->where('invoice_no', $invoiceNo)
                   ->where('client_id', $clientId)
                   ->update([
                       'invoice_status' => $newStatus,

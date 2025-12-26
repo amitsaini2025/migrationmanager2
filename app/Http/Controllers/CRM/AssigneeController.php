@@ -68,7 +68,7 @@ class AssigneeController extends Controller
     }
 
     //Update task to be complete
-    public function updatetaskcompleted(Request $request,Note $note)
+    public function updatetaskcompleted(Request $request)
     {
         $data = $request->all(); //dd($data);
         $note = Note::where('unique_group_id',$data['unique_group_id'])
@@ -111,7 +111,7 @@ class AssigneeController extends Controller
                 if(Auth::user()->id != @$note_data['assigned_to']){
                     $objs->use_for = @$note_data['assigned_to'];
                 } else {
-                    $objs->use_for = "";
+                    $objs->use_for = null;
                 }
                 $objs->followup_date = @$note_data['updated_at'];
                 $objs->task_group = @$note_data['task_group'];
@@ -129,7 +129,7 @@ class AssigneeController extends Controller
     }
 
     //Update task to be not complete
-    public function updatetasknotcompleted(Request $request,Note $note)
+    public function updatetasknotcompleted(Request $request)
     {
         $data = $request->all(); //dd($data['id']);
         $note = Note::where('unique_group_id',$data['unique_group_id'])
@@ -594,7 +594,7 @@ class AssigneeController extends Controller
             if(Auth::user()->id != @$appointment->assigned_to){
                 $objs->use_for = @$appointment->assigned_to;
             } else {
-                $objs->use_for = "";
+                $objs->use_for = null;
             }
             $objs->followup_date = @$appointment->followup_datetime;
             $objs->task_group = @$appointment->task_group;
@@ -635,7 +635,7 @@ class AssigneeController extends Controller
             if(Auth::user()->id != @$appointment->assigned_to){
                 $objs->use_for = @$appointment->assigned_to;
             } else {
-                $objs->use_for = "";
+                $objs->use_for = null;
             }
             $objs->followup_date = @$appointment->followup_datetime;
             $objs->task_group = @$appointment->task_group;
@@ -669,7 +669,7 @@ class AssigneeController extends Controller
             if(Auth::user()->id != @$appointment->assigned_to){
                 $objs->use_for = @$appointment->assigned_to;
             } else {
-                $objs->use_for = "";
+                $objs->use_for = null;
             }
             $objs->followup_date = @$appointment->followup_datetime;
             $objs->task_group = @$appointment->task_group;
@@ -840,7 +840,7 @@ class AssigneeController extends Controller
                 if (Auth::user()->id != $currentTask->assigned_to) {
                     $completionLog->use_for = $currentTask->assigned_to;
                 } else {
-                    $completionLog->use_for = "";
+                    $completionLog->use_for = null;
                 }
                 $completionLog->followup_date = $currentTask->updated_at;
                 $completionLog->task_group = $currentTask->task_group;
@@ -866,6 +866,7 @@ class AssigneeController extends Controller
             $newTask->type = 'client';
             $newTask->folloup = 1;
             $newTask->status = '0'; // New task is incomplete
+            $newTask->pin = 0; // Set pin to 0 (required field)
             $taskUniqueId = 'group_' . uniqid('', true);
             $newTask->unique_group_id = $taskUniqueId; // Generate unique group ID for the new task
             $newTask->save();
@@ -880,7 +881,7 @@ class AssigneeController extends Controller
                 if (Auth::user()->id != $validated['assigned_to']) {
                     $newTaskLog->use_for = $validated['assigned_to'];
                 } else {
-                    $newTaskLog->use_for = "";
+                    $newTaskLog->use_for = null;
                 }
                 $newTaskLog->followup_date = $followupDate;
                 $newTaskLog->task_group = $validated['task_group'];

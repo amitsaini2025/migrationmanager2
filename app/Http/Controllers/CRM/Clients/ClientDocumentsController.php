@@ -331,28 +331,140 @@ class ClientDocumentsController extends Controller
                     $originalName = $file->getClientOriginalName();
                     $extension = $file->getClientOriginalExtension();
     
-                    // Get checklist (doc category)
+                    // Validate fileid
+                    if (empty($request->fileid)) {
+                        $response['message'] = 'Document ID is required';
+                        ob_end_clean();
+                        header('Content-Type: application/json');
+                        echo json_encode($response);
+                        exit;
+                    }
+    
+                    // Fetch and validate document
                     $req_file_id = $request->fileid;
                     $obj = Document::find($req_file_id);
+                    
+                    if (!$obj) {
+                        \Log::warning('Document upload failed: Document not found', [
+                            'fileid' => $req_file_id,
+                            'clientid' => $clientid,
+                            'user_id' => Auth::user()->id ?? 'unknown'
+                        ]);
+                        $response['message'] = 'Document record not found.';
+                        ob_end_clean();
+                        header('Content-Type: application/json');
+                        echo json_encode($response);
+                        exit;
+                    }
+    
+                    // Validate document belongs to client (security check)
+                    if ($obj->client_id != $clientid) {
+                        \Log::warning('Document upload failed: Client mismatch', [
+                            'fileid' => $req_file_id,
+                            'document_client_id' => $obj->client_id,
+                            'request_client_id' => $clientid,
+                            'user_id' => Auth::user()->id ?? 'unknown'
+                        ]);
+                        $response['message'] = 'Document does not belong to this client.';
+                        ob_end_clean();
+                        header('Content-Type: application/json');
+                        echo json_encode($response);
+                        exit;
+                    }
+    
+                    // Validate checklist exists
+                    if (empty($obj->checklist)) {
+                        \Log::warning('Document upload failed: Missing checklist', [
+                            'fileid' => $req_file_id,
+                            'clientid' => $clientid,
+                            'user_id' => Auth::user()->id ?? 'unknown'
+                        ]);
+                        $response['message'] = 'Document checklist not found. Please select a valid checklist.';
+                        ob_end_clean();
+                        header('Content-Type: application/json');
+                        echo json_encode($response);
+                        exit;
+                    }
+    
+                    // Get checklist name right before use to prevent race conditions
+                    // Refresh document to get latest checklist name
+                    $obj->refresh();
                     $checklistName = $obj->checklist;
-                    $name = $client_first_name . "_" . $checklistName . "_" . time() . "." . $extension;
+    
+                    // Validate checklist name is still present after refresh
+                    if (empty($checklistName)) {
+                        \Log::error('Document upload failed: Checklist disappeared during upload', [
+                            'fileid' => $req_file_id,
+                            'clientid' => $clientid,
+                            'user_id' => Auth::user()->id ?? 'unknown'
+                        ]);
+                        $response['message'] = 'Checklist name not found. Please try again.';
+                        ob_end_clean();
+                        header('Content-Type: application/json');
+                        echo json_encode($response);
+                        exit;
+                    }
+    
+                    // Build file name with current checklist name
+                    $timestamp = time();
+                    $name = $client_first_name . "_" . $checklistName . "_" . $timestamp . "." . $extension;
     
                     $filePath = $client_unique_id . '/' . $doctype . '/' . $name;
                     Storage::disk('s3')->put($filePath, file_get_contents($file));
     
-                    $req_file_id = $request->fileid;
-                    $obj = Document::find($req_file_id);
-                    if ($obj) {
-                        $obj->file_name = $client_first_name . "_" . $checklistName . "_" . time();
-                        $obj->filetype = $extension;
-                        $obj->user_id = Auth::user()->id;
-                        $fileUrl = Storage::disk('s3')->url($filePath);
-                        $obj->myfile = $fileUrl;
-                        $obj->myfile_key = $name;
-                        $obj->type = $request->type;
-                        $obj->file_size = $size;
-                        $obj->doc_type = $doctype;
-                        $saved = $obj->save();
+                    // Re-fetch checklist name one more time right before saving to ensure we have the latest
+                    $obj->refresh();
+                    $finalChecklistName = $obj->checklist;
+                    
+                    // Use the latest checklist name
+                    if (!empty($finalChecklistName) && $finalChecklistName !== $checklistName) {
+                        // Checklist changed during upload - rebuild name with same timestamp
+                        $checklistName = $finalChecklistName;
+                        $name = $client_first_name . "_" . $checklistName . "_" . $timestamp . "." . $extension;
+                        // Update file path and move S3 file
+                        $newFilePath = $client_unique_id . '/' . $doctype . '/' . $name;
+                        if ($newFilePath !== $filePath) {
+                            try {
+                                // Copy to new path and delete old
+                                Storage::disk('s3')->copy($filePath, $newFilePath);
+                                Storage::disk('s3')->delete($filePath);
+                                $filePath = $newFilePath;
+                                \Log::info('Document file moved due to checklist change during upload', [
+                                    'old_path' => $filePath,
+                                    'new_path' => $newFilePath,
+                                    'old_checklist' => $checklistName,
+                                    'new_checklist' => $finalChecklistName
+                                ]);
+                            } catch (\Exception $e) {
+                                \Log::error('Failed to move S3 file after checklist change', [
+                                    'old_path' => $filePath,
+                                    'new_path' => $newFilePath,
+                                    'error' => $e->getMessage()
+                                ]);
+                                // Continue with old path - at least the file is uploaded
+                            }
+                        }
+                    }
+    
+                    // Update document with file information
+                    $obj->file_name = $client_first_name . "_" . $checklistName . "_" . $timestamp;
+                    $obj->filetype = $extension;
+                    $obj->user_id = Auth::user()->id;
+                    $fileUrl = Storage::disk('s3')->url($filePath);
+                    $obj->myfile = $fileUrl;
+                    $obj->myfile_key = $name;
+                    $obj->type = $request->type;
+                    $obj->file_size = $size;
+                    $obj->doc_type = $doctype;
+                    $saved = $obj->save();
+                    
+                    \Log::info('Document uploaded successfully', [
+                        'fileid' => $req_file_id,
+                        'checklist_name' => $checklistName,
+                        'file_name' => $name,
+                        'clientid' => $clientid,
+                        'user_id' => Auth::user()->id ?? 'unknown'
+                    ]);
     
                         if ($saved && $request->type == 'client') {
                             $matterRef = $this->getMatterReference($clientid);
@@ -378,9 +490,6 @@ class ClientDocumentsController extends Controller
                             $response['filekey'] = $name;
                             $response['doccategory'] = $checklistName;
                         }
-                    } else {
-                        $response['message'] = 'Document record not found.';
-                    }
                 }
             }
         } catch (\Exception $e) {
@@ -637,17 +746,122 @@ class ClientDocumentsController extends Controller
                     $originalName = $file->getClientOriginalName();
                     $extension = $file->getClientOriginalExtension();
 
-                    // Get checklist (doc category)
+                    // Validate fileid
+                    if (empty($request->fileid)) {
+                        $response['message'] = 'Document ID is required';
+                        ob_end_clean();
+                        header('Content-Type: application/json');
+                        echo json_encode($response);
+                        exit;
+                    }
+
+                    // Fetch and validate document
                     $req_file_id = $request->fileid;
                     $obj = Document::find($req_file_id);
+                    
+                    if (!$obj) {
+                        \Log::warning('Visa document upload failed: Document not found', [
+                            'fileid' => $req_file_id,
+                            'clientid' => $clientid,
+                            'user_id' => Auth::user()->id ?? 'unknown'
+                        ]);
+                        $response['message'] = 'Document record not found.';
+                        ob_end_clean();
+                        header('Content-Type: application/json');
+                        echo json_encode($response);
+                        exit;
+                    }
+
+                    // Validate document belongs to client (security check)
+                    if ($obj->client_id != $clientid) {
+                        \Log::warning('Visa document upload failed: Client mismatch', [
+                            'fileid' => $req_file_id,
+                            'document_client_id' => $obj->client_id,
+                            'request_client_id' => $clientid,
+                            'user_id' => Auth::user()->id ?? 'unknown'
+                        ]);
+                        $response['message'] = 'Document does not belong to this client.';
+                        ob_end_clean();
+                        header('Content-Type: application/json');
+                        echo json_encode($response);
+                        exit;
+                    }
+
+                    // Validate checklist exists
+                    if (empty($obj->checklist)) {
+                        \Log::warning('Visa document upload failed: Missing checklist', [
+                            'fileid' => $req_file_id,
+                            'clientid' => $clientid,
+                            'user_id' => Auth::user()->id ?? 'unknown'
+                        ]);
+                        $response['message'] = 'Document checklist not found. Please select a valid checklist.';
+                        ob_end_clean();
+                        header('Content-Type: application/json');
+                        echo json_encode($response);
+                        exit;
+                    }
+
+                    // Get checklist name right before use to prevent race conditions
+                    // Refresh document to get latest checklist name
+                    $obj->refresh();
                     $checklistName = $obj->checklist;
+
+                    // Validate checklist name is still present after refresh
+                    if (empty($checklistName)) {
+                        \Log::error('Visa document upload failed: Checklist disappeared during upload', [
+                            'fileid' => $req_file_id,
+                            'clientid' => $clientid,
+                            'user_id' => Auth::user()->id ?? 'unknown'
+                        ]);
+                        $response['message'] = 'Checklist name not found. Please try again.';
+                        ob_end_clean();
+                        header('Content-Type: application/json');
+                        echo json_encode($response);
+                        exit;
+                    }
+
                     // Build new file name: firstname_checklist_timestamp.ext
-                    $name = $client_first_name . "_" . $checklistName . "_" . time() . "." . $extension;
+                    $timestamp = time();
+                    $name = $client_first_name . "_" . $checklistName . "_" . $timestamp . "." . $extension;
 
                     $filePath = $client_unique_id . '/' . $doctype . '/' . $name;
                     Storage::disk('s3')->put($filePath, file_get_contents($file));
 
-                    $obj->file_name = $client_first_name . "_" . $checklistName . "_" . time();
+                    // Re-fetch checklist name one more time right before saving to ensure we have the latest
+                    $obj->refresh();
+                    $finalChecklistName = $obj->checklist;
+                    
+                    // Use the latest checklist name
+                    if (!empty($finalChecklistName) && $finalChecklistName !== $checklistName) {
+                        // Checklist changed during upload - rebuild name with same timestamp
+                        $checklistName = $finalChecklistName;
+                        $name = $client_first_name . "_" . $checklistName . "_" . $timestamp . "." . $extension;
+                        // Update file path and move S3 file
+                        $newFilePath = $client_unique_id . '/' . $doctype . '/' . $name;
+                        if ($newFilePath !== $filePath) {
+                            try {
+                                // Copy to new path and delete old
+                                Storage::disk('s3')->copy($filePath, $newFilePath);
+                                Storage::disk('s3')->delete($filePath);
+                                $filePath = $newFilePath;
+                                \Log::info('Visa document file moved due to checklist change during upload', [
+                                    'old_path' => $filePath,
+                                    'new_path' => $newFilePath,
+                                    'old_checklist' => $checklistName,
+                                    'new_checklist' => $finalChecklistName
+                                ]);
+                            } catch (\Exception $e) {
+                                \Log::error('Failed to move S3 file after checklist change', [
+                                    'old_path' => $filePath,
+                                    'new_path' => $newFilePath,
+                                    'error' => $e->getMessage()
+                                ]);
+                                // Continue with old path - at least the file is uploaded
+                            }
+                        }
+                    }
+
+                    $obj->file_name = $client_first_name . "_" . $checklistName . "_" . $timestamp;
                     $obj->filetype = $extension;
                     $obj->user_id = Auth::user()->id;
                     $fileUrl = Storage::disk('s3')->url($filePath);
@@ -657,6 +871,14 @@ class ClientDocumentsController extends Controller
                     $obj->file_size = $size;
                     $obj->doc_type = $doctype;
                     $saved = $obj->save();
+                    
+                    \Log::info('Visa document uploaded successfully', [
+                        'fileid' => $req_file_id,
+                        'checklist_name' => $checklistName,
+                        'file_name' => $name,
+                        'clientid' => $clientid,
+                        'user_id' => Auth::user()->id ?? 'unknown'
+                    ]);
                     
                     if($saved){
                         if($request->type == 'client'){
@@ -707,32 +929,222 @@ class ClientDocumentsController extends Controller
     }
 
     /**
+     * Check S3 file existence with retry logic to handle eventual consistency and transient failures
+     * 
+     * @param string $s3Path The S3 path to check
+     * @param int $maxRetries Maximum number of retry attempts (default: 3)
+     * @param int $initialDelay Initial delay in milliseconds before first retry (default: 500ms)
+     * @return array ['exists' => bool, 'attempts' => int, 'last_error' => string|null]
+     */
+    private function checkS3FileExistsWithRetry($s3Path, $maxRetries = 3, $initialDelay = 500) {
+        if (empty($s3Path)) {
+            return ['exists' => false, 'attempts' => 0, 'last_error' => 'Empty S3 path'];
+        }
+
+        $attempts = 0;
+        $lastError = null;
+        $delay = $initialDelay;
+
+        for ($i = 0; $i < $maxRetries; $i++) {
+            $attempts++;
+            
+            try {
+                // Attempt to check file existence
+                $exists = \Storage::disk('s3')->exists($s3Path);
+                
+                if ($exists) {
+                    // File exists - success!
+                    if ($i > 0) {
+                        \Log::info('S3 file existence confirmed after retry', [
+                            's3_path' => $s3Path,
+                            'attempts' => $attempts,
+                            'retry_count' => $i
+                        ]);
+                    }
+                    return ['exists' => true, 'attempts' => $attempts, 'last_error' => null];
+                }
+                
+                // File doesn't exist - if this is not the last attempt, wait and retry
+                if ($i < $maxRetries - 1) {
+                    // Use exponential backoff: 500ms, 1000ms, 2000ms
+                    usleep($delay * 1000); // Convert milliseconds to microseconds
+                    $delay *= 2; // Double the delay for next retry
+                } else {
+                    // Last attempt failed - file truly doesn't exist
+                    \Log::debug('S3 file does not exist after all retries', [
+                        's3_path' => $s3Path,
+                        'attempts' => $attempts
+                    ]);
+                    return ['exists' => false, 'attempts' => $attempts, 'last_error' => null];
+                }
+                
+            } catch (\Exception $e) {
+                $lastError = $e->getMessage();
+                
+                // Check if this is a retryable error (network, timeout, throttling)
+                $retryableErrors = [
+                    'timeout', 
+                    'Connection', 
+                    'Throttling', 
+                    '503', 
+                    '500',
+                    'SlowDown',
+                    'RequestTimeout'
+                ];
+                
+                $isRetryable = false;
+                foreach ($retryableErrors as $errorPattern) {
+                    if (stripos($e->getMessage(), $errorPattern) !== false || 
+                        stripos($e->getCode(), $errorPattern) !== false) {
+                        $isRetryable = true;
+                        break;
+                    }
+                }
+                
+                if ($isRetryable && $i < $maxRetries - 1) {
+                    // Retryable error - wait and try again
+                    \Log::warning('S3 file check failed with retryable error, retrying', [
+                        's3_path' => $s3Path,
+                        'attempt' => $attempts,
+                        'error' => $lastError,
+                        'retry_delay_ms' => $delay
+                    ]);
+                    
+                    usleep($delay * 1000);
+                    $delay *= 2;
+                } else {
+                    // Non-retryable error or last attempt - fail
+                    \Log::error('S3 file check failed', [
+                        's3_path' => $s3Path,
+                        'attempts' => $attempts,
+                        'error' => $lastError,
+                        'retryable' => $isRetryable
+                    ]);
+                    return ['exists' => false, 'attempts' => $attempts, 'last_error' => $lastError];
+                }
+            }
+        }
+
+        return ['exists' => false, 'attempts' => $attempts, 'last_error' => $lastError ?: 'Max retries exceeded'];
+    }
+
+    /**
      * Rename Document
      */
     public function renamedoc(Request $request) {
+        $response = ['status' => false, 'message' => 'Please try again'];
         $id = $request->id;
-        $filename = $request->filename; // new file name without extension
+        $filename = trim($request->filename ?? ''); // new file name without extension
 
-        if(\App\Models\Document::where('id',$id)->exists()){
-            $doc = \App\Models\Document::where('id',$id)->first();
+        try {
+            // Step 1: Validate inputs
+            if (empty($id)) {
+                $response['message'] = 'Document ID is required';
+                $response['error_type'] = 'missing_id';
+                echo json_encode($response);
+                return;
+            }
 
-            // Get old S3 key and extension
-            $oldKey = $doc->myfile_key;
-            $extension = $doc->filetype;
+            if (empty($filename)) {
+                $response['message'] = 'File name cannot be empty';
+                $response['error_type'] = 'empty_filename';
+                echo json_encode($response);
+                return;
+            }
+
+            // Step 2: Validate document exists
+            if (!\App\Models\Document::where('id', $id)->exists()) {
+                \Log::warning('Document rename failed: Document not found', [
+                    'document_id' => $id,
+                    'user_id' => Auth::user()->id ?? 'unknown'
+                ]);
+                $response['message'] = 'Document not found';
+                $response['error_type'] = 'document_not_found';
+                echo json_encode($response);
+                return;
+            }
+
+            $doc = \App\Models\Document::where('id', $id)->first();
             $client_id = $doc->client_id;
-            $doc_type = $doc->doc_type;
+            $doc_type = $doc->doc_type ?? '';
 
-            // Get client unique id for S3 path
+            // Step 3: Check if this is a checklist-only document (no file uploaded)
+            if (empty($doc->file_name) && empty($doc->myfile_key) && empty($doc->myfile)) {
+                \Log::info('Document rename: Checklist-only document, no file to rename', [
+                    'document_id' => $id,
+                    'checklist' => $doc->checklist ?? 'N/A'
+                ]);
+                $response['message'] = 'This is a checklist item only. No file to rename. Use checklist rename instead.';
+                $response['error_type'] = 'checklist_only';
+                echo json_encode($response);
+                return;
+            }
+
+            // Step 4: Get and validate extension
+            $extension = $doc->filetype ?? '';
+            
+            // If extension is missing but myfile_key exists, try to extract it
+            if (empty($extension) && !empty($doc->myfile_key)) {
+                $extension = pathinfo($doc->myfile_key, PATHINFO_EXTENSION);
+            }
+
+            // Step 5: Get client unique id for S3 path
             $admin = \App\Models\Admin::select('client_id')->where('id', $client_id)->first();
-            $client_unique_id = $admin ? $admin->client_id : "";
+            $client_unique_id = $admin ? ($admin->client_id ?? '') : '';
 
-            // Build new key and S3 path
-            $newKey = time() . $filename . '.' . $extension;
+            // Step 6: Validate client_unique_id
+            if (empty($client_unique_id)) {
+                \Log::warning('Document rename failed: Client ID not found', [
+                    'document_id' => $id,
+                    'client_id' => $client_id,
+                    'user_id' => Auth::user()->id ?? 'unknown'
+                ]);
+                $response['message'] = 'Client ID not found. Cannot rename document.';
+                $response['error_type'] = 'missing_client_id';
+                echo json_encode($response);
+                return;
+            }
+
+            // Step 7: Get old S3 key
+            $oldKey = $doc->myfile_key ?? '';
+
+            // Step 8: Build new key and S3 paths
+            // Handle extension safely
+            if (!empty($extension)) {
+                $newKey = time() . $filename . '.' . $extension;
+            } else {
+                $newKey = time() . $filename;
+            }
+            
             $newS3Path = $client_unique_id . '/' . $doc_type . '/' . $newKey;
-            $oldS3Path = $client_unique_id . '/' . $doc_type . '/' . $oldKey;
+            $oldS3Path = '';
+            
+            // Only build old path if we have the key
+            if (!empty($oldKey)) {
+                $oldS3Path = $client_unique_id . '/' . $doc_type . '/' . $oldKey;
+            }
 
-            // Copy and delete in S3
-            if (\Storage::disk('s3')->exists($oldS3Path)) {
+            // Step 9: Attempt S3 file rename if file exists (with retry logic)
+            $s3FileExists = false;
+            $s3RenameSuccess = false;
+            $updateDbOnly = false;
+            $fileCheckResult = ['exists' => false, 'attempts' => 0, 'last_error' => null];
+
+            if (!empty($oldS3Path)) {
+                // Use retry logic to check file existence (handles eventual consistency and transient failures)
+                $fileCheckResult = $this->checkS3FileExistsWithRetry($oldS3Path, 3, 500);
+                $s3FileExists = $fileCheckResult['exists'];
+                
+                \Log::info('S3 file existence check completed', [
+                    'document_id' => $id,
+                    's3_path' => $oldS3Path,
+                    'exists' => $s3FileExists,
+                    'attempts' => $fileCheckResult['attempts'],
+                    'last_error' => $fileCheckResult['last_error'] ?? null
+                ]);
+            }
+
+            if ($s3FileExists) {
                 try {
                     // Attempt to copy first
                     $copySuccess = \Storage::disk('s3')->copy($oldS3Path, $newS3Path);
@@ -740,61 +1152,88 @@ class ClientDocumentsController extends Controller
                     if ($copySuccess) {
                         // Only delete original if copy was successful
                         \Storage::disk('s3')->delete($oldS3Path);
+                        $s3RenameSuccess = true;
+                        
+                        \Log::info('Document renamed on S3 successfully', [
+                            'document_id' => $id,
+                            'old_path' => $oldS3Path,
+                            'new_path' => $newS3Path,
+                            'user_id' => Auth::user()->id ?? 'unknown'
+                        ]);
                     } else {
                         // Copy failed, don't proceed with database update
+                        \Log::error('S3 copy failed: Copy operation returned false', [
+                            'document_id' => $id,
+                            'old_path' => $oldS3Path,
+                            'new_path' => $newS3Path
+                        ]);
                         $response['status'] = false;
                         $response['message'] = 'Failed to copy file. Please try again.';
+                        $response['error_type'] = 's3_copy_failed';
                         echo json_encode($response);
                         return;
                     }
                 } catch (\Exception $e) {
                     // Log the error for debugging
-                    \Log::error('S3 copy failed: ' . $e->getMessage(), [
-                        'oldPath' => $oldS3Path,
-                        'newPath' => $newS3Path,
-                        'document_id' => $id
+                    \Log::error('S3 copy failed: Exception occurred', [
+                        'document_id' => $id,
+                        'old_path' => $oldS3Path,
+                        'new_path' => $newS3Path,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
                     ]);
                     
                     $response['status'] = false;
                     $response['message'] = 'File operation failed. Please try again.';
+                    $response['error_type'] = 's3_exception';
                     echo json_encode($response);
                     return;
                 }
             } else {
-                // Original file not found - handle gracefully
-                \Log::warning('Document rename failed: Original file not found', [
+                // File doesn't exist on S3 (confirmed after retries) - use fallback: update DB only
+                $updateDbOnly = true;
+                \Log::warning('Document rename: S3 file not found after retry attempts, updating database only', [
                     'document_id' => $id,
                     'old_s3_path' => $oldS3Path,
+                    'old_key' => $oldKey,
                     'new_filename' => $filename,
-                    'user_id' => Auth::user()->id ?? 'unknown'
+                    'user_id' => Auth::user()->id ?? 'unknown',
+                    'has_myfile_key' => !empty($oldKey),
+                    'has_myfile' => !empty($doc->myfile),
+                    'check_attempts' => $fileCheckResult['attempts'] ?? 0,
+                    'last_error' => $fileCheckResult['last_error'] ?? null
                 ]);
-                
-                // Return error response
-                $response['status'] = false;
-                $response['message'] = 'Original document not found. Please re-upload the document.';
-                $response['error_type'] = 'file_not_found';
-                echo json_encode($response);
-                return;
             }
 
-            // Build new S3 URL
-            $newS3Url = \Storage::disk('s3')->url($newS3Path);
+            // Step 10: Update database
+            $updateData = ['file_name' => $filename];
+            
+            if ($s3RenameSuccess) {
+                // File was successfully renamed on S3, update all fields
+                $newS3Url = \Storage::disk('s3')->url($newS3Path);
+                $updateData['myfile'] = $newS3Url;
+                $updateData['myfile_key'] = $newKey;
+            } else if ($updateDbOnly) {
+                // File doesn't exist on S3, only update file_name
+                // Keep existing myfile and myfile_key unchanged
+                // This allows the document name to be updated even if file is missing
+            }
 
-            // Update DB
-            $res = \DB::table('documents')->where('id', $id)->update([
-                'file_name' => $filename,
-                'myfile' => $newS3Url,
-                'myfile_key' => $newKey
-            ]);
+            $res = \DB::table('documents')->where('id', $id)->update($updateData);
 
-            if($res){
+            if ($res) {
                 // Log activity for document rename
-                $oldName = $doc->file_name;
+                $oldName = $doc->file_name ?? 'N/A';
                 $matterRef = $this->getMatterReference($client_id);
                 $subject = !empty($matterRef) 
                     ? "renamed Document - {$matterRef}"
                     : "renamed Document";
-                $description = "<p>Renamed {$doc_type} document from '{$oldName}' to '{$filename}'</p>";
+                
+                $renameNote = $updateDbOnly 
+                    ? " (Note: Original file not found on server, name updated in database only)"
+                    : "";
+                
+                $description = "<p>Renamed {$doc_type} document from '{$oldName}' to '{$filename}'{$renameNote}</p>";
 
                 $this->logClientActivity(
                     $client_id,
@@ -807,22 +1246,50 @@ class ClientDocumentsController extends Controller
                 $response['data'] = 'Document saved successfully';
                 $response['Id'] = $id;
                 $response['filename'] = $filename;
-                $response['filetype'] = $doc->filetype;
-                $response['fileurl'] = $newS3Url;
+                $response['filetype'] = $doc->filetype ?? '';
 
-                if($doc->doc_type == 'personal') {
-                    $response['folder_name'] = 'preview-container-'.$doc->folder_name;
-                } else if($doc->doc_type == 'visa') {
+                // Include file URL only if file was renamed on S3
+                if ($s3RenameSuccess) {
+                    $response['fileurl'] = \Storage::disk('s3')->url($newS3Path);
+                } else if (!empty($doc->myfile)) {
+                    // Keep existing URL if available
+                    $response['fileurl'] = $doc->myfile;
+                }
+
+                // Add warning if file wasn't renamed on S3
+                if ($updateDbOnly) {
+                    $response['warning'] = 'Document name updated. Note: Original file not found on server.';
+                    $response['message'] = 'Document name updated successfully. Original file not found on server.';
+                } else {
+                    $response['message'] = 'Document renamed successfully';
+                }
+
+                if ($doc->doc_type == 'personal') {
+                    $response['folder_name'] = 'preview-container-' . ($doc->folder_name ?? '');
+                } else if ($doc->doc_type == 'visa') {
                     $response['folder_name'] = 'preview-container-migdocumnetlist';
                 }
             } else {
+                \Log::error('Document rename failed: Database update failed', [
+                    'document_id' => $id,
+                    'update_data' => $updateData
+                ]);
                 $response['status'] = false;
-                $response['message'] = 'Please try again';
+                $response['message'] = 'Failed to update document. Please try again.';
+                $response['error_type'] = 'db_update_failed';
             }
-        } else {
+        } catch (\Exception $e) {
+            \Log::error('Document rename failed: Unexpected exception', [
+                'document_id' => $id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => Auth::user()->id ?? 'unknown'
+            ]);
             $response['status'] = false;
-            $response['message'] = 'Please try again';
+            $response['message'] = 'An unexpected error occurred. Please try again.';
+            $response['error_type'] = 'unexpected_error';
         }
+
         echo json_encode($response);
     }
 
@@ -2145,6 +2612,24 @@ class ClientDocumentsController extends Controller
                         continue;
                     }
                     
+                    // Refresh document to get latest checklist name (prevent race conditions)
+                    $document->refresh();
+                    $finalChecklistName = $document->checklist;
+                    
+                    // Validate checklist name exists
+                    if (empty($finalChecklistName)) {
+                        $errors[] = "Checklist name not found for file '{$fileName}'";
+                        Log::warning('Bulk visa upload: Checklist name missing', [
+                            'document_id' => $document->id,
+                            'file' => $fileName,
+                            'clientid' => $clientid
+                        ]);
+                        continue;
+                    }
+                    
+                    // Use document's current checklist name (not mapping name) to ensure consistency
+                    $checklistName = $finalChecklistName;
+                    
                     // Upload file
                     $extension = $file->getClientOriginalExtension();
                     $timestamp = time();
@@ -2153,6 +2638,35 @@ class ClientDocumentsController extends Controller
                     $filePath = $client_unique_id . '/' . $doctype . '/' . $name;
                     
                     Storage::disk('s3')->put($filePath, file_get_contents($file));
+                    
+                    // Refresh one more time before saving to catch any changes during S3 upload
+                    $document->refresh();
+                    $finalChecklistName = $document->checklist;
+                    
+                    // If checklist changed during upload, rebuild filename and move S3 file
+                    if (!empty($finalChecklistName) && $finalChecklistName !== $checklistName) {
+                        $checklistName = $finalChecklistName;
+                        $name = $client_first_name . "_" . $checklistName . "_" . $uniqueId . "." . $extension;
+                        $newFilePath = $client_unique_id . '/' . $doctype . '/' . $name;
+                        if ($newFilePath !== $filePath) {
+                            try {
+                                Storage::disk('s3')->copy($filePath, $newFilePath);
+                                Storage::disk('s3')->delete($filePath);
+                                $filePath = $newFilePath;
+                                Log::info('Bulk visa upload: File moved due to checklist change', [
+                                    'old_path' => $filePath,
+                                    'new_path' => $newFilePath,
+                                    'file' => $fileName
+                                ]);
+                            } catch (\Exception $e) {
+                                Log::error('Bulk visa upload: Failed to move S3 file', [
+                                    'old_path' => $filePath,
+                                    'new_path' => $newFilePath,
+                                    'error' => $e->getMessage()
+                                ]);
+                            }
+                        }
+                    }
                     
                     // Update document
                     $fileUrl = Storage::disk('s3')->url($filePath);

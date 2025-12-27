@@ -2812,9 +2812,18 @@ class ClientAccountsController extends Controller
       $total_GST_amount =  $total_Invoice_Amount - $total_Gross_Amount;
 
       //Total Pending Amount
+      // Get client_id if not provided (for backward compatibility)
+      $queryClientId = $client_id;
+      if (empty($queryClientId) && !empty($record_get) && count($record_get) > 0) {
+          $queryClientId = $record_get[0]->client_id ?? null;
+      }
+      
       $total_Pending_amount = DB::table('account_client_receipts')
     ->where('receipt_type', 3)
     ->where('receipt_id', $id)
+    ->when($queryClientId, function ($query) use ($queryClientId) {
+        return $query->where('client_id', $queryClientId);
+    })
     ->where(function ($query) {
         $query->whereIn('invoice_status', [0, 2])
               ->orWhere(function ($q) {
@@ -2822,7 +2831,7 @@ class ClientAccountsController extends Controller
                     ->whereRaw('balance_amount <> 0::numeric');
               });
     })
-    ->sum('balance_amount');
+    ->sum('balance_amount'); 
     Log::info('Total Pending Amount: ' . $total_Pending_amount);
 
       if ($total_Pending_amount === null) {

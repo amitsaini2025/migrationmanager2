@@ -7058,11 +7058,13 @@ class ClientsController extends Controller
                     if( $client_matter_info ){ //dd($client_matter_info);
                         $matter_info_arr = DB::table('matters')->select('title','nick_name','Block_1_Description','Block_2_Description','Block_3_Description')->where('id', $client_matter_info->sel_matter_id )->first();
                     }
-                    $matter_info->title = $matter_info_arr->title;
-                    $matter_info->nick_name = $matter_info_arr->nick_name;
-                    $matter_info->Block_1_Description = $matter_info_arr->Block_1_Description;
-                    $matter_info->Block_2_Description = $matter_info_arr->Block_2_Description;
-                    $matter_info->Block_3_Description = $matter_info_arr->Block_3_Description;
+                    if( $matter_info_arr ) {
+                        $matter_info->title = $matter_info_arr->title ?? '';
+                        $matter_info->nick_name = $matter_info_arr->nick_name ?? '';
+                        $matter_info->Block_1_Description = $matter_info_arr->Block_1_Description ?? '';
+                        $matter_info->Block_2_Description = $matter_info_arr->Block_2_Description ?? '';
+                        $matter_info->Block_3_Description = $matter_info_arr->Block_3_Description ?? '';
+                    }
 
                 }
                 else
@@ -7077,58 +7079,58 @@ class ClientsController extends Controller
                 if ($matter_info)
                 { //dd($matter_info);
 
-                    $visa_subclass = $matter_info->title;
-                    $visa_stream = $matter_info->nick_name;
+                    $visa_subclass = $matter_info->title ?? '';
+                    $visa_stream = $matter_info->nick_name ?? '';
 
                     //$professional_fee = $matter_info->our_fee;
                     //$gst_fee = 0;
                     //$visa_application_charge = $matter_info->main_applicant_fee;
 
-                    $Block_1_Description = $matter_info->Block_1_Description;
-                    $Block_1_Ex_Tax = $matter_info->Block_1_Ex_Tax;
+                    $Block_1_Description = $matter_info->Block_1_Description ?? '';
+                    $Block_1_Ex_Tax = $matter_info->Block_1_Ex_Tax ?? 0;
 
-                    $Block_2_Description = $matter_info->Block_2_Description;
-                    $Block_2_Ex_Tax = $matter_info->Block_2_Ex_Tax;
+                    $Block_2_Description = $matter_info->Block_2_Description ?? '';
+                    $Block_2_Ex_Tax = $matter_info->Block_2_Ex_Tax ?? 0;
 
-                    $Block_3_Description = $matter_info->Block_3_Description;
-                    $Block_3_Ex_Tax = $matter_info->Block_3_Ex_Tax;
+                    $Block_3_Description = $matter_info->Block_3_Description ?? '';
+                    $Block_3_Ex_Tax = $matter_info->Block_3_Ex_Tax ?? 0;
 
                     $Blocktotalfeesincltax = floatval($Block_1_Ex_Tax) + floatval($Block_2_Ex_Tax) + floatval($Block_3_Ex_Tax);
                     $BlocktotalfeesincltaxFormated = number_format($Blocktotalfeesincltax, 2, '.', '');
                     //dd($BlocktotalfeesincltaxFormated);
 
-                    $DoHAMainApplicantChargePersonCount = $matter_info->Dept_Base_Application_Charge_no_of_person ."Person" ;
-                    $DoHAMainApplicantCharge = $matter_info->Dept_Base_Application_Charge_after_person;
-                    $DoHAMainApplicantSurcharge = $matter_info->Dept_Base_Application_Charge_after_person_surcharge;
+                    $DoHAMainApplicantChargePersonCount = ($matter_info->Dept_Base_Application_Charge_no_of_person ?? 0) ."Person" ;
+                    $DoHAMainApplicantCharge = $matter_info->Dept_Base_Application_Charge_after_person ?? 0;
+                    $DoHAMainApplicantSurcharge = $matter_info->Dept_Base_Application_Charge_after_person_surcharge ?? 0;
 
-                    $DoHAAdditionalApplicantCharge18PlusPersonCount = $matter_info->Dept_Additional_Applicant_Charge_18_Plus_no_of_person ."Person" ;
-                    $DoHAAdditionalApplicantCharge18Plus = $matter_info->Dept_Additional_Applicant_Charge_18_Plus_after_person;
-                    $DoHAAdditional18PlusSurcharge = $matter_info->Dept_Additional_Applicant_Charge_18_Plus_after_person_surcharge;
+                    $DoHAAdditionalApplicantCharge18PlusPersonCount = ($matter_info->Dept_Additional_Applicant_Charge_18_Plus_no_of_person ?? 0) ."Person" ;
+                    $DoHAAdditionalApplicantCharge18Plus = $matter_info->Dept_Additional_Applicant_Charge_18_Plus_after_person ?? 0;
+                    $DoHAAdditional18PlusSurcharge = $matter_info->Dept_Additional_Applicant_Charge_18_Plus_after_person_surcharge ?? 0;
 
-                    $DoHAAdditionalApplicantChargeUnder18PersonCount = $matter_info->Dept_Additional_Applicant_Charge_Under_18_no_of_person ."Person" ;
-                    $DoHAAdditionalApplicantChargeUnder18 = $matter_info->Dept_Additional_Applicant_Charge_Under_18_after_person;
-                    $DoHAAdditionalUnder18Surcharge = $matter_info->Dept_Additional_Applicant_Charge_Under_18_after_person_surcharge;
+                    $DoHAAdditionalApplicantChargeUnder18PersonCount = ($matter_info->Dept_Additional_Applicant_Charge_Under_18_no_of_person ?? 0) ."Person" ;
+                    $DoHAAdditionalApplicantChargeUnder18 = $matter_info->Dept_Additional_Applicant_Charge_Under_18_after_person ?? 0;
+                    $DoHAAdditionalUnder18Surcharge = $matter_info->Dept_Additional_Applicant_Charge_Under_18_after_person_surcharge ?? 0;
 
-                    $DoHASecondInstalmentMainPersonCount = $matter_info->Dept_Subsequent_Temp_Application_Charge_no_of_person ."Person" ;
-                    $DoHASecondInstalmentMain = $matter_info->Dept_Subsequent_Temp_Application_Charge_after_person;
-                    $DoHASecondInstalmentMainSurcharge = $matter_info->Dept_Subsequent_Temp_Application_Charge_after_person_surcharge;
+                    $DoHASecondInstalmentMainPersonCount = ($matter_info->Dept_Subsequent_Temp_Application_Charge_no_of_person ?? 0) ."Person" ;
+                    $DoHASecondInstalmentMain = $matter_info->Dept_Subsequent_Temp_Application_Charge_after_person ?? 0;
+                    $DoHASecondInstalmentMainSurcharge = $matter_info->Dept_Subsequent_Temp_Application_Charge_after_person_surcharge ?? 0;
 
-                    $DoHASubsequentApplicantCharge18PlusPersonCount = $matter_info->Dept_Second_VAC_Instalment_Charge_18_Plus_no_of_person ."Person" ;
-                    $DoHASubsequentApplicantCharge18Plus = $matter_info->Dept_Second_VAC_Instalment_Charge_18_Plus_after_person;
-                    $DoHASubsequentApplicantCharge18PlusSurcharge = $matter_info->Dept_Second_VAC_Instalment_Charge_18_Plus_after_person_surcharge;
+                    $DoHASubsequentApplicantCharge18PlusPersonCount = ($matter_info->Dept_Second_VAC_Instalment_Charge_18_Plus_no_of_person ?? 0) ."Person" ;
+                    $DoHASubsequentApplicantCharge18Plus = $matter_info->Dept_Second_VAC_Instalment_Charge_18_Plus_after_person ?? 0;
+                    $DoHASubsequentApplicantCharge18PlusSurcharge = $matter_info->Dept_Second_VAC_Instalment_Charge_18_Plus_after_person_surcharge ?? 0;
 
-                    $DoHASubsequentApplicantChargeUnder18PersonCount = $matter_info->Dept_Second_VAC_Instalment_Under_18_no_of_person ."Person" ;
-                    $DoHASubsequentTempAppCharge = $matter_info->Dept_Second_VAC_Instalment_Under_18_after_person;
-                    $DoHASubsequentTempAppSurcharge = $matter_info->Dept_Second_VAC_Instalment_Under_18_after_person_surcharge;
+                    $DoHASubsequentApplicantChargeUnder18PersonCount = ($matter_info->Dept_Second_VAC_Instalment_Under_18_no_of_person ?? 0) ."Person" ;
+                    $DoHASubsequentTempAppCharge = $matter_info->Dept_Second_VAC_Instalment_Under_18_after_person ?? 0;
+                    $DoHASubsequentTempAppSurcharge = $matter_info->Dept_Second_VAC_Instalment_Under_18_after_person_surcharge ?? 0;
 
-                    $DoHANonInternetChargePersonCount = $matter_info->Dept_Non_Internet_Application_Charge_no_of_person ."Person" ;
-                    $DoHANonInternetCharge = $matter_info->Dept_Non_Internet_Application_Charge_after_person;
-                    $DoHANonInternetSurcharge = $matter_info->Dept_Non_Internet_Application_Charge_after_person_surcharge;
+                    $DoHANonInternetChargePersonCount = ($matter_info->Dept_Non_Internet_Application_Charge_no_of_person ?? 0) ."Person" ;
+                    $DoHANonInternetCharge = $matter_info->Dept_Non_Internet_Application_Charge_after_person ?? 0;
+                    $DoHANonInternetSurcharge = $matter_info->Dept_Non_Internet_Application_Charge_after_person_surcharge ?? 0;
 
-                    $TotalDoHACharges = $matter_info->TotalDoHACharges;
-                    $TotalDoHASurcharges = $matter_info->TotalDoHASurcharges;
+                    $TotalDoHACharges = $matter_info->TotalDoHACharges ?? 0;
+                    $TotalDoHASurcharges = $matter_info->TotalDoHASurcharges ?? 0;
 
-                    $TotalEstimatedOtherCosts = $matter_info->additional_fee_1;
+                    $TotalEstimatedOtherCosts = $matter_info->additional_fee_1 ?? 0;
                     $GrandTotalFeesAndCosts = floatval($Blocktotalfeesincltax) + floatval($TotalDoHASurcharges) + floatval($TotalEstimatedOtherCosts);
                     $GrandTotalFeesAndCostsFormated = number_format($GrandTotalFeesAndCosts, 2, '.', '');
                 }

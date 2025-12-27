@@ -260,10 +260,13 @@ class EmailUploadController extends Controller
         try {
             $fileName = $file->getClientOriginalName();
             $fileSize = $file->getSize();
-            $uniqueFileName = time() . '-' . $fileName;
+            
+            // Sanitize filename for S3 path to prevent 403 errors with special characters
+            $sanitizedFileName = $this->sanitizeFilename($fileName);
+            $uniqueFileName = time() . '-' . $sanitizedFileName;
             $docType = 'conversion_email_fetch';
             
-            // 1. Upload file to S3
+            // 1. Upload file to S3 (use sanitized filename in path)
             $filePath = $clientUniqueId . '/' . $docType . '/' . $mailType . '/' . $uniqueFileName;
             Storage::disk('s3')->put($filePath, file_get_contents($file->getPathname()));
             $fileUrl = Storage::disk('s3')->url($filePath);
@@ -862,6 +865,51 @@ class EmailUploadController extends Controller
         } catch (\Exception $e) {
             Log::warning('Failed to auto-assign label', ['error' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * Sanitize filename for use in S3 file paths
+     * Prevents 403 errors caused by special characters in filenames
+     * 
+     * @param string $filename Original filename
+     * @return string Sanitized filename safe for S3 paths
+     */
+    protected function sanitizeFilename(string $filename): string
+    {
+        // Get file extension first (before sanitization)
+        $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        $nameWithoutExt = pathinfo($filename, PATHINFO_FILENAME);
+        
+        // Replace special characters with underscores, but keep alphanumeric, hyphens, underscores, and dots
+        $sanitizedName = preg_replace('/[^a-zA-Z0-9\-_\.]/', '_', $nameWithoutExt);
+        
+        // Remove multiple consecutive underscores
+        $sanitizedName = preg_replace('/_+/', '_', $sanitizedName);
+        
+        // Trim underscores from start and end
+        $sanitizedName = trim($sanitizedName, '_');
+        
+        // Ensure filename is not empty
+        if (empty($sanitizedName)) {
+            $sanitizedName = 'email_' . time();
+        }
+        
+        // Reconstruct filename with extension
+        $sanitizedFilename = !empty($extension) ? $sanitizedName . '.' . $extension : $sanitizedName;
+        
+        // Limit total filename length (including extension) to 255 characters
+        if (strlen($sanitizedFilename) > 255) {
+            $maxNameLength = 255 - strlen($extension) - 1; // -1 for the dot
+            if ($maxNameLength > 0) {
+                $sanitizedName = substr($sanitizedName, 0, $maxNameLength);
+                $sanitizedFilename = !empty($extension) ? $sanitizedName . '.' . $extension : $sanitizedName;
+            } else {
+                // If extension itself is too long, just use timestamp
+                $sanitizedFilename = 'email_' . time() . (!empty($extension) ? '.' . $extension : '');
+            }
+        }
+        
+        return $sanitizedFilename;
     }
 }
 

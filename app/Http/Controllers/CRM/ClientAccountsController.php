@@ -2812,17 +2812,18 @@ class ClientAccountsController extends Controller
       $total_GST_amount =  $total_Invoice_Amount - $total_Gross_Amount;
 
       //Total Pending Amount
-      $total_Pending_amount  = DB::table('account_client_receipts')
-      ->where('receipt_type', 3) // Invoice
-      ->where('receipt_id', $id)
-      ->where(function ($query) {
-          $query->whereIn('invoice_status', [0, 2])
-           ->orWhere(function ($q) {
-               $q->where('invoice_status', 1)
-                   ->where('balance_amount', '!=', 0);
-           });
-      })
-      ->sum('balance_amount');
+      $total_Pending_amount = DB::table('account_client_receipts')
+        ->where('receipt_type', 3) // Invoice
+        ->where('receipt_id', $id)
+        ->where(function ($query) {
+            $query->whereIn('invoice_status', [0, 2])
+                ->orWhere(function ($q) {
+                    $q->where('invoice_status', 1)
+                        ->where('balance_amount', '!=', 0.00);
+                });
+        })
+        ->sum('balance_amount');
+
 
       $clientname = DB::table('admins')->where('id',$record_get[0]->client_id)->first();
       

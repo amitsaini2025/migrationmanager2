@@ -2694,7 +2694,7 @@ class ClientAccountsController extends Controller
       }
   }
 
-  public function genInvoice(Request $request, $id){
+  public function genInvoice(Request $request, $id, $client_id = null){
       $record_get = DB::table('account_all_invoice_receipts')->where('receipt_type',3)->where('receipt_id',$id)->get();
       // Validate invoice exists
       if ($record_get->isEmpty()) {
@@ -2704,6 +2704,7 @@ class ClientAccountsController extends Controller
       // Get receipt_id entry from account_client_receipts to check for cached PDF
       $receipt_entry = DB::table('account_client_receipts')
           ->where('receipt_id', $id)
+          ->where('client_id', $client_id)
           ->where('receipt_type', 3)
           ->first();
 

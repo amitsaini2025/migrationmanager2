@@ -483,6 +483,13 @@ document.addEventListener('DOMContentLoaded', function() {
                             <p><strong>Consultant:</strong> ${props.consultant}</p>
                             <p><strong>Status:</strong> <span class="badge badge-${getStatusClass(props.status)}" id="statusBadge">${props.status.toUpperCase()}</span></p>
                             <p><strong>Payment:</strong> <span class="badge badge-${props.is_paid ? 'primary' : 'secondary'}" id="paymentBadge">${props.payment_status}</span></p>
+                            ${!props.is_paid && props.status === 'awaiting_confirmation' ? `
+                            <p id="confirmationReminderActions-${event.id}">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="sendAppointmentConfirmationReminder(${event.id})">
+                                    @icon('fa-envelope') Reminder For Appointment Confirmation
+                                </button>
+                            </p>
+                            ` : ''}
                         </div>
                     </div>
                     
@@ -731,6 +738,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (actions) {
             actions.remove();
         }
+
+        var reminderActions = document.getElementById('confirmationReminderActions-' + appointmentId);
+        if (reminderActions) {
+            reminderActions.remove();
+        }
     }
 
     function applyManualPaymentCalendarEvent(appointmentId, paidAmount) {
@@ -802,6 +814,58 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(function(error) {
             console.error('Error updating payment:', error);
             showAlert('danger', 'Failed to update payment. Please try again.');
+        })
+        .finally(function() {
+            if (button) {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        });
+    };
+
+    window.sendAppointmentConfirmationReminder = function(appointmentId) {
+        if (!confirm('Send a reminder for appointment confirmation to this client?')) {
+            return;
+        }
+
+        const button = event && event.target ? event.target.closest('button') : null;
+        const originalText = button ? button.innerHTML : '';
+        if (button) {
+            button.innerHTML = (typeof crmIconLegacy === 'function' ? crmIconLegacy('fas fa-spinner fa-spin') : '<i class="fas fa-spinner fa-spin"></i>') + ' Sending...';
+            button.disabled = true;
+        }
+
+        fetch(`/booking/appointments/${appointmentId}/send-confirmation-reminder`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({})
+        })
+        .then(async function(response) {
+            var ct = response.headers.get('content-type') || '';
+            var data = {};
+            if (ct.indexOf('application/json') !== -1) {
+                try { data = await response.json(); } catch (e) { data = {}; }
+            }
+            if (!response.ok) {
+                var msg = data.message || data.error || ('Request failed (HTTP ' + response.status + ')');
+                showAlert('danger', 'Failed to send reminder: ' + msg);
+                return;
+            }
+            if (data.success === true) {
+                alert(data.message || 'Reminder for appointment confirmation sent to the client.');
+            } else {
+                showAlert('danger', 'Failed to send reminder: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(function(error) {
+            console.error('Error sending confirmation reminder:', error);
+            showAlert('danger', 'Failed to send reminder. Please try again.');
         })
         .finally(function() {
             if (button) {

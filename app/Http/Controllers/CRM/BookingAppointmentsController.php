@@ -14,6 +14,7 @@ use App\Services\BansalAppointmentSync\AppointmentSyncService;
 use App\Services\BansalAppointmentSync\BansalApiClient;
 use App\Services\BansalAppointmentSync\BansalAppointmentRecoveryService;
 use App\Services\BansalAppointmentSync\NotificationService;
+use App\Services\BookingAppointmentConfirmationReminderService;
 use App\Services\BookingAppointmentManualPaymentService;
 use App\Services\BookingAppointmentRequestPaymentService;
 use App\Support\BansalSchedulingServiceType;
@@ -589,6 +590,44 @@ class BookingAppointmentsController extends Controller
             'success' => true,
             'message' => $result['message'],
             'is_paid' => false,
+            'status' => $appointment->status,
+        ]);
+    }
+
+    /**
+     * Email a confirmation reminder for a Free booking awaiting confirmation.
+     */
+    public function sendConfirmationReminder(BookingAppointmentConfirmationReminderService $reminderService, $id)
+    {
+        $appointment = BookingAppointment::findOrFail($id);
+        $this->assertBookingAppointmentAccess($appointment);
+
+        $result = $reminderService->sendConfirmationReminder($appointment);
+
+        if (! $result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+            ], 422);
+        }
+
+        $appointment = $appointment->fresh() ?? $appointment;
+
+        if ($appointment->client_id) {
+            $activityLog = new ActivitiesLog;
+            $activityLog->client_id = $appointment->client_id;
+            $activityLog->created_by = Auth::id();
+            $activityLog->subject = 'Booking appointment confirmation reminder sent';
+            $activityLog->description = '<p><strong>Reminder:</strong> Appointment confirmation reminder email sent to client</p>';
+            $activityLog->task_status = 0;
+            $activityLog->pin = 0;
+            $activityLog->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['message'],
+            'is_paid' => (bool) $appointment->is_paid,
             'status' => $appointment->status,
         ]);
     }

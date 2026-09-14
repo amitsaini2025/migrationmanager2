@@ -215,6 +215,10 @@ Route::controller(BookingAppointmentsController::class)
             ->name('appointments.request-payment')
             ->whereNumber('id');
 
+        Route::post('/appointments/{id}/send-confirmation-reminder', 'sendConfirmationReminder')
+            ->name('appointments.send-confirmation-reminder')
+            ->whereNumber('id');
+
         Route::post('/appointments/{id}/update-consultant', 'updateConsultant')
             ->name('appointments.update-consultant')
             ->whereNumber('id');

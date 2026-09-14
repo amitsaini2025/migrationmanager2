@@ -19,14 +19,14 @@ class AppointmentDetailedConfirmation extends Mailable
 {
     use AttachesAppointmentLogo, Queueable, SerializesModels, UsesAppointmentMailFrom;
 
-    /**
-     * Create a new message instance.
-     */
+    public const DEFAULT_SUBJECT = 'Appointment Confirmation - Bansal Immigration';
+
+    public const REMINDER_SUBJECT = 'Reminder For Appointment Confirmation';
+
     public function __construct(
-        public array $details
-    ) {
-        //
-    }
+        public array $details,
+        public ?string $subjectOverride = null,
+    ) {}
 
     /**
      * Get the message envelope.
@@ -35,8 +35,17 @@ class AppointmentDetailedConfirmation extends Mailable
     {
         return new Envelope(
             from: $this->appointmentFromAddress(),
-            subject: 'Appointment Confirmation - Bansal Immigration',
+            subject: $this->resolvedSubject(),
         );
+    }
+
+    public function resolvedSubject(): string
+    {
+        if (is_string($this->subjectOverride) && trim($this->subjectOverride) !== '') {
+            return trim($this->subjectOverride);
+        }
+
+        return self::DEFAULT_SUBJECT;
     }
 
     /**

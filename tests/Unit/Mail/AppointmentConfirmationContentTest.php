@@ -58,6 +58,26 @@ class AppointmentConfirmationContentTest extends TestCase
     }
 
     #[Test]
+    public function it_keeps_default_subject_and_allows_reminder_override(): void
+    {
+        $default = new AppointmentDetailedConfirmation($this->details('phone'));
+        $reminderDetails = $this->details('in_person');
+        $reminderDetails['appointment_id'] = 42;
+        $reminder = new AppointmentDetailedConfirmation(
+            $reminderDetails,
+            AppointmentDetailedConfirmation::REMINDER_SUBJECT
+        );
+
+        $default->assertHasSubject(AppointmentDetailedConfirmation::DEFAULT_SUBJECT);
+        $reminder->assertHasSubject(AppointmentDetailedConfirmation::REMINDER_SUBJECT);
+
+        $html = $reminder->render();
+        $this->assertStringContainsString('Cancel</a>', $html);
+        $this->assertStringContainsString('Reschedule</a>', $html);
+        $this->assertStringContainsString('Confirm</a>', $html);
+    }
+
+    #[Test]
     public function it_renders_video_call_copy(): void
     {
         $html = (new AppointmentDetailedConfirmation($this->details('video')))->render();

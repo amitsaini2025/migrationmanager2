@@ -109,7 +109,7 @@ class NotificationService
                 'category' => 'appointment',
                 'from_mail' => config('mail.noreply.address'),
                 'to_mail' => $appointment->client_email,
-                'subject' => 'Appointment Confirmation - Bansal Immigration',
+                'subject' => AppointmentDetailedConfirmation::DEFAULT_SUBJECT,
                 'client_id' => $appointment->client_id,
             ], new AppointmentDetailedConfirmation($details), $appointment->client_email);
 
@@ -126,6 +126,43 @@ class NotificationService
             return true;
         } catch (\Exception $e) {
             Log::error('Failed to send confirmation email', [
+                'appointment_id' => $appointment->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Resend the confirmation template as a reminder. Does not flip confirmation_email_sent.
+     */
+    public function sendConfirmationReminderEmail(BookingAppointment $appointment): bool
+    {
+        try {
+            if (empty($appointment->client_email)) {
+                return false;
+            }
+
+            $details = $this->confirmationDetails($appointment);
+            $subject = AppointmentDetailedConfirmation::REMINDER_SUBJECT;
+
+            $this->systemEmailLog->logAndSendMailable([
+                'category' => 'appointment',
+                'from_mail' => config('mail.noreply.address'),
+                'to_mail' => $appointment->client_email,
+                'subject' => $subject,
+                'client_id' => $appointment->client_id,
+            ], new AppointmentDetailedConfirmation($details, $subject), $appointment->client_email);
+
+            Log::info('Sent appointment confirmation reminder email', [
+                'appointment_id' => $appointment->id,
+                'email' => $appointment->client_email,
+            ]);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to send appointment confirmation reminder email', [
                 'appointment_id' => $appointment->id,
                 'error' => $e->getMessage(),
             ]);

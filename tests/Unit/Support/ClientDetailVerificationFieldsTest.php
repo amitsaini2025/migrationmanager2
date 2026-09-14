@@ -3,6 +3,7 @@
 namespace Tests\Unit\Support;
 
 use App\Support\ClientDetailVerificationFields;
+use Carbon\Carbon;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -83,5 +84,48 @@ class ClientDetailVerificationFieldsTest extends TestCase
         );
         $this->assertStringNotContainsString('Bansal Immigration Team', $text);
         $this->assertStringNotContainsString('Open verification form', $text);
+    }
+
+    #[Test]
+    public function visa_type_label_matches_client_edit_dropdown_text(): void
+    {
+        $this->assertSame('151 - Former Resident (FR)', ClientDetailVerificationFields::visaTypeLabel('151 - Former Resident', 'FR'));
+        $this->assertTrue(ClientDetailVerificationFields::visaTypeMatchesRequested(
+            '151 - Former Resident',
+            'FR',
+            '151 - Former Resident (FR)',
+        ));
+        $this->assertTrue(ClientDetailVerificationFields::visaTypeMatchesRequested(
+            '151 - Former Resident',
+            'FR',
+            '151 - Former Resident(FR)',
+        ));
+        $this->assertTrue(ClientDetailVerificationFields::visaTypeMatchesRequested('151 - Former Resident', 'FR', '151 - Former Resident'));
+        $this->assertFalse(ClientDetailVerificationFields::visaTypeMatchesRequested('151 - Former Resident', 'FR', 'Student 500'));
+    }
+
+    #[Test]
+    public function result_heading_depends_on_confirm_and_change_mix(): void
+    {
+        $this->assertSame('Verification Confirmed', ClientDetailVerificationFields::resultHeading(11, 0));
+        $this->assertSame('Request Change', ClientDetailVerificationFields::resultHeading(0, 11));
+        $this->assertSame('Verification Confirmed and Request Changes', ClientDetailVerificationFields::resultHeading(10, 1));
+        $this->assertSame('14/09/2026 4:44 PM', ClientDetailVerificationFields::formatVerifiedAt(Carbon::parse('2026-09-14 16:44:00')));
+    }
+
+    #[Test]
+    public function compose_address_joins_structured_parts_in_edit_page_order(): void
+    {
+        $this->assertSame(
+            '10 Oliva Approach, Piara Waters, WA, Australia, 6112',
+            ClientDetailVerificationFields::composeAddress(
+                '10 Oliva Approach',
+                null,
+                'Piara Waters',
+                'WA',
+                'Australia',
+                '6112',
+            ),
+        );
     }
 }

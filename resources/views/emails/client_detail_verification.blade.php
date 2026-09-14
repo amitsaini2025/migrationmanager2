@@ -47,7 +47,7 @@
         <tr>
           <td style="padding:10px 24px 24px 24px;">
             <p style="margin:0; font-size:14px; line-height:1.7; color:#333;">Warm regards,</p>
-            <p style="margin:6px 0 0 0; font-size:14px; font-weight:bold; color:#1c2a3a;">Bansal Immigration Team</p>
+            <p style="margin:6px 0 0 0; font-size:14px; font-weight:bold; color:#1c2a3a;">Bansal Immigration Consultant</p>
           </td>
         </tr>
 

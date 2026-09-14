@@ -38,14 +38,23 @@ class ClientDetailVerificationUiTest extends TestCase
     }
 
     #[Test]
-    public function verify_link_script_confirms_then_sends_sms_without_touching_other_actions(): void
+    public function verify_link_script_lets_staff_choose_email_or_phone_without_touching_other_actions(): void
     {
         $js = file_get_contents(base_path('public/js/crm/clients/verify-link.js'));
         $this->assertNotFalse($js);
         $this->assertStringContainsString("on('click', '.send-verify-link'", $js);
-        $this->assertStringContainsString('Send verification SMS?', $js);
-        $this->assertStringContainsString("confirmButtonText: 'Yes'", $js);
-        $this->assertStringContainsString('sendVerificationSms', $js);
+        $this->assertStringContainsString('verifyLinkChannelModal', $js);
+        $this->assertStringContainsString('Primary Email Address - ', $js);
+        $this->assertStringContainsString('Primary Phone no - ', $js);
+        $this->assertStringContainsString('primaryEmail', $js);
+        $this->assertStringContainsString('primaryPhone', $js);
+        $this->assertStringContainsString('updateChannelLabels', $js);
+        $this->assertStringContainsString('textContent', $js);
+        $this->assertStringContainsString('name="verify_link_channel"', $js);
+        $this->assertStringContainsString('channel: channel', $js);
+        $this->assertStringContainsString('Sending...', $js);
+        $this->assertStringContainsString('setSendingState', $js);
+        $this->assertStringNotContainsString('window.confirm', $js);
         $this->assertStringNotContainsString('.send-sms-btn', $js);
         $this->assertStringNotContainsString('#create_appoint', $js);
         $this->assertStringNotContainsString('clients.verifyDetails', $js);

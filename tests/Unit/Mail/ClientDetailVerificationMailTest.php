@@ -21,7 +21,8 @@ class ClientDetailVerificationMailTest extends TestCase
         $this->assertStringContainsString('Registered Migration Agents', $html);
         $this->assertStringContainsString('Secure verification link', $html);
         $this->assertStringContainsString('Open verification form', $html);
-        $this->assertStringContainsString('Bansal Immigration Team', $html);
+        $this->assertStringContainsString('Bansal Immigration Consultant', $html);
+        $this->assertStringNotContainsString('Bansal Immigration Team', $html);
         $this->assertStringNotContainsString('FIRST-TIME CLIENTS ONLY', $html);
         $this->assertStringNotContainsString('Appointment Details', $html);
         $this->assertStringNotContainsString('Need to Reschedule or Have Questions?', $html);
@@ -41,5 +42,25 @@ class ClientDetailVerificationMailTest extends TestCase
         $smtpApi = $headers->text['X-SMTPAPI'] ?? '';
         $this->assertStringContainsString('clicktrack', $smtpApi);
         $this->assertStringContainsString('"enable":0', $smtpApi);
+    }
+
+    #[Test]
+    public function it_sends_from_the_zoho_info_address(): void
+    {
+        config([
+            'services.zoho.from.address' => 'info@bansalimmigration.com.au',
+            'services.zoho.from.name' => 'Bansal Immigration',
+            'mail.noreply.address' => 'noreply@bansalimmigration.com.au',
+        ]);
+
+        $from = (new ClientDetailVerificationMail(
+            'Vipul',
+            'https://example.test/verify-details/abc123abc123abc123abc123abc123ab',
+        ))->envelope()->from;
+
+        $this->assertNotNull($from);
+        $this->assertSame('info@bansalimmigration.com.au', $from->address);
+        $this->assertSame('Bansal Immigration', $from->name);
+        $this->assertNotSame('noreply@bansalimmigration.com.au', $from->address);
     }
 }

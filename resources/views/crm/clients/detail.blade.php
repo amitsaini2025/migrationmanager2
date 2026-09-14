@@ -157,7 +157,16 @@ use App\Http\Controllers\Controller;
                         $detailsVerifiedByName = optional($fetchedData->detailsVerifiedByStaff)->full_name
                             ?: optional(\App\Models\Staff::find($fetchedData->details_verified_by))->full_name;
                     }
+                    $clientVerifySummary = app(\App\Services\ClientDetailVerificationService::class)
+                        ->latestSubmittedSummary((int) $fetchedData->id);
                 @endphp
+                @if($clientVerifySummary)
+                <div class="sidebar-details-verified-info" id="sidebarClientVerifyInfo">
+                    <div class="details-verify-heading">{{ $clientVerifySummary['heading'] }}</div>
+                    <div class="details-verify-line"><strong>Verified By:</strong> {{ $clientVerifySummary['verified_by'] }}</div>
+                    <div class="details-verify-line"><strong>Verified At:</strong> {{ $clientVerifySummary['verified_at'] }}</div>
+                </div>
+                @endif
                 @if(!empty($fetchedData->details_verified_at))
                 <div class="sidebar-details-verified-info" id="sidebarDetailsVerifiedInfo">
                     <div class="details-verify-line"><strong>Verified By:</strong> {{ $detailsVerifiedByName ?: 'â€”' }}</div>
@@ -793,6 +802,8 @@ $(document).ready(function() {
         activeTab: @json(($activeTab ?? 'personaldetails')),
         matterRefNo: @json(($id1 ?? '')),
         clientFirstName: @json(($fetchedData->first_name ?? 'client')),
+        primaryEmail: @json(trim((string) ($fetchedData->email ?? ''))),
+        primaryPhone: @json(trim((string) ($fetchedData->country_code ?? '')).trim((string) ($fetchedData->phone ?? ''))),
         notPickedCallSmsDefault: @json($notPickedCallSmsDefault ?? ''),
         // SMS Template Variables
         staffName: @json(($staffName ?? '')),

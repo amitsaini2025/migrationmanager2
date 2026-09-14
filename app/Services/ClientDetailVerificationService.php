@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Helpers\PhoneValidationHelper;
+use App\Mail\ClientDetailVerificationMail;
 use App\Models\Admin;
 use App\Models\ClientAddress;
 use App\Models\ClientContact;
@@ -17,6 +18,7 @@ use App\Support\ClientDetailVerificationFields;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
@@ -27,10 +29,29 @@ class ClientDetailVerificationService
     /**
      * @return array{success: bool, message: string}
      */
-    public function sendLink(Admin $client, ?int $sentBy = null): array
+    public function sendLink(Admin $client, ?int $sentBy = null, string $channel = ClientDetailVerificationFields::CHANNEL_SMS): array
     {
+        if (! in_array($channel, [
+            ClientDetailVerificationFields::CHANNEL_EMAIL,
+            ClientDetailVerificationFields::CHANNEL_SMS,
+        ], true)) {
+            return [
+                'success' => false,
+                'message' => 'Please choose Primary email or Primary phone.',
+            ];
+        }
+
+        $email = trim((string) ($client->email ?? ''));
         $phone = trim((string) ($client->country_code ?? '')).trim((string) ($client->phone ?? ''));
-        if ($phone === '') {
+
+        if ($channel === ClientDetailVerificationFields::CHANNEL_EMAIL && $email === '') {
+            return [
+                'success' => false,
+                'message' => 'This client has no primary email address.',
+            ];
+        }
+
+        if ($channel === ClientDetailVerificationFields::CHANNEL_SMS && $phone === '') {
             return [
                 'success' => false,
                 'message' => 'This client has no primary phone number.',
@@ -39,21 +60,87 @@ class ClientDetailVerificationService
 
         $plainToken = ClientDetailVerification::generateToken();
         $snapshot = $this->snapshotFor($client);
-        $email = trim((string) ($client->email ?? ''));
 
-        $verification = DB::transaction(function () use ($client, $sentBy, $email, $plainToken, $snapshot): ClientDetailVerification {
-            $this->invalidateUnusedForClient((int) $client->id);
-
-            return ClientDetailVerification::query()->create([
-                'client_id' => $client->id,
-                'token_hash' => ClientDetailVerification::hashToken($plainToken),
-                'sent_to_email' => $email,
-                'sent_by' => $sentBy,
-                'snapshot' => $snapshot,
-            ]);
-        });
+        $verification = ClientDetailVerification::query()->create([
+            'client_id' => $client->id,
+            'token_hash' => ClientDetailVerification::hashToken($plainToken),
+            'sent_to_email' => $email,
+            'sent_by' => $sentBy,
+            'snapshot' => $snapshot,
+        ]);
 
         $url = route('public.client-detail-verification.show', ['token' => $plainToken]);
+
+        if ($channel === ClientDetailVerificationFields::CHANNEL_EMAIL) {
+            $result = $this->dispatchVerificationEmail($client, $verification, $email, $url);
+        } else {
+            $result = $this->dispatchVerificationSms($client, $verification, $phone, $url, $sentBy);
+        }
+
+        if ($result['success']) {
+            $this->invalidateUnusedForClient((int) $client->id, (int) $verification->id);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array{success: bool, message: string}
+     */
+    private function dispatchVerificationEmail(
+        Admin $client,
+        ClientDetailVerification $verification,
+        string $email,
+        string $url,
+    ): array {
+        try {
+            $this->sendVerificationMailable($email, new ClientDetailVerificationMail(
+                (string) $client->first_name,
+                $url,
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send client detail verification email', [
+                'client_id' => $client->id,
+                'verification_id' => $verification->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Failed to send the verification email. Please try again.',
+            ];
+        }
+
+        return [
+            'success' => true,
+            'message' => 'Verification link sent to '.$email,
+        ];
+    }
+
+    private function sendVerificationMailable(string $email, ClientDetailVerificationMail $mailable): void
+    {
+        try {
+            Mail::mailer('failover')->to($email)->send($mailable);
+        } catch (\Throwable $e) {
+            Log::warning('Verify Link SES/failover send failed; retrying via Zoho', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+
+            Mail::mailer('zoho')->to($email)->send($mailable);
+        }
+    }
+
+    /**
+     * @return array{success: bool, message: string}
+     */
+    private function dispatchVerificationSms(
+        Admin $client,
+        ClientDetailVerification $verification,
+        string $phone,
+        string $url,
+        ?int $sentBy,
+    ): array {
         $message = ClientDetailVerificationFields::smsText((string) $client->first_name, $url);
 
         try {
@@ -240,6 +327,43 @@ class ClientDetailVerificationService
     }
 
     /**
+     * @return array{heading: string, verified_by: string, verified_at: string}|null
+     */
+    public function latestSubmittedSummary(int $clientId): ?array
+    {
+        if (! Schema::hasTable('client_detail_verifications') || ! Schema::hasTable('client_detail_verification_fields')) {
+            return null;
+        }
+
+        $verification = ClientDetailVerification::query()
+            ->where('client_id', $clientId)
+            ->whereNotNull('submitted_at')
+            ->with(['sender:id,first_name,last_name,email', 'fields'])
+            ->latest('submitted_at')
+            ->first();
+
+        if (! $verification) {
+            return null;
+        }
+
+        $confirmed = $verification->fields
+            ->where('status', ClientDetailVerificationFields::STATUS_CONFIRMED)
+            ->count();
+        $changed = $verification->fields
+            ->whereIn('status', [
+                ClientDetailVerificationFields::STATUS_CHANGE_REQUESTED,
+                ClientDetailVerificationFields::STATUS_ACCEPTED,
+            ])
+            ->count();
+
+        return [
+            'heading' => ClientDetailVerificationFields::resultHeading($confirmed, $changed),
+            'verified_by' => trim((string) ($verification->sender?->full_name ?: '')) ?: '—',
+            'verified_at' => ClientDetailVerificationFields::formatVerifiedAt($verification->submitted_at),
+        ];
+    }
+
+    /**
      * @return array<string, string>
      */
     public function snapshotFor(Admin $client): array
@@ -260,13 +384,18 @@ class ClientDetailVerificationService
         ]);
     }
 
-    public function invalidateUnusedForClient(int $clientId): void
+    public function invalidateUnusedForClient(int $clientId, ?int $exceptId = null): void
     {
-        ClientDetailVerification::query()
+        $query = ClientDetailVerification::query()
             ->where('client_id', $clientId)
             ->whereNull('used_at')
-            ->whereNull('invalidated_at')
-            ->update(['invalidated_at' => now()]);
+            ->whereNull('invalidated_at');
+
+        if ($exceptId !== null) {
+            $query->where('id', '!=', $exceptId);
+        }
+
+        $query->update(['invalidated_at' => now()]);
     }
 
     private function primaryPhoneDisplay(Admin $client): string
@@ -547,14 +676,7 @@ class ClientDetailVerificationService
             return;
         }
 
-        $matter = null;
-        if (Schema::hasTable('matters')) {
-            $matter = Matter::query()
-                ->where(function ($query) use ($requested): void {
-                    $query->where('title', $requested)->orWhere('nick_name', $requested);
-                })
-                ->first();
-        }
+        $matter = $this->findMatterForRequestedVisaType($requested);
 
         if ($matter) {
             $visa->update(['visa_type' => $matter->id]);
@@ -563,6 +685,32 @@ class ClientDetailVerificationService
         }
 
         $visa->update(['visa_description' => $requested]);
+    }
+
+    private function findMatterForRequestedVisaType(string $requested): ?Matter
+    {
+        if (! Schema::hasTable('matters')) {
+            return null;
+        }
+
+        $matter = Matter::query()
+            ->where(function ($query) use ($requested): void {
+                $query->where('title', $requested)->orWhere('nick_name', $requested);
+            })
+            ->first();
+
+        if ($matter) {
+            return $matter;
+        }
+
+        return Matter::query()
+            ->select(['id', 'title', 'nick_name'])
+            ->get()
+            ->first(static fn (Matter $row): bool => ClientDetailVerificationFields::visaTypeMatchesRequested(
+                $row->title,
+                $row->nick_name,
+                $requested,
+            ));
     }
 
     private function applyVisaExpiry(Admin $client, string $requested): void

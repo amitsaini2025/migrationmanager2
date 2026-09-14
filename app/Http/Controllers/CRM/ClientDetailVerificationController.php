@@ -5,13 +5,13 @@ namespace App\Http\Controllers\CRM;
 use App\Http\Controllers\Concerns\EnsuresCrmRecordAccess;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CRM\AcceptClientDetailVerificationChangeRequest;
+use App\Http\Requests\CRM\SendClientDetailVerificationLinkRequest;
 use App\Models\Admin;
 use App\Models\ClientDetailVerificationField;
 use App\Services\ClientDetailVerificationService;
 use App\Support\ClientDetailVerificationFields;
 use App\Support\ClientDetailVerificationUi;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
@@ -19,12 +19,9 @@ class ClientDetailVerificationController extends Controller
 {
     use EnsuresCrmRecordAccess;
 
-    public function send(Request $request, ClientDetailVerificationService $service): JsonResponse
+    public function send(SendClientDetailVerificationLinkRequest $request, ClientDetailVerificationService $service): JsonResponse
     {
-        $validated = $request->validate([
-            'client_id' => ['required', 'integer', 'min:1'],
-        ]);
-
+        $validated = $request->validated();
         $clientId = (int) $validated['client_id'];
         $this->ensureCrmRecordAccessStrict($clientId);
 
@@ -37,7 +34,11 @@ class ClientDetailVerificationController extends Controller
             abort(404);
         }
 
-        $result = $service->sendLink($client, Auth::guard('admin')->id());
+        $result = $service->sendLink(
+            $client,
+            Auth::guard('admin')->id(),
+            (string) $validated['channel'],
+        );
 
         return response()->json($result, $result['success'] ? 200 : 422);
     }

@@ -1525,6 +1525,11 @@ input:checked + .toggle-slider:before { transform: translateX(18px); }
     color: #14532d;
 }
 
+.sidebar-details-verified-info .details-verify-heading {
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
 .sidebar-details-verified-info .details-verify-line {
     margin-bottom: 4px;
 }

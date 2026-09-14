@@ -197,7 +197,12 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertStringContainsString('js/crm/clients/utils/flatpickr-helpers.js', $detail);
         Assert::assertStringContainsString('personaldetails-tab.js', $detail);
         Assert::assertStringContainsString('verify-link.js', $detail);
+        Assert::assertStringContainsString('primaryEmail:', $detail);
+        Assert::assertStringContainsString('primaryPhone:', $detail);
         Assert::assertStringContainsString('class="send-verify-link"', $detail);
+        Assert::assertStringContainsString('id="sidebarClientVerifyInfo"', $detail);
+        Assert::assertStringContainsString('latestSubmittedSummary', $detail);
+        Assert::assertStringContainsString('id="sidebarDetailsVerifiedInfo"', $detail);
         Assert::assertStringContainsString('class="send-sms-btn"', $detail);
         Assert::assertStringContainsString('data-bs-target="#create_appoint"', $detail);
         Assert::assertStringNotContainsString('js/tinymce/js/tinymce/tinymce.min.js', $detail);
@@ -287,6 +292,8 @@ class ClientDetailTabsTest extends TestCase
     {
         $companyDetail = file_get_contents($this->projectPath('resources/views/crm/companies/detail.blade.php'));
         Assert::assertNotFalse($companyDetail);
+        Assert::assertStringContainsString('id="sidebarDetailsVerifiedInfo"', $companyDetail);
+        Assert::assertStringNotContainsString('id="sidebarClientVerifyInfo"', $companyDetail);
         Assert::assertStringContainsString("@include('crm.clients.tabs.workflow')", $companyDetail);
         Assert::assertStringContainsString("@include('crm.clients.tabs.client_portal')", $companyDetail);
         Assert::assertStringContainsString("@include('crm.clients.tabs.account')", $companyDetail);

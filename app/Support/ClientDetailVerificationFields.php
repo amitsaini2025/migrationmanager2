@@ -12,6 +12,10 @@ final class ClientDetailVerificationFields
 
     public const STATUS_ACCEPTED = 'accepted';
 
+    public const CHANNEL_EMAIL = 'email';
+
+    public const CHANNEL_SMS = 'sms';
+
     /**
      * @return list<string>
      */
@@ -178,6 +182,65 @@ final class ClientDetailVerificationFields
         }
 
         return self::displayValue($legacyAddress);
+    }
+
+    public static function visaTypeLabel(?string $title, ?string $nickName = null): string
+    {
+        $title = trim((string) $title);
+        $nick = trim((string) $nickName);
+        if ($title === '') {
+            return $nick;
+        }
+
+        return $nick !== '' ? $title.' ('.$nick.')' : $title;
+    }
+
+    public static function visaTypeMatchesRequested(?string $title, ?string $nickName, string $requested): bool
+    {
+        $requested = trim($requested);
+        if ($requested === '') {
+            return false;
+        }
+
+        $title = trim((string) $title);
+        $nick = trim((string) $nickName);
+
+        if ($title !== '' && strcasecmp($title, $requested) === 0) {
+            return true;
+        }
+
+        if ($nick !== '' && strcasecmp($nick, $requested) === 0) {
+            return true;
+        }
+
+        if ($title === '' || $nick === '') {
+            return false;
+        }
+
+        return strcasecmp(self::visaTypeLabel($title, $nick), $requested) === 0
+            || strcasecmp($title.'('.$nick.')', $requested) === 0;
+    }
+
+    public static function resultHeading(int $confirmedCount, int $changedCount): string
+    {
+        if ($changedCount < 1) {
+            return 'Verification Confirmed';
+        }
+
+        if ($confirmedCount < 1) {
+            return 'Request Change';
+        }
+
+        return 'Verification Confirmed and Request Changes';
+    }
+
+    public static function formatVerifiedAt(?\DateTimeInterface $at): string
+    {
+        if ($at === null) {
+            return '—';
+        }
+
+        return Carbon::parse($at)->format('d/m/Y g:i A');
     }
 
     public static function locationFromCountry(?string $country): string

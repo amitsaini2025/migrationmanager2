@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\CRM\ClientPersonalDetailsController;
 use App\Http\Middleware\TrackStaffCrmActivity;
 use App\Http\Middleware\VerifyCsrfToken;
 use App\Mail\ClientDetailVerificationMail;
@@ -13,6 +14,7 @@ use App\Services\ClientDetailVerificationService;
 use App\Services\Sms\UnifiedSmsManager;
 use App\Support\ClientDetailVerificationFields;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
@@ -84,7 +86,7 @@ class ClientDetailVerificationTest extends TestCase
         $first = $this->createOpenVerification('old-token-old-token-old-token-old-token-old-tok');
         $this->assertTrue($first->fresh()->isUsable());
 
-        $result = $service->sendLink($this->client, $this->staff->id);
+        $result = $service->sendLink($this->client, $this->staff->id, ClientDetailVerificationFields::CHANNEL_SMS);
 
         $this->assertTrue($result['success']);
         $this->assertStringContainsString('+610412345678', $result['message']);
@@ -92,6 +94,76 @@ class ClientDetailVerificationTest extends TestCase
         $this->assertFalse($first->fresh()->isUsable());
         Mail::assertNothingSent();
         Mail::assertNotSent(ClientDetailVerificationMail::class);
+    }
+
+    #[Test]
+    public function a_successful_email_send_keeps_the_new_link_usable(): void
+    {
+        Mail::fake();
+        $this->mock(UnifiedSmsManager::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('sendSms')->never();
+        });
+
+        $first = $this->createOpenVerification('old-token-old-token-old-token-old-token-old-tok');
+
+        $result = app(ClientDetailVerificationService::class)->sendLink(
+            $this->client,
+            $this->staff->id,
+            ClientDetailVerificationFields::CHANNEL_EMAIL,
+        );
+
+        $this->assertTrue($result['success']);
+        $this->assertFalse($first->fresh()->isUsable());
+
+        $latest = ClientDetailVerification::query()->latest('id')->first();
+        $this->assertNotNull($latest);
+        $this->assertTrue($latest->isUsable());
+        $this->assertNotSame($first->id, $latest->id);
+    }
+
+    #[Test]
+    public function a_failed_email_send_does_not_kill_the_token_in_case_zoho_already_delivered(): void
+    {
+        Mail::shouldReceive('mailer')->andThrow(new \RuntimeException('Transport "ses" failed.'));
+        $this->mock(UnifiedSmsManager::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('sendSms')->never();
+        });
+
+        $first = $this->createOpenVerification('old-token-old-token-old-token-old-token-old-tok');
+
+        $result = app(ClientDetailVerificationService::class)->sendLink(
+            $this->client,
+            $this->staff->id,
+            ClientDetailVerificationFields::CHANNEL_EMAIL,
+        );
+
+        $this->assertFalse($result['success']);
+        $this->assertTrue($first->fresh()->isUsable());
+
+        $latest = ClientDetailVerification::query()->latest('id')->first();
+        $this->assertNotNull($latest);
+        $this->assertTrue($latest->isUsable());
+    }
+
+    #[Test]
+    public function sending_a_link_by_email_does_not_send_sms(): void
+    {
+        Mail::fake();
+        $this->mock(UnifiedSmsManager::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('sendSms')->never();
+        });
+
+        $result = app(ClientDetailVerificationService::class)->sendLink(
+            $this->client,
+            $this->staff->id,
+            ClientDetailVerificationFields::CHANNEL_EMAIL,
+        );
+
+        $this->assertTrue($result['success']);
+        $this->assertStringContainsString('vipul.primary@example.com', $result['message']);
+        Mail::assertSent(ClientDetailVerificationMail::class, function (ClientDetailVerificationMail $mail): bool {
+            return $mail->hasTo('vipul.primary@example.com') && $mail->firstName === 'Vipul';
+        });
     }
 
     #[Test]
@@ -107,10 +179,56 @@ class ClientDetailVerificationTest extends TestCase
             'country_code' => '',
         ])->save();
 
-        $result = app(ClientDetailVerificationService::class)->sendLink($this->client, $this->staff->id);
+        $result = app(ClientDetailVerificationService::class)->sendLink(
+            $this->client,
+            $this->staff->id,
+            ClientDetailVerificationFields::CHANNEL_SMS,
+        );
 
         $this->assertFalse($result['success']);
         $this->assertSame('This client has no primary phone number.', $result['message']);
+        Mail::assertNothingSent();
+    }
+
+    #[Test]
+    public function sending_a_link_requires_a_primary_email_when_email_channel_is_chosen(): void
+    {
+        Mail::fake();
+        $this->mock(UnifiedSmsManager::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('sendSms')->never();
+        });
+
+        $this->client->forceFill([
+            'email' => '',
+        ])->save();
+
+        $result = app(ClientDetailVerificationService::class)->sendLink(
+            $this->client,
+            $this->staff->id,
+            ClientDetailVerificationFields::CHANNEL_EMAIL,
+        );
+
+        $this->assertFalse($result['success']);
+        $this->assertSame('This client has no primary email address.', $result['message']);
+        Mail::assertNothingSent();
+    }
+
+    #[Test]
+    public function sending_a_link_rejects_an_unknown_channel(): void
+    {
+        Mail::fake();
+        $this->mock(UnifiedSmsManager::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('sendSms')->never();
+        });
+
+        $result = app(ClientDetailVerificationService::class)->sendLink(
+            $this->client,
+            $this->staff->id,
+            'whatsapp',
+        );
+
+        $this->assertFalse($result['success']);
+        $this->assertSame('Please choose Primary email or Primary phone.', $result['message']);
         Mail::assertNothingSent();
     }
 
@@ -136,6 +254,13 @@ class ClientDetailVerificationTest extends TestCase
             ->assertOk()
             ->assertSee('Vipul Kumar')
             ->assertSee('vipul.primary@example.com')
+            ->assertSee('Search Address')
+            ->assertSee('Address Line 1')
+            ->assertSee('client-detail-verification-address.js')
+            ->assertSee('Visa Type / Subclass')
+            ->assertSee('client-detail-verification-visa.js')
+            ->assertDontSee('address-autocomplete.js')
+            ->assertDontSee('edit-client.js')
             ->assertDontSee('secondary@example.com');
 
         $payload = $this->confirmedPayload();
@@ -145,7 +270,13 @@ class ClientDetailVerificationTest extends TestCase
         $this->post(route('public.client-detail-verification.submit', ['token' => $token]), [
             'declaration' => '1',
             'fields_json' => json_encode($payload),
-        ])->assertOk()->assertSee('Verification Submitted');
+        ])->assertOk()
+            ->assertSee('Verification Confirmed and Request Changes')
+            ->assertSee('Verified By:')
+            ->assertSee('Super1 Admin1')
+            ->assertSee('Verified At:')
+            ->assertSee(ClientDetailVerificationFields::formatVerifiedAt(now()))
+            ->assertDontSee('Submit Verification');
 
         $this->assertFalse($verification->fresh()->isUsable());
         $this->assertNotNull($verification->fresh()->used_at);
@@ -163,6 +294,225 @@ class ClientDetailVerificationTest extends TestCase
         $this->assertSame(ClientDetailVerificationFields::STATUS_CHANGE_REQUESTED, $emailField->status);
         $this->assertSame('vipul.new@example.com', $emailField->requested_value);
         $this->assertSame('vipul.primary@example.com', $this->client->fresh()->email);
+    }
+
+    #[Test]
+    public function public_submit_shows_confirmed_heading_when_every_field_is_confirmed(): void
+    {
+        $token = 'confirmalltokenconfirmalltokenconfirmalltokenconfirmalltoken12';
+        $this->createOpenVerification($token);
+
+        $this->post(route('public.client-detail-verification.submit', ['token' => $token]), [
+            'declaration' => '1',
+            'fields_json' => json_encode($this->confirmedPayload()),
+        ])->assertOk()
+            ->assertSee('Verification Confirmed')
+            ->assertDontSee('Verification Confirmed and Request Changes')
+            ->assertSee('Verified By:')
+            ->assertSee('Super1 Admin1')
+            ->assertSee('Verified At:')
+            ->assertSee(ClientDetailVerificationFields::formatVerifiedAt(now()));
+
+        $summary = app(ClientDetailVerificationService::class)->latestSubmittedSummary((int) $this->client->id);
+        $this->assertNotNull($summary);
+        $this->assertSame('Verification Confirmed', $summary['heading']);
+        $this->assertSame('Super1 Admin1', $summary['verified_by']);
+        $this->assertSame(ClientDetailVerificationFields::formatVerifiedAt(now()), $summary['verified_at']);
+    }
+
+    #[Test]
+    public function public_submit_shows_request_change_heading_when_every_field_is_changed(): void
+    {
+        $token = 'changealltokenchangealltokenchangealltokenchangealltokenchang12';
+        $this->createOpenVerification($token);
+
+        $payload = array_map(static function (array $field): array {
+            $field['status'] = ClientDetailVerificationFields::STATUS_CHANGE_REQUESTED;
+            $field['requested_value'] = 'Updated '.$field['key'];
+
+            return $field;
+        }, $this->confirmedPayload());
+
+        $this->post(route('public.client-detail-verification.submit', ['token' => $token]), [
+            'declaration' => '1',
+            'fields_json' => json_encode($payload),
+        ])->assertOk()
+            ->assertSee('Request Change')
+            ->assertDontSee('Verification Confirmed')
+            ->assertSee('Super1 Admin1')
+            ->assertSee(ClientDetailVerificationFields::formatVerifiedAt(now()));
+    }
+
+    #[Test]
+    public function public_address_search_uses_the_same_backend_as_client_edit_when_the_link_is_valid(): void
+    {
+        $token = 'searchtokensearchtokensearchtokensearchtokensearchtokensearc12';
+        $this->createOpenVerification($token);
+
+        $this->mock(ClientPersonalDetailsController::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('searchAddressFull')
+                ->once()
+                ->andReturn(response()->json([
+                    'status' => 'OK',
+                    'predictions' => [
+                        [
+                            'place_id' => 'ChIJtest',
+                            'description' => '10 Oliva Approach, Piara Waters WA, Australia',
+                        ],
+                    ],
+                ]));
+        });
+
+        $this->postJson(route('public.client-detail-verification.search-address', ['token' => $token]), [
+            'query' => '10 Oliva Approach',
+        ])->assertOk()->assertJsonPath('predictions.0.description', '10 Oliva Approach, Piara Waters WA, Australia');
+    }
+
+    #[Test]
+    public function public_address_search_rejects_an_expired_link_and_does_not_call_places(): void
+    {
+        $token = 'expiredtokenexpiredtokenexpiredtokenexpiredtokenexpiredtokenex12';
+        $verification = $this->createOpenVerification($token);
+        $verification->forceFill(['used_at' => now()])->save();
+
+        $this->mock(ClientPersonalDetailsController::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('searchAddressFull')->never();
+            $mock->shouldReceive('getPlaceDetails')->never();
+        });
+
+        $this->postJson(route('public.client-detail-verification.search-address', ['token' => $token]), [
+            'query' => '10 Oliva Approach',
+        ])->assertNotFound();
+    }
+
+    #[Test]
+    public function public_address_search_requires_at_least_three_characters(): void
+    {
+        $token = 'querytokenquerytokenquerytokenquerytokenquerytokenquerytoken12';
+        $this->createOpenVerification($token);
+
+        $this->mock(ClientPersonalDetailsController::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('searchAddressFull')->never();
+        });
+
+        $this->postJson(route('public.client-detail-verification.search-address', ['token' => $token]), [
+            'query' => '10',
+        ])->assertStatus(422)->assertJsonValidationErrors(['query']);
+    }
+
+    #[Test]
+    public function public_form_can_submit_a_composed_residential_address_change(): void
+    {
+        $token = 'addresstokenaddresstokenaddresstokenaddresstokenaddresstokenad12';
+        $verification = $this->createOpenVerification($token, [
+            'full_name' => 'Vipul Kumar',
+            'dob' => 'N/A',
+            'gender' => 'Other',
+            'marital_status' => 'Married',
+            'email' => 'vipul.primary@example.com',
+            'phone' => '0412345678',
+            'address' => 'N/A',
+            'visa_type' => 'N/A',
+            'visa_expiry' => 'N/A',
+            'passport_country' => 'N/A',
+            'location_status' => 'N/A',
+        ]);
+
+        $payload = $this->confirmedPayload();
+        $addressIndex = array_search('address', ClientDetailVerificationFields::keys(), true);
+        $this->assertNotFalse($addressIndex);
+        $payload[$addressIndex]['status'] = ClientDetailVerificationFields::STATUS_CHANGE_REQUESTED;
+        $payload[$addressIndex]['requested_value'] = '10 Oliva Approach, Piara Waters, WA, Australia, 6112';
+
+        $this->post(route('public.client-detail-verification.submit', ['token' => $token]), [
+            'declaration' => '1',
+            'fields_json' => json_encode($payload),
+        ])->assertOk()
+            ->assertSee('Verification Confirmed and Request Changes')
+            ->assertSee('Super1 Admin1')
+            ->assertSee(ClientDetailVerificationFields::formatVerifiedAt(now()));
+
+        $addressField = ClientDetailVerificationField::query()
+            ->where('verification_id', $verification->id)
+            ->where('field_key', 'address')
+            ->first();
+
+        $this->assertNotNull($addressField);
+        $this->assertSame(ClientDetailVerificationFields::STATUS_CHANGE_REQUESTED, $addressField->status);
+        $this->assertSame('10 Oliva Approach, Piara Waters, WA, Australia, 6112', $addressField->requested_value);
+    }
+
+    #[Test]
+    public function public_visa_types_use_the_same_matter_list_as_client_edit_when_the_link_is_valid(): void
+    {
+        $this->createMattersTable();
+        DB::table('matters')->insert([
+            ['id' => 10, 'title' => '151 - Former Resident', 'nick_name' => 'FR', 'status' => 1],
+            ['id' => 11, 'title' => '485 skill assessment', 'nick_name' => 'SA', 'status' => 1],
+            ['id' => 12, 'title' => 'Inactive Visa', 'nick_name' => 'IN', 'status' => 0],
+        ]);
+
+        $token = 'visatypestokenvisatypestokenvisatypestokenvisatypestokenvisaty12';
+        $this->createOpenVerification($token);
+
+        $this->getJson(route('public.client-detail-verification.visa-types', ['token' => $token]))
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.label', '151 - Former Resident (FR)')
+            ->assertJsonMissing(['title' => '485 skill assessment'])
+            ->assertJsonMissing(['title' => 'Inactive Visa']);
+    }
+
+    #[Test]
+    public function public_visa_types_reject_an_expired_link(): void
+    {
+        $token = 'expiredvisatokenexpiredvisatokenexpiredvisatokenexpiredvisatok12';
+        $verification = $this->createOpenVerification($token);
+        $verification->forceFill(['used_at' => now()])->save();
+
+        $this->getJson(route('public.client-detail-verification.visa-types', ['token' => $token]))
+            ->assertNotFound();
+    }
+
+    #[Test]
+    public function public_form_can_submit_a_selected_visa_type_change(): void
+    {
+        $token = 'visachangetokenvisachangetokenvisachangetokenvisachangetokenvi12';
+        $verification = $this->createOpenVerification($token, [
+            'full_name' => 'Vipul Kumar',
+            'dob' => 'N/A',
+            'gender' => 'Other',
+            'marital_status' => 'Married',
+            'email' => 'vipul.primary@example.com',
+            'phone' => '0412345678',
+            'address' => 'N/A',
+            'visa_type' => 'N/A',
+            'visa_expiry' => 'N/A',
+            'passport_country' => 'N/A',
+            'location_status' => 'N/A',
+        ]);
+
+        $payload = $this->confirmedPayload();
+        $visaIndex = array_search('visa_type', ClientDetailVerificationFields::keys(), true);
+        $this->assertNotFalse($visaIndex);
+        $payload[$visaIndex]['status'] = ClientDetailVerificationFields::STATUS_CHANGE_REQUESTED;
+        $payload[$visaIndex]['requested_value'] = '151 - Former Resident (FR)';
+
+        $this->post(route('public.client-detail-verification.submit', ['token' => $token]), [
+            'declaration' => '1',
+            'fields_json' => json_encode($payload),
+        ])->assertOk()
+            ->assertSee('Verification Confirmed and Request Changes')
+            ->assertSee('Super1 Admin1');
+
+        $visaField = ClientDetailVerificationField::query()
+            ->where('verification_id', $verification->id)
+            ->where('field_key', 'visa_type')
+            ->first();
+
+        $this->assertNotNull($visaField);
+        $this->assertSame(ClientDetailVerificationFields::STATUS_CHANGE_REQUESTED, $visaField->status);
+        $this->assertSame('151 - Former Resident (FR)', $visaField->requested_value);
     }
 
     #[Test]
@@ -191,6 +541,51 @@ class ClientDetailVerificationTest extends TestCase
 
         $this->assertSame('vipul.final@example.com', $this->client->fresh()->email);
         $this->assertSame(ClientDetailVerificationFields::STATUS_ACCEPTED, $field->fresh()->status);
+    }
+
+    #[Test]
+    public function latest_submitted_summary_ignores_unsubmitted_links_and_keeps_heading_after_accept(): void
+    {
+        $this->createOpenVerification('unusedsummarytokenunusedsummarytokenunusedsummarytokenunuse12');
+
+        $this->assertNull(
+            app(ClientDetailVerificationService::class)->latestSubmittedSummary((int) $this->client->id)
+        );
+
+        $token = 'mixedsummarytokenmixedsummarytokenmixedsummarytokenmixedsumma12';
+        $verification = $this->createOpenVerification($token);
+
+        $payload = $this->confirmedPayload();
+        $payload[4]['status'] = ClientDetailVerificationFields::STATUS_CHANGE_REQUESTED;
+        $payload[4]['requested_value'] = 'vipul.sidebar@example.com';
+
+        $this->post(route('public.client-detail-verification.submit', ['token' => $token]), [
+            'declaration' => '1',
+            'fields_json' => json_encode($payload),
+        ])->assertOk();
+
+        $summary = app(ClientDetailVerificationService::class)->latestSubmittedSummary((int) $this->client->id);
+        $this->assertNotNull($summary);
+        $this->assertSame('Verification Confirmed and Request Changes', $summary['heading']);
+        $this->assertSame('Super1 Admin1', $summary['verified_by']);
+        $this->assertSame(ClientDetailVerificationFields::formatVerifiedAt(now()), $summary['verified_at']);
+
+        $emailField = ClientDetailVerificationField::query()
+            ->where('verification_id', $verification->id)
+            ->where('field_key', 'email')
+            ->first();
+
+        $this->assertNotNull($emailField);
+
+        $this->actingAs($this->staff, 'admin');
+        $this->post(route('clients.detail-verification.accept', ['field' => $emailField->id]))
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $afterAccept = app(ClientDetailVerificationService::class)->latestSubmittedSummary((int) $this->client->id);
+        $this->assertNotNull($afterAccept);
+        $this->assertSame('Verification Confirmed and Request Changes', $afterAccept['heading']);
+        $this->assertSame('Super1 Admin1', $afterAccept['verified_by']);
     }
 
     /**
@@ -302,5 +697,19 @@ class ClientDetailVerificationTest extends TestCase
                 $table->timestamps();
             });
         }
+    }
+
+    private function createMattersTable(): void
+    {
+        if (Schema::hasTable('matters')) {
+            return;
+        }
+
+        Schema::create('matters', function (Blueprint $table) {
+            $table->unsignedInteger('id')->primary();
+            $table->string('title')->nullable();
+            $table->string('nick_name')->nullable();
+            $table->unsignedInteger('status')->nullable();
+        });
     }
 }

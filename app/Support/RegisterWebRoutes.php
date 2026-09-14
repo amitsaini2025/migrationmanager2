@@ -461,6 +461,17 @@ final class RegisterWebRoutes
                 ->where('token', '[A-Za-z0-9]{32,128}')
                 ->name('public.client-detail-verification.submit');
         });
+        $this->router->middleware('throttle:40,1')->group(function () {
+            $this->router->post('/verify-details/{token}/search-address', [PublicClientDetailVerificationController::class, 'searchAddress'])
+                ->where('token', '[A-Za-z0-9]{32,128}')
+                ->name('public.client-detail-verification.search-address');
+            $this->router->post('/verify-details/{token}/place-details', [PublicClientDetailVerificationController::class, 'placeDetails'])
+                ->where('token', '[A-Za-z0-9]{32,128}')
+                ->name('public.client-detail-verification.place-details');
+            $this->router->get('/verify-details/{token}/visa-types', [PublicClientDetailVerificationController::class, 'visaTypes'])
+                ->where('token', '[A-Za-z0-9]{32,128}')
+                ->name('public.client-detail-verification.visa-types');
+        });
 
         /*--------------------------------------------------
         || SECTION: Public Client EOI Confirmation Routes

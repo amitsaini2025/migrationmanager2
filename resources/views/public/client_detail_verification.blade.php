@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Client Details Verification</title>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <style>
     :root {
       --primary: #5b3dbd;
@@ -67,6 +68,27 @@
     }
     textarea { min-height: 88px; resize: vertical; }
     .edit-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .address-entry-wrapper { background: white; border: 1px solid #e5e1fb; border-radius: 12px; padding: 14px; }
+    .address-entry-wrapper .form-group { margin-bottom: 12px; }
+    .address-entry-wrapper .form-group label { display: block; margin-bottom: 5px; font-size: 13px; color: var(--muted); font-weight: 700; }
+    .address-search-container { position: relative; }
+    .visa-type-search-wrapper .form-group, .visa-type-search-wrapper label {
+      display: block; margin-bottom: 5px; font-size: 13px; color: var(--muted); font-weight: 700;
+    }
+    .address-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .autocomplete-suggestions {
+      position: absolute; top: 100%; left: 0; right: 0; background: white;
+      border: 1px solid #ddd; border-top: none; max-height: 200px; overflow-y: auto;
+      z-index: 20; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .autocomplete-suggestion { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 14px; font-weight: 500; }
+    .autocomplete-suggestion:hover { background-color: #f5f5f5; }
+    .autocomplete-error, .autocomplete-info, .autocomplete-warning {
+      font-size: 12px; margin-top: 5px; padding: 8px; border-radius: 4px;
+    }
+    .autocomplete-error { color: #dc3545; background: #f8d7da; border: 1px solid #f5c6cb; }
+    .autocomplete-info { color: #856404; background: #fff3cd; border: 1px solid #ffeaa7; }
+    .autocomplete-warning { color: #ff9800; }
     .edit-actions { display: flex; gap: 8px; margin-top: 10px; }
     .status { display: none; margin-top: 12px; border-radius: 10px; padding: 10px 12px; font-size: 14px; font-weight: 700; }
     .status.confirmed { display: block; background: var(--success-bg); color: var(--success); }
@@ -85,12 +107,20 @@
     .small { color: var(--muted); font-size: 13px; }
     .security { margin-top: 12px; font-size: 12px; color: var(--muted); text-align: center; }
     .errors { background: #fff1f0; color: #b42318; border: 1px solid #ffccc7; border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; }
+    .verification-result-box {
+      background: #f0fdf4; border: 1px solid #bbf7d0; color: #14532d;
+      border-radius: 12px; padding: 14px 16px; margin: 0 0 14px; font-size: 14px; line-height: 1.45;
+    }
+    .verification-result-heading { font-weight: 800; font-size: 16px; margin-bottom: 8px; }
+    .verification-result-box .details-verify-line { margin-bottom: 4px; }
+    .verification-result-box .details-verify-line:last-child { margin-bottom: 0; }
     @media (max-width: 640px) {
       .header h1 { font-size: 23px; }
       .field-top { flex-direction: column; }
       .actions { width: 100%; min-width: 0; justify-content: flex-start; }
       .actions button { flex: 1; }
       .submit-actions { flex-direction: column; }
+      .address-fields-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -98,25 +128,9 @@
 @php
   $v = $values ?? [];
   $submitted = ! empty($submitted);
+  $fieldResults = $fieldResults ?? [];
 @endphp
 
-@if($submitted)
-  <section class="shell success-screen">
-    <div class="success-box">
-      <div class="tick">✓</div>
-      <h1>Verification Submitted</h1>
-      <p>Thank you, <strong>{{ $firstName }}</strong>. Your personal and visa details have been submitted successfully.</p>
-      <p class="small">
-        @if(($changedCount ?? 0) === 0)
-          You confirmed all details as correct.
-        @else
-          You requested {{ $changedCount }} change(s) for our team to review.
-        @endif
-      </p>
-      <p class="small">If you requested any changes, our team will review them before updating your record.</p>
-    </div>
-  </section>
-@else
   <main class="shell" id="verificationScreen">
     <section class="header">
       <div class="brand">Bansal Immigration Consultants</div>
@@ -140,12 +154,12 @@
       @include('public.partials.client_detail_verification_field', ['key' => 'marital_status', 'label' => 'Marital Status', 'value' => $v['marital_status'] ?? 'N/A', 'input' => 'select', 'options' => ['Never Married', 'Married', 'De Facto', 'Separated', 'Divorced', 'Widowed']])
       @include('public.partials.client_detail_verification_field', ['key' => 'email', 'label' => 'Email Address', 'value' => $v['email'] ?? 'N/A', 'input' => 'email', 'placeholder' => 'Enter correct email address'])
       @include('public.partials.client_detail_verification_field', ['key' => 'phone', 'label' => 'Mobile Number', 'value' => $v['phone'] ?? 'N/A', 'input' => 'tel', 'placeholder' => 'Enter correct mobile number'])
-      @include('public.partials.client_detail_verification_field', ['key' => 'address', 'label' => 'Residential Address', 'value' => $v['address'] ?? 'N/A', 'input' => 'textarea', 'placeholder' => 'Enter correct residential address'])
+      @include('public.partials.client_detail_verification_field', ['key' => 'address', 'label' => 'Residential Address', 'value' => $v['address'] ?? 'N/A', 'input' => 'address', 'addressSearchUrl' => $addressSearchUrl ?? '', 'addressDetailsUrl' => $addressDetailsUrl ?? ''])
     </section>
 
     <section class="card">
       <div class="card-head"><h2>Visa Details</h2><span>Step 2 of 2</span></div>
-      @include('public.partials.client_detail_verification_field', ['key' => 'visa_type', 'label' => 'Current Visa Type / Status', 'value' => $v['visa_type'] ?? 'N/A', 'input' => 'text', 'placeholder' => 'e.g. Student 500 / Visitor 600 / Offshore'])
+      @include('public.partials.client_detail_verification_field', ['key' => 'visa_type', 'label' => 'Current Visa Type / Status', 'value' => $v['visa_type'] ?? 'N/A', 'input' => 'visa', 'visaTypesUrl' => $visaTypesUrl ?? ''])
       @include('public.partials.client_detail_verification_field', ['key' => 'visa_expiry', 'label' => 'Visa Expiry Date', 'value' => $v['visa_expiry'] ?? 'N/A', 'input' => 'date'])
       @include('public.partials.client_detail_verification_field', ['key' => 'passport_country', 'label' => 'Country of Passport', 'value' => $v['passport_country'] ?? 'N/A', 'input' => 'text', 'placeholder' => 'Enter correct passport country'])
       @include('public.partials.client_detail_verification_field', ['key' => 'location_status', 'label' => 'Current Location', 'value' => $v['location_status'] ?? 'N/A', 'input' => 'select', 'options' => ['Onshore - Australia', 'Offshore - Outside Australia']])
@@ -153,14 +167,23 @@
 
     <section class="card summary-card">
       <h2 style="margin-top:0">Verification Summary</h2>
-      <div class="summary-row"><span>Confirmed fields</span><strong id="confirmedCount">0</strong></div>
-      <div class="summary-row"><span>Requested changes</span><strong id="changedCount">0</strong></div>
-      <div class="summary-row"><span>Still to review</span><strong id="pendingCount">11</strong></div>
+      <div class="summary-row"><span>Confirmed fields</span><strong id="confirmedCount">{{ $confirmedCount ?? 0 }}</strong></div>
+      <div class="summary-row"><span>Requested changes</span><strong id="changedCount">{{ $changedCount ?? 0 }}</strong></div>
+      <div class="summary-row"><span>Still to review</span><strong id="pendingCount">{{ $submitted ? 0 : 11 }}</strong></div>
     </section>
+
+    @if($submitted)
+      <div class="verification-result-box">
+        <div class="verification-result-heading">{{ $resultHeading }}</div>
+        <div class="details-verify-line"><strong>Verified By:</strong> {{ $verifiedByName }}</div>
+        <div class="details-verify-line"><strong>Verified At:</strong> {{ $verifiedAt }}</div>
+      </div>
+    @endif
 
     <form method="POST" action="{{ $submitUrl }}" id="verificationForm" class="submit-area">
       @csrf
       <input type="hidden" name="fields_json" id="fieldsJson" />
+      @unless($submitted)
       <div class="checkbox-row">
         <input type="checkbox" id="declaration" name="declaration" value="1" />
         <label for="declaration">
@@ -170,10 +193,12 @@
       <div class="submit-actions">
         <button type="submit" class="btn-primary">Submit Verification</button>
       </div>
+      @endunless
       <div class="security">For your security, this personalised verification link should not be forwarded to anyone else.</div>
     </form>
   </main>
 
+  @unless($submitted)
   <script>
     const fields = Array.from(document.querySelectorAll('.field'));
 
@@ -193,7 +218,7 @@
     function openChange(button) {
       const panel = getField(button).querySelector('.edit-panel');
       panel.classList.add('show');
-      const input = panel.querySelector('.new-value');
+      const input = panel.querySelector('.address-search-input') || panel.querySelector('.visa-type-search-input') || panel.querySelector('.new-value');
       if (input) input.focus();
     }
 
@@ -204,10 +229,19 @@
     function saveChange(button) {
       const field = getField(button);
       const input = field.querySelector('.new-value');
-      const newValue = (input.value || '').trim();
+      const newValue = field.dataset.key === 'address'
+        ? (window.composeVerificationAddress ? window.composeVerificationAddress(field) : '')
+        : (field.dataset.key === 'visa_type'
+          ? (window.composeVerificationVisaType ? window.composeVerificationVisaType(field) : '')
+          : (input ? (input.value || '').trim() : ''));
       if (!newValue) {
-        alert('Please enter or select the correct information before saving.');
-        input.focus();
+        alert(field.dataset.key === 'address'
+          ? 'Please search or enter the address, including Address Line 1, Suburb, State, Postcode and Country.'
+          : (field.dataset.key === 'visa_type'
+            ? 'Please search and select a visa type from the list.'
+            : 'Please enter or select the correct information before saving.'));
+        const focusInput = field.querySelector('.address-search-input') || field.querySelector('.visa-type-search-input') || input;
+        if (focusInput) focusInput.focus();
         return;
       }
       field.dataset.status = 'changed';
@@ -251,6 +285,8 @@
 
     updateSummary();
   </script>
-@endif
+  <script src="{{ asset('js/public/client-detail-verification-address.js') }}"></script>
+  <script src="{{ asset('js/public/client-detail-verification-visa.js') }}"></script>
+  @endunless
 </body>
 </html>

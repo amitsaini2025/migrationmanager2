@@ -1,6 +1,6 @@
 # Staff workload and efficiency
 
-Spec for a **My day** view in **migrationmanager2** — a registered **migration practice CRM**. **Individual staff only**: no team table, no manager “view as,” no ranking of colleagues.
+Spec for a **My day** view in **migrationmanager2** — a registered **migration practice CRM**. **Dashboard My day is individual staff only** (no ranking). Admin Console **Staff Workload** can open the same generated copy-summary for a chosen staff and date; that text is **not stored**, it is assembled on demand.
 
 The unit of work is the **matter** (`client_matters`): a visa application, ART appeal, nomination/sponsorship file, EOI/ROI, skill assessment, or bridging-visa file sitting on a **client or lead** (`admins`). Almost every open file has **three named staff** (Migration Agent, Person Responsible, Person Assisting). Staff chase **people** (calls, consults) and **files** (stages, Immi/ART, checklists, Form 956, lodgement).
 

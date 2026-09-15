@@ -123,9 +123,15 @@ body[data-crm-layout="dashboard"] .main-footer {
 }
 
 .workload-chip[data-workload-metric]:hover,
-.workload-chip[data-workload-metric]:focus {
+.workload-chip[data-workload-metric]:focus,
+.workload-chip[data-workload-metric]:focus-visible {
     border-color: rgba(78, 115, 223, 0.45);
-    outline: none;
+}
+
+.workload-chip[data-workload-metric]:focus-visible,
+.workload-chip-part:focus-visible {
+    outline: 2px solid #4e73df;
+    outline-offset: 2px;
 }
 
 .workload-chip--queue {
@@ -189,7 +195,6 @@ body[data-crm-layout="dashboard"] .main-footer {
 .workload-chip-part:hover,
 .workload-chip-part:focus {
     color: #1a3599;
-    outline: none;
 }
 
 .workload-chip-sep {
@@ -315,12 +320,6 @@ body[data-crm-layout="dashboard"] .main-footer {
 
 .workload-view-all:hover {
     text-decoration: underline;
-}
-
-.workload-legend {
-    margin: 12px 0 0;
-    font-size: 0.72rem;
-    color: #868e96;
 }
 
 .card {

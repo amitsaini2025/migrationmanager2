@@ -1369,13 +1369,21 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     document.querySelectorAll('[data-workload-metric]').forEach(function(el) {
-        el.addEventListener('click', function() {
+        el.addEventListener('click', function(e) {
+            // Links inside a chip (e.g. View queue) must navigate, not open drilldown.
+            if (e.target.closest('a')) {
+                return;
+            }
             const metric = el.getAttribute('data-workload-metric');
             if (!metric) {
                 return;
             }
             openWorkloadDrilldown(metric);
         });
+        // Native <button> already handles Enter/Space; only wire custom chips.
+        if (el.tagName === 'BUTTON') {
+            return;
+        }
         el.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();

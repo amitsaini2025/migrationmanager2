@@ -194,6 +194,7 @@ Route::prefix('adminconsole')->name('adminconsole.')->middleware(['auth:admin', 
         Route::get('/view/{id}', [StaffController::class, 'view'])->name('view');
         Route::post('/savezone', [StaffController::class, 'savezone']);
         Route::get('/workload', [StaffWorkloadController::class, 'index'])->name('workload');
+        Route::get('/workload/{staff}/my-day', [StaffWorkloadController::class, 'myDay'])->name('workload.my-day');
     });
 
     // System routes - System management

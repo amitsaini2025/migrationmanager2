@@ -230,7 +230,7 @@ Do not start C in the first build. D follows A+B and does not depend on C.
 - Changing Completed / Updated / Pending / Call completed definitions.
 - Live 3CX CDR or call duration as KPI.
 - Separate Call / In-person start-stop timer on `notes`. Call time is covered by the auto session on the open matter (§12).
-- Manager “view as”, Admin Console columns for overlay (can follow later; not v1).
+- Manager “view as” on the **dashboard**. Admin Console **Staff Workload** can open the same generated My day copy-summary for a staff + date (not stored).
 - Replacing assigned actions (`notes.is_action = 1`) with the Kanban.
 - Client portal.
 

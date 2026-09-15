@@ -24,9 +24,13 @@ class DashboardWorkloadMarkupTest extends TestCase
         $this->assertStringContainsString('data-workload-metric="completed_excl_call"', $strip);
         $this->assertStringContainsString('data-workload-metric="call_completed"', $strip);
         $this->assertStringContainsString('data-workload-metric="updated"', $strip);
+        $this->assertStringContainsString('role="button"', $strip);
+        $this->assertStringNotContainsString('role="list"', $strip);
+        $this->assertStringNotContainsString('Call list', $strip);
         $this->assertStringNotContainsString('call notes today', $strip);
         $this->assertStringNotContainsString('in-person today', $strip);
         $this->assertStringNotContainsString('x-dashboard.workload-card', $strip);
+        $this->assertStringNotContainsString('New = record created', $strip);
 
         $myDay = file_get_contents(resource_path('views/components/dashboard/my-day.blade.php'));
         $this->assertNotFalse($myDay);

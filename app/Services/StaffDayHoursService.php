@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Http\Middleware\TrackStaffCrmActivity;
 use App\Models\StaffLoginLog;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -43,11 +44,16 @@ class StaffDayHoursService
         $from = Carbon::parse($presence->created_at)->timezone($tz);
         $to = Carbon::parse($presence->updated_at ?? $presence->created_at)->timezone($tz);
 
-        if ($now->betweenIncluded($start, $end) && $now->gt($to)) {
+        // Live "until now" is only for the staff viewing their own day — not when an admin
+        // opens a colleague's summary (that would inflate hours to the current clock).
+        $viewerId = Auth::guard('admin')->id();
+        $extendToNow = $viewerId === null || (int) $viewerId === $staffId;
+
+        if ($extendToNow && $now->betweenIncluded($start, $end) && $now->gt($to)) {
             $to = $now->copy();
         }
 
-        if (Schema::hasTable('sessions')) {
+        if ($extendToNow && Schema::hasTable('sessions')) {
             $sessionLast = DB::table('sessions')
                 ->where('user_id', $staffId)
                 ->max('last_activity');

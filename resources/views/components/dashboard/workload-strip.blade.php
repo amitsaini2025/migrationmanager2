@@ -25,14 +25,15 @@
         <span class="workload-strip-date">{{ $workload['date_label'] ?? '' }} ({{ $workload['timezone'] ?? config('app.timezone') }})</span>
     </div>
 
-    <div class="workload-queue-bar" role="list">
-        {{-- Queue first: only actionable card --}}
+    <div class="workload-queue-bar">
+        {{-- Queue first: only actionable tally --}}
         <div
             class="workload-chip workload-chip--queue"
-            role="listitem"
+            role="button"
             data-workload-metric="pending"
             tabindex="0"
             title="Open queue details"
+            aria-label="Queue: {{ $pendingTotal }} pending actions"
         >
             <span class="workload-chip-label">Queue</span>
             <span class="workload-chip-count">{{ number_format($pendingTotal) }}</span>
@@ -47,7 +48,7 @@
         </div>
 
         {{-- Done: one visual chip, two drill-downs (other vs call) --}}
-        <div class="workload-chip workload-chip--done" role="listitem">
+        <div class="workload-chip workload-chip--done" aria-label="Done today: {{ $doneTotal }}">
             <span class="workload-chip-label">Done</span>
             <span class="workload-chip-count" aria-hidden="true">{{ number_format($doneTotal) }}</span>
             <span class="workload-chip-split">
@@ -56,6 +57,7 @@
                     class="workload-chip-part"
                     data-workload-metric="completed_excl_call"
                     title="Other actions completed today"
+                    aria-label="{{ $completedTotal }} other actions completed"
                 >{{ number_format($completedTotal) }} other</button>
                 <span class="workload-chip-sep" aria-hidden="true">·</span>
                 <button
@@ -63,22 +65,19 @@
                     class="workload-chip-part"
                     data-workload-metric="call_completed"
                     title="Call actions completed today"
+                    aria-label="{{ $callCompletedTotal }} call actions completed"
                 >{{ number_format($callCompletedTotal) }} call</button>
             </span>
-            <a
-                href="{{ route('assignee.action_completed', ['group_type' => 'Call']) }}"
-                class="workload-chip-link"
-                onclick="event.stopPropagation()"
-            >Call list →</a>
         </div>
 
         {{-- Updates: demoted end-of-day tally --}}
         <div
             class="workload-chip workload-chip--updates"
-            role="listitem"
+            role="button"
             data-workload-metric="updated"
             tabindex="0"
             title="Action updates today"
+            aria-label="Updates: {{ $updatedTotal }} action updates today"
         >
             <span class="workload-chip-label">Updates</span>
             <span class="workload-chip-count">{{ number_format($updatedTotal) }}</span>
@@ -88,7 +87,6 @@
 
     <p class="workload-legend">
         Queue = assigned actions still open. Done = completed today (other vs Call). Updates = action updates today.
-        Clients / leads / personal on Queue. New = record created in last {{ config('crm.workload.new_record_days', 14) }} days.
         Contact notes live in My day — Already in CRM.
     </p>
 </section>

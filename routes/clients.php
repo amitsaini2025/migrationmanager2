@@ -254,6 +254,9 @@ Route::post('/documents/rename-dibp-receipt-checklist', [ClientDocumentsControll
 Route::post('/documents/download-dibp-receipt-document', [ClientDocumentsController::class, 'downloadDibpReceiptDocument'])->name('clients.documents.downloadDibpReceiptDocument');
 Route::post('/documents/bulk-upload-dibp-receipt-documents', [ClientDocumentsController::class, 'bulkUploadDibpReceiptDocuments'])->name('clients.documents.bulkUploadDibpReceiptDocuments');
 Route::post('/documents/send-dibp-receipt-to-hubdoc', [ClientDocumentsController::class, 'sendDibpReceiptToHubdoc'])->name('clients.documents.sendDibpReceiptToHubdoc');
+Route::post('/documents/mark-dibp-receipt-unused', [ClientDocumentsController::class, 'markDibpReceiptUnused'])->name('clients.documents.markDibpReceiptUnused');
+Route::post('/documents/restore-dibp-receipt', [ClientDocumentsController::class, 'restoreDibpReceipt'])->name('clients.documents.restoreDibpReceipt');
+Route::post('/documents/delete-dibp-receipt-unused', [ClientDocumentsController::class, 'deleteDibpReceiptUnused'])->name('clients.documents.deleteDibpReceiptUnused');
 Route::post('/documents/add-nomination-checklist', [ClientDocumentsController::class, 'addNominationDocChecklist'])->name('clients.documents.addNominationDocChecklist');
 Route::post('/documents/upload-visa-document', [ClientDocumentsController::class, 'uploadvisadocument'])->name('clients.documents.uploadvisadocument');
 Route::post('/documents/upload-nomination-document', [ClientDocumentsController::class, 'uploadNominationDocument'])->name('clients.documents.uploadNominationDocument');

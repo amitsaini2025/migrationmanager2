@@ -19,7 +19,9 @@
     $receipts_lists_invoice = $accountTabPayload['receipts_lists_invoice'];
     $receipts_lists_office = $accountTabPayload['receipts_lists_office'];
     $dibp_receipts_lists = $accountTabPayload['dibp_receipts_lists'] ?? collect();
+    $dibp_receipts_unused_lists = $accountTabPayload['dibp_receipts_unused_lists'] ?? collect();
     $dibp_receipts_checklists = $accountTabPayload['dibp_receipts_checklists'] ?? collect();
+    $dibpReceiptsShowUnusedUi = empty($fetchedData->is_company);
 @endphp
 
            <!-- Account Tab -->
@@ -637,6 +639,11 @@
          data-rename-checklist-url="{{ route('clients.documents.renameDibpReceiptChecklist') }}"
          data-download-url="{{ route('clients.documents.downloadDibpReceiptDocument') }}"
          data-hubdoc-url="{{ route('clients.documents.sendDibpReceiptToHubdoc') }}"
+         @if ($dibpReceiptsShowUnusedUi)
+         data-unused-url="{{ route('clients.documents.markDibpReceiptUnused') }}"
+         data-restore-url="{{ route('clients.documents.restoreDibpReceipt') }}"
+         data-delete-url="{{ route('clients.documents.deleteDibpReceiptUnused') }}"
+         @endif
          data-clientid="{{ (int) ($fetchedData->id ?? 0) }}">
         <div class="dibp-receipts-body">
             <div class="dibp-receipts-table-container" style="vertical-align: top; margin-top: 10px; width: 760px; overflow: visible;">
@@ -649,6 +656,11 @@
                         <button type="button" class="btn dibp-receipts-bulk-toggle" id="dibp-receipts-bulk-toggle" aria-pressed="false" aria-controls="dibp-receipts-bulk-dropzone-container">
                             @icon('fa-upload') <span class="dibp-receipts-bulk-toggle-label">Bulk Upload</span>
                         </button>
+                        @if ($dibpReceiptsShowUnusedUi)
+                        <button type="button" class="btn dibp-receipts-unused-toggle" id="dibp-receipts-unused-toggle" aria-pressed="false" aria-controls="dibp-receipts-unused">
+                            @icon('fa-ban') <span class="dibp-receipts-unused-toggle-label">Not Used</span>
+                        </button>
+                        @endif
                     </div>
                 </div>
                 <div id="dibp-receipts-bulk-dropzone-container" class="dibp-receipts-bulk-dropzone-container" hidden>
@@ -727,6 +739,43 @@
             <div id="dibp-receipts-preview" class="dibp-receipts-preview">
                 <p>Click on a file to preview it here.</p>
             </div>
+            @if ($dibpReceiptsShowUnusedUi)
+            <div id="dibp-receipts-unused" class="dibp-receipts-unused" hidden>
+                <h3>Not Used Receipts</h3>
+                <p>Unused DIBP receipts for this matter. Right-click a file to move it back or delete it.</p>
+                <table class="checklist-table" id="dibp-receipts-unused-table">
+                    <thead>
+                        <tr>
+                            <th>Checklist</th>
+                            <th>File Name</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dibp-receipts-unused-list">
+                        <?php if ($dibp_receipts_unused_lists->isEmpty()) { ?>
+                        <tr class="dibp-receipts-unused-empty-row">
+                            <td colspan="2">No unused receipts.</td>
+                        </tr>
+                        <?php } else { ?>
+                        <?php foreach ($dibp_receipts_unused_lists as $unusedReceipt) { ?>
+                        <?php
+                            $unusedUploader = $unusedReceipt->staff->first_name ?? 'NA';
+                            $unusedUploadedAt = $unusedReceipt->created_at ? date('d/m/Y H:i', strtotime((string) $unusedReceipt->created_at)) : '';
+                            $unusedTitle = 'Uploaded by: '.$unusedUploader.($unusedUploadedAt !== '' ? ' on '.$unusedUploadedAt : '');
+                        ?>
+                        <tr class="dibp-receipts-unused-row" id="dibp-receipts-unused-row-<?= (int) $unusedReceipt->id ?>">
+                            <td><?= htmlspecialchars((string) ($unusedReceipt->checklist ?? '')) ?></td>
+                            <td>
+                                <div class="dibp-receipts-unused-file" data-id="<?= (int) $unusedReceipt->id ?>" data-name="<?= htmlspecialchars((string) $unusedReceipt->file_name) ?>" data-filetype="<?= htmlspecialchars($unusedReceipt->getPreviewFileExtension()) ?>" data-fileurl="<?= htmlspecialchars((string) ($unusedReceipt->myfile ?? '')) ?>" data-filename="<?= htmlspecialchars((string) ($unusedReceipt->myfile_key ?? '')) ?>" title="<?= htmlspecialchars($unusedTitle) ?>">
+                                    <?= htmlspecialchars($unusedReceipt->getFilenameWithExtensionForDisplay()) ?>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php } ?>
+                        <?php } ?>
+                    </tbody>
+                </table>
+            </div>
+            @endif
         </div>
     </div>
 </div>
@@ -807,7 +856,22 @@
     <button type="button" class="dibp-receipts-context-item" data-action="send-hubdoc" id="dibp-receipts-send-hubdoc">
         @icon('fa-paper-plane') Send to Hubdoc
     </button>
+    @if ($dibpReceiptsShowUnusedUi)
+    <button type="button" class="dibp-receipts-context-item" data-action="mark-unused" id="dibp-receipts-mark-unused">
+        @icon('fa-ban') Not Used
+    </button>
+    @endif
 </div>
+@if ($dibpReceiptsShowUnusedUi)
+<div id="dibp-receipts-unused-context-menu" class="dibp-receipts-context-menu" hidden>
+    <button type="button" class="dibp-receipts-context-item" data-action="restore-unused">
+        @icon('fa-undo') Back to Receipt
+    </button>
+    <button type="button" class="dibp-receipts-context-item" data-action="delete-unused">
+        @icon('fa-trash') Delete
+    </button>
+</div>
+@endif
 
 <!-- Account Tab JavaScript -->
 <script>

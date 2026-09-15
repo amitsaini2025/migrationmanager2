@@ -32,6 +32,7 @@ class ClientDetailAccountTabTest extends TestCase
         Assert::assertEmpty($payload['receipts_lists_office']);
         Assert::assertSame([], $payload['receipts_lists_invoice']);
         Assert::assertTrue($payload['dibp_receipts_lists']->isEmpty());
+        Assert::assertTrue($payload['dibp_receipts_unused_lists']->isEmpty());
         Assert::assertTrue($payload['dibp_receipts_checklists']->isEmpty());
     }
 
@@ -54,6 +55,7 @@ class ClientDetailAccountTabTest extends TestCase
         Assert::assertSame(25.0, (float) $payload['receipts_lists_invoice'][0]->balance_amount);
         Assert::assertCount(1, $payload['receipts_lists_office']);
         Assert::assertTrue($payload['dibp_receipts_lists']->isEmpty());
+        Assert::assertTrue($payload['dibp_receipts_unused_lists']->isEmpty());
         Assert::assertTrue($payload['dibp_receipts_checklists']->isEmpty());
     }
 
@@ -106,6 +108,30 @@ class ClientDetailAccountTabTest extends TestCase
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'client_id' => 1,
+                'client_matter_id' => null,
+                'doc_type' => 'dibp_receipt',
+                'type' => 'client',
+                'folder_name' => 'general',
+                'file_name' => 'unused-lodgement.pdf',
+                'checklist' => 'Unused lodgement',
+                'not_used_doc' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'client_id' => 1,
+                'client_matter_id' => null,
+                'doc_type' => 'visa',
+                'type' => 'client',
+                'folder_name' => '1',
+                'file_name' => 'unused-visa.pdf',
+                'checklist' => 'Unused visa',
+                'not_used_doc' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
 
         $after = ClientDetailAccountTab::build((object) [
@@ -129,6 +155,9 @@ class ClientDetailAccountTabTest extends TestCase
         Assert::assertSame('dibp_receipt', $after['dibp_receipts_lists']->first()->doc_type);
         Assert::assertNotSame('visa', $after['dibp_receipts_lists']->first()->doc_type);
         Assert::assertNotSame('personal', $after['dibp_receipts_lists']->first()->doc_type);
+        Assert::assertCount(1, $after['dibp_receipts_unused_lists']);
+        Assert::assertSame('unused-lodgement.pdf', $after['dibp_receipts_unused_lists']->first()->file_name);
+        Assert::assertSame('dibp_receipt', $after['dibp_receipts_unused_lists']->first()->doc_type);
         Assert::assertTrue($after['dibp_receipts_checklists']->isEmpty());
     }
 

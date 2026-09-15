@@ -10,6 +10,7 @@ use App\Http\Requests\StoreDibpReceiptDownloadRequest;
 use App\Http\Requests\StoreDibpReceiptHubdocRequest;
 use App\Http\Requests\StoreDibpReceiptRenameChecklistRequest;
 use App\Http\Requests\StoreDibpReceiptRenameFileRequest;
+use App\Http\Requests\StoreDibpReceiptUnusedRequest;
 use App\Http\Requests\StoreDibpReceiptUploadRequest;
 use App\Mail\HubdocDibpReceiptMail;
 use App\Models\Admin;
@@ -4773,6 +4774,125 @@ class ClientDocumentsController extends Controller
             'hubdoc_sent' => true,
             'hubdoc_sent_at' => $payload['hubdoc_sent_at'],
             'hubdoc_sent_at_formatted' => $payload['hubdoc_sent_at_formatted'],
+        ]);
+    }
+
+    public function markDibpReceiptUnused(StoreDibpReceiptUnusedRequest $request): JsonResponse
+    {
+        $document = $this->dibpReceiptDocumentForClient(
+            (int) $request->validated('clientid'),
+            (int) $request->validated('fileid')
+        );
+        if ($document instanceof JsonResponse) {
+            return $document;
+        }
+
+        if (! ClientDetailDocumentsTab::hasAttachedFile($document)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Only uploaded receipts can be moved to Not Used.',
+            ], 422);
+        }
+
+        if (ClientDetailDocumentsTab::isUnused($document)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This receipt is already in Not Used.',
+            ], 422);
+        }
+
+        $document = ClientDetailDocumentsTab::markUnused($document);
+        $this->logClientActivity(
+            (int) $document->client_id,
+            'moved DIBP receipt to Not Used',
+            '<p>DIBP receipt moved to Not Used Receipts</p>',
+            'document'
+        );
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Receipt moved to Not Used.',
+            'document' => ClientDetailDocumentsTab::jsonPayload($document),
+        ]);
+    }
+
+    public function restoreDibpReceipt(StoreDibpReceiptUnusedRequest $request): JsonResponse
+    {
+        $document = $this->dibpReceiptDocumentForClient(
+            (int) $request->validated('clientid'),
+            (int) $request->validated('fileid')
+        );
+        if ($document instanceof JsonResponse) {
+            return $document;
+        }
+
+        if (! ClientDetailDocumentsTab::isUnused($document)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This receipt is not in Not Used.',
+            ], 422);
+        }
+
+        $document = ClientDetailDocumentsTab::restoreUnused($document);
+        $this->logClientActivity(
+            (int) $document->client_id,
+            'restored DIBP receipt from Not Used',
+            '<p>DIBP receipt moved back to Receipts</p>',
+            'document'
+        );
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Receipt moved back to Receipts.',
+            'document' => ClientDetailDocumentsTab::jsonPayload($document),
+        ]);
+    }
+
+    public function deleteDibpReceiptUnused(StoreDibpReceiptUnusedRequest $request): JsonResponse
+    {
+        $document = $this->dibpReceiptDocumentForClient(
+            (int) $request->validated('clientid'),
+            (int) $request->validated('fileid')
+        );
+        if ($document instanceof JsonResponse) {
+            return $document;
+        }
+
+        if (! ClientDetailDocumentsTab::isUnused($document)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Only unused receipts can be deleted here.',
+            ], 422);
+        }
+
+        $clientId = (int) $document->client_id;
+        $documentId = (int) $document->id;
+        $admin = Admin::query()->select(['id', 'client_id'])->find($clientId);
+        $clientUniqueId = (string) ($admin?->client_id ?? '');
+        if ($clientUniqueId !== '' && ! empty($document->myfile_key)) {
+            try {
+                $this->s3Disk()->delete($clientUniqueId.'/'.ClientDetailDocumentsTab::storageFolder().'/'.$document->myfile_key);
+            } catch (\Exception $e) {
+                Log::warning('Failed to delete S3 file for unused DIBP receipt', [
+                    'document_id' => $documentId,
+                    'client_id' => $clientId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $document->delete();
+        $this->logClientActivity(
+            $clientId,
+            'deleted unused DIBP receipt',
+            '<p>Unused DIBP receipt deleted</p>',
+            'document'
+        );
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Receipt deleted.',
+            'id' => $documentId,
         ]);
     }
 

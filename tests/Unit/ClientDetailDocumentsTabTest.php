@@ -250,6 +250,11 @@ class ClientDetailDocumentsTabTest extends TestCase
 
         $notUsed = ClientDetailDocumentsTab::notUsedDocuments(20);
         Assert::assertCount(0, $notUsed);
+
+        $unusedReceipts = ClientDetailDocumentsTab::unusedDibpReceiptDocuments(20, 4);
+        Assert::assertCount(1, $unusedReceipts);
+        Assert::assertSame('unused.pdf', $unusedReceipts->first()->file_name);
+        Assert::assertSame(ClientDetailDocumentsTab::DIBP_RECEIPT_DOC_TYPE, $unusedReceipts->first()->doc_type);
     }
 
     #[Test]

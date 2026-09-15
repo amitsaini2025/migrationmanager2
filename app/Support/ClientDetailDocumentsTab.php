@@ -78,6 +78,59 @@ final class ClientDetailDocumentsTab
     }
 
     /**
+     * Unused DIBP receipt files for a client and selected matter.
+     * Excludes visa/personal/nomination rows via doc_type.
+     *
+     * @return Collection<int, Document>
+     */
+    public static function unusedDibpReceiptDocuments(int $clientId, ?int $matterId): Collection
+    {
+        return Document::with('staff')
+            ->where('client_id', $clientId)
+            ->where('not_used_doc', 1)
+            ->where('doc_type', self::DIBP_RECEIPT_DOC_TYPE)
+            ->where('folder_name', self::DIBP_RECEIPT_FOLDER_NAME)
+            ->where('type', 'client')
+            ->whereNotNull('file_name')
+            ->where('file_name', '!=', '')
+            ->where(function ($query) use ($matterId) {
+                if ($matterId !== null) {
+                    $query->where('client_matter_id', $matterId);
+                } else {
+                    $query->whereNull('client_matter_id');
+                }
+            })
+            ->orderBy('created_at', 'DESC')
+            ->get();
+    }
+
+    public static function isUnused(Document $document): bool
+    {
+        return (int) ($document->not_used_doc ?? 0) === 1;
+    }
+
+    public static function hasAttachedFile(Document $document): bool
+    {
+        return filled($document->file_name);
+    }
+
+    public static function markUnused(Document $document): Document
+    {
+        $document->not_used_doc = 1;
+        $document->save();
+
+        return $document;
+    }
+
+    public static function restoreUnused(Document $document): Document
+    {
+        $document->not_used_doc = null;
+        $document->save();
+
+        return $document;
+    }
+
+    /**
      * Always persists as dibp_receipt / general. Caller-supplied doc types are ignored.
      */
     public static function addChecklist(int $clientId, int $userId, string $checklist, ?int $matterId): Document
@@ -290,7 +343,7 @@ final class ClientDetailDocumentsTab
     }
 
     /**
-     * @return array{id: int, checklist: mixed, file_name: mixed, filetype: string, myfile: mixed, myfile_key: mixed, display_name: ?string}
+     * @return array{id: int, checklist: mixed, file_name: mixed, filetype: string, myfile: mixed, myfile_key: mixed, display_name: ?string, hubdoc_sent: bool, hubdoc_sent_at: ?string, hubdoc_sent_at_formatted: ?string, not_used: bool}
      */
     public static function jsonPayload(Document $document): array
     {
@@ -309,6 +362,7 @@ final class ClientDetailDocumentsTab
             'hubdoc_sent' => self::hasHubdocColumns() ? (bool) $document->hubdoc_sent : false,
             'hubdoc_sent_at' => $hubdocSentAt ? $hubdocSentAt->toIso8601String() : null,
             'hubdoc_sent_at_formatted' => $hubdocSentAt ? $hubdocSentAt->format('d/m/Y H:i') : null,
+            'not_used' => self::isUnused($document),
         ];
     }
 

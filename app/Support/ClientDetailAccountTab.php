@@ -25,6 +25,7 @@ final class ClientDetailAccountTab
      *     receipts_lists_invoice: array<int, object>,
      *     receipts_lists_office: Collection,
      *     dibp_receipts_lists: \Illuminate\Support\Collection<int, Document>,
+     *     dibp_receipts_unused_lists: \Illuminate\Support\Collection<int, Document>,
      *     dibp_receipts_checklists: Collection<int, DocumentChecklist>
      * }
      */
@@ -84,6 +85,7 @@ final class ClientDetailAccountTab
             'receipts_lists_invoice' => $invoiceRows,
             'receipts_lists_office' => $officeReceipts,
             'dibp_receipts_lists' => ClientDetailDocumentsTab::dibpReceiptDocuments($clientId, $matterId),
+            'dibp_receipts_unused_lists' => ClientDetailDocumentsTab::unusedDibpReceiptDocuments($clientId, $matterId),
             'dibp_receipts_checklists' => DocumentChecklist::activeDibpReceipts(),
         ];
     }

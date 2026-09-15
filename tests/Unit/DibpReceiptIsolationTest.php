@@ -166,6 +166,12 @@ class DibpReceiptIsolationTest extends TestCase
         Assert::assertStringNotContainsString('dibp-receipts-drag-zone', $detailMain);
         Assert::assertStringNotContainsString('dibp-receipts-bulk-dropzone', $detailMain);
         Assert::assertStringContainsString('dibpReceiptsSendHubdoc', $receiptsJs);
+        Assert::assertStringContainsString('dibpReceiptsMarkUnused', $receiptsJs);
+        Assert::assertStringContainsString('dibp-receipts-unused-file', $receiptsJs);
+        Assert::assertStringNotContainsString('notuseddoc', $receiptsJs);
+        Assert::assertStringNotContainsString('backtodoc', $receiptsJs);
+        Assert::assertStringNotContainsString('deletedocs', $receiptsJs);
+        Assert::assertStringNotContainsString('deletenote', $receiptsJs);
         Assert::assertStringContainsString('dibp-receipts-hubdoc-sending', $receiptsJs);
         Assert::assertStringNotContainsString('showSendInProgress', $receiptsJs);
         Assert::assertStringNotContainsString('sendToHubdocAjax', $receiptsJs);

@@ -75,7 +75,7 @@
     }
 
     function dibpReceiptsHideContextMenus() {
-        ['dibp-receipts-file-context-menu', 'dibp-receipts-checklist-context-menu'].forEach(function (id) {
+        ['dibp-receipts-file-context-menu', 'dibp-receipts-checklist-context-menu', 'dibp-receipts-unused-context-menu'].forEach(function (id) {
             var menu = document.getElementById(id);
             if (menu) {
                 menu.hidden = true;
@@ -101,11 +101,49 @@
         menu.style.visibility = 'visible';
     }
 
+    function dibpReceiptsUnusedPane() {
+        return document.getElementById('dibp-receipts-unused');
+    }
+
+    function dibpReceiptsSetUnusedTogglePressed(open) {
+        var button = document.getElementById('dibp-receipts-unused-toggle');
+        if (button) {
+            button.setAttribute('aria-pressed', open ? 'true' : 'false');
+        }
+    }
+
+    function dibpReceiptsShowPreviewPane() {
+        var preview = document.getElementById('dibp-receipts-preview');
+        var unused = dibpReceiptsUnusedPane();
+        if (preview) {
+            preview.removeAttribute('hidden');
+        }
+        if (unused) {
+            unused.setAttribute('hidden', '');
+        }
+        dibpReceiptsSetUnusedTogglePressed(false);
+    }
+
+    function dibpReceiptsShowUnusedPane() {
+        var unused = dibpReceiptsUnusedPane();
+        if (!unused) {
+            return false;
+        }
+        var preview = document.getElementById('dibp-receipts-preview');
+        if (preview) {
+            preview.setAttribute('hidden', '');
+        }
+        unused.removeAttribute('hidden');
+        dibpReceiptsSetUnusedTogglePressed(true);
+        return true;
+    }
+
     function dibpReceiptsPreviewFile(fileType, fileUrl) {
         var container = document.getElementById('dibp-receipts-preview');
         if (!container) {
             return;
         }
+        dibpReceiptsShowPreviewPane();
         var type = String(fileType || '').toLowerCase();
         var url = String(fileUrl || '');
         if (!url) {
@@ -208,6 +246,165 @@
             return;
         }
         row.cells[1].innerHTML = dibpReceiptsFileCellHtml(doc);
+    }
+
+    function dibpReceiptsEnsureEmptyLeftRow() {
+        var list = document.getElementById('dibp-receipts-list');
+        if (!list || list.querySelector('.dibp-receipts-row')) {
+            return;
+        }
+        if (!list.querySelector('.dibp-receipts-empty-row')) {
+            list.innerHTML = '<tr class="dibp-receipts-empty-row"><td colspan="3">No receipts yet.</td></tr>';
+        }
+    }
+
+    function dibpReceiptsEnsureEmptyUnusedRow() {
+        var list = document.getElementById('dibp-receipts-unused-list');
+        if (!list || list.querySelector('.dibp-receipts-unused-row')) {
+            return;
+        }
+        if (!list.querySelector('.dibp-receipts-unused-empty-row')) {
+            list.innerHTML = '<tr class="dibp-receipts-unused-empty-row"><td colspan="2">No unused receipts.</td></tr>';
+        }
+    }
+
+    function dibpReceiptsRemoveLeftRow(id) {
+        var row = document.getElementById('dibp-receipts-row-' + id);
+        if (row) {
+            row.remove();
+        }
+        dibpReceiptsEnsureEmptyLeftRow();
+    }
+
+    function dibpReceiptsRemoveUnusedRow(id) {
+        var row = document.getElementById('dibp-receipts-unused-row-' + id);
+        if (row) {
+            row.remove();
+        }
+        dibpReceiptsEnsureEmptyUnusedRow();
+    }
+
+    function appendDibpReceiptUnusedRow(doc) {
+        var list = document.getElementById('dibp-receipts-unused-list');
+        if (!list || !doc || !doc.id) {
+            return;
+        }
+        var emptyRow = list.querySelector('.dibp-receipts-unused-empty-row');
+        if (emptyRow) {
+            emptyRow.remove();
+        }
+        var existing = document.getElementById('dibp-receipts-unused-row-' + doc.id);
+        if (existing) {
+            existing.remove();
+        }
+        var displayName = doc.display_name || doc.file_name || '';
+        var row = document.createElement('tr');
+        row.className = 'dibp-receipts-unused-row';
+        row.id = 'dibp-receipts-unused-row-' + doc.id;
+        row.innerHTML = '<td>' + dibpReceiptsEscapeHtml(doc.checklist || '') + '</td><td>' +
+            '<div class="dibp-receipts-unused-file" data-id="' + dibpReceiptsEscapeHtml(doc.id) + '" data-name="' + dibpReceiptsEscapeHtml(doc.file_name || '') + '" data-filetype="' + dibpReceiptsEscapeHtml(doc.filetype || '') + '" data-fileurl="' + dibpReceiptsEscapeHtml(doc.myfile || '') + '" data-filename="' + dibpReceiptsEscapeHtml(doc.myfile_key || '') + '">' +
+            dibpReceiptsEscapeHtml(displayName) +
+            '</div></td>';
+        list.insertBefore(row, list.firstChild);
+    }
+
+    var dibpReceiptsUnusedBusy = false;
+
+    function dibpReceiptsMarkUnused(fileEl) {
+        var panel = dibpReceiptsPanel();
+        var unusedUrl = panel ? (panel.getAttribute('data-unused-url') || '') : '';
+        if (!panel || !fileEl || !unusedUrl || !dibpReceiptsUnusedPane() || dibpReceiptsUnusedBusy) {
+            return;
+        }
+        if (!window.confirm('Move this receipt to Not Used?')) {
+            dibpReceiptsHideContextMenus();
+            return;
+        }
+        dibpReceiptsHideContextMenus();
+        dibpReceiptsUnusedBusy = true;
+        dibpReceiptsPostForm(unusedUrl, {
+            clientid: panel.getAttribute('data-clientid') || '',
+            fileid: fileEl.getAttribute('data-id') || ''
+        }).then(function (payload) {
+            dibpReceiptsUnusedBusy = false;
+            if (!payload.status) {
+                window.alert(payload.message || 'Unable to move this receipt to Not Used.');
+                return;
+            }
+            var doc = payload.document || {};
+            var id = doc.id || fileEl.getAttribute('data-id');
+            dibpReceiptsRemoveLeftRow(id);
+            appendDibpReceiptUnusedRow(doc.id ? doc : {
+                id: id,
+                checklist: '',
+                file_name: fileEl.getAttribute('data-name') || '',
+                display_name: fileEl.textContent || '',
+                filetype: fileEl.getAttribute('data-filetype') || '',
+                myfile: fileEl.getAttribute('data-fileurl') || '',
+                myfile_key: fileEl.getAttribute('data-filename') || ''
+            });
+            dibpReceiptsShowUnusedPane();
+        }).catch(function () {
+            dibpReceiptsUnusedBusy = false;
+            window.alert('Unable to move this receipt to Not Used.');
+        });
+    }
+
+    function dibpReceiptsRestoreUnused(fileEl) {
+        var panel = dibpReceiptsPanel();
+        var restoreUrl = panel ? (panel.getAttribute('data-restore-url') || '') : '';
+        if (!panel || !fileEl || !restoreUrl || dibpReceiptsUnusedBusy) {
+            return;
+        }
+        dibpReceiptsHideContextMenus();
+        dibpReceiptsUnusedBusy = true;
+        dibpReceiptsPostForm(restoreUrl, {
+            clientid: panel.getAttribute('data-clientid') || '',
+            fileid: fileEl.getAttribute('data-id') || ''
+        }).then(function (payload) {
+            dibpReceiptsUnusedBusy = false;
+            if (!payload.status) {
+                window.alert(payload.message || 'Unable to move this receipt back.');
+                return;
+            }
+            var doc = payload.document || {};
+            var id = doc.id || fileEl.getAttribute('data-id');
+            dibpReceiptsRemoveUnusedRow(id);
+            if (doc.id) {
+                appendDibpReceiptChecklistRow(doc);
+            }
+        }).catch(function () {
+            dibpReceiptsUnusedBusy = false;
+            window.alert('Unable to move this receipt back.');
+        });
+    }
+
+    function dibpReceiptsDeleteUnused(fileEl) {
+        var panel = dibpReceiptsPanel();
+        var deleteUrl = panel ? (panel.getAttribute('data-delete-url') || '') : '';
+        if (!panel || !fileEl || !deleteUrl || dibpReceiptsUnusedBusy) {
+            return;
+        }
+        if (!window.confirm('Delete this unused receipt? This cannot be undone.')) {
+            dibpReceiptsHideContextMenus();
+            return;
+        }
+        dibpReceiptsHideContextMenus();
+        dibpReceiptsUnusedBusy = true;
+        dibpReceiptsPostForm(deleteUrl, {
+            clientid: panel.getAttribute('data-clientid') || '',
+            fileid: fileEl.getAttribute('data-id') || ''
+        }).then(function (payload) {
+            dibpReceiptsUnusedBusy = false;
+            if (!payload.status) {
+                window.alert(payload.message || 'Unable to delete this receipt.');
+                return;
+            }
+            dibpReceiptsRemoveUnusedRow(payload.id || fileEl.getAttribute('data-id'));
+        }).catch(function () {
+            dibpReceiptsUnusedBusy = false;
+            window.alert('Unable to delete this receipt.');
+        });
     }
 
     var dibpReceiptsBulkFiles = [];
@@ -812,6 +1009,20 @@
             }
             return;
         }
+        var unusedToggle = target.closest('#account-tab .dibp-receipts-unused-toggle');
+        if (unusedToggle) {
+            event.preventDefault();
+            var unusedPane = dibpReceiptsUnusedPane();
+            if (!unusedPane) {
+                return;
+            }
+            if (unusedPane.hasAttribute('hidden')) {
+                dibpReceiptsShowUnusedPane();
+            } else {
+                dibpReceiptsShowPreviewPane();
+            }
+            return;
+        }
         if (target.closest('#dibp-receipts-bulk-cancel') || target.closest('#dibp-receipts-bulk-close-mapping')) {
             event.preventDefault();
             dibpReceiptsHideBulkMapping();
@@ -885,27 +1096,40 @@
 
     var dibpReceiptsContextFile = null;
     var dibpReceiptsContextChecklist = null;
+    var dibpReceiptsContextUnusedFile = null;
 
     document.addEventListener('contextmenu', function (event) {
         var target = event.target;
         if (!target || typeof target.closest !== 'function' || !target.closest('#account-tab')) {
             return;
         }
+        var unusedFileEl = target.closest('#account-tab .dibp-receipts-unused-file');
         var fileEl = target.closest('#account-tab .dibp-receipts-file');
         var checklistEl = target.closest('#account-tab .dibp-receipts-checklist');
-        if (!fileEl && !checklistEl) {
+        if (!unusedFileEl && !fileEl && !checklistEl) {
             return;
         }
-        if (dibpReceiptsHubdocSending) {
+        if (dibpReceiptsHubdocSending || dibpReceiptsUnusedBusy) {
             event.preventDefault();
             return;
         }
         event.preventDefault();
         event.stopPropagation();
         dibpReceiptsHideContextMenus();
+        if (unusedFileEl) {
+            dibpReceiptsContextUnusedFile = unusedFileEl;
+            dibpReceiptsContextFile = null;
+            dibpReceiptsContextChecklist = null;
+            var unusedMenu = document.getElementById('dibp-receipts-unused-context-menu');
+            if (unusedMenu) {
+                dibpReceiptsPositionMenu(unusedMenu, event);
+            }
+            return;
+        }
         if (fileEl) {
             dibpReceiptsContextFile = fileEl;
             dibpReceiptsContextChecklist = null;
+            dibpReceiptsContextUnusedFile = null;
             var menu = document.getElementById('dibp-receipts-file-context-menu');
             if (menu) {
                 dibpReceiptsSyncHubdocMenu(fileEl);
@@ -915,6 +1139,7 @@
         }
         dibpReceiptsContextChecklist = checklistEl;
         dibpReceiptsContextFile = null;
+        dibpReceiptsContextUnusedFile = null;
         var checklistMenu = document.getElementById('dibp-receipts-checklist-context-menu');
         if (checklistMenu) {
             dibpReceiptsPositionMenu(checklistMenu, event);
@@ -941,6 +1166,18 @@
             var action = contextItem.getAttribute('data-action');
             if (action === 'send-hubdoc' && dibpReceiptsContextFile) {
                 dibpReceiptsSendHubdoc(dibpReceiptsContextFile);
+                return;
+            }
+            if (action === 'mark-unused' && dibpReceiptsContextFile) {
+                dibpReceiptsMarkUnused(dibpReceiptsContextFile);
+                return;
+            }
+            if (action === 'restore-unused' && dibpReceiptsContextUnusedFile) {
+                dibpReceiptsRestoreUnused(dibpReceiptsContextUnusedFile);
+                return;
+            }
+            if (action === 'delete-unused' && dibpReceiptsContextUnusedFile) {
+                dibpReceiptsDeleteUnused(dibpReceiptsContextUnusedFile);
                 return;
             }
             dibpReceiptsHideContextMenus();

@@ -4,7 +4,7 @@
             "url": "https://mcp.context7.com/mcp"
         },
         "graphify": {
-            "command": "C:\\Users\\user\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+            "command": "C:\\Users\\ajay\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
             "args": [
                 "-m",
                 "graphify.serve",

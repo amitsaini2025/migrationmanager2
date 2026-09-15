@@ -660,7 +660,7 @@ class DashboardService
                     : 'System',
                 'client_name' => $checkinLog->contactDisplayLabel(),
                 'visit_purpose' => $checkinLog->visit_purpose,
-                'created_at' => $notification->created_at->format('d/m/Y h:i A'),
+                'created_at' => $notification->created_at?->toIso8601String() ?? now()->toIso8601String(),
                 'url' => $notification->url,
             ];
         }

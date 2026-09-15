@@ -171,7 +171,7 @@ class OfficeVisitController extends Controller
                             'sender_name' => Auth::user()->first_name.' '.Auth::user()->last_name,
                             'client_name' => $obj->contactDisplayLabel(),
                             'visit_purpose' => $obj->visit_purpose,
-                            'created_at' => $notification->created_at ? $notification->created_at->format('d/m/Y h:i A') : now()->format('d/m/Y h:i A'),
+                            'created_at' => $notification->created_at?->toIso8601String() ?? now()->toIso8601String(),
                             'url' => $notification->url,
                         ]
                     ));
@@ -585,7 +585,7 @@ class OfficeVisitController extends Controller
                         'sender_name' => Auth::user()->first_name.' '.Auth::user()->last_name,
                         'client_name' => $notifyClientName,
                         'visit_purpose' => $objs->visit_purpose,
-                        'created_at' => $o->created_at ? $o->created_at->format('d/m/Y h:i A') : now()->format('d/m/Y h:i A'),
+                        'created_at' => $o->created_at?->toIso8601String() ?? now()->toIso8601String(),
                         'url' => $o->url,
                     ]
                 ));
@@ -653,7 +653,7 @@ class OfficeVisitController extends Controller
                         'sender_name' => Auth::user()->first_name.' '.Auth::user()->last_name,
                         'client_name' => $obj->contactDisplayLabel(),
                         'visit_purpose' => $obj->visit_purpose,
-                        'created_at' => $o->created_at ? $o->created_at->format('d/m/Y h:i A') : now()->format('d/m/Y h:i A'),
+                        'created_at' => $o->created_at?->toIso8601String() ?? now()->toIso8601String(),
                         'url' => $o->url,
                     ]
                 ));

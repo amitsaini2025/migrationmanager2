@@ -59,7 +59,7 @@ class CheckInNotificationService
                     'sender_name'   => $sender->full_name,
                     'client_name'   => $clientName,
                     'visit_purpose' => $checkIn->visit_reason ?? 'Front-desk check-in',
-                    'created_at'    => $notification->created_at?->format('d/m/Y h:i A') ?? now()->format('d/m/Y h:i A'),
+                    'created_at'    => $notification->created_at?->toIso8601String() ?? now()->toIso8601String(),
                     'url'           => $notification->url,
                 ]
             ));

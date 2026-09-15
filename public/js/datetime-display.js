@@ -1,5 +1,6 @@
 /**
- * Human-readable local datetime for CRM UI (ISO / Laravel JSON → "24 Mar 2026, 8:32 am").
+ * Human-readable local datetime for CRM UI
+ * (ISO / Laravel JSON / unix ms / legacy "d/m/Y h:i A" → "24 Mar 2026, 8:32 am").
  * Invalid or unparseable values return '' (never echoes arbitrary strings into HTML).
  */
 (function (global) {
@@ -20,19 +21,58 @@
         return day + ' ' + mon + ' ' + y + ', ' + h12 + ':' + mm + ' ' + ap;
     }
 
-    function formatDisplayDateTime(iso) {
-        if (iso == null || iso === '') return '';
+    /**
+     * Parse ISO / Laravel JSON, unix ms, or CRM legacy "d/m/Y h:i A".
+     * Native Date() treats slash dates as m/d/Y, which breaks AU d/m/Y payloads.
+     */
+    function parseDisplayDateInput(value) {
+        if (value == null || value === '') return null;
 
-        var d;
-        if (typeof iso === 'number' && isFinite(iso)) {
-            d = new Date(iso);
-        } else {
-            var s = typeof iso === 'string' ? iso.trim() : String(iso);
-            if (!s) return '';
-            d = new Date(s);
+        if (typeof value === 'number' && isFinite(value)) {
+            var fromNumber = new Date(value);
+            return isNaN(fromNumber.getTime()) ? null : fromNumber;
         }
 
-        if (isNaN(d.getTime())) return '';
+        var s = typeof value === 'string' ? value.trim() : String(value);
+        if (!s) return null;
+
+        var legacy = s.match(
+            /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?)?$/i
+        );
+        if (legacy) {
+            var day = parseInt(legacy[1], 10);
+            var month = parseInt(legacy[2], 10) - 1;
+            var year = parseInt(legacy[3], 10);
+            var hour = legacy[4] != null ? parseInt(legacy[4], 10) : 0;
+            var minute = legacy[5] != null ? parseInt(legacy[5], 10) : 0;
+            var second = legacy[6] != null ? parseInt(legacy[6], 10) : 0;
+            var ap = legacy[7] ? legacy[7].toLowerCase() : null;
+            if (ap === 'pm' && hour < 12) {
+                hour += 12;
+            }
+            if (ap === 'am' && hour === 12) {
+                hour = 0;
+            }
+            var fromLegacy = new Date(year, month, day, hour, minute, second);
+            // Reject JS date rollover (e.g. 31/02/2026 → March).
+            if (
+                isNaN(fromLegacy.getTime()) ||
+                fromLegacy.getFullYear() !== year ||
+                fromLegacy.getMonth() !== month ||
+                fromLegacy.getDate() !== day
+            ) {
+                return null;
+            }
+            return fromLegacy;
+        }
+
+        var fromNative = new Date(s);
+        return isNaN(fromNative.getTime()) ? null : fromNative;
+    }
+
+    function formatDisplayDateTime(iso) {
+        var d = parseDisplayDateInput(iso);
+        if (!d) return '';
 
         return partsFromDate(d);
     }

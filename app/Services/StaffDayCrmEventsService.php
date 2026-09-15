@@ -169,16 +169,23 @@ class StaffDayCrmEventsService
         }
 
         $timeCol = Schema::hasColumn('sms_logs', 'sent_at') ? 'sent_at' : 'created_at';
+        // Production schema uses message_content; keep message as a safe fallback.
+        $bodyCol = Schema::hasColumn('sms_logs', 'message_content')
+            ? 'message_content'
+            : (Schema::hasColumn('sms_logs', 'message') ? 'message' : null);
+
+        $columns = array_values(array_filter(['id', $bodyCol, $timeCol]));
 
         return SmsLog::query()
             ->where('sender_id', $staffId)
             ->whereBetween($timeCol, [$start, $end])
             ->orderByDesc($timeCol)
             ->limit(40)
-            ->get(['id', 'message', $timeCol])
-            ->map(function (SmsLog $sms) use ($timeCol): array {
+            ->get($columns)
+            ->map(function (SmsLog $sms) use ($timeCol, $bodyCol): array {
                 $at = $sms->{$timeCol} ?? $sms->created_at ?? null;
-                $title = (string) (Str::limit((string) ($sms->message ?? 'SMS'), 80));
+                $body = $bodyCol !== null ? ($sms->{$bodyCol} ?? null) : null;
+                $title = (string) (Str::limit((string) ($body ?? 'SMS'), 80));
 
                 return $this->row('SMS', $title, $at, null, 'sms:'.$sms->id);
             });

@@ -121,6 +121,38 @@ class StaffDayCrmEventsServiceTest extends TestCase
         $this->assertSame(['Staff sent mail'], $emailTitles);
     }
 
+    #[Test]
+    public function includes_sms_events_using_message_content_column(): void
+    {
+        $today = Carbon::parse('2026-09-15 14:00:00', 'Australia/Melbourne');
+        Carbon::setTestNow($today);
+
+        DB::table('sms_logs')->insert([
+            [
+                'id' => 1,
+                'sender_id' => 1,
+                'message_content' => 'Reminder to upload documents',
+                'sent_at' => $today,
+                'created_at' => $today,
+                'updated_at' => $today,
+            ],
+            [
+                'id' => 2,
+                'sender_id' => 2,
+                'message_content' => 'Other staff SMS',
+                'sent_at' => $today,
+                'created_at' => $today,
+                'updated_at' => $today,
+            ],
+        ]);
+
+        $result = $this->service->forStaff(1, $today);
+        $smsItems = collect($result['items'])->where('kind', 'SMS');
+
+        $this->assertCount(1, $smsItems);
+        $this->assertSame('Reminder to upload documents', $smsItems->first()['title']);
+    }
+
     private function createSchema(): void
     {
         foreach (['email_logs', 'documents', 'booking_appointments', 'sms_logs', 'notes', 'activities_logs', 'client_matters'] as $table) {
@@ -160,7 +192,7 @@ class StaffDayCrmEventsServiceTest extends TestCase
         Schema::create('sms_logs', function (Blueprint $table) {
             $table->increments('id');
             $table->unsignedInteger('sender_id')->nullable();
-            $table->text('message')->nullable();
+            $table->text('message_content')->nullable();
             $table->timestamp('sent_at')->nullable();
             $table->timestamps();
         });

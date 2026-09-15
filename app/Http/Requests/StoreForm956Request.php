@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreForm956Request extends FormRequest
@@ -17,7 +18,7 @@ class StoreForm956Request extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -25,12 +26,14 @@ class StoreForm956Request extends FormRequest
             'client_id' => 'required|exists:admins,id',
             'client_matter_id' => 'nullable|integer',
             'form956_folder_name' => 'nullable|integer|min:1',
+            // Checklist destination: visa (person clients) or nomination (company File Documents)
+            'form956_doc_type' => 'nullable|in:visa,nomination',
             'agent_id' => 'required|exists:staff,id',
             'form_type' => 'required|in:appointment,withdrawal',
 
             // Application Details
-            //'application_type' => 'required|in:visa,citizenship,sponsorship,nomination,other',
-			'application_type' => 'required',
+            // 'application_type' => 'required|in:visa,citizenship,sponsorship,nomination,other',
+            'application_type' => 'required',
             'date_lodged' => 'nullable|date|required_if:not_lodged,0',
             'not_lodged' => 'nullable|boolean',
 

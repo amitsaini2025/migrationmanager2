@@ -607,6 +607,7 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertStringContainsString('ensureVisaDocumentsTabLoaded', $detailMain);
         Assert::assertStringContainsString('contextmenu.softRestore', $detailMain);
         Assert::assertStringContainsString('appendForm956ChecklistRow', $detailMain);
+        Assert::assertStringContainsString("$('#nominationdocuments-tab')", $detailMain);
         Assert::assertStringContainsString("$(document).on('submit', '#createForm956'", $detailMain);
         Assert::assertStringNotContainsString("$('#createForm956').on('submit'", $detailMain);
         Assert::assertStringContainsString("$(document).on('submit', '#visaagreementform11'", $detailMain);

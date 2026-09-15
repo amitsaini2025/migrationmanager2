@@ -143,7 +143,7 @@
                                         <div class="subtab6-header" style="margin-left: 10px;">
                                             <h3>@icon('fa-file-alt') <?= htmlspecialchars($catVal->title) ?> Documents</h3>
                                             <div style="display: flex; gap: 10px;">
-                                                <button type="button" class="btn btn-primary btn-sm form956CreateForm inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200" data-form956-folder="<?= $id ?>">
+                                                <button type="button" class="btn btn-primary btn-sm form956CreateForm inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200" data-form956-folder="<?= $id ?>" data-form956-doctype="visa">
                                                     @icon('fa-plus', ['class' => 'mr-2']) Create Form 956
                                                 </button>
                                                 <button type="button" class="btn add-checklist-btn add_migration_doc" data-type="visa" data-categoryid="<?= $id ?>">

@@ -1,28 +1,30 @@
 <?php
 
 namespace App\Http\Controllers\CRM;
+
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreForm956Request;
 use App\Models\Admin;
+use App\Models\ClientAddress;
 use App\Models\ClientMatter;
 use App\Models\ClientVisaCountry;
 use App\Models\Document;
 use App\Models\Form956;
 use App\Models\Matter;
+use App\Models\Staff;
 use App\Support\StaffClientVisibility;
+use Exception;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\View\View;
-use Illuminate\Http\RedirectResponse;
-use mikehaertl\pdftk\Pdf;
 use Illuminate\Support\Facades\DB;
-
-use Illuminate\Http\JsonResponse;
-use Exception;
+use Illuminate\View\View;
+use mikehaertl\pdftk\Pdf;
 
 class Form956Controller extends Controller
 {
-     public function __construct()
+    public function __construct()
     {
         $this->middleware('auth:admin');
     }
@@ -76,7 +78,7 @@ class Form956Controller extends Controller
                 ->first();
 
             // If no client is found, you might want to handle this case
-            if (!$client) {
+            if (! $client) {
                 abort(404, 'Client not found.');
             }
             $this->assertCanAccessClientId((int) $client->id);
@@ -100,15 +102,18 @@ class Form956Controller extends Controller
             $folderName = $validated['form956_folder_name'] ?? null;
             unset($validated['form956_folder_name']);
 
+            $docType = ($validated['form956_doc_type'] ?? 'visa') === 'nomination' ? 'nomination' : 'visa';
+            unset($validated['form956_doc_type']);
+
             // Create the form
             $form = Form956::create($validated);
 
-            // When created from visa document page (folder_name provided), create only the checklist name.
+            // When created from File/Visa Documents (folder_name provided), create only the checklist name.
             // User downloads the form, checks/updates it, then uploads to this checklist.
             $document = null;
             if ($folderName && $form->client_matter_id) {
                 $form->load(['client', 'agent']);
-                $agentName = $form->agent ? trim(($form->agent->first_name ?? '') . ' ' . ($form->agent->last_name ?? '')) : 'Agent';
+                $agentName = $form->agent ? trim(($form->agent->first_name ?? '').' '.($form->agent->last_name ?? '')) : 'Agent';
                 $agentNameDisplay = $agentName ?: 'Agent';
 
                 $document = new Document;
@@ -117,9 +122,9 @@ class Form956Controller extends Controller
                 $document->client_matter_id = $form->client_matter_id;
                 $document->form956_id = $form->id;
                 $document->type = 'client';
-                $document->doc_type = 'visa';
+                $document->doc_type = $docType;
                 $document->folder_name = $folderName;
-                $document->checklist = '956 Form_ ' . $agentNameDisplay;
+                $document->checklist = '956 Form_ '.$agentNameDisplay;
                 $document->save();
             }
 
@@ -142,7 +147,7 @@ class Form956Controller extends Controller
                         'client_matter_id' => $document->client_matter_id,
                         'client_id' => (int) $document->client_id,
                         'form956_id' => (int) $form->id,
-                        'doc_type' => 'visa',
+                        'doc_type' => $docType,
                     ];
                 }
 
@@ -151,12 +156,12 @@ class Form956Controller extends Controller
 
             // For non-AJAX requests, redirect as before
             return redirect()->route('forms.show', $form)->with('success', 'Form 956 created successfully.');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // For AJAX requests, return error response
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'errors' => ['general' => ['Failed to create Form 956: ' . $e->getMessage()]]
+                    'errors' => ['general' => ['Failed to create Form 956: '.$e->getMessage()]],
                 ], 422);
             }
 
@@ -171,7 +176,7 @@ class Form956Controller extends Controller
     public function show(Form956 $form): View
     {
         $this->assertCanAccessForm956($form);
-        $form->load(['client', 'agent']); //dd($form);
+        $form->load(['client', 'agent']); // dd($form);
 
         return view('crm.forms.show', compact('form'));
     }
@@ -183,7 +188,7 @@ class Form956Controller extends Controller
     {
         $templatePath = storage_path('app/public/form956_template.pdf');
 
-        if (!file_exists($templatePath)) {
+        if (! file_exists($templatePath)) {
             return response()->json(['error' => 'PDF template not found.'], 404);
         }
 
@@ -199,8 +204,8 @@ class Form956Controller extends Controller
             }
 
             return response()->json(['fields' => $fieldNames]);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Error extracting fields: ' . $e->getMessage()], 500);
+        } catch (Exception $e) {
+            return response()->json(['error' => 'Error extracting fields: '.$e->getMessage()], 500);
         }
     }
 
@@ -213,23 +218,23 @@ class Form956Controller extends Controller
         $form->load(['client', 'agent']);
         $templatePath = storage_path('app/public/form956_template.pdf');
 
-        if (!file_exists($templatePath)) {
+        if (! file_exists($templatePath)) {
             return back()->with('error', 'PDF template not found. Please contact the administrator.');
         }
 
         try {
             $pdf = new Pdf($templatePath);
             // Client address split
-            $client_address_parts_line1 = "";
-            $client_address_parts_line2 = "";
-            $client_address_parts_line3 = "";
-            $client_address_parts_postcode = "";
+            $client_address_parts_line1 = '';
+            $client_address_parts_line2 = '';
+            $client_address_parts_line3 = '';
+            $client_address_parts_postcode = '';
 
-            if( $this->getClientAddress($form->client->id) != '') {
+            if ($this->getClientAddress($form->client->id) != '') {
                 $client_address = $this->getClientAddress($form->client->id);
-                if($client_address !=  ''){
-                    $client_address_parts = $this->formatAddressForPDFClient($client_address); //dd($client_address_parts);
-                    if(!empty($client_address_parts)){
+                if ($client_address != '') {
+                    $client_address_parts = $this->formatAddressForPDFClient($client_address); // dd($client_address_parts);
+                    if (! empty($client_address_parts)) {
                         $client_address_parts_line1 = $client_address_parts['line1'];
                         $client_address_parts_line2 = $client_address_parts['line2'];
                         $client_address_parts_line3 = $client_address_parts['line3'];
@@ -241,35 +246,35 @@ class Form956Controller extends Controller
             $dobFormated = $this->formatClientDobForForm956($form->client->dob ?? null);
 
             $agentDeclarationDateFormated = 'NA';
-            if($form->agent_declaration_date != ''){
-                $agentDecArr = explode('-',$form->agent_declaration_date);
-                if(!empty($agentDecArr)){
+            if ($form->agent_declaration_date != '') {
+                $agentDecArr = explode('-', $form->agent_declaration_date);
+                if (! empty($agentDecArr)) {
                     $agentDeclarationDateFormated = $agentDecArr[2].'/'.$agentDecArr[1].'/'.$agentDecArr[0];
-                } else{
+                } else {
                     $agentDeclarationDateFormated = 'NA';
                 }
             }
 
             $clientDeclarationDateFormated = 'NA';
-            if($form->client_declaration_date != ''){
-                $clientDecArr = explode('-',$form->client_declaration_date);
-                if(!empty($clientDecArr)){
+            if ($form->client_declaration_date != '') {
+                $clientDecArr = explode('-', $form->client_declaration_date);
+                if (! empty($clientDecArr)) {
                     $clientDeclarationDateFormated = $clientDecArr[2].'/'.$clientDecArr[1].'/'.$clientDecArr[0];
-                } else{
+                } else {
                     $clientDeclarationDateFormated = 'NA';
                 }
             }
-             // Agent address split
-            $agent_address_parts_line1 = "";
-            $agent_address_parts_line2 = "";
-            $agent_address_parts_line3 = "";
-            $agent_address_parts_postcode = "";
+            // Agent address split
+            $agent_address_parts_line1 = '';
+            $agent_address_parts_line2 = '';
+            $agent_address_parts_line3 = '';
+            $agent_address_parts_postcode = '';
 
             $agent_address = $form->agent->business_address;
-            if($agent_address != ''){
+            if ($agent_address != '') {
                 $agent_address_parts = $this->formatAddressForPDFAgent($agent_address);
-                //dd($agent_address_parts);
-                if(!empty($agent_address_parts)){
+                // dd($agent_address_parts);
+                if (! empty($agent_address_parts)) {
                     $agent_address_parts_line1 = $agent_address_parts['line1'];
                     $agent_address_parts_line2 = $agent_address_parts['line2'];
                     $agent_address_parts_line3 = $agent_address_parts['line3'];
@@ -277,14 +282,14 @@ class Form956Controller extends Controller
                 }
             }
 
-            $date_lodged_arr_formated = "";
-            if($form->date_lodged != "") {
-                $date_lodged_arr = explode("-",$form->date_lodged);
-                if(!empty($date_lodged_arr)){
-                    $date_lodged_arr_formated =$date_lodged_arr[2].' '.$date_lodged_arr[1].' '.$date_lodged_arr[0];
+            $date_lodged_arr_formated = '';
+            if ($form->date_lodged != '') {
+                $date_lodged_arr = explode('-', $form->date_lodged);
+                if (! empty($date_lodged_arr)) {
+                    $date_lodged_arr_formated = $date_lodged_arr[2].' '.$date_lodged_arr[1].' '.$date_lodged_arr[0];
                 }
             }
-            //dd($date_lodged_arr_formated);
+            // dd($date_lodged_arr_formated);
 
             $visaSubclassLabel = $this->resolveVisaSubclassLabelForForm956($form);
 
@@ -292,9 +297,9 @@ class Form956Controller extends Controller
                 // Client details
                 'cc.name fam' => $form->client->last_name,
                 'cc.name giv' => $form->client->first_name,
-                'cc.dob' =>  $dobFormated,
+                'cc.dob' => $dobFormated,
 
-                 'cc.resadd str' => $client_address_parts_line1,
+                'cc.resadd str' => $client_address_parts_line1,
                 'cc.resadd sub' => $client_address_parts_line2,
                 'cc.resadd cntry' => $client_address_parts_line3,
                 'cc.resadd pc' => $client_address_parts_postcode,
@@ -317,13 +322,13 @@ class Form956Controller extends Controller
                 'mg.resadd str' => $agent_address_parts_line1,
                 'mg.resadd sub' => $agent_address_parts_line2,
                 'mg.resadd cntry' => $agent_address_parts_line3,
-                'mg.resadd pc' =>  $agent_address_parts_postcode,
+                'mg.resadd pc' => $agent_address_parts_postcode,
 
                 'mg.postal str' => 'AS ABOVE',
 
                 'mg.mob' => $this->formatAgentMobileForForm956($form->agent),
 
-                 // Form type
+                // Form type
                 'mg.app' => $form->form_type === 'appointment' ? 'No' : 'Yes',
 
                 'mg.title' => $form->agent->gender === 'Male' ? 'mr' : 'ms',
@@ -343,7 +348,7 @@ class Form956Controller extends Controller
                 // Question 10: Is there another registered migration agent or legal practitioner
                 'mg.oth mig' => 'No',
 
-                 // Question 15: Application Date lodged,Not yet lodged
+                // Question 15: Application Date lodged,Not yet lodged
                 'ta.lodged' => $date_lodged_arr_formated ?? '',
                 'ta.not yet' => $form->not_lodged == '1' ? 'IAAAS' : 'Off',
                 // Q15 Subclass: matter sel_matter_id when client_matter_id set; else client visa row heuristic
@@ -367,7 +372,7 @@ class Form956Controller extends Controller
                 'cc.dec date' => $form->client_declaration_date ? $clientDeclarationDateFormated : '',
             ];
 
-            //dd($formData);
+            // dd($formData);
 
             // Handle ending appointment declarations if form_type is withdrawal
             if ($form->form_type === 'withdrawal') {
@@ -380,13 +385,14 @@ class Form956Controller extends Controller
             $pdf->fillForm($formData)->needAppearances();
 
             $familyName = $form->client->family_name ?? $form->client->last_name ?? 'client';
-            $filename = 'form956_' . $familyName . '_' . date('Y-m-d') . '.pdf';
+            $filename = 'form956_'.$familyName.'_'.date('Y-m-d').'.pdf';
+
             return response()->streamDownload(
                 fn () => $pdf->saveAs('php://output'),
                 $filename
             );
-        } catch (\Exception $e) {
-            return back()->with('error', 'Error generating PDF: ' . $e->getMessage());
+        } catch (Exception $e) {
+            return back()->with('error', 'Error generating PDF: '.$e->getMessage());
         }
     }
 
@@ -405,7 +411,7 @@ class Form956Controller extends Controller
             // If no record with is_current = 1 is found, get the latest record by created_at
             $latestAddressRecord = DB::table('client_addresses')
                 ->where('client_id', $clientId)
-                ->orderByRaw(\App\Models\ClientAddress::ORDER_BY_DISPLAY_SQL)
+                ->orderByRaw(ClientAddress::ORDER_BY_DISPLAY_SQL)
                 ->orderByDesc('id')
                 ->first();
 
@@ -435,7 +441,7 @@ class Form956Controller extends Controller
         $month = trim($dobArr[1]);
         $day = trim($dobArr[2]);
 
-        return $day . ' ' . $month . ' ' . $year;
+        return $day.' '.$month.' '.$year;
     }
 
     /**
@@ -465,20 +471,20 @@ class Form956Controller extends Controller
 
         $digitsOnly = preg_replace('/\D+/', '', $phone);
         if ($digitsOnly === '') {
-            return (str_starts_with($code, '+') ? $code : '+' . $codeDigits) . $phone;
+            return (str_starts_with($code, '+') ? $code : '+'.$codeDigits).$phone;
         }
 
         // National number already includes country code (e.g. 61400… without +)
         if (str_starts_with($digitsOnly, $codeDigits) && strlen($digitsOnly) > strlen($codeDigits)) {
-            return '+' . $digitsOnly;
+            return '+'.$digitsOnly;
         }
 
         // Duplicate-prefix guard (raw string started with +country or country)
         if (
             str_starts_with($phone, $code)
-            || str_starts_with($phone, '+' . $codeDigits)
+            || str_starts_with($phone, '+'.$codeDigits)
         ) {
-            return '+' . $digitsOnly;
+            return '+'.$digitsOnly;
         }
 
         $national = $digitsOnly;
@@ -488,13 +494,13 @@ class Form956Controller extends Controller
             $national = substr($national, 1);
         }
 
-        return '+' . $codeDigits . $national;
+        return '+'.$codeDigits.$national;
     }
 
     /**
      * Form 956 question 13 — client Mobile/cell: country_code + phone.
      *
-     * @param  \App\Models\Admin|object|null  $client
+     * @param  Admin|object|null  $client
      */
     protected function formatClientMobileForForm956($client): string
     {
@@ -511,7 +517,7 @@ class Form956Controller extends Controller
     /**
      * Form 956 question 6 — migration agent Mobile/cell: staff.country_code + business_mobile (or business_phone).
      *
-     * @param  \App\Models\Staff|object|null  $agent
+     * @param  Staff|object|null  $agent
      */
     protected function formatAgentMobileForForm956($agent): string
     {
@@ -572,7 +578,7 @@ class Form956Controller extends Controller
             return '';
         }
 
-        return $nick !== '' ? $title . '(' . $nick . ')' : $title;
+        return $nick !== '' ? $title.'('.$nick.')' : $title;
     }
 
     /**
@@ -805,8 +811,8 @@ class Form956Controller extends Controller
 
         $quoted = preg_quote($pc, '/');
         // "Suburb, VIC, V3V5K8" or "Suburb VIC V3V5K8"
-        if (preg_match('/(?:,\s*|\s+)' . $quoted . '\s*$/', $line2)) {
-            $result['line2'] = trim(preg_replace('/(?:,\s*|\s+)' . $quoted . '\s*$/', '', $line2));
+        if (preg_match('/(?:,\s*|\s+)'.$quoted.'\s*$/', $line2)) {
+            $result['line2'] = trim(preg_replace('/(?:,\s*|\s+)'.$quoted.'\s*$/', '', $line2));
         }
 
         return $result;
@@ -820,7 +826,7 @@ class Form956Controller extends Controller
     {
         $line3 = trim($result['line3'] ?? '');
         if ($line3 !== '' && preg_match($statePattern, $line3) && ! preg_match('/\b(?:Australia|AU)\b/i', $line3)) {
-            $result['line2'] = trim(($result['line2'] ?? '') . ' ' . $line3);
+            $result['line2'] = trim(($result['line2'] ?? '').' '.$line3);
         }
         $result['line3'] = $countryName;
 
@@ -907,36 +913,35 @@ class Form956Controller extends Controller
         return $this->splitAddressForForm956Pdf((string) $fullAddress, true);
     }
 
-
     /**
      * Preview the PDF in browser.
-    */
+     */
     public function previewPdf(Form956 $form)
     {
         $this->assertCanAccessForm956($form);
-        $form->load(['client', 'agent']);  //dd($form->client);
+        $form->load(['client', 'agent']);  // dd($form->client);
         $templatePath = storage_path('app/public/form956_template.pdf');
 
-        if (!file_exists($templatePath)) {
+        if (! file_exists($templatePath)) {
             return back()->with('error', 'PDF template not found. Please contact the administrator.');
         }
 
         try {
 
-            //dd($form->agent->gender );
+            // dd($form->agent->gender );
             $pdf = new Pdf($templatePath);
 
             // Client address split
-            $client_address_parts_line1 = "";
-            $client_address_parts_line2 = "";
-            $client_address_parts_line3 = "";
-            $client_address_parts_postcode = "";
+            $client_address_parts_line1 = '';
+            $client_address_parts_line2 = '';
+            $client_address_parts_line3 = '';
+            $client_address_parts_postcode = '';
 
-            if( $this->getClientAddress($form->client->id) != '') {
+            if ($this->getClientAddress($form->client->id) != '') {
                 $client_address = $this->getClientAddress($form->client->id);
-                if($client_address !=  ''){
-                    $client_address_parts = $this->formatAddressForPDFClient($client_address); //dd($client_address_parts);
-                    if(!empty($client_address_parts)){
+                if ($client_address != '') {
+                    $client_address_parts = $this->formatAddressForPDFClient($client_address); // dd($client_address_parts);
+                    if (! empty($client_address_parts)) {
                         $client_address_parts_line1 = $client_address_parts['line1'];
                         $client_address_parts_line2 = $client_address_parts['line2'];
                         $client_address_parts_line3 = $client_address_parts['line3'];
@@ -945,40 +950,38 @@ class Form956Controller extends Controller
                 }
             }
 
-
-
             $dobFormated = $this->formatClientDobForForm956($form->client->dob ?? null);
 
             $agentDeclarationDateFormated = 'NA';
-            if($form->agent_declaration_date != ''){
-                $agentDecArr = explode('-',$form->agent_declaration_date);
-                if(!empty($agentDecArr)){
+            if ($form->agent_declaration_date != '') {
+                $agentDecArr = explode('-', $form->agent_declaration_date);
+                if (! empty($agentDecArr)) {
                     $agentDeclarationDateFormated = $agentDecArr[2].'/'.$agentDecArr[1].'/'.$agentDecArr[0];
-                } else{
+                } else {
                     $agentDeclarationDateFormated = 'NA';
                 }
             }
 
             $clientDeclarationDateFormated = 'NA';
-            if($form->client_declaration_date != ''){
-                $clientDecArr = explode('-',$form->client_declaration_date);
-                if(!empty($clientDecArr)){
+            if ($form->client_declaration_date != '') {
+                $clientDecArr = explode('-', $form->client_declaration_date);
+                if (! empty($clientDecArr)) {
                     $clientDeclarationDateFormated = $clientDecArr[2].'/'.$clientDecArr[1].'/'.$clientDecArr[0];
-                } else{
+                } else {
                     $clientDeclarationDateFormated = 'NA';
                 }
             }
 
             // Agent address split
-            $agent_address_parts_line1 = "";
-            $agent_address_parts_line2 = "";
-            $agent_address_parts_line3 = "";
-            $agent_address_parts_postcode = "";
+            $agent_address_parts_line1 = '';
+            $agent_address_parts_line2 = '';
+            $agent_address_parts_line3 = '';
+            $agent_address_parts_postcode = '';
 
             $agent_address = $form->agent->business_address;
-            if($agent_address != ''){
-                $agent_address_parts = $this->formatAddressForPDFAgent($agent_address); //dd($agent_address_parts);
-                if(!empty($agent_address_parts)){
+            if ($agent_address != '') {
+                $agent_address_parts = $this->formatAddressForPDFAgent($agent_address); // dd($agent_address_parts);
+                if (! empty($agent_address_parts)) {
                     $agent_address_parts_line1 = $agent_address_parts['line1'];
                     $agent_address_parts_line2 = $agent_address_parts['line2'];
                     $agent_address_parts_line3 = $agent_address_parts['line3'];
@@ -986,22 +989,22 @@ class Form956Controller extends Controller
                 }
             }
 
-            $date_lodged_arr_formated = "";
-            if($form->date_lodged != "") {
-                $date_lodged_arr = explode("-",$form->date_lodged);
-                if(!empty($date_lodged_arr)){
-                    $date_lodged_arr_formated =$date_lodged_arr[2].' '.$date_lodged_arr[1].' '.$date_lodged_arr[0];
+            $date_lodged_arr_formated = '';
+            if ($form->date_lodged != '') {
+                $date_lodged_arr = explode('-', $form->date_lodged);
+                if (! empty($date_lodged_arr)) {
+                    $date_lodged_arr_formated = $date_lodged_arr[2].' '.$date_lodged_arr[1].' '.$date_lodged_arr[0];
                 }
             }
-            //dd($date_lodged_arr_formated);
+            // dd($date_lodged_arr_formated);
             // Pass to PDF/blade
             $visaSubclassLabel = $this->resolveVisaSubclassLabelForForm956($form);
 
             $formData = [
                 // Client details
-                'cc.name fam' => $form->client->last_name, //$form->client->family_name
-                'cc.name giv' => $form->client->first_name, //$form->client->given_names
-                'cc.dob' =>  $dobFormated,
+                'cc.name fam' => $form->client->last_name, // $form->client->family_name
+                'cc.name giv' => $form->client->first_name, // $form->client->given_names
+                'cc.dob' => $dobFormated,
 
                 'cc.resadd str' => $client_address_parts_line1,
                 'cc.resadd sub' => $client_address_parts_line2,
@@ -1026,7 +1029,7 @@ class Form956Controller extends Controller
                 'mg.resadd str' => $agent_address_parts_line1,
                 'mg.resadd sub' => $agent_address_parts_line2,
                 'mg.resadd cntry' => $agent_address_parts_line3,
-                'mg.resadd pc' =>  $agent_address_parts_postcode,
+                'mg.resadd pc' => $agent_address_parts_postcode,
 
                 'mg.postal str' => 'AS ABOVE',
                 'mg.mob' => $this->formatAgentMobileForForm956($form->agent),
@@ -1051,7 +1054,7 @@ class Form956Controller extends Controller
                 // Question 10: Is there another registered migration agent or legal practitioner
                 'mg.oth mig' => 'No',
 
-                 // Question 15: Application Date lodged,Not yet lodged
+                // Question 15: Application Date lodged,Not yet lodged
                 'ta.lodged' => $date_lodged_arr_formated ?? '',
                 'ta.not yet' => $form->not_lodged == '1' ? 'IAAAS' : 'Off',
                 // Q15 Subclass: matter sel_matter_id when client_matter_id set; else client visa row heuristic
@@ -1075,7 +1078,7 @@ class Form956Controller extends Controller
                 'cc.dec date' => $form->client_declaration_date ? $clientDeclarationDateFormated : '',
             ];
 
-            //dd($formData);
+            // dd($formData);
 
             // Handle ending appointment declarations if form_type is withdrawal
             if ($form->form_type === 'withdrawal') {
@@ -1084,7 +1087,7 @@ class Form956Controller extends Controller
                 $formData['cc.dec 3'] = $form->client_declared ? 'on' : 'Off'; // Client ending appointment
                 $formData['cc.dec 4'] = $form->withdraw_authorized_recipient && $form->client_declared ? 'on' : 'Off'; // Client withdrawal of authorized recipient
             }
-            //dd($formData);
+            // dd($formData);
             $pdf->fillForm($formData)->needAppearances();
 
             return response()->stream(
@@ -1092,11 +1095,11 @@ class Form956Controller extends Controller
                 200,
                 [
                     'Content-Type' => 'application/pdf',
-                    'Content-Disposition' => 'inline; filename="form956_preview.pdf"'
+                    'Content-Disposition' => 'inline; filename="form956_preview.pdf"',
                 ]
             );
-        } catch (\Exception $e) {
-            return back()->with('error', 'Error generating PDF: ' . $e->getMessage());
+        } catch (Exception $e) {
+            return back()->with('error', 'Error generating PDF: '.$e->getMessage());
         }
     }
 

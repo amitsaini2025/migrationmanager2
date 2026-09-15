@@ -15,6 +15,8 @@
                     <input type="hidden" name="client_id" id="form956_client_id">
                     <input type="hidden" name="client_matter_id" id="form956_client_matter_id">
                     <input type="hidden" name="form956_folder_name" id="form956_folder_name" value="">
+                    {{-- Default visa; company File Documents sets nomination via Create Form 956 button --}}
+                    <input type="hidden" name="form956_doc_type" id="form956_doc_type" value="visa">
 
                     <!-- Error Message Container -->
                     <div class="custom-error-msg"></div>

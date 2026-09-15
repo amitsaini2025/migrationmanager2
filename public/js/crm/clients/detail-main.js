@@ -4918,23 +4918,26 @@ success: function(response) {
         };
 
         /**
-         * Soft-insert Form 956 checklist row into the active Visa category (no full reload).
+         * Soft-insert Form 956 checklist row into the active Visa or Nomination category (no full reload).
          * Returns true when the row is present / inserted; false when UI update is not possible.
          */
         window.appendForm956ChecklistRow = function(response) {
             var doc = response && response.document;
             if (!doc || !doc.id || !doc.folder_name) {
-                // Created without a visa checklist folder — nothing to insert.
+                // Created without a checklist folder — nothing to insert.
                 return true;
             }
 
             var categoryId = doc.folder_name;
-            var $visaTab = $('#visadocuments-tab');
-            var $tbody = $visaTab.find('.migdocumnetlist_' + categoryId);
+            var docType = (doc.doc_type === 'nomination') ? 'nomination' : 'visa';
+            var $tab = docType === 'nomination'
+                ? $('#nominationdocuments-tab')
+                : $('#visadocuments-tab');
+            var $tbody = $tab.find('.migdocumnetlist_' + categoryId);
             if (!$tbody.length) {
-                $tbody = $visaTab.find('[id="' + categoryId + '-subtab6"] tbody.migdocumnetlist1').first();
+                $tbody = $tab.find('[id="' + categoryId + '-subtab6"] tbody.migdocumnetlist1').first();
             }
-            if (!$visaTab.length || !$tbody.length) {
+            if (!$tab.length || !$tbody.length) {
                 return false;
             }
             if ($tbody.find('#id_' + doc.id).length) {
@@ -4945,9 +4948,13 @@ success: function(response) {
             var matterId = doc.client_matter_id || '';
             var clientId = doc.client_id || (window.ClientDetailConfig && window.ClientDetailConfig.clientId) || '';
             var downloadUrl = response.download_url || response.preview_url || '';
-            var catTitle = $visaTab.find('.subtab6-button[data-subtab6="' + categoryId + '"]').first().text().trim() || '';
+            var catTitle = $tab.find('.subtab6-button[data-subtab6="' + categoryId + '"]').first().text().trim() || '';
             var csrf = $('meta[name="csrf-token"]').attr('content') || '';
             var cloudIcon = (typeof crmI === 'function') ? crmI('fa-cloud-upload-alt') : '';
+            var dragZoneClass = docType === 'nomination' ? 'nomination-doc-drag-zone' : 'visa-doc-drag-zone';
+            var helpText = docType === 'nomination'
+                ? 'Form 956 PDF downloads automatically. Check, update, then upload your completed form below.'
+                : 'The Form 956 PDF downloads when you create it. Check, update, then upload your completed form below.';
 
             function escAttr(value) {
                 return String(value == null ? '' : value)
@@ -4969,7 +4976,7 @@ success: function(response) {
             var fileCellHtml =
                 '<div class="form956-download-upload" style="display: flex; flex-direction: column; gap: 10px;" ' +
                 'data-download-url="' + escAttr(downloadUrl) + '" data-doc-id="' + escAttr(doc.id) + '">' +
-                '<p class="mb-0" style="font-size: 12px; color: #374151;">The Form 956 PDF downloads when you create it. Check, update, then upload your completed form below.</p>' +
+                '<p class="mb-0" style="font-size: 12px; color: #374151;">' + helpText + '</p>' +
                 '<div class="migration_upload_document" style="display: inline-block;">' +
                 '<form method="POST" enctype="multipart/form-data" id="mig_upload_form_' + escAttr(doc.id) + '">' +
                 '<input type="hidden" name="_token" value="' + escAttr(csrf) + '">' +
@@ -4977,9 +4984,9 @@ success: function(response) {
                 '<input type="hidden" name="client_matter_id" value="' + escAttr(matterId) + '">' +
                 '<input type="hidden" name="fileid" value="' + escAttr(doc.id) + '">' +
                 '<input type="hidden" name="type" value="client">' +
-                '<input type="hidden" name="doctype" value="visa">' +
+                '<input type="hidden" name="doctype" value="' + escAttr(docType) + '">' +
                 '<input type="hidden" name="doccategory" value="' + escAttr(catTitle) + '">' +
-                '<div class="document-drag-drop-zone visa-doc-drag-zone" data-fileid="' + escAttr(doc.id) + '" data-doccategory="' + escAttr(categoryId) + '" data-formid="mig_upload_form_' + escAttr(doc.id) + '">' +
+                '<div class="document-drag-drop-zone ' + dragZoneClass + '" data-fileid="' + escAttr(doc.id) + '" data-doccategory="' + escAttr(categoryId) + '" data-formid="mig_upload_form_' + escAttr(doc.id) + '">' +
                 '<div class="drag-zone-inner">' + cloudIcon +
                 '<span class="drag-zone-text">Drag file here or <strong>click to browse</strong></span></div></div>' +
                 '<input class="migdocupload d-none" data-fileid="' + escAttr(doc.id) + '" data-doccategory="' + escAttr(categoryId) + '" type="file" name="document_upload" style="display: none;"/>' +
@@ -5003,15 +5010,19 @@ success: function(response) {
             $tbody.prepend(rowHtml);
 
             // Keep destination category visible.
-            $visaTab.find('.subtab6-button').removeClass('active');
-            $visaTab.find('.subtab6-pane').removeClass('active');
-            $visaTab.find('.subtab6-button[data-subtab6="' + categoryId + '"]').addClass('active');
-            $visaTab.find('[id="' + categoryId + '-subtab6"]').addClass('active');
+            $tab.find('.subtab6-button').removeClass('active');
+            $tab.find('.subtab6-pane').removeClass('active');
+            $tab.find('.subtab6-button[data-subtab6="' + categoryId + '"]').addClass('active');
+            $tab.find('[id="' + categoryId + '-subtab6"]').addClass('active');
 
             if (typeof refreshLucideIcons === 'function') {
                 refreshLucideIcons($tbody.find('#id_' + doc.id)[0]);
             }
-            if (typeof window.initVisaDocDragDrop === 'function') {
+            if (docType === 'nomination') {
+                if (typeof window.initNominationDocDragDrop === 'function') {
+                    window.initNominationDocDragDrop();
+                }
+            } else if (typeof window.initVisaDocDragDrop === 'function') {
                 window.initVisaDocDragDrop();
             }
 
@@ -5188,11 +5199,13 @@ success: function(response) {
 
             $('#form956_client_matter_id').val(hidden_client_matter_id);
 
-            // When clicked from visa document page, set folder for checklist placement
+            // When clicked from File/Visa Documents, set folder + doc type for checklist placement
             var folderId = $(this).data('form956-folder');
             $('#form956_folder_name').val(folderId || '');
+            var docType = $(this).data('form956-doctype');
+            $('#form956_doc_type').val(docType === 'nomination' ? 'nomination' : 'visa');
 
-            // Matter is required for agent details and for saving Form 956 to visa checklist
+            // Matter is required for agent details and for saving Form 956 to the document checklist
             if (!hidden_client_matter_id || hidden_client_matter_id === '' || hidden_client_matter_id === null) {
                 alert('Please select a matter before creating Form 956.\n\nA matter is required to populate agent information and to save the form to the visa document checklist.');
                 return;

@@ -150,6 +150,7 @@ class AccountTabDibpReceiptsToggleTest extends TestCase
         Assert::assertStringContainsString('id="visadocuments-tab"', $visa);
         Assert::assertStringContainsString('subtab6-button', $visa);
         Assert::assertStringContainsString('form956CreateForm', $visa);
+        Assert::assertStringContainsString('data-form956-doctype="visa"', $visa);
         Assert::assertStringContainsString('add-visa-doc-category', $visa);
         Assert::assertStringContainsString('add_migration_doc', $visa);
         Assert::assertStringContainsString('visa-doc-drag-zone', $visa);

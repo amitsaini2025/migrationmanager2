@@ -534,7 +534,10 @@
                                         <div class="subtab6-header" style="margin-left: 10px;">
                                             <h3>@icon('fa-file-alt') <?= htmlspecialchars($catVal->title) ?> Documents</h3>
                                             <div style="display: flex; gap: 10px;">
-<button type="button" class="btn add-checklist-btn add_nomination_doc" data-type="nomination" data-categoryid="<?= $id ?>">
+                                                <button type="button" class="btn btn-primary btn-sm form956CreateForm inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200" data-form956-folder="<?= $id ?>" data-form956-doctype="nomination">
+                                                    @icon('fa-plus', ['class' => 'mr-2']) Create Form 956
+                                                </button>
+                                                <button type="button" class="btn add-checklist-btn add_nomination_doc" data-type="nomination" data-categoryid="<?= $id ?>">
                                                     @icon('fa-plus') Add Checklist
                                                 </button>
                                                 <button type="button" class="btn btn-info bulk-upload-toggle-btn-nomination" data-categoryid="<?= $id ?>" data-categoryname="<?= htmlspecialchars($catVal->title) ?>" data-matterid="<?= $client_selected_matter_id1 ?? '' ?>">
@@ -1534,6 +1537,8 @@
                     
                     console.log('✅ Visa doc drag-drop handlers attached');
                 }
+
+                window.initNominationDocDragDrop = initNominationDocDragDrop;
                 
                 // Initialize on DOM ready
                 $(document).ready(function() {

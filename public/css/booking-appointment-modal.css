@@ -1,0 +1,162 @@
+/* Appointment details modal — readable contrast on white */
+
+#eventModal .modal-content,
+#cancellationConfirmModal .modal-content {
+    color: #1a2332;
+}
+
+#eventModal .modal-title,
+#cancellationConfirmModal .modal-title {
+    color: #102033;
+    font-weight: 700;
+}
+
+#eventModal .appointment-details p,
+#eventModal .appointment-details label,
+#eventModal .appointment-details h6,
+#cancellationConfirmModal .modal-body {
+    color: #1a2332;
+}
+
+#eventModal .appointment-details strong {
+    color: #0f1b2d;
+}
+
+#eventModal .appointment-details a,
+#eventModal [id^="meetingTypeDisplay-"] {
+    color: #004a99 !important;
+    font-weight: 600;
+}
+
+#eventModal .appointment-details .text-muted,
+#eventModal .appointment-details small {
+    color: #3d4a5c !important;
+}
+
+#eventModal .appointment-details .btn-group-vertical {
+    gap: 8px;
+}
+
+#eventModal .appointment-details .btn-group-vertical > .btn {
+    border-radius: 8px !important;
+    margin: 0;
+    font-weight: 600;
+    text-align: left;
+    border-width: 1px;
+}
+
+#eventModal .appointment-details .btn-outline-success {
+    color: #0f6b38;
+    border-color: #0f6b38;
+    background-color: #e7f7ee;
+}
+
+#eventModal .appointment-details .btn-outline-success:hover,
+#eventModal .appointment-details .btn-outline-success:focus {
+    color: #fff;
+    background-color: #0f6b38;
+    border-color: #0c5630;
+}
+
+#eventModal .appointment-details .btn-outline-primary {
+    color: #004a99;
+    border-color: #004a99;
+    background-color: #e8f1fb;
+}
+
+#eventModal .appointment-details .btn-outline-primary:hover,
+#eventModal .appointment-details .btn-outline-primary:focus {
+    color: #fff;
+    background-color: #004a99;
+    border-color: #003a7a;
+}
+
+#eventModal .appointment-details .btn-outline-info {
+    color: #0a5f73;
+    border-color: #0a5f73;
+    background-color: #e6f6fa;
+}
+
+#eventModal .appointment-details .btn-outline-info:hover,
+#eventModal .appointment-details .btn-outline-info:focus {
+    color: #fff;
+    background-color: #0a5f73;
+    border-color: #084c5c;
+}
+
+#eventModal .appointment-details .btn-outline-warning {
+    color: #7a5b00;
+    border-color: #c9a227;
+    background-color: #fff6d6;
+}
+
+#eventModal .appointment-details .btn-outline-warning:hover,
+#eventModal .appointment-details .btn-outline-warning:focus {
+    color: #1a2c40;
+    background-color: #e6c84a;
+    border-color: #c9a227;
+}
+
+#eventModal .appointment-details .btn-outline-danger {
+    color: #b42318;
+    border-color: #b42318;
+    background-color: #fdecec;
+}
+
+#eventModal .appointment-details .btn-outline-danger:hover,
+#eventModal .appointment-details .btn-outline-danger:focus {
+    color: #fff;
+    background-color: #b42318;
+    border-color: #8f1c13;
+}
+
+#eventModal .appointment-details .btn-outline-secondary {
+    color: #343a46;
+    border-color: #5c6573;
+    background-color: #eef0f3;
+}
+
+#eventModal .appointment-details .btn-outline-secondary:hover,
+#eventModal .appointment-details .btn-outline-secondary:focus {
+    color: #fff;
+    background-color: #343a46;
+    border-color: #1f242c;
+}
+
+#eventModal #statusBadge.badge-success,
+#eventModal #statusBadge.bg-success {
+    background-color: #157347 !important;
+    color: #fff !important;
+}
+
+#eventModal #statusBadge.badge-warning,
+#eventModal #statusBadge.bg-warning {
+    background-color: #c2410c !important;
+    color: #fff !important;
+}
+
+#eventModal #statusBadge.badge-primary,
+#eventModal #paymentBadge.badge-primary,
+#eventModal #statusBadge.bg-primary,
+#eventModal #paymentBadge.bg-primary {
+    background-color: #004a99 !important;
+    color: #fff !important;
+}
+
+#eventModal #paymentBadge.badge-secondary,
+#eventModal #paymentBadge.bg-secondary {
+    background-color: #343a46 !important;
+    color: #fff !important;
+}
+
+#eventModal #statusBadge.badge-info,
+#eventModal #statusBadge.bg-info {
+    background-color: #0a5f73 !important;
+    color: #fff !important;
+}
+
+#eventModal #statusBadge.badge-danger,
+#eventModal #statusBadge.bg-danger {
+    background-color: #b42318 !important;
+    color: #fff !important;
+}

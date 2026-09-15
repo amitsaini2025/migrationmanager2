@@ -198,7 +198,7 @@
         var clientNameDisplay = escapeHtml(clientName);
         if (props.client_id_encoded) {
             clientNameDisplay = '<a href="/clients/detail/' + encodeURIComponent(props.client_id_encoded) +
-                '" target="_blank" style="color: #007bff; text-decoration: underline;">' + clientNameDisplay + '</a>';
+                '" target="_blank">' + clientNameDisplay + '</a>';
         }
         var meetingTypeDisplay = props.meeting_type
             ? props.meeting_type.split('_').map(function (word) {
@@ -235,7 +235,7 @@
             '<p><strong>Duration:</strong> ' + escapeHtml(duration) + ' minutes</p></div><div class="col-md-6">' +
             '<p><strong>Location:</strong> ' + escapeHtml(locationLabel) + '</p>' +
             '<p><strong>Meeting Type:</strong> <span id="meetingTypeDisplay-' + eventId +
-            '" style="cursor: pointer; color: #007bff; text-decoration: underline;" onclick="showMeetingTypeDropdown(' +
+            '" style="cursor: pointer; text-decoration: underline;" onclick="showMeetingTypeDropdown(' +
             eventId + ', \'' + escapeHtml(props.meeting_type || '') + '\')" title="Click to change meeting type">' +
             escapeHtml(meetingTypeDisplay) + ' ' + fa('fa-edit') + '</span>' +
             '<select id="meetingTypeSelect-' + eventId + '" class="form-control form-control-sm d-none" style="max-width: 200px; display: inline-block;" onchange="updateAppointmentMeetingType(' +

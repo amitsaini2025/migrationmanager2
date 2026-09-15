@@ -164,6 +164,8 @@
 									</select>
                                 </div>
 
+                                @include('AdminConsole.staff.partials.default-calendar-type', ['selected' => ''])
+
                                 @php
                                     $_qaActor = auth()->guard('admin')->user();
                                     $_canQa = $_qaActor instanceof \App\Models\Staff

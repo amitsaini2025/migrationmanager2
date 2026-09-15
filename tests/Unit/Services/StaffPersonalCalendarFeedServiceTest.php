@@ -49,4 +49,25 @@ class StaffPersonalCalendarFeedServiceTest extends TestCase
         $this->assertSame('paid', $service->defaultTypeForStaff(null));
         $this->assertSame('paid', $service->defaultTypeForStaff(new Staff(['email' => 'sam@bansalcrm.com', 'first_name' => 'Sam'])));
     }
+
+    public function test_admin_console_default_calendar_is_used_when_set(): void
+    {
+        $service = new StaffPersonalCalendarFeedService;
+        $sam = new Staff([
+            'email' => 'sam@bansalcrm.com',
+            'first_name' => 'Sam',
+            'default_calendar_type' => 'adelaide',
+        ]);
+        $ajayOverride = new Staff([
+            'email' => 'ajay@bansalimmigration.com',
+            'first_name' => 'Ajay',
+            'default_calendar_type' => 'education',
+        ]);
+
+        $this->assertSame('adelaide', $service->defaultTypeForStaff($sam));
+        $this->assertSame('education', $service->defaultTypeForStaff($ajayOverride));
+        $this->assertNull($service->optionalCalendarType(''));
+        $this->assertNull($service->optionalCalendarType('nope'));
+        $this->assertSame('jrp', $service->optionalCalendarType('JRP'));
+    }
 }

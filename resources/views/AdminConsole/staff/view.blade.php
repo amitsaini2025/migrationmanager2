@@ -83,6 +83,16 @@
 								</p>
 							</div>
 							<div class="form-group">
+								<label for="default_calendar_type"><strong>Default website calendar</strong></label>
+								<p class="form-control-plaintext">
+									@php
+										$defaultCal = $fetchedData->default_calendar_type ?? '';
+										$calLabels = \App\Services\StaffPersonalCalendarFeedService::CALENDAR_TYPES;
+									@endphp
+									{{ $defaultCal !== '' && isset($calLabels[$defaultCal]) ? $calLabels[$defaultCal] : 'Automatic' }}
+								</p>
+							</div>
+							<div class="form-group">
 								<label for="permission"><strong>Permission</strong></label>
 								<div class="form-control-plaintext">
 									<?php

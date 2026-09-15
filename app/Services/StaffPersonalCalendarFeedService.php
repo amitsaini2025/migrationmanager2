@@ -71,13 +71,29 @@ class StaffPersonalCalendarFeedService
         return self::CALENDAR_TYPES[$type];
     }
 
+    public function optionalCalendarType(?string $type): ?string
+    {
+        $type = strtolower(trim((string) $type));
+        if ($type === '') {
+            return null;
+        }
+
+        return array_key_exists($type, self::CALENDAR_TYPES) ? $type : null;
+    }
+
     /**
-     * Home calendar for a logged-in staff member. Unknown staff keep Employer Sponsored.
+     * Home calendar for a logged-in staff member.
+     * Admin Console default wins when set; otherwise name/email hints; else Employer Sponsored.
      */
     public function defaultTypeForStaff(?Staff $staff): string
     {
         if ($staff === null) {
             return self::DEFAULT_TYPE;
+        }
+
+        $configured = $this->optionalCalendarType($staff->default_calendar_type ?? null);
+        if ($configured !== null) {
+            return $configured;
         }
 
         $email = strtolower(trim((string) $staff->email));

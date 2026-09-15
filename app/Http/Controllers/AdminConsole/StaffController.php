@@ -5,17 +5,19 @@ namespace App\Http\Controllers\AdminConsole;
 use App\Http\Controllers\Controller;
 use App\Models\Staff;
 use App\Models\UserRole;
-use App\Support\CrmSheets;
 use App\Services\CrmAccess\CrmAccessService;
+use App\Services\StaffPersonalCalendarFeedService;
+use App\Support\CrmSheets;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Validation\ValidationException;
 
 class StaffController extends Controller
 {
-    public function __construct()
+    public function __construct(protected StaffPersonalCalendarFeedService $calendarFeed)
     {
         $this->middleware('auth:admin');
     }
@@ -40,9 +42,9 @@ class StaffController extends Controller
             $query = Staff::active()
                 ->where(function ($q) use ($search_by) {
                     $searchLower = strtolower($search_by);
-                    $q->whereRaw('LOWER(first_name) LIKE ?', ['%' . $searchLower . '%'])
-                        ->orWhereRaw('LOWER(last_name) LIKE ?', ['%' . $searchLower . '%'])
-                        ->orWhereRaw('LOWER(email) LIKE ?', ['%' . $searchLower . '%']);
+                    $q->whereRaw('LOWER(first_name) LIKE ?', ['%'.$searchLower.'%'])
+                        ->orWhereRaw('LOWER(last_name) LIKE ?', ['%'.$searchLower.'%'])
+                        ->orWhereRaw('LOWER(email) LIKE ?', ['%'.$searchLower.'%']);
                 })
                 ->with(['usertype', 'office']);
         } else {
@@ -117,9 +119,10 @@ class StaffController extends Controller
                 'phone' => 'required',
                 'role' => 'required',
                 'office' => 'required',
+                'default_calendar_type' => 'nullable|in:'.implode(',', array_keys(StaffPersonalCalendarFeedService::CALENDAR_TYPES)),
             ]);
 
-            $obj = new Staff();
+            $obj = new Staff;
             $obj->first_name = @$requestData['first_name'];
             $obj->last_name = @$requestData['last_name'];
             $obj->email = @$requestData['email'];
@@ -138,6 +141,7 @@ class StaffController extends Controller
                 }
             }
             $obj->office_id = @$requestData['office'];
+            $obj->default_calendar_type = $this->normalizedDefaultCalendarType($requestData['default_calendar_type'] ?? null);
             $obj->team = @$requestData['team'];
             $obj->show_dashboard_per = isset($requestData['show_dashboard_per']) ? 1 : 0;
             $obj->permission = (isset($requestData['permission']) && is_array($requestData['permission']))
@@ -160,7 +164,7 @@ class StaffController extends Controller
 
             $saved = $obj->save();
 
-            if (!$saved) {
+            if (! $saved) {
                 return redirect()->back()->with('error', config('constants.server_error'));
             }
 
@@ -182,14 +186,14 @@ class StaffController extends Controller
 
         $usertype = UserRole::all();
 
-        if (!isset($id) || $id === '' || !is_numeric($id) || (int) $id <= 0) {
+        if (! isset($id) || $id === '' || ! is_numeric($id) || (int) $id <= 0) {
             return redirect()->route('adminconsole.staff.active')->with('error', 'Invalid staff ID.');
         }
 
         $id = (int) $id;
         $fetchedData = Staff::find($id);
 
-        if (!$fetchedData) {
+        if (! $fetchedData) {
             return redirect()->route('adminconsole.staff.active')->with('error', 'Staff not found.');
         }
 
@@ -223,7 +227,7 @@ class StaffController extends Controller
                 return Redirect::to('/dashboard')->with('error', config('constants.unauthorized'));
             }
 
-            if (!isset($id) || $id === '' || !is_numeric($id) || (int) $id <= 0) {
+            if (! isset($id) || $id === '' || ! is_numeric($id) || (int) $id <= 0) {
                 return redirect()->route('adminconsole.staff.active')->with('error', 'Invalid staff ID.');
             }
 
@@ -234,10 +238,11 @@ class StaffController extends Controller
                 'first_name' => 'required|max:255',
                 'last_name' => 'required|max:255',
                 'phone' => 'required|max:255',
+                'default_calendar_type' => 'nullable|in:'.implode(',', array_keys(StaffPersonalCalendarFeedService::CALENDAR_TYPES)),
             ]);
 
             $obj = Staff::find($id);
-            if (!$obj) {
+            if (! $obj) {
                 return redirect()->route('adminconsole.staff.active')->with('error', 'Staff not found.');
             }
 
@@ -264,6 +269,7 @@ class StaffController extends Controller
                 $obj->quick_access_enabled = true;
             }
             $obj->office_id = @$requestData['office'];
+            $obj->default_calendar_type = $this->normalizedDefaultCalendarType($requestData['default_calendar_type'] ?? null);
             $obj->team = @$requestData['team'];
             $obj->permission = (isset($requestData['permission']) && is_array($requestData['permission']))
                 ? implode(',', $requestData['permission'])
@@ -290,7 +296,7 @@ class StaffController extends Controller
                 $obj->tax_number = null;
             }
 
-            if (!empty(@$requestData['password'])) {
+            if (! empty(@$requestData['password'])) {
                 $obj->password = Hash::make(@$requestData['password']);
             }
 
@@ -310,19 +316,20 @@ class StaffController extends Controller
                 $crmAccess->revokeGrantsForStaff((int) $obj->id, 'Quick access disabled');
             }
 
-            if (!$saved) {
+            if (! $saved) {
                 return redirect()->back()->with('error', config('constants.server_error'));
             }
 
             return redirect()->route('adminconsole.staff.view', $id)->with('success', 'Staff updated successfully.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return redirect()->back()->withErrors($e->validator)->withInput();
         } catch (\Exception $e) {
-            Log::error('Staff Update Error: ' . $e->getMessage(), [
+            Log::error('Staff Update Error: '.$e->getMessage(), [
                 'staff_id' => $id,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
             ]);
+
             return redirect()->back()->with('error', 'An error occurred while updating the staff.');
         }
     }
@@ -336,14 +343,14 @@ class StaffController extends Controller
             $requestData = $request->all();
             $obj = Staff::find(@$requestData['user_id']);
 
-            if (!$obj) {
+            if (! $obj) {
                 return redirect()->back()->with('error', 'Staff not found.');
             }
 
             $obj->time_zone = @$requestData['timezone'];
             $saved = $obj->save();
 
-            if (!$saved) {
+            if (! $saved) {
                 return redirect()->back()->with('error', config('constants.server_error'));
             }
 
@@ -356,14 +363,14 @@ class StaffController extends Controller
      */
     public function view(Request $request, $id)
     {
-        if (!isset($id) || $id === '' || !is_numeric($id) || (int) $id <= 0) {
+        if (! isset($id) || $id === '' || ! is_numeric($id) || (int) $id <= 0) {
             return redirect()->route('adminconsole.staff.active')->with('error', 'Invalid staff ID.');
         }
 
         $id = (int) $id;
         $fetchedData = Staff::with(['usertype', 'office'])->find($id);
 
-        if (!$fetchedData) {
+        if (! $fetchedData) {
             return redirect()->route('adminconsole.staff.active')->with('error', 'Staff not found.');
         }
 
@@ -407,5 +414,12 @@ class StaffController extends Controller
         }
 
         return $countryCode;
+    }
+
+    private function normalizedDefaultCalendarType(mixed $input): ?string
+    {
+        return $this->calendarFeed->optionalCalendarType(
+            is_string($input) ? $input : null
+        );
     }
 }

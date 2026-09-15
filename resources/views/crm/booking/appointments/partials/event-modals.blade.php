@@ -1,3 +1,7 @@
+@once
+<link rel="stylesheet" href="{{ asset('css/booking-appointment-modal.css') }}?v={{ @filemtime(public_path('css/booking-appointment-modal.css')) ?: time() }}">
+@endonce
+
 <!-- Event Detail Modal -->
 <div class="modal fade" id="eventModal" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">

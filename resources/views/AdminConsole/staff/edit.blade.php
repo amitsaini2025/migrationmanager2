@@ -165,6 +165,8 @@
 									</select>
                                 </div>
 
+                                @include('AdminConsole.staff.partials.default-calendar-type', ['selected' => $fetchedData->default_calendar_type ?? ''])
+
                                 @php
                                     $_quickActor = auth()->guard('admin')->user();
                                     $_canQuick = $_quickActor instanceof \App\Models\Staff

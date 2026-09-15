@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Document;
 use App\Support\CrmSheets;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,7 +13,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class Staff extends Authenticatable
 {
-    use Notifiable, Sortable, HasApiTokens;
+    use HasApiTokens, Notifiable, Sortable;
 
     /**
      * The authentication guard for staff (CRM login uses 'admin' guard).
@@ -43,6 +42,7 @@ class Staff extends Authenticatable
         'permission',
         'sheet_access',
         'office_id',
+        'default_calendar_type',
         'show_dashboard_per',
         'time_zone',
         'is_migration_agent',
@@ -142,7 +142,7 @@ class Staff extends Authenticatable
      */
     public function getFullNameAttribute(): string
     {
-        return trim($this->first_name . ' ' . $this->last_name) ?: $this->email;
+        return trim($this->first_name.' '.$this->last_name) ?: $this->email;
     }
 
     /**
@@ -351,5 +351,4 @@ class Staff extends Authenticatable
 
         return in_array((int) ($this->role ?? 0), self::frontDeskCheckInRoleIds(), true);
     }
-
 }

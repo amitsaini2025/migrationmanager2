@@ -288,6 +288,7 @@ class StaffMatterSessionServiceTest extends TestCase
         Schema::create('admins', function (Blueprint $table) {
             $table->increments('id');
             $table->string('type')->nullable();
+            $table->string('client_id')->nullable();
             $table->string('first_name')->nullable();
             $table->string('last_name')->nullable();
             $table->timestamps();
@@ -387,6 +388,7 @@ class StaffMatterSessionServiceTest extends TestCase
         DB::table('admins')->insert([
             'id' => $id,
             'type' => 'client',
+            'client_id' => 'JANE'.str_pad((string) $id, 7, '0', STR_PAD_LEFT),
             'first_name' => 'Jane',
             'last_name' => 'Client',
             'created_at' => now(),

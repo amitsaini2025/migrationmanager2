@@ -6,6 +6,7 @@ use App\Models\StaffFileTimeEntry;
 use App\Services\StaffDayCrmEventsService;
 use App\Services\StaffDayHoursService;
 use App\Services\StaffFileTimeService;
+use App\Services\StaffMatterSessionService;
 use App\Services\StaffWorkloadService;
 use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
@@ -162,6 +163,97 @@ class StaffFileTimeServiceTest extends TestCase
         $this->assertStringContainsString('Admin · other · Mailbox skim · 12m', $summary['text']);
         $this->assertCount(1, $summary['overlay']);
         $this->assertCount(1, $summary['admin']);
+    }
+
+    #[Test]
+    public function copy_summary_appends_duration_after_clock_time_for_crm_events(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-15 16:00:00', 'Australia/Melbourne'));
+        $this->insertStaff(1);
+        $this->insertClient(10);
+        $this->insertMatter(5, 10, 'JARN2504926-485_1');
+
+        $this->service->logCompleted(1, [
+            'kind' => StaffFileTimeEntry::KIND_IMMI,
+            'title' => 'Immi portal check',
+            'confirmed_minutes' => 18,
+            'client_matter_id' => 5,
+        ]);
+
+        $crmEvents = $this->createMock(StaffDayCrmEventsService::class);
+        $crmEvents->method('forStaff')->willReturn([
+            'items' => [
+                [
+                    'key' => 'note:99',
+                    'kind' => 'Call note',
+                    'title' => 'Matter Discussion',
+                    'ref' => 'JARN2504926-485_1',
+                    'time' => '3:03 pm',
+                    'client_id' => 10,
+                    'client_matter_id' => 5,
+                ],
+            ],
+            'more' => 0,
+        ]);
+
+        $hours = $this->createMock(StaffDayHoursService::class);
+        $hours->method('forStaff')->willReturn(['label' => '2h 10m']);
+
+        $summary = $this->service->copySummary(1, $crmEvents, $hours);
+
+        $this->assertStringContainsString(
+            'JARN2504926-485_1 · Call note · Matter Discussion · 3:03 pm · 18m',
+            $summary['text']
+        );
+    }
+
+    #[Test]
+    public function copy_summary_prefers_auto_event_minutes_over_manual_log_fallback(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-15 16:30:00', 'Australia/Melbourne'));
+        $this->insertStaff(1);
+
+        $crmEvents = $this->createMock(StaffDayCrmEventsService::class);
+        $crmEvents->method('forStaff')->willReturn([
+            'items' => [
+                [
+                    'key' => 'note:1',
+                    'kind' => 'In-person note',
+                    'title' => 'Matter Discussion',
+                    'ref' => 'Somnath',
+                    'time' => '4:08 pm',
+                    'client_id' => 22,
+                    'client_matter_id' => null,
+                ],
+            ],
+            'more' => 0,
+        ]);
+
+        $hours = $this->createMock(StaffDayHoursService::class);
+        $hours->method('forStaff')->willReturn(['label' => '1h']);
+
+        $matterSessions = $this->createMock(StaffMatterSessionService::class);
+        $matterSessions->method('sessionsForBoard')->willReturn([
+            'auto' => [
+                [
+                    'client_id' => 22,
+                    'client_matter_id' => null,
+                    'confirmed_minutes' => 25,
+                    'event_count' => 1,
+                    'is_reviewed_only' => false,
+                    'ref' => 'Somnath',
+                ],
+            ],
+            'opened' => [],
+            'event_minutes' => ['note:1' => 25],
+        ]);
+
+        $summary = $this->service->copySummary(1, $crmEvents, $hours, $matterSessions);
+
+        $this->assertStringContainsString(
+            'Somnath · In-person note · Matter Discussion · 4:08 pm · 25m',
+            $summary['text']
+        );
     }
 
     #[Test]

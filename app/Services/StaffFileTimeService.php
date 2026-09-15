@@ -349,8 +349,6 @@ class StaffFileTimeService
         if ($matterSessions !== null) {
             $sessionsPayload = $matterSessions->sessionsForBoard($staffId, $day);
         }
-        $eventMinutes = $sessionsPayload['event_minutes'] ?? [];
-
         $overlayDone = [];
         $adminDone = [];
         $stillOpen = [];
@@ -362,6 +360,8 @@ class StaffFileTimeService
                     'kind_label' => $entry['kind_label'] ?? $entry['kind'],
                     'title' => $entry['title'],
                     'minutes' => $entry['confirmed_minutes'],
+                    'client_matter_id' => $entry['client_matter_id'] ?? null,
+                    'client_id' => $entry['client_id'] ?? null,
                 ];
                 if ($entry['is_admin']) {
                     $adminDone[] = $line;
@@ -378,6 +378,12 @@ class StaffFileTimeService
             }
         }
 
+        $crmMinutes = $this->resolveCrmEventMinutes(
+            $events['items'] ?? [],
+            $sessionsPayload,
+            $overlayDone,
+        );
+
         $lines = [
             "{$name} — {$dateLabel}",
             'Hours in CRM: '.($hoursPayload['label'] ?? '—'),
@@ -391,8 +397,8 @@ class StaffFileTimeService
             foreach ($events['items'] as $item) {
                 $ref = $item['ref'] ?: '—';
                 $line = "{$ref} · {$item['kind']} · {$item['title']} · {$item['time']}";
-                $mins = $eventMinutes[$item['key'] ?? ''] ?? null;
-                if ($mins) {
+                $mins = $crmMinutes[(string) ($item['key'] ?? '')] ?? null;
+                if ($mins !== null && $mins > 0) {
                     $line .= " · {$mins}m";
                 }
                 $lines[] = $line;
@@ -474,6 +480,117 @@ class StaffFileTimeService
             'still_open' => $stillOpen,
             'text' => implode("\n", $lines),
         ];
+    }
+
+    /**
+     * Prefer auto-session event splits; otherwise share remaining record minutes
+     * (auto sessions, then manual logs) across CRM rows for that matter/client/lead.
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @param  array{auto?: list<array<string, mixed>>, event_minutes?: array<string, int>}  $sessionsPayload
+     * @param  list<array<string, mixed>>  $overlayDone
+     * @return array<string, int>
+     */
+    protected function resolveCrmEventMinutes(array $items, array $sessionsPayload, array $overlayDone): array
+    {
+        $resolved = [];
+        foreach ($sessionsPayload['event_minutes'] ?? [] as $key => $mins) {
+            $mins = (int) $mins;
+            if ($mins > 0 && is_string($key) && $key !== '') {
+                $resolved[$key] = $mins;
+            }
+        }
+
+        $recordTotals = [];
+        foreach ($sessionsPayload['auto'] ?? [] as $row) {
+            $recordKey = $this->crmRecordKey(
+                isset($row['client_id']) ? (int) $row['client_id'] : null,
+                isset($row['client_matter_id']) ? (int) $row['client_matter_id'] : null,
+            );
+            if ($recordKey === null) {
+                continue;
+            }
+            $recordTotals[$recordKey] = ($recordTotals[$recordKey] ?? 0) + (int) ($row['confirmed_minutes'] ?? 0);
+        }
+
+        $overlayTotals = [];
+        foreach ($overlayDone as $row) {
+            $recordKey = $this->crmRecordKey(
+                isset($row['client_id']) ? (int) $row['client_id'] : null,
+                isset($row['client_matter_id']) ? (int) $row['client_matter_id'] : null,
+            );
+            if ($recordKey === null) {
+                continue;
+            }
+            $overlayTotals[$recordKey] = ($overlayTotals[$recordKey] ?? 0) + (int) ($row['minutes'] ?? 0);
+        }
+
+        foreach ($overlayTotals as $recordKey => $mins) {
+            // Manual logs only fill records with no auto time — avoid double-counting.
+            if (($recordTotals[$recordKey] ?? 0) > 0) {
+                continue;
+            }
+            $recordTotals[$recordKey] = $mins;
+        }
+
+        $unassignedByRecord = [];
+        foreach ($items as $item) {
+            $eventKey = (string) ($item['key'] ?? '');
+            if ($eventKey === '' || isset($resolved[$eventKey])) {
+                continue;
+            }
+            $recordKey = $this->crmRecordKey(
+                isset($item['client_id']) ? (int) $item['client_id'] : null,
+                isset($item['client_matter_id']) ? (int) $item['client_matter_id'] : null,
+            );
+            if ($recordKey === null) {
+                continue;
+            }
+            $unassignedByRecord[$recordKey][] = $eventKey;
+        }
+
+        foreach ($unassignedByRecord as $recordKey => $eventKeys) {
+            $assigned = 0;
+            foreach ($items as $item) {
+                $eventKey = (string) ($item['key'] ?? '');
+                if ($eventKey === '' || ! isset($resolved[$eventKey])) {
+                    continue;
+                }
+                $itemRecord = $this->crmRecordKey(
+                    isset($item['client_id']) ? (int) $item['client_id'] : null,
+                    isset($item['client_matter_id']) ? (int) $item['client_matter_id'] : null,
+                );
+                if ($itemRecord === $recordKey) {
+                    $assigned += $resolved[$eventKey];
+                }
+            }
+
+            $remaining = max(0, ($recordTotals[$recordKey] ?? 0) - $assigned);
+            $count = count($eventKeys);
+            if ($remaining < 1 || $count < 1) {
+                continue;
+            }
+
+            $base = intdiv($remaining, $count);
+            $remainder = $remaining % $count;
+            foreach ($eventKeys as $index => $eventKey) {
+                $resolved[$eventKey] = $base + ($index === 0 ? $remainder : 0);
+            }
+        }
+
+        return $resolved;
+    }
+
+    protected function crmRecordKey(?int $clientId, ?int $clientMatterId): ?string
+    {
+        if ($clientMatterId !== null && $clientMatterId > 0) {
+            return 'matter:'.$clientMatterId;
+        }
+        if ($clientId !== null && $clientId > 0) {
+            return 'client:'.$clientId;
+        }
+
+        return null;
     }
 
     /**

@@ -41,25 +41,36 @@
         <x-dashboard.files-opened :sessions="$sessions" />
     </div>
 
-    <section class="my-day-card my-day-eod-wrap">
+    <section class="my-day-card my-day-eod-wrap is-collapsed" id="myDayEodSection">
         <div class="my-day-eod-head">
-            <div>
-                <h3>End-of-day summary</h3>
-                <p class="my-day-lead">Copy for Teams. Manual logs are included below.</p>
-            </div>
+            <button
+                type="button"
+                class="my-day-eod-toggle"
+                id="myDayEodToggle"
+                aria-expanded="false"
+                aria-controls="myDayEodBody"
+            >
+                <span class="my-day-eod-chevron" aria-hidden="true"></span>
+                <span class="my-day-eod-toggle-text">
+                    <span class="my-day-eod-title">End-of-day summary</span>
+                    <span class="my-day-lead">Copy for Teams. Manual logs are included.</span>
+                </span>
+            </button>
             <button type="button" class="my-day-add-btn" id="myDayAddBtnEod" aria-label="Add manual time log" title="Log time CRM cannot see">+</button>
         </div>
 
-        <div class="my-day-manual" id="myDayManualSection">
-            <h4 class="my-day-manual-heading">Manual logs <span class="my-day-opened-badge" id="myDayManualCount">0</span></h4>
-            <div class="my-day-manual-list" id="myDayManualList">
-                <p class="my-day-empty">No manual logs yet today.</p>
+        <div class="my-day-eod-body" id="myDayEodBody" hidden>
+            <div class="my-day-manual" id="myDayManualSection">
+                <h4 class="my-day-manual-heading">Manual logs <span class="my-day-opened-badge" id="myDayManualCount">0</span></h4>
+                <div class="my-day-manual-list" id="myDayManualList">
+                    <p class="my-day-empty">No manual logs yet today.</p>
+                </div>
             </div>
-        </div>
 
-        <pre class="my-day-eod" id="myDayEod" aria-live="polite">Loading summary…</pre>
-        <p class="my-day-hint" id="myDayEodSaved" hidden></p>
-        <button type="button" class="my-day-btn" id="myDayCopyBtn">Copy summary</button>
+            <pre class="my-day-eod" id="myDayEod" aria-live="polite">Loading summary…</pre>
+            <p class="my-day-hint" id="myDayEodSaved" hidden></p>
+            <button type="button" class="my-day-btn" id="myDayCopyBtn">Copy summary</button>
+        </div>
     </section>
 </section>
 

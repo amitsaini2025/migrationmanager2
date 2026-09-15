@@ -380,6 +380,11 @@ class StaffMatterSessionService
         }
 
         $client = $session->client;
+        $code = $client ? trim((string) ($client->client_id ?? '')) : '';
+        if ($code !== '') {
+            return $code;
+        }
+
         $name = $client ? trim(($client->first_name ?? '').' '.($client->last_name ?? '')) : '';
 
         return $name !== '' ? $name : 'Record #'.$session->client_id;

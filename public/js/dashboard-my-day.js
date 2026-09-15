@@ -653,6 +653,7 @@
         api(routes.log, { method: 'POST', body: body }).then(function (data) {
             hideLogModal();
             applyBoard(data.board);
+            expandEod();
             if (window.iziToast) {
                 iziToast.success({ title: 'My day', message: 'Time logged', position: 'topRight' });
             }
@@ -776,6 +777,32 @@
         ta.remove();
     }
 
+    function setupEodCollapse() {
+        var section = document.getElementById('myDayEodSection');
+        var toggle = document.getElementById('myDayEodToggle');
+        var body = document.getElementById('myDayEodBody');
+        if (!section || !toggle || !body) {
+            return;
+        }
+        toggle.addEventListener('click', function () {
+            var collapsed = section.classList.toggle('is-collapsed');
+            body.hidden = collapsed;
+            toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        });
+    }
+
+    function expandEod() {
+        var section = document.getElementById('myDayEodSection');
+        var toggle = document.getElementById('myDayEodToggle');
+        var body = document.getElementById('myDayEodBody');
+        if (!section || !toggle || !body) {
+            return;
+        }
+        section.classList.remove('is-collapsed');
+        body.hidden = false;
+        toggle.setAttribute('aria-expanded', 'true');
+    }
+
     function setText(id, value) {
         var el = document.getElementById(id);
         if (el) {
@@ -817,6 +844,7 @@
     document.getElementById('myDayTitleInput')?.addEventListener('input', updateLogSaveEnabled);
     document.getElementById('myDayLogMins')?.addEventListener('input', updateLogSaveEnabled);
 
+    setupEodCollapse();
     setupMatterSearch();
     setupCopy();
     renderAll();

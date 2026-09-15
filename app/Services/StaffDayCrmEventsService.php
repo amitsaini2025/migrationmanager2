@@ -49,7 +49,7 @@ class StaffDayCrmEventsService
 
         $total = $items->count();
         $sliced = $items->take($limit)->map(function (array $row): array {
-            unset($row['sort_at'], $row['client_id'], $row['client_matter_id']);
+            unset($row['sort_at']);
 
             return $row;
         })->all();
@@ -427,23 +427,28 @@ class StaffDayCrmEventsService
             return $matter;
         }
 
-        return $this->clientLabel($clientId);
+        return $this->clientOrLeadRef($clientId);
     }
 
-    protected function clientLabel(?int $clientId): ?string
+    protected function clientOrLeadRef(?int $clientId): ?string
     {
         if ($clientId === null || $clientId < 1 || ! Schema::hasTable('admins')) {
             return null;
         }
 
         if (! array_key_exists($clientId, $this->clientLabelCache)) {
-            $admin = Admin::query()->find($clientId, ['id', 'first_name', 'last_name']);
+            $admin = Admin::query()->find($clientId, ['id', 'client_id', 'first_name', 'last_name']);
             if (! $admin) {
                 $this->clientLabelCache[$clientId] = null;
             } else {
-                $name = trim((string) ($admin->first_name ?? '').' '.($admin->last_name ?? ''));
-                // Avoid company relation accessors here — keep this list cheap and side-effect free.
-                $this->clientLabelCache[$clientId] = $name !== '' ? $name : ('Record #'.$clientId);
+                $code = trim((string) ($admin->client_id ?? ''));
+                if ($code !== '') {
+                    $this->clientLabelCache[$clientId] = $code;
+                } else {
+                    // Prefer unique CRM codes; name is only a last-resort fallback.
+                    $name = trim((string) ($admin->first_name ?? '').' '.($admin->last_name ?? ''));
+                    $this->clientLabelCache[$clientId] = $name !== '' ? $name : ('Record #'.$clientId);
+                }
             }
         }
 

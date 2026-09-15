@@ -215,7 +215,7 @@ class StaffDayCrmEventsServiceTest extends TestCase
     }
 
     #[Test]
-    public function contact_note_without_matter_uses_client_name_as_ref(): void
+    public function contact_note_without_matter_uses_client_ref_as_ref(): void
     {
         $today = Carbon::parse('2026-09-15 14:00:00', 'Australia/Melbourne');
         Carbon::setTestNow($today);
@@ -223,6 +223,7 @@ class StaffDayCrmEventsServiceTest extends TestCase
         DB::table('admins')->insert([
             'id' => 10,
             'type' => 'client',
+            'client_id' => 'PRIY2616001',
             'first_name' => 'Priya',
             'last_name' => 'Singh',
             'created_at' => $today,
@@ -247,7 +248,51 @@ class StaffDayCrmEventsServiceTest extends TestCase
         $item = collect($result['items'])->firstWhere('title', 'Matter Discussion');
 
         $this->assertNotNull($item);
-        $this->assertSame('Priya Singh', $item['ref']);
+        $this->assertSame('PRIY2616001', $item['ref']);
+    }
+
+    #[Test]
+    public function contact_note_with_matter_prefers_matter_ref_over_client_ref(): void
+    {
+        $today = Carbon::parse('2026-09-15 14:30:00', 'Australia/Melbourne');
+        Carbon::setTestNow($today);
+
+        DB::table('admins')->insert([
+            'id' => 11,
+            'type' => 'client',
+            'client_id' => 'MANP2616002',
+            'first_name' => 'Manpreet',
+            'last_name' => 'Kaur',
+            'created_at' => $today,
+            'updated_at' => $today,
+        ]);
+
+        DB::table('client_matters')->insert([
+            'id' => 7,
+            'client_unique_matter_no' => 'ART_1',
+            'created_at' => $today,
+            'updated_at' => $today,
+        ]);
+
+        DB::table('notes')->insert([
+            'id' => 51,
+            'user_id' => 1,
+            'client_id' => 11,
+            'matter_id' => 7,
+            'type' => 'client',
+            'is_action' => 0,
+            'assigned_to' => null,
+            'task_group' => 'Call',
+            'title' => 'Matter Discussion',
+            'created_at' => $today,
+            'updated_at' => $today,
+        ]);
+
+        $result = $this->service->forStaff(1, $today);
+        $item = collect($result['items'])->firstWhere('key', 'note:51');
+
+        $this->assertNotNull($item);
+        $this->assertSame('ART_1', $item['ref']);
     }
 
     private function createSchema(): void
@@ -328,6 +373,7 @@ class StaffDayCrmEventsServiceTest extends TestCase
         Schema::create('admins', function (Blueprint $table) {
             $table->increments('id');
             $table->string('type')->nullable();
+            $table->string('client_id')->nullable();
             $table->string('first_name')->nullable();
             $table->string('last_name')->nullable();
             $table->timestamps();

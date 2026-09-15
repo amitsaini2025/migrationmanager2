@@ -46,6 +46,10 @@ class DashboardWorkloadMarkupTest extends TestCase
         $this->assertStringContainsString('myDayLogModal', $myDay);
         $this->assertStringContainsString('myDayManualList', $myDay);
         $this->assertStringContainsString('myDayEod', $myDay);
+        $this->assertStringContainsString('myDayEodToggle', $myDay);
+        $this->assertStringContainsString('myDayEodBody', $myDay);
+        $this->assertStringContainsString('is-collapsed', $myDay);
+        $this->assertStringContainsString('aria-expanded="false"', $myDay);
         $this->assertStringNotContainsString('x-dashboard.file-time-board', $myDay);
         $this->assertStringNotContainsString('x-dashboard.file-time-capture', $myDay);
         $this->assertStringNotContainsString('In progress', $myDay);

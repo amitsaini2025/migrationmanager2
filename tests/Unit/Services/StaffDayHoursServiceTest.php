@@ -47,11 +47,31 @@ class StaffDayHoursServiceTest extends TestCase
             ],
         ]);
 
-        $hours = $this->service->forStaff(1, $today);
+        $hours = $this->service->forStaff(1, $today, true);
 
         $this->assertSame('today_presence', $hours['source']);
         $this->assertSame('6h 0m', $hours['label']);
         $this->assertSame(6 * 60, $hours['minutes']);
+    }
+
+    #[Test]
+    public function hours_do_not_extend_to_now_without_a_matching_viewer(): void
+    {
+        $today = Carbon::parse('2026-09-15 15:00:00', 'Australia/Melbourne');
+        Carbon::setTestNow($today);
+
+        DB::table('staff_login_logs')->insert([
+            'id' => 1,
+            'user_id' => 1,
+            'message' => TrackStaffCrmActivity::ACTIVITY_MESSAGE,
+            'created_at' => Carbon::parse('2026-09-15 09:00:00', 'Australia/Melbourne'),
+            'updated_at' => Carbon::parse('2026-09-15 09:05:00', 'Australia/Melbourne'),
+        ]);
+
+        $hours = $this->service->forStaff(1, $today);
+
+        $this->assertSame(5, $hours['minutes']);
+        $this->assertSame('5m', $hours['label']);
     }
 
     private function createSchema(): void

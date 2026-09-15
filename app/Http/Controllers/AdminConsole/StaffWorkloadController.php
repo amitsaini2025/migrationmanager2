@@ -64,10 +64,18 @@ class StaffWorkloadController extends Controller
             return null;
         }
 
+        $tz = (string) config('app.timezone');
+
         try {
-            return Carbon::parse($dateInput, (string) config('app.timezone'))->startOfDay();
+            $day = Carbon::createFromFormat('Y-m-d', $dateInput, $tz);
         } catch (\Throwable) {
             return null;
         }
+
+        if ($day === false || $day->format('Y-m-d') !== $dateInput) {
+            return null;
+        }
+
+        return $day->startOfDay();
     }
 }

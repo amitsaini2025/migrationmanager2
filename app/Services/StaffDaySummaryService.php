@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Models\Staff;
 use App\Models\StaffDaySummary;
 use Carbon\Carbon;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 class StaffDaySummaryService
 {
@@ -50,7 +52,21 @@ class StaffDaySummaryService
         $row->body = $body;
         $row->source = $source;
         $row->saved_at = now();
-        $row->save();
+
+        try {
+            $row->save();
+        } catch (UniqueConstraintViolationException $e) {
+            $existing = $this->find($staffId, $day);
+            if ($existing === null) {
+                throw $e;
+            }
+            $existing->body = $body;
+            $existing->source = $source;
+            $existing->saved_at = now();
+            $existing->save();
+
+            return $existing->fresh() ?? $existing;
+        }
 
         return $row->fresh() ?? $row;
     }
@@ -100,8 +116,12 @@ class StaffDaySummaryService
 
         $count = 0;
         Staff::query()->active()->orderBy('id')->each(function (Staff $staff) use ($source, $day, &$count): void {
-            $this->snapshotStaff((int) $staff->id, $source, $day);
-            $count++;
+            try {
+                $this->snapshotStaff((int) $staff->id, $source, $day);
+                $count++;
+            } catch (Throwable $e) {
+                report($e);
+            }
         });
 
         return $count;

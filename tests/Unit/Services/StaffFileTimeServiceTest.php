@@ -81,6 +81,51 @@ class StaffFileTimeServiceTest extends TestCase
     }
 
     #[Test]
+    public function log_completed_creates_done_entry_and_feed_row(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-15 12:00:00', 'Australia/Melbourne'));
+        $this->insertStaff(1);
+        $this->insertClient(10);
+        $this->insertMatter(5, 10, 'JARN2504926-485_1');
+
+        $done = $this->service->logCompleted(1, [
+            'kind' => StaffFileTimeEntry::KIND_IMMI,
+            'title' => 'Immi portal check',
+            'confirmed_minutes' => 8,
+            'client_matter_id' => 5,
+        ]);
+
+        $this->assertSame(StaffFileTimeEntry::STATUS_DONE, $done->status);
+        $this->assertFalse((bool) $done->is_running);
+        $this->assertSame(8, $done->confirmed_minutes);
+        $this->assertSame(480, (int) $done->clock_seconds);
+        $this->assertNotNull($done->activities_log_id);
+
+        $log = DB::table('activities_logs')->where('id', $done->activities_log_id)->first();
+        $this->assertNotNull($log);
+        $this->assertSame('file_time', $log->activity_type);
+        $this->assertStringContainsString('logged 8m', (string) $log->subject);
+    }
+
+    #[Test]
+    public function log_completed_admin_skips_feed(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-15 12:30:00', 'Australia/Melbourne'));
+        $this->insertStaff(1);
+
+        $done = $this->service->logCompleted(1, [
+            'kind' => StaffFileTimeEntry::KIND_OTHER,
+            'title' => 'Teams chat',
+            'confirmed_minutes' => 5,
+            'admin' => true,
+        ]);
+
+        $this->assertSame(StaffFileTimeEntry::STATUS_DONE, $done->status);
+        $this->assertNull($done->activities_log_id);
+        $this->assertSame(0, DB::table('activities_logs')->count());
+    }
+
+    #[Test]
     public function second_start_pauses_previous_running_timer(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-09-15 12:00:00', 'Australia/Melbourne'));

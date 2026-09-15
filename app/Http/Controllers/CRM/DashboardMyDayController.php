@@ -5,12 +5,13 @@ namespace App\Http\Controllers\CRM;
 use App\Http\Controllers\Concerns\EnsuresCrmRecordAccess;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StaffFileTime\DoneStaffFileTimeRequest;
+use App\Http\Requests\StaffFileTime\LogStaffFileTimeRequest;
 use App\Http\Requests\StaffFileTime\StartStaffFileTimeRequest;
 use App\Http\Requests\StaffFileTime\UpdateStaffFileTimeRequest;
 use App\Models\ClientMatter;
 use App\Models\Staff;
-use App\Models\StaffFileTimeEntry;
 use App\Models\StaffDaySummary;
+use App\Models\StaffFileTimeEntry;
 use App\Services\StaffDayCrmEventsService;
 use App\Services\StaffDayHoursService;
 use App\Services\StaffDaySummaryService;
@@ -65,6 +66,24 @@ class DashboardMyDayController extends Controller
         return response()->json([
             'success' => true,
             'entry' => $this->fileTime->serialize($entry->load('clientMatter')),
+            'board' => $this->fileTime->boardForStaff((int) $staff->id),
+        ]);
+    }
+
+    public function log(LogStaffFileTimeRequest $request): JsonResponse
+    {
+        $staff = $this->staffOrAbort();
+        $data = $request->validated();
+
+        if (! empty($data['client_matter_id'])) {
+            $this->ensureMatterAccess((int) $data['client_matter_id']);
+        }
+
+        $entry = $this->fileTime->logCompleted((int) $staff->id, $data);
+
+        return response()->json([
+            'success' => true,
+            'entry' => $this->fileTime->serialize($entry),
             'board' => $this->fileTime->boardForStaff((int) $staff->id),
         ]);
     }

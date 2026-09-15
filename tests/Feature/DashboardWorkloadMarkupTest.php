@@ -31,11 +31,18 @@ class DashboardWorkloadMarkupTest extends TestCase
         $this->assertStringNotContainsString('in-person today', $strip);
         $this->assertStringNotContainsString('x-dashboard.workload-card', $strip);
         $this->assertStringNotContainsString('New = record created', $strip);
+        $this->assertStringNotContainsString('workload-legend', $strip);
+        $this->assertStringNotContainsString('Queue = open assigned', $strip);
 
         $myDay = file_get_contents(resource_path('views/components/dashboard/my-day.blade.php'));
         $this->assertNotFalse($myDay);
+        $this->assertStringNotContainsString('my-day-sub', $myDay);
+        $this->assertStringNotContainsString('Queue above stays CRM-only', $myDay);
+        $this->assertStringNotContainsString('Copy for Teams instead of rewriting', $myDay);
         $this->assertStringContainsString('x-dashboard.file-time-auto', $myDay);
         $this->assertStringContainsString('x-dashboard.files-opened', $myDay);
+        $this->assertStringContainsString('myDayAddBtn', $myDay);
+        $this->assertStringContainsString('myDayLogModal', $myDay);
         $this->assertStringNotContainsString('x-dashboard.file-time-board', $myDay);
         $this->assertStringNotContainsString('x-dashboard.file-time-capture', $myDay);
         $this->assertStringNotContainsString('In progress', $myDay);

@@ -994,6 +994,7 @@
         copySummary: "{{ route('dashboard.my-day.copy-summary') }}",
         saveSummary: "{{ route('dashboard.my-day.copy-summary.save') }}",
         start: "{{ route('dashboard.my-day.file-time.start') }}",
+        log: "{{ route('dashboard.my-day.file-time.log') }}",
         fileTimeBase: "{{ url('/dashboard/my-day/file-time') }}",
         sessionsBase: "{{ url('/dashboard/my-day/sessions') }}"
     };

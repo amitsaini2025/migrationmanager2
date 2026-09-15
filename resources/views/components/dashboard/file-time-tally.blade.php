@@ -17,5 +17,4 @@
         <div class="my-day-kpi"><div class="n" id="myDayKAdmin">{{ $admin }}m</div><div class="l">Admin / no file</div></div>
     </div>
     <div class="my-day-bars" id="myDayBars" data-by-kind='@json($byKind)'></div>
-    <p class="my-day-hint">Confirmed minutes at Done are what copy and post — not the live clock.</p>
 </section>

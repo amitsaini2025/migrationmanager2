@@ -19,9 +19,21 @@ class SnapshotStaffDaySummaries extends Command
         StaffDaySummaryService $summaries,
     ): int {
         $dateOption = $this->option('date');
-        $day = is_string($dateOption) && $dateOption !== ''
-            ? Carbon::parse($dateOption, (string) config('app.timezone'))->startOfDay()
-            : null;
+        $day = null;
+        if (is_string($dateOption) && $dateOption !== '') {
+            $tz = (string) config('app.timezone');
+            try {
+                $parsed = Carbon::createFromFormat('Y-m-d', $dateOption, $tz);
+            } catch (\Throwable) {
+                $parsed = false;
+            }
+            if ($parsed === false || $parsed->format('Y-m-d') !== $dateOption) {
+                $this->error('Invalid --date. Use Y-m-d in the app timezone.');
+
+                return self::FAILURE;
+            }
+            $day = $parsed->startOfDay();
+        }
 
         $sessions->closeStale(now());
         $count = $summaries->snapshotActiveStaff(StaffDaySummary::SOURCE_SCHEDULE, $day);

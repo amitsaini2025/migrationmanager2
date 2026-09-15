@@ -193,6 +193,7 @@ final class RegisterWebRoutes
             $this->router->get('/dashboard/my-day/copy-summary', [DashboardMyDayController::class, 'copySummary'])->name('dashboard.my-day.copy-summary');
             $this->router->post('/dashboard/my-day/copy-summary', [DashboardMyDayController::class, 'saveCopySummary'])->name('dashboard.my-day.copy-summary.save');
             $this->router->post('/dashboard/my-day/file-time', [DashboardMyDayController::class, 'start'])->name('dashboard.my-day.file-time.start');
+            $this->router->post('/dashboard/my-day/file-time/log', [DashboardMyDayController::class, 'log'])->name('dashboard.my-day.file-time.log');
             $this->router->post('/dashboard/my-day/file-time/{entry}/pause', [DashboardMyDayController::class, 'pause'])->name('dashboard.my-day.file-time.pause');
             $this->router->post('/dashboard/my-day/file-time/{entry}/park', [DashboardMyDayController::class, 'park'])->name('dashboard.my-day.file-time.park');
             $this->router->post('/dashboard/my-day/file-time/{entry}/resume', [DashboardMyDayController::class, 'resume'])->name('dashboard.my-day.file-time.resume');

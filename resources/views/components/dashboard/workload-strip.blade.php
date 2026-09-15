@@ -84,11 +84,6 @@
             <span class="workload-chip-meta">Action updates today</span>
         </div>
     </div>
-
-    <p class="workload-legend">
-        Queue = open assigned actions. Done = completed today (other vs Call). Updates = action updates.
-        Contact notes are in My day.
-    </p>
 </section>
 
 <div class="modal fade" id="workloadDrilldownModal" tabindex="-1" role="dialog" aria-labelledby="workloadDrilldownModalLabel" aria-hidden="true">

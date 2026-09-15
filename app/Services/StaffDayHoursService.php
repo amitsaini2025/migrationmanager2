@@ -18,12 +18,14 @@ class StaffDayHoursService
     /**
      * Hours-in-CRM header for the Melbourne calendar day — not last-login duration.
      *
-     * Span: first TrackStaffCrmActivity presence today → now (capped at end of day).
-     * Session last_activity can extend the end if later. Login-log "Logged in" is ignored.
+     * Span: first TrackStaffCrmActivity presence today → last presence (or now when
+     * this staff is the viewer). Session last_activity can extend the end if later.
+     * Login-log "Logged in" is ignored.
      *
+     * @param  bool|null  $extendToNow  When null, extend only if the admin-guard user is this staff.
      * @return array{label: string, minutes: int, seconds: int, source: string, date: string}
      */
-    public function forStaff(int $staffId, ?Carbon $day = null): array
+    public function forStaff(int $staffId, ?Carbon $day = null, ?bool $extendToNow = null): array
     {
         [$start, $end] = $this->workloadService->dayBounds($day);
         $tz = (string) config('app.timezone');
@@ -44,16 +46,16 @@ class StaffDayHoursService
         $from = Carbon::parse($presence->created_at)->timezone($tz);
         $to = Carbon::parse($presence->updated_at ?? $presence->created_at)->timezone($tz);
 
-        // Live "until now" is only for the staff viewing their own day — not when an admin
-        // opens a colleague's summary (that would inflate hours to the current clock).
+        // Live "until now" only when this staff is the viewer. Console jobs and admin
+        // views have no matching viewer, so hours stop at last CRM presence.
         $viewerId = Auth::guard('admin')->id();
-        $extendToNow = $viewerId === null || (int) $viewerId === $staffId;
+        $shouldExtend = $extendToNow ?? ($viewerId !== null && (int) $viewerId === $staffId);
 
-        if ($extendToNow && $now->betweenIncluded($start, $end) && $now->gt($to)) {
+        if ($shouldExtend && $now->betweenIncluded($start, $end) && $now->gt($to)) {
             $to = $now->copy();
         }
 
-        if ($extendToNow && Schema::hasTable('sessions')) {
+        if ($shouldExtend && Schema::hasTable('sessions')) {
             $sessionLast = DB::table('sessions')
                 ->where('user_id', $staffId)
                 ->max('last_activity');

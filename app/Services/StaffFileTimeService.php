@@ -165,6 +165,75 @@ class StaffFileTimeService
         });
     }
 
+    /**
+     * One-shot manual log (no live timer). Creates a done entry and posts to the matter feed when linked.
+     *
+     * @param  array{
+     *     kind: string,
+     *     title: string,
+     *     confirmed_minutes: int,
+     *     client_matter_id?: int|null,
+     *     admin?: bool
+     * }  $data
+     */
+    public function logCompleted(int $staffId, array $data): StaffFileTimeEntry
+    {
+        $confirmedMinutes = (int) ($data['confirmed_minutes'] ?? 0);
+        if ($confirmedMinutes < 1 || $confirmedMinutes > 480) {
+            throw ValidationException::withMessages([
+                'confirmed_minutes' => 'Confirmed minutes must be between 1 and 480.',
+            ]);
+        }
+
+        $isAdmin = filter_var($data['admin'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $matterId = isset($data['client_matter_id']) ? (int) $data['client_matter_id'] : 0;
+        $matterId = $matterId > 0 ? $matterId : null;
+
+        if (! $isAdmin && $matterId === null) {
+            throw ValidationException::withMessages([
+                'client_matter_id' => 'Choose a matter or Admin / no file.',
+            ]);
+        }
+
+        if ($isAdmin) {
+            $matterId = null;
+            $clientId = null;
+        } else {
+            $matter = ClientMatter::query()->find($matterId);
+            if (! $matter) {
+                throw ValidationException::withMessages([
+                    'client_matter_id' => 'Matter not found.',
+                ]);
+            }
+            $clientId = (int) $matter->client_id;
+        }
+
+        return DB::transaction(function () use ($staffId, $data, $matterId, $clientId, $confirmedMinutes) {
+            $now = now();
+            $entry = StaffFileTimeEntry::query()->create([
+                'staff_id' => $staffId,
+                'client_matter_id' => $matterId,
+                'client_id' => $clientId,
+                'kind' => $data['kind'],
+                'title' => trim((string) $data['title']),
+                'status' => StaffFileTimeEntry::STATUS_DONE,
+                'is_running' => false,
+                'clock_seconds' => $confirmedMinutes * 60,
+                'confirmed_minutes' => $confirmedMinutes,
+                'started_at' => $now,
+                'completed_at' => $now,
+            ]);
+
+            if ($entry->client_matter_id && $entry->client_id) {
+                $log = $this->postToMatterFeed($entry, $staffId);
+                $entry->activities_log_id = $log->id;
+                $entry->save();
+            }
+
+            return $entry->fresh(['clientMatter']);
+        });
+    }
+
     public function reopen(int $staffId, StaffFileTimeEntry $entry): StaffFileTimeEntry
     {
         if ((int) $entry->staff_id !== $staffId) {
@@ -333,12 +402,13 @@ class StaffFileTimeService
         }
 
         $lines[] = '';
-        $lines[] = '— Time on files (overlay) —';
+        $lines[] = '— Manual logs —';
         if ($overlayDone === []) {
             $lines[] = '(none)';
         } else {
             foreach ($overlayDone as $item) {
-                $lines[] = "{$item['ref']} · {$item['kind']} · {$item['title']} · {$item['minutes']}m";
+                $kind = $item['kind_label'] ?? $item['kind'];
+                $lines[] = "{$item['ref']} · {$kind} · {$item['title']} · {$item['minutes']}m";
             }
         }
 
@@ -348,7 +418,8 @@ class StaffFileTimeService
             $lines[] = '(none)';
         } else {
             foreach ($adminDone as $item) {
-                $lines[] = "{$item['ref']} · {$item['kind']} · {$item['title']} · {$item['minutes']}m";
+                $kind = $item['kind_label'] ?? $item['kind'];
+                $lines[] = "{$item['ref']} · {$kind} · {$item['title']} · {$item['minutes']}m";
             }
         }
 

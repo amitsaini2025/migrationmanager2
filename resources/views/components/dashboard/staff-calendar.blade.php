@@ -18,7 +18,6 @@
                     @icon('fa-calendar-days')
                     Calendar
                 </h2>
-                <p class="dashboard-calendar-subtitle">Website bookings. Pick a calendar to view appointments.</p>
             </div>
             <div class="dashboard-calendar-header-right">
                 <div class="dashboard-calendar-stats">
@@ -93,7 +92,6 @@
                     </h3>
                     <span class="dashboard-upcoming-count" id="dashboardUpcomingCount">0</span>
                 </div>
-                <p class="dashboard-upcoming-help">Upcoming appointments for the selected calendar, grouped by date.</p>
                 <div class="dashboard-upcoming-list" id="dashboardUpcomingList" aria-live="polite">
                     <div class="dashboard-upcoming-empty">Loading appointments…</div>
                 </div>

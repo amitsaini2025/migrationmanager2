@@ -24,6 +24,7 @@
         byMatter: safeJson(root.getAttribute('data-initial-by-matter'), []),
         sessions: safeJson(root.getAttribute('data-initial-sessions'), { auto: [], opened: [], event_minutes: {} }),
         selected: null,
+        selectedKind: null,
         filterKey: null,
         pendingDoneId: null,
         tickTimer: null
@@ -109,11 +110,13 @@
         PRESETS.forEach(function (p) {
             var btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'my-day-preset';
+            btn.className = 'my-day-preset' + (state.selectedKind === p.id ? ' active' : '');
             btn.disabled = !state.selected;
             btn.innerHTML = '<span class="swatch" style="background:' + p.fill + '"></span>' + p.label;
             btn.addEventListener('click', function () {
-                startEntry(p.id);
+                state.selectedKind = p.id;
+                renderPresets();
+                updateLogSaveEnabled();
             });
             wrap.appendChild(btn);
         });
@@ -126,6 +129,7 @@
         }
         if (!state.selected) {
             wrap.innerHTML = '';
+            updateLogSaveEnabled();
             return;
         }
         var admin = !!state.selected.admin;
@@ -137,9 +141,49 @@
             '</div>';
         document.getElementById('myDayClearChosen')?.addEventListener('click', function () {
             state.selected = null;
+            state.selectedKind = null;
             renderChosen();
             renderPresets();
         });
+        updateLogSaveEnabled();
+    }
+
+    function updateLogSaveEnabled() {
+        var btn = document.getElementById('myDayLogSave');
+        if (!btn) {
+            return;
+        }
+        var title = (document.getElementById('myDayTitleInput')?.value || '').trim();
+        var mins = parseInt(document.getElementById('myDayLogMins')?.value || '0', 10);
+        btn.disabled = !(state.selected && state.selectedKind && title && mins >= 1 && mins <= 480);
+    }
+
+    function renderManualList() {
+        var list = document.getElementById('myDayManualList');
+        var badge = document.getElementById('myDayManualCount');
+        var manual = (state.entries || []).filter(function (e) {
+            return e.status === 'done';
+        });
+        if (badge) {
+            badge.textContent = String(manual.length);
+        }
+        if (!list) {
+            return;
+        }
+        if (!manual.length) {
+            list.innerHTML = '<p class="my-day-empty">No manual logs yet today.</p>';
+            return;
+        }
+        list.innerHTML = manual.map(function (entry) {
+            var p = preset(entry.kind);
+            return '<div class="my-day-manual-row">' +
+                '<span class="my-day-manual-kind" style="background:' + p.bg + ';color:' + p.ink + '">' + escapeHtml(p.label) + '</span>' +
+                '<div class="my-day-manual-body">' +
+                '<div class="my-day-manual-title">' + escapeHtml(entry.title) + '</div>' +
+                '<div class="my-day-manual-meta">' + escapeHtml(entry.matter_no || 'Admin / no file') +
+                (entry.posted ? ' · posted' : '') + '</div></div>' +
+                '<span class="my-day-manual-mins">' + escapeHtml(String(entry.confirmed_minutes || 0)) + 'm</span></div>';
+        }).join('');
     }
 
     function renderBoard() {
@@ -427,6 +471,7 @@
         renderPresets();
         renderChosen();
         renderBoard();
+        renderManualList();
         renderTally();
         renderMatterRows();
         renderFilterbar();
@@ -531,25 +576,90 @@
         }).catch(showError);
     }
 
-    function startEntry(kind) {
-        if (!state.selected) {
+    function openLogModal() {
+        state.selected = null;
+        state.selectedKind = null;
+        var title = document.getElementById('myDayTitleInput');
+        var mins = document.getElementById('myDayLogMins');
+        var search = document.getElementById('myDayMatterSearch');
+        var results = document.getElementById('myDayResults');
+        if (title) {
+            title.value = '';
+        }
+        if (mins) {
+            mins.value = '15';
+        }
+        if (search) {
+            search.value = '';
+        }
+        if (results) {
+            results.hidden = true;
+            results.innerHTML = '';
+        }
+        renderChosen();
+        renderPresets();
+        updateLogSaveEnabled();
+        var modalEl = document.getElementById('myDayLogModal');
+        if (!modalEl) {
+            return;
+        }
+        if (window.bootstrap && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        } else if (window.jQuery) {
+            jQuery(modalEl).modal('show');
+        }
+    }
+
+    function hideLogModal() {
+        var modalEl = document.getElementById('myDayLogModal');
+        if (!modalEl) {
+            return;
+        }
+        if (window.bootstrap && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        } else if (window.jQuery) {
+            jQuery(modalEl).modal('hide');
+        }
+    }
+
+    function submitLog() {
+        if (!state.selected || !state.selectedKind) {
             return;
         }
         var title = (document.getElementById('myDayTitleInput')?.value || '').trim();
+        var mins = parseInt(document.getElementById('myDayLogMins')?.value || '0', 10);
         if (!title) {
-            showError(new Error('Add a short title for what you are doing.'));
+            showError(new Error('Add a short title for what you did.'));
             return;
         }
-        var body = { kind: kind, title: title };
+        if (mins < 1 || mins > 480) {
+            showError(new Error('Minutes must be between 1 and 480.'));
+            return;
+        }
+        var body = {
+            kind: state.selectedKind,
+            title: title,
+            confirmed_minutes: mins
+        };
         if (state.selected.admin) {
             body.admin = true;
         } else {
             body.client_matter_id = state.selected.id;
         }
-        api(routes.start, { method: 'POST', body: body }).then(function (data) {
-            document.getElementById('myDayTitleInput').value = '';
+        var saveBtn = document.getElementById('myDayLogSave');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+        }
+        api(routes.log, { method: 'POST', body: body }).then(function (data) {
+            hideLogModal();
             applyBoard(data.board);
-        }).catch(showError);
+            if (window.iziToast) {
+                iziToast.success({ title: 'My day', message: 'Time logged', position: 'topRight' });
+            }
+        }).catch(function (err) {
+            updateLogSaveEnabled();
+            showError(err);
+        });
     }
 
     function setupMatterSearch() {
@@ -629,6 +739,10 @@
 
     function setupCopy() {
         document.getElementById('myDayCopyBtn')?.addEventListener('click', function () {
+            if (!routes.saveSummary) {
+                showError(new Error('Save summary is not available on this page.'));
+                return;
+            }
             api(routes.saveSummary, { method: 'POST', body: {} }).then(function (data) {
                 var text = data.summary?.text || '';
                 var pre = document.getElementById('myDayEod');
@@ -637,14 +751,11 @@
                 }
                 markSaved(data.summary?.saved_at);
                 if (navigator.clipboard && navigator.clipboard.writeText) {
-                    return navigator.clipboard.writeText(text);
+                    return navigator.clipboard.writeText(text).catch(function () {
+                        copyViaTextarea(text);
+                    });
                 }
-                var ta = document.createElement('textarea');
-                ta.value = text;
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                ta.remove();
+                copyViaTextarea(text);
             }).then(function () {
                 var btn = document.getElementById('myDayCopyBtn');
                 if (btn) {
@@ -654,6 +765,15 @@
                 }
             }).catch(showError);
         });
+    }
+
+    function copyViaTextarea(text) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
     }
 
     function setText(id, value) {
@@ -690,6 +810,10 @@
         renderPresets();
     });
     document.getElementById('myDayDoneOk')?.addEventListener('click', confirmDone);
+    document.getElementById('myDayAddBtn')?.addEventListener('click', openLogModal);
+    document.getElementById('myDayLogSave')?.addEventListener('click', submitLog);
+    document.getElementById('myDayTitleInput')?.addEventListener('input', updateLogSaveEnabled);
+    document.getElementById('myDayLogMins')?.addEventListener('input', updateLogSaveEnabled);
 
     setupMatterSearch();
     setupCopy();

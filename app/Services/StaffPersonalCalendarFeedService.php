@@ -208,6 +208,16 @@ class StaffPersonalCalendarFeedService
             'status' => $status,
             'status_label' => $this->bookingStatusLabel($status),
             'is_paid' => (bool) $appointment->is_paid,
+            'payment_status' => $appointment->is_paid ? 'Paid' : 'Free',
+            'final_amount' => $appointment->final_amount ?? 0,
+            'service_type' => $appointment->service_type,
+            'preferred_language' => $appointment->preferred_language ?? 'English',
+            'consultant_id' => $appointment->consultant_id,
+            'consultant' => $appointment->consultant?->crm_display_label
+                ?? $appointment->consultant?->name
+                ?? 'Not Assigned',
+            'consultant_name_raw' => $appointment->consultant?->name ?? '',
+            'consultant_calendar_type' => $appointment->consultant?->calendar_type ?? '',
             'detail_url' => url('/booking/appointments/'.$appointment->id),
         ];
     }

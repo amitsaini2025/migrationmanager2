@@ -4,6 +4,7 @@ namespace App\Http\Controllers\CRM;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DashboardRequest;
+use App\Models\AppointmentConsultant;
 use App\Models\CheckinLog;
 use App\Models\Note;
 use App\Models\Staff;
@@ -15,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class DashboardController extends Controller
@@ -39,8 +41,33 @@ class DashboardController extends Controller
         $dashboardData['defaultCalendarType'] = $this->personalCalendarFeed->defaultTypeForStaff($staff);
         $dashboardData['calendarStats'] = ['today' => 0, 'this_week' => 0, 'upcoming' => 0];
         $dashboardData['workload'] = $this->staffWorkloadService->getDashboardWorkload((int) Auth::id());
+        $dashboardData['bookingConsultants'] = $this->bookingConsultantsForModal();
 
         return view('crm.dashboard-optimized', $dashboardData);
+    }
+
+    /**
+     * @return list<array{id: int, name: string, crm_display_label: string, calendar_type: string}>
+     */
+    protected function bookingConsultantsForModal(): array
+    {
+        if (! Schema::hasTable('appointment_consultants')) {
+            return [];
+        }
+
+        return AppointmentConsultant::query()
+            ->active()
+            ->shownInFilter()
+            ->get()
+            ->unique('id')
+            ->values()
+            ->map(fn (AppointmentConsultant $consultant): array => [
+                'id' => $consultant->id,
+                'name' => (string) $consultant->name,
+                'crm_display_label' => (string) $consultant->crm_display_label,
+                'calendar_type' => (string) $consultant->calendar_type,
+            ])
+            ->all();
     }
 
     /**

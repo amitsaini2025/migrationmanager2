@@ -975,6 +975,7 @@
         visibleColumns: {!! json_encode($visibleColumns, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!},
         deferHeavyWidgets: {{ ($defer_heavy_widgets ?? false) ? 'true' : 'false' }}
     };
+    window.consultantsData = @json($bookingConsultants ?? []);
     
     // Error handling for missing routes
     if (typeof window.dashboardRoutes === 'undefined') {
@@ -982,6 +983,7 @@
     }
 </script>
 <script src="{{ asset('js/dashboard-optimized.js') }}"></script>
+<script src="{{ asset('js/booking-appointment-modal.js') }}?v={{ @filemtime(public_path('js/booking-appointment-modal.js')) ?: time() }}"></script>
 <script src="{{ asset('js/dashboard-calendar.js') }}?v={{ @filemtime(public_path('js/dashboard-calendar.js')) ?: time() }}"></script>
 <script>
 $(function () {

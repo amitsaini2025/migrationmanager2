@@ -256,7 +256,15 @@
                 var props = event.extendedProps || {};
                 var status = statusClass(props.status);
                 var url = props.detail_url || event.url || '';
-                html += '<li class="dashboard-upcoming-item" data-url="' + escapeHtml(url) + '">';
+                var payload = {
+                    id: event.id,
+                    title: event.title,
+                    start: event.start || props.starts_at,
+                    end: event.end || props.ends_at,
+                    extendedProps: props,
+                };
+                html += '<li class="dashboard-upcoming-item" data-url="' + escapeHtml(url) +
+                    '" data-event="' + encodeURIComponent(JSON.stringify(payload)) + '">';
                 html += '<div class="dashboard-upcoming-item-time">' + escapeHtml(formatEventTime(event.start || props.starts_at, tz)) + '</div>';
                 html += '<div class="dashboard-upcoming-item-body">';
                 html += '<div class="dashboard-upcoming-item-meta">';
@@ -277,6 +285,15 @@
 
         listEl.querySelectorAll('.dashboard-upcoming-item').forEach(function (row) {
             row.addEventListener('click', function () {
+                var eventJson = row.getAttribute('data-event');
+                if (eventJson && typeof window.openBookingAppointmentModal === 'function') {
+                    try {
+                        window.openBookingAppointmentModal({ event: JSON.parse(decodeURIComponent(eventJson)) });
+                        return;
+                    } catch (e) {
+                        // Fall through to URL.
+                    }
+                }
                 var url = row.getAttribute('data-url');
                 if (url) {
                     window.open(url, '_blank', 'noopener');
@@ -417,15 +434,24 @@
                     focusUpcomingDate(info.dateStr);
                 },
                 eventClick: function (info) {
+                    info.jsEvent.preventDefault();
+                    if (typeof window.openBookingAppointmentModal === 'function') {
+                        window.openBookingAppointmentModal(info);
+                        return;
+                    }
                     var url = info.event.url || info.event.extendedProps?.detail_url;
                     if (url) {
-                        info.jsEvent.preventDefault();
                         window.open(url, '_blank', 'noopener');
                     }
                 },
             });
 
             calendar.render();
+            window.bookingFcCalendar = calendar;
+            window.onBookingAppointmentChanged = function () {
+                calendar.refetchEvents();
+                loadUpcoming();
+            };
             bindTypeSwitcher(calendar);
             loadUpcoming();
 

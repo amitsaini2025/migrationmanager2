@@ -6,7 +6,8 @@
 ])
 
 @php
-    $currentCalendarLabel = collect($calendarTypes)->firstWhere('key', $defaultType)['label'] ?? 'Calendar';
+    $matchedCalendar = collect($calendarTypes)->firstWhere('key', $defaultType);
+    $currentCalendarLabel = is_array($matchedCalendar) ? ($matchedCalendar['label'] ?? 'Calendar') : 'Calendar';
 @endphp
 
 <section class="dashboard-calendar-section" id="myCalendarSection" aria-label="Appointment calendar">
@@ -108,3 +109,5 @@
         </div>
     </div>
 </section>
+
+@include('crm.booking.appointments.partials.event-modals')

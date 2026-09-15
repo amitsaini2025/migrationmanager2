@@ -153,6 +153,67 @@ class StaffDayCrmEventsServiceTest extends TestCase
         $this->assertSame('Reminder to upload documents', $smsItems->first()['title']);
     }
 
+    #[Test]
+    public function for_staff_on_record_scopes_to_client_and_matter_with_null_matter_notes(): void
+    {
+        $start = Carbon::parse('2026-09-15 09:00:00', 'Australia/Melbourne');
+        $end = Carbon::parse('2026-09-15 17:00:00', 'Australia/Melbourne');
+
+        DB::table('client_matters')->insert([
+            ['id' => 5, 'client_unique_matter_no' => 'MAT-A', 'created_at' => $start, 'updated_at' => $start],
+            ['id' => 6, 'client_unique_matter_no' => 'MAT-B', 'created_at' => $start, 'updated_at' => $start],
+        ]);
+
+        DB::table('notes')->insert([
+            [
+                'id' => 1,
+                'user_id' => 1,
+                'client_id' => 10,
+                'matter_id' => 5,
+                'type' => 'client',
+                'is_action' => 0,
+                'assigned_to' => null,
+                'task_group' => 'Call',
+                'title' => 'On matter A',
+                'created_at' => $start->copy()->addHour(),
+                'updated_at' => $start->copy()->addHour(),
+            ],
+            [
+                'id' => 2,
+                'user_id' => 1,
+                'client_id' => 10,
+                'matter_id' => null,
+                'type' => 'client',
+                'is_action' => 0,
+                'assigned_to' => null,
+                'task_group' => 'Call',
+                'title' => 'Null matter note',
+                'created_at' => $start->copy()->addHours(2),
+                'updated_at' => $start->copy()->addHours(2),
+            ],
+            [
+                'id' => 3,
+                'user_id' => 1,
+                'client_id' => 20,
+                'matter_id' => 99,
+                'type' => 'client',
+                'is_action' => 0,
+                'assigned_to' => null,
+                'task_group' => 'Call',
+                'title' => 'Other client',
+                'created_at' => $start->copy()->addHours(3),
+                'updated_at' => $start->copy()->addHours(3),
+            ],
+        ]);
+
+        $events = $this->service->forStaffOnRecord(1, 10, 5, $start, $end);
+        $titles = $events->pluck('title')->all();
+
+        $this->assertContains('On matter A', $titles);
+        $this->assertContains('Null matter note', $titles);
+        $this->assertNotContains('Other client', $titles);
+    }
+
     private function createSchema(): void
     {
         foreach (['email_logs', 'documents', 'booking_appointments', 'sms_logs', 'notes', 'activities_logs', 'client_matters'] as $table) {

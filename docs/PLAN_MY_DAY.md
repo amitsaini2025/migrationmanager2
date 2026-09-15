@@ -26,9 +26,9 @@ Two failures to avoid:
 3. **Credit the writer.** Overlay rows and auto events use `created_by` / `staff_id` of the logged-in staff (`auth:admin`). Ghost credit for MA/PR/PA is out.
 4. **Matter is the unit of file time.** Time attaches to `client_matters.id` (reference like `JARN2504926-…`), not to the person. One client with 491 and 482 is two rows.
 5. **Admin / no file is allowed.** Mailbox skim, 3CX list, Teams chats, Excel not on a file. That time **must not** post to a client activity feed.
-6. **Overlay is only for work CRM cannot see:** drafting, Immi/portal, off-CRM doc check, mailbox *on this file*, internal discussion, other (Excel, 3CX on a file, etc.). Do **not** use presets that duplicate CRM creation, email send, or Call/In-person file notes.
-7. **Confirmed minutes at Done are stored.** A live clock is a helper. Staff edit approx minutes (Rajan’s habit). No silent overnight accumulation.
-8. **One running timer per staff.** Starting or resuming one pauses every other.
+6. **Manual overlay is only for work CRM cannot see:** drafting, Immi/portal, off-CRM doc check, mailbox *on this file*, internal discussion, other (Excel, 3CX on a file, etc.). Do **not** use presets that duplicate CRM creation, email send, or Call/In-person file notes. Time *inside* the CRM on a file is the separate **auto session** layer (§12), never a manual preset.
+7. **Confirmed minutes at Done are stored.** A live clock is a helper. Staff edit approx minutes (Rajan’s habit). No silent overnight accumulation. Auto sessions (§12) store focused minutes as-is, editable on the board; idle and dead-tab time is cut.
+8. **One running timer per staff** for the manual overlay. Starting or resuming one pauses every other. Auto sessions are outside this rule and never pause a manual block.
 9. **Post overlay to the matter feed automatically on Done** when a matter is linked. No batch “post all” button. Admin rows stay on My day only.
 10. **Personal view only.** No team table, no ranking, no `staff_id` query to view a colleague. Same as the efficiency spec.
 
@@ -219,8 +219,9 @@ Cover:
 | **A** | Hours header + Already in CRM list + Copy of CRM events only | Replaces most of the Teams paste with **zero** new logging habit |
 | **B** | Overlay table, matter/Admin capture, board, minutes at Done, feed post, time-by-matter, copy includes overlay | The prototype’s new behaviour |
 | **C** (later) | Optional 3CX count without duration, WhatsApp, grouping mailbox uploads, week-vs-week | Integrations, not the diary |
+| **D** | Auto time on open matter (§12): focused-tab sessions, promote on CRM write, minutes split across events, `file_time` row at close | Removes the manual start habit for in-CRM work |
 
-Do not start C in the first build.
+Do not start C in the first build. D follows A+B and does not depend on C.
 
 ---
 
@@ -228,7 +229,7 @@ Do not start C in the first build.
 
 - Changing Completed / Updated / Pending / Call completed definitions.
 - Live 3CX CDR or call duration as KPI.
-- Timer on `notes` Call / In-person.
+- Separate Call / In-person start-stop timer on `notes`. Call time is covered by the auto session on the open matter (§12).
 - Manager “view as”, Admin Console columns for overlay (can follow later; not v1).
 - Replacing assigned actions (`notes.is_action = 1`) with the Kanban.
 - Client portal.
@@ -255,3 +256,202 @@ Do not start C in the first build.
 3. **Reopen after Done:** allowed same day, or never after feed post.  
 4. **Access for matter search:** exact reuse of which existing client/matter gate.  
 5. **`file_time` on the client activity filter bar:** show as its own chip vs lump under Activity.
+
+---
+
+## 12. Phase D — Auto time on open matter (agreed 15 Sep 2026)
+
+**Status:** implemented.
+
+### 12.1 Idea
+
+Opening a client, lead, or company detail page starts a silent session for that record (matter when one is selected). Time counts only while that browser tab is focused. The CRM decides what the time was for from the writes the staff already made (notes, uploads, stage moves, emails, completed actions, bookings, SMS). No start button, no title, no preset, no AI, no separate call / in-person timer.
+
+### 12.2 Rules
+
+| # | Rule |
+|---|------|
+| 1 | **Unit:** one session per staff × record × Melbourne day. Record = `client_matters.id` when a matter is selected; otherwise `admins.id` (lead / company / client with no matter). Reopening the same record later that day continues the same session. |
+| 2 | **Counting:** seconds accrue only while the tab is focused (`document.hasFocus()` + `visibilityState = visible`). Blur, tab switch, or close stops counting immediately. No grace window. The gap is not credited; refocus continues the session. |
+| 3 | **Multiple tabs:** the browser tells us. The tab that gains focus posts a heartbeat for its record. Same record in two tabs = same session. Two matters of one client = two sessions. Non-record pages (dashboard, lists) start nothing. |
+| 4 | **Heartbeat:** `POST` every 60s while focused, carrying `focused_seconds`. Server sets `last_heartbeat_at`. A session whose heartbeat is older than 3 min is treated as ended at the last heartbeat (crash, sleep, closed laptop). |
+| 5 | **Idle while focused:** no mouse / keyboard for 15 min → modal in that tab “Still on {ref}?”. No answer within 2 min → session is cut back to the moment idle started. Answer → counting continues. |
+| 6 | **Promotion:** session starts `accessed`. It becomes `recorded` when any CRM write by this staff on this record lands inside the session window (same sources as `StaffDayCrmEventsService`). Detection is server-side on heartbeat / close, not per-endpoint JS. Under 2 min with no write stays `accessed`. Any write → `recorded` regardless of length. |
+| 7 | **Reviewed file:** ≥ 2 min focused with **no** write → `recorded` with a single synthetic event “reviewed file”. |
+| 8 | **Minutes:** focused minutes stored as-is. Editable inline on the board (minutes only). Delete allowed until the feed row exists. Not confirmed via modal. |
+| 9 | **Split:** minutes are divided evenly across the session’s events at read time; nothing per-event is stored. |
+| 10 | **Feed:** one `activities_logs` row per `recorded` session at close, `activity_type = file_time`, subject `logged {N}m on {ref} · {events} activities`, `created_by` staff, `task_status = 0`. Updated when minutes are edited or the session reopens and closes again. **Never** for `accessed`. Lead / company sessions post to that record’s feed. |
+| 11 | **Notes with `matter_id` null** on a client with several matters are attributed to the matter whose tab is open. |
+| 12 | **Layering:** auto sessions are outside rule 8 (one running per staff). They never pause a manual block and never touch `StaffWorkloadService`. |
+| 13 | **Close:** scheduled command every 5 min closes sessions with `last_heartbeat_at` older than 3 min (status `closed`, post feed row if `recorded`). Same-day refocus reopens the session. No midnight special case; a dead heartbeat covers overnight tabs. |
+| 14 | **Visibility:** personal view only, same as the rest of My day. On for every `auth:admin` staff; no opt-in. |
+
+### 12.3 Storage
+
+New table `staff_matter_sessions` (separate from `staff_file_time_entries`: different lifecycle, no kind / title, not one-running).
+
+| Column | Purpose |
+|--------|---------|
+| `id` | PK |
+| `staff_id` | FK `staff.id` |
+| `client_matter_id` | FK `client_matters.id`, nullable |
+| `client_id` | `admins.id`, always set (lead / company / client) |
+| `session_date` | Melbourne date |
+| `status` | `accessed` \| `recorded` \| `closed` |
+| `focused_seconds` | Accrued focused time |
+| `idle_cut_seconds` | Seconds removed by idle cut (audit) |
+| `confirmed_minutes` | Nullable; set at close = round(focused / 60), editable |
+| `event_count` | Snapshot at close for the feed subject |
+| `is_reviewed_only` | boolean, rule 7 |
+| `started_at` / `last_heartbeat_at` / `ended_at` | Timestamps |
+| `activities_log_id` | Nullable FK, unique when set |
+| `created_at` / `updated_at` | |
+
+Indexes: unique `(staff_id, client_id, client_matter_id, session_date)` (nulls-distinct handled by coalescing `client_matter_id` to 0 in a generated column or by two partial indexes), `(staff_id, session_date)`, `(last_heartbeat_at)` for the closer.
+
+### 12.4 API (`auth:admin`, JSON)
+
+| Route | Behaviour |
+|-------|-----------|
+| `POST dashboard/my-day/sessions/heartbeat` | `client_id`, `client_matter_id?`, `focused_seconds`. Upserts today’s session, sets `last_heartbeat_at`, runs promotion check. Returns status + idle-warning flag. |
+| `POST dashboard/my-day/sessions/{id}/idle-cut` | `idle_started_at`. Cuts focused seconds back to that instant. |
+| `POST dashboard/my-day/sessions/{id}/blur` | `focused_seconds` via `sendBeacon` on blur / `pagehide`. |
+| `PATCH dashboard/my-day/sessions/{id}` | `confirmed_minutes` |
+| `DELETE dashboard/my-day/sessions/{id}` | Only while `activities_log_id` is null |
+
+`GET dashboard/my-day` (existing) gains `sessions` (recorded, with split events) and `accessed` (list of refs).
+
+### 12.5 Services / code
+
+- `StaffMatterSessionService`: `heartbeat()`, `blur()`, `idleCut()`, `promoteIfWritten()`, `closeStale()`, `eventsForSession()` (thin wrapper over `StaffDayCrmEventsService` scoped to record + window), `postToFeed()`.
+- `App\Console\Commands\CloseStaleMatterSessions`, scheduled `everyFiveMinutes()`.
+- `public/js/crm/clients/file-time-session.js`: standalone script on client / lead / company detail. Reads record ids from the page, owns focus / visibility / idle detection, heartbeat, `sendBeacon` on blur. Does **not** live inside `detail-main.js`.
+- `dashboard-my-day.js`: render auto blocks (distinct style), “Files opened” list, minutes chip on Already-in-CRM rows, inline minutes edit.
+- Copy summary: new sections “Time on files (auto)” and “Files opened”.
+
+### 12.6 Tests (PHPUnit, no `RefreshDatabase`)
+
+- Heartbeat creates one session per staff / record / day; second heartbeat same day updates, does not duplicate.
+- Stale heartbeat closes at `last_heartbeat_at`, not `now()`.
+- Idle cut reduces `focused_seconds` to the idle start.
+- Promotion: note / document / stage inside window → `recorded`; outside window → stays `accessed`.
+- ≥ 120s no write → `recorded`, `is_reviewed_only = true`; < 120s no write → `accessed`.
+- Close of `recorded` writes `file_time` row; close of `accessed` writes none; lead session writes to lead feed.
+- Even split across N events sums back to `confirmed_minutes` (rounding).
+- Auto session never changes `StaffWorkloadService` tallies and never sets `is_running` on `staff_file_time_entries`.
+- Guest cannot hit session routes; staff cannot touch another staff’s session.
+
+### 12.7 Docs to amend when built
+
+- `docs/STAFF_WORKLOAD_EFFICIENCY.md` line 15: duration is in via manual overlay **and** auto sessions; still not Layer A.
+- `docs/CRM_ACTIVITY_FEED.md`: auto `file_time` subject format; note that a `file_time` row can be updated after posting.
+- `graphify update .` after code.
+
+### 12.8 Build plan (ordered; each step lands green before the next)
+
+Ground rules for the build chat: run `graphify query` before exploring; read `.ai/rules/index.md` if present; no `RefreshDatabase`; tests follow `tests/Unit/Services/StaffFileTimeServiceTest.php` (hand-built sqlite `:memory:` schema in `setUp`, `Carbon::setTestNow`, `#[Test]` attributes); `vendor/bin/pint --dirty --format agent` on every PHP change; `php artisan make:*` for new files.
+
+Existing anchors to reuse, not duplicate:
+
+| Need | Reuse |
+|------|-------|
+| Day bounds (Melbourne) | `StaffWorkloadService::dayBounds()` |
+| Event sources | `StaffDayCrmEventsService::{emailEvents,documentEvents,bookingEvents,smsEvents,feedEvents,contactNoteEvents}` (currently `protected`, staff + window only) |
+| Feed write shape | `StaffFileTimeService::postToMatterFeed()` |
+| Record access | `EnsuresCrmRecordAccess::ensureCrmRecordAccess()`, `StaffClientVisibility::canAccessClientOrLead()` |
+| Staff resolve | `DashboardMyDayController::staffOrAbort()` |
+| Route block | `RegisterWebRoutes.php` L190–200, `/dashboard/my-day/*` |
+| Detail page config | `window.ClientDetailConfig` in `crm/clients/detail.blade.php` L798 (`matterId` there is the **ref no**, not `client_matters.id`; numeric id is `$latestClientMatterId` / selected option of `#sel_matter_id_client_detail`) and `crm/companies/detail.blade.php` L1342; `crm/leads/detail.blade.php` has none yet |
+| Scheduler | `app/Console/Kernel.php::schedule()` (Laravel Kernel, not `routes/console.php`) |
+
+---
+
+**Step 1 — Migration + model + factory**
+
+- `php artisan make:migration create_staff_matter_sessions_table --no-interaction`; columns per §12.3. FKs: `staff_id → staff` cascade, `client_matter_id → client_matters` nullOnDelete, `activities_log_id → activities_logs` nullOnDelete, unique `activities_log_id`.
+- Uniqueness with nullable matter: add stored generated column `matter_key` = `COALESCE(client_matter_id, 0)` and unique `(staff_id, client_id, matter_key, session_date)`. If the generated column is awkward across Postgres and sqlite, fall back to enforcing in the service with `lockForUpdate()` on the lookup and a plain index.
+- `php artisan make:model StaffMatterSession --factory --no-interaction`. Constants `STATUS_ACCESSED|RECORDED|CLOSED`, `ACTIVITY_TYPE = 'file_time'` (same as manual), casts for timestamps/booleans, relations `staff`, `clientMatter`, `client`, `activitiesLog`. Factory states `accessed()`, `recorded()`, `closed()`, `reviewedOnly()`.
+- Run `php artisan migrate --no-interaction` on the dev DB (forward only).
+
+**Step 2 — Expose scoped events from `StaffDayCrmEventsService`**
+
+- Add `public function forStaffOnRecord(int $staffId, int $clientId, ?int $clientMatterId, Carbon $start, Carbon $end): Collection` that runs the six sources with the same window and then filters by `client_id` and, when a matter is given, by `client_matter_id` when the row has one **or** null (rule 11). Each source row already carries `client_id`; confirm each also carries `client_matter_id` where the table has it and add it where missing (`notes.matter_id`, `documents`, `booking_appointments`, `activities_logs`).
+- Do **not** change `forStaff()` output shape; `crm-events.blade.php` and the copy summary depend on it.
+- Extend `tests/Unit/Services/StaffDayCrmEventsServiceTest.php`: record scoping, matter-null note attributed to open matter, other-client rows excluded.
+
+**Step 3 — `StaffMatterSessionService` (core, no HTTP)**
+
+`php artisan make:class Services/StaffMatterSessionService --no-interaction`. Constructor: `StaffWorkloadService`, `StaffDayCrmEventsService`.
+
+| Method | Behaviour |
+|--------|-----------|
+| `heartbeat(int $staffId, int $clientId, ?int $matterId, int $focusedSeconds): StaffMatterSession` | Find-or-create today’s row (rule 1). `focused_seconds = max(existing, $focusedSeconds)` when same session, never lower. `last_heartbeat_at = now()`. If `status = closed` and same day → reopen to prior status (rule 13). Then `promoteIfWritten()`. |
+| `blur(...)` | Same as heartbeat but no promotion re-check needed beyond the standard one; exists so `sendBeacon` has a cheap target. |
+| `idleCut(int $staffId, StaffMatterSession $s, Carbon $idleStartedAt): StaffMatterSession` | `cut = focused_seconds − seconds between idleStartedAt and last_heartbeat_at` (floor 0); `idle_cut_seconds += removed`. |
+| `promoteIfWritten(StaffMatterSession $s): StaffMatterSession` | If `accessed`: events in `[started_at, last_heartbeat_at]` via Step 2 → `recorded`. Else if `focused_seconds ≥ 120` → `recorded`, `is_reviewed_only = true` (rule 7). |
+| `closeStale(Carbon $now): int` | Rows with `status != closed` and `last_heartbeat_at < now − 3 min`: `ended_at = last_heartbeat_at`, `status = closed`, `confirmed_minutes = confirmed_minutes ?? round(focused/60)`, `event_count` snapshot, feed row if `recorded` and `confirmed_minutes ≥ 1`. Returns count. Also promotes before closing (a note saved seconds before the tab closed must count). |
+| `updateMinutes(int $staffId, StaffMatterSession $s, int $minutes)` | 1–480; update feed row if exists. |
+| `delete(int $staffId, StaffMatterSession $s)` | Only when `activities_log_id` null. |
+| `sessionsForBoard(int $staffId, ?Carbon $day)` | `recorded`/`closed`-recorded rows with `events` (Step 2, split minutes: `intdiv` + remainder to the first event so the sum equals `confirmed_minutes`) and `accessed` list of refs. |
+| `postToFeed(StaffMatterSession $s)` | Subject `logged {N}m on {ref} · {events} activities` (or `· reviewed file`); `client_id` from session; matter → `use_for = matter`, lead/company → `use_for` matching what `LogsClientActivity` uses for that record type; `task_status = 0`, `pin = 0`; update existing row when `activities_log_id` set. |
+
+Tests, `tests/Unit/Services/StaffMatterSessionServiceTest.php`, schema built in `setUp` like the sibling test (needs `staff`, `admins`, `client_matters`, `notes`, `documents`, `activities_logs`, `staff_matter_sessions`): every bullet in §12.6.
+
+**Step 4 — Closer command + schedule**
+
+- `php artisan make:command CloseStaleMatterSessions --no-interaction`, signature `my-day:close-stale-sessions`, calls `closeStale(now())`, prints count.
+- `Kernel.php`: `->everyFiveMinutes()->withoutOverlapping()->runInBackground()` next to `booking:sync-appointments`.
+- Test: command closes a stale row and leaves a fresh one.
+
+**Step 5 — Form Requests + controller + routes**
+
+- `php artisan make:request StaffMatterSession/HeartbeatStaffMatterSessionRequest` (`client_id` required int, `client_matter_id` nullable int, `focused_seconds` required int 0..86400), `IdleCutStaffMatterSessionRequest` (`idle_started_at` required ISO date), `UpdateStaffMatterSessionRequest` (`confirmed_minutes` 1..480). Authorize via `auth:admin` guard as siblings do.
+- `php artisan make:controller CRM/StaffMatterSessionController --no-interaction` with `heartbeat`, `blur`, `idleCut`, `update`, `destroy`. `ensureCrmRecordAccess($clientId)` on heartbeat/blur; ownership check inside service for the rest. Do **not** grow `DashboardMyDayController` further; it already has 12 actions.
+- Routes in `RegisterWebRoutes.php` after L200: `POST /dashboard/my-day/sessions/heartbeat`, `POST /dashboard/my-day/sessions/blur`, `POST /dashboard/my-day/sessions/{session}/idle-cut`, `PATCH /dashboard/my-day/sessions/{session}`, `DELETE /dashboard/my-day/sessions/{session}`, names `dashboard.my-day.sessions.*`.
+- `DashboardMyDayController@index` and the initial payload in `DashboardController@index` gain `sessions` from `sessionsForBoard()`.
+- Feature test `tests/Feature/StaffMatterSessionRoutesTest.php`: guest 401/redirect, staff A cannot touch staff B’s session (404/403), heartbeat validates.
+
+**Step 6 — Detail-page script `public/js/crm/clients/file-time-session.js`**
+
+Standalone IIFE, no jQuery dependency, loaded with `defer` from the three detail blades. Reads `window.MyDaySession = { clientId, clientMatterId|null, ref, routes: {heartbeat, blur, idleCut}, csrf }`, which each blade emits (client detail: numeric id from `$latestClientMatterId`, updated when `#sel_matter_id_client_detail` changes → treat as a new record: blur old, heartbeat new).
+
+Behaviour:
+
+- `focused = document.hasFocus() && document.visibilityState === 'visible'`; listeners on `focus`, `blur`, `visibilitychange`, `pagehide`.
+- Local accumulator ticks 1s only while focused. Heartbeat every 60s while focused (`fetch`, keepalive). On losing focus or `pagehide`: `navigator.sendBeacon(blur, FormData)` with current seconds; a `fetch` fallback when `sendBeacon` is unavailable.
+- First heartbeat fires immediately on load when focused (creates the `accessed` row).
+- Idle: `mousemove|keydown|scroll|click|touchstart` reset `lastInputAt`. If focused and idle ≥ 15 min → show a minimal modal (`bootstrap.Modal` if present, else inline `<dialog>`) “Still on {ref}?” with one button. No click within 2 min → `POST idle-cut { idle_started_at }`, stop counting until next input. Click → dismiss, continue.
+- 15-min idle warning also fires an `iziToast` if available.
+- `BroadcastChannel('my-day-session')`: on gaining focus, post `{type:'focus', clientId, matterId}` so other tabs stop their local tick without waiting for their own blur event (server already stops counting; this is UI only).
+- No console noise; every network error swallowed silently (tracking must never break the page).
+
+Blades: add the config + `<script … defer>` inside the existing `@push('scripts')` in `crm/clients/detail.blade.php`, `crm/companies/detail.blade.php`, `crm/leads/detail.blade.php`. Cache-bust with the same `filemtime` pattern used on L1180.
+
+**Step 7 — Dashboard rendering**
+
+- `resources/views/components/dashboard/`: new `file-time-auto.blade.php` (auto blocks, distinct style, inline minutes edit, delete when unposted) and `files-opened.blade.php` (accessed refs, count badge). Include both in `my-day.blade.php` under the manual board.
+- `crm-events.blade.php` / `dashboard-my-day.js`: minutes chip on Already-in-CRM rows when an event belongs to a session (match by event id + kind returned from `sessionsForBoard()`).
+- `dashboard-my-day.js`: render from `board.sessions`; `PATCH` minutes on blur of the inline input; `DELETE` with confirm. Extend `state`, not a second script.
+- `public/css/dashboard-my-day.css`: `.my-day-auto`, `.my-day-opened`, `.my-day-mins-chip`.
+- Copy summary (`StaffFileTimeService::copySummary()`): add sections `— Time on files (auto) —` (`{ref} · {N}m · {events} activities`) and `— Files opened —` (refs only). Pass the session service in; extend the existing return shape (`auto`, `opened`).
+- Markup test: extend `DashboardWorkloadMarkupTest` so the strip remains and the two new partials mount.
+
+**Step 8 — Docs, graph, formatting**
+
+- Amend `docs/STAFF_WORKLOAD_EFFICIENCY.md` L15 and `docs/CRM_ACTIVITY_FEED.md` per §12.7; set §12 status to implemented.
+- `vendor/bin/pint --dirty --format agent`; `graphify update .`.
+- Run only the new/changed tests: `php artisan test --compact --filter=StaffMatterSession`, `--filter=StaffDayCrmEventsService`, `--filter=DashboardWorkloadMarkup`. Offer the full suite to the user, do not run it unasked.
+
+**Ship order / PRs**
+
+1. Steps 1–4 (schema, services, closer) — no UI, safe to merge; sessions simply never get created until Step 6 ships.
+2. Steps 5–6 (routes + detail script) — sessions start accruing silently.
+3. Steps 7–8 (dashboard + docs) — staff see the blocks.
+
+**Known risks to watch during build**
+
+- `StaffDayCrmEventsService` sources guard with `Schema::hasTable`; the record-scoped variant must keep those guards so the sqlite test schema can omit tables it does not need.
+- `client_matters.id` is `unsignedInteger` in the manual table; match that type for the FK.
+- Company detail reuses `ClientDetailConfig`; confirm `clientId` there is the company `admins.id` before wiring.
+- `sendBeacon` sends no CSRF header; accept `_token` in the `FormData` body (Laravel’s `VerifyCsrfToken` reads `_token`).
+- Splitting minutes across events must be deterministic so the chip values do not jitter between refreshes (sort events by `sort_at`, id before splitting).

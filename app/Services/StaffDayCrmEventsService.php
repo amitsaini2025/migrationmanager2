@@ -42,7 +42,7 @@ class StaffDayCrmEventsService
 
         $total = $items->count();
         $sliced = $items->take($limit)->map(function (array $row): array {
-            unset($row['sort_at']);
+            unset($row['sort_at'], $row['client_id'], $row['client_matter_id']);
 
             return $row;
         })->all();
@@ -53,6 +53,47 @@ class StaffDayCrmEventsService
             'more' => max(0, $total - count($sliced)),
             'date' => $start->toDateString(),
         ];
+    }
+
+    /**
+     * CRM writes by this staff on one record within a time window (auto session promotion).
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function forStaffOnRecord(
+        int $staffId,
+        int $clientId,
+        ?int $clientMatterId,
+        Carbon $start,
+        Carbon $end,
+    ): Collection {
+        $items = collect()
+            ->merge($this->emailEvents($staffId, $start, $end))
+            ->merge($this->documentEvents($staffId, $start, $end))
+            ->merge($this->bookingEvents($staffId, $start, $end))
+            ->merge($this->smsEvents($staffId, $start, $end))
+            ->merge($this->feedEvents($staffId, $start, $end))
+            ->merge($this->contactNoteEvents($staffId, $start, $end))
+            ->filter(function (array $row) use ($clientId, $clientMatterId): bool {
+                if ((int) ($row['client_id'] ?? 0) !== $clientId) {
+                    return false;
+                }
+
+                if ($clientMatterId === null) {
+                    return true;
+                }
+
+                $rowMatter = $row['client_matter_id'] ?? null;
+                if ($rowMatter === null || $rowMatter === '') {
+                    return true;
+                }
+
+                return (int) $rowMatter === $clientMatterId;
+            })
+            ->sortBy(fn (array $row) => $row['sort_at'])
+            ->values();
+
+        return $items;
     }
 
     /**
@@ -84,17 +125,35 @@ class StaffDayCrmEventsService
             })
             ->orderByDesc('created_at')
             ->limit(80)
-            ->get(['id', 'subject', 'mail_body_type', 'conversion_type', 'client_matter_id', 'created_at'])
+            ->get(array_values(array_filter([
+                'id',
+                'subject',
+                'mail_body_type',
+                'conversion_type',
+                Schema::hasColumn('email_logs', 'client_id') ? 'client_id' : null,
+                Schema::hasColumn('email_logs', 'client_matter_id') ? 'client_matter_id' : null,
+                'created_at',
+            ])))
             ->map(function (EmailLog $log): array {
                 $isSent = ($log->mail_body_type ?? '') === 'sent';
                 $kind = $isSent ? 'Email out' : 'Email';
+                $clientId = Schema::hasColumn('email_logs', 'client_id') && $log->client_id !== null
+                    ? (int) $log->client_id
+                    : null;
+                $matterId = Schema::hasColumn('email_logs', 'client_matter_id')
+                    && $log->client_matter_id !== null
+                    && is_numeric($log->client_matter_id)
+                    ? (int) $log->client_matter_id
+                    : null;
 
                 return $this->row(
                     $kind,
                     (string) ($log->subject ?: 'Email'),
                     $log->created_at,
-                    $this->matterNo($log->client_matter_id),
+                    $this->matterNo($matterId),
                     'email_log:'.$log->id,
+                    $clientId,
+                    $matterId,
                 );
             });
     }
@@ -115,16 +174,34 @@ class StaffDayCrmEventsService
             ->whereBetween('created_at', [$start, $end])
             ->orderByDesc('created_at')
             ->limit(80)
-            ->get(['id', 'file_name', 'client_matter_id', 'created_at'])
+            ->get(array_values(array_filter([
+                'id',
+                Schema::hasColumn('documents', 'file_name') ? 'file_name' : null,
+                Schema::hasColumn('documents', 'name') ? 'name' : null,
+                Schema::hasColumn('documents', 'doc_name') ? 'doc_name' : null,
+                Schema::hasColumn('documents', 'client_id') ? 'client_id' : null,
+                Schema::hasColumn('documents', 'client_matter_id') ? 'client_matter_id' : null,
+                'created_at',
+            ])))
             ->map(function (Document $doc): array {
-                $title = (string) ($doc->file_name ?: 'Document');
+                $title = (string) ($doc->file_name ?: $doc->name ?: $doc->doc_name ?: 'Document');
+                $matterId = Schema::hasColumn('documents', 'client_matter_id')
+                    && $doc->client_matter_id !== null
+                    && is_numeric($doc->client_matter_id)
+                    ? (int) $doc->client_matter_id
+                    : null;
+                $clientId = Schema::hasColumn('documents', 'client_id') && $doc->client_id !== null
+                    ? (int) $doc->client_id
+                    : null;
 
                 return $this->row(
                     'Document',
                     $title,
                     $doc->created_at,
-                    $this->matterNo($doc->client_matter_id),
+                    $this->matterNo($matterId ?? $doc->client_matter_id ?? null),
                     'document:'.$doc->id,
+                    $clientId,
+                    $matterId,
                 );
             });
     }
@@ -155,6 +232,8 @@ class StaffDayCrmEventsService
                     $appt->created_at,
                     null,
                     'booking:'.$appt->id,
+                    $appt->client_id !== null ? (int) $appt->client_id : null,
+                    null,
                 );
             });
     }
@@ -174,7 +253,7 @@ class StaffDayCrmEventsService
             ? 'message_content'
             : (Schema::hasColumn('sms_logs', 'message') ? 'message' : null);
 
-        $columns = array_values(array_filter(['id', $bodyCol, $timeCol]));
+        $columns = array_values(array_filter(['id', $bodyCol, $timeCol, 'client_id']));
 
         return SmsLog::query()
             ->where('sender_id', $staffId)
@@ -187,7 +266,11 @@ class StaffDayCrmEventsService
                 $body = $bodyCol !== null ? ($sms->{$bodyCol} ?? null) : null;
                 $title = (string) (Str::limit((string) ($body ?? 'SMS'), 80));
 
-                return $this->row('SMS', $title, $at, null, 'sms:'.$sms->id);
+                $clientId = Schema::hasColumn('sms_logs', 'client_id') && $sms->client_id !== null
+                    ? (int) $sms->client_id
+                    : null;
+
+                return $this->row('SMS', $title, $at, null, 'sms:'.$sms->id, $clientId, null);
             });
     }
 
@@ -217,8 +300,20 @@ class StaffDayCrmEventsService
             })
             ->orderByDesc('created_at')
             ->limit(80)
-            ->get(['id', 'subject', 'activity_type', 'task_group', 'created_at'])
+            ->get(array_values(array_filter([
+                'id',
+                'subject',
+                'activity_type',
+                'task_group',
+                'client_id',
+                Schema::hasColumn('activities_logs', 'client_matter_id') ? 'client_matter_id' : null,
+                'created_at',
+            ])))
             ->map(function (ActivitiesLog $log): array {
+                $matterId = Schema::hasColumn('activities_logs', 'client_matter_id') && $log->client_matter_id !== null
+                    ? (int) $log->client_matter_id
+                    : null;
+
                 $subject = (string) ($log->subject ?? '');
                 $type = (string) ($log->activity_type ?? '');
                 if (str_starts_with(strtolower($subject), 'completed action for')) {
@@ -233,7 +328,15 @@ class StaffDayCrmEventsService
                     $kind = 'Activity';
                 }
 
-                return $this->row($kind, $subject !== '' ? $subject : $kind, $log->created_at, null, 'feed:'.$log->id);
+                return $this->row(
+                    $kind,
+                    $subject !== '' ? $subject : $kind,
+                    $log->created_at,
+                    null,
+                    'feed:'.$log->id,
+                    $log->client_id !== null ? (int) $log->client_id : null,
+                    $matterId,
+                );
             });
     }
 
@@ -255,7 +358,7 @@ class StaffDayCrmEventsService
             ->whereBetween('created_at', [$start, $end])
             ->orderByDesc('created_at')
             ->limit(40)
-            ->get(['id', 'title', 'task_group', 'matter_id', 'created_at'])
+            ->get(['id', 'title', 'task_group', 'matter_id', 'client_id', 'created_at'])
             ->map(function (Note $note): array {
                 $group = (string) ($note->task_group ?? '');
                 $kind = stripos($group, 'person') !== false ? 'In-person note' : 'Call note';
@@ -267,6 +370,8 @@ class StaffDayCrmEventsService
                     $note->created_at,
                     $this->matterNo($note->matter_id ?? null),
                     'note:'.$note->id,
+                    $note->client_id !== null ? (int) $note->client_id : null,
+                    $note->matter_id !== null && is_numeric($note->matter_id) ? (int) $note->matter_id : null,
                 );
             });
     }
@@ -274,8 +379,15 @@ class StaffDayCrmEventsService
     /**
      * @return array<string, mixed>
      */
-    protected function row(string $kind, string $title, mixed $at, ?string $ref, string $key): array
-    {
+    protected function row(
+        string $kind,
+        string $title,
+        mixed $at,
+        ?string $ref,
+        string $key,
+        ?int $clientId = null,
+        ?int $clientMatterId = null,
+    ): array {
         $carbon = $at ? Carbon::parse($at)->timezone((string) config('app.timezone')) : now();
 
         return [
@@ -285,6 +397,8 @@ class StaffDayCrmEventsService
             'ref' => $ref,
             'time' => $carbon->format('g:i a'),
             'sort_at' => $carbon->timestamp,
+            'client_id' => $clientId,
+            'client_matter_id' => $clientMatterId,
         ];
     }
 

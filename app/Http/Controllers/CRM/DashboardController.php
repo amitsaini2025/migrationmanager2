@@ -12,6 +12,7 @@ use App\Services\DashboardService;
 use App\Services\StaffDayCrmEventsService;
 use App\Services\StaffDayHoursService;
 use App\Services\StaffFileTimeService;
+use App\Services\StaffMatterSessionService;
 use App\Services\StaffPersonalCalendarFeedService;
 use App\Services\StaffWorkloadService;
 use Illuminate\Http\JsonResponse;
@@ -31,6 +32,7 @@ class DashboardController extends Controller
         protected StaffDayHoursService $staffDayHoursService,
         protected StaffDayCrmEventsService $staffDayCrmEventsService,
         protected StaffFileTimeService $staffFileTimeService,
+        protected StaffMatterSessionService $staffMatterSessionService,
     ) {
         $this->middleware('auth:admin');
     }
@@ -50,7 +52,9 @@ class DashboardController extends Controller
         $dashboardData['workload'] = $this->staffWorkloadService->getDashboardWorkload($staffId);
         $dashboardData['myDayHours'] = $this->staffDayHoursService->forStaff($staffId);
         $dashboardData['myDayCrmEvents'] = $this->staffDayCrmEventsService->forStaff($staffId);
-        $dashboardData['myDayBoard'] = $this->staffFileTimeService->boardForStaff($staffId);
+        $board = $this->staffFileTimeService->boardForStaff($staffId);
+        $board['sessions'] = $this->staffMatterSessionService->sessionsForBoard($staffId);
+        $dashboardData['myDayBoard'] = $board;
         $dashboardData['bookingConsultants'] = $this->bookingConsultantsForModal();
 
         return view('crm.dashboard-optimized', $dashboardData);

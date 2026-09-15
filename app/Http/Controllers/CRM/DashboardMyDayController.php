@@ -13,6 +13,7 @@ use App\Models\StaffFileTimeEntry;
 use App\Services\StaffDayCrmEventsService;
 use App\Services\StaffDayHoursService;
 use App\Services\StaffFileTimeService;
+use App\Services\StaffMatterSessionService;
 use App\Support\StaffClientVisibility;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,7 @@ class DashboardMyDayController extends Controller
         protected StaffFileTimeService $fileTime,
         protected StaffDayCrmEventsService $crmEvents,
         protected StaffDayHoursService $hours,
+        protected StaffMatterSessionService $matterSessions,
     ) {
         $this->middleware('auth:admin');
     }
@@ -40,7 +42,9 @@ class DashboardMyDayController extends Controller
             'success' => true,
             'hours' => $this->hours->forStaff((int) $staff->id),
             'crm_events' => $this->crmEvents->forStaff((int) $staff->id),
-            'board' => $board,
+            'board' => array_merge($board, [
+                'sessions' => $this->matterSessions->sessionsForBoard((int) $staff->id),
+            ]),
         ]);
     }
 
@@ -230,6 +234,7 @@ class DashboardMyDayController extends Controller
             (int) $staff->id,
             $this->crmEvents,
             $this->hours,
+            $this->matterSessions,
         );
 
         return response()->json([

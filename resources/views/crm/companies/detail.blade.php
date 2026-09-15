@@ -1705,6 +1705,11 @@ $(document).ready(function() {
 {{-- Context menu handlers for the eager Not Used Documents tab (same file as client detail). Lazy fetch is a no-op here because the pane is already rendered. --}}
 <script src="{{ URL::asset('js/crm/clients/notuseddocuments-tab.js') }}?v={{ time() }}"></script>
 {{-- Main detail page JavaScript --}}
+@include('partials.my-day-session-script', [
+    'myDayClientId' => $fetchedData->id ?? null,
+    'myDayMatterId' => $latestClientMatterId ?? null,
+    'myDayRef' => $id1 ?? ($matterNumber ?? 'file'),
+])
 <script src="{{ URL::asset('js/crm/clients/detail-main.js') }}?v={{ time() }}"></script>
 
 {{-- Sidebar Toggle JavaScript --}}

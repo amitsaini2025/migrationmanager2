@@ -5,7 +5,7 @@
     <p class="my-day-lead">Emails, documents, bookings, file notes, and completed actions from today.</p>
     <div id="myDayCrmList">
         @forelse($items as $item)
-            <div class="my-day-crm-item">
+            <div class="my-day-crm-item" data-event-key="{{ $item['key'] ?? '' }}">
                 <div class="my-day-crm-kind">{{ $item['kind'] ?? '' }}</div>
                 <div>
                     <div class="my-day-crm-title">{{ $item['title'] ?? '' }}</div>

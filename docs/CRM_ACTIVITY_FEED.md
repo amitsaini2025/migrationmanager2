@@ -182,11 +182,11 @@ The Eloquent model extends `Authenticatable` and uses `Notifiable` / `Sortable`.
 | `office_visit_complete` | Session completed | same | secondary |
 | `eoi_confirmation` | Client confirmed EOI | same | secondary |
 | `eoi_amendment` | Client requested EOI amendment | same | secondary |
-| `file_time` | My day overlay Done with a matter linked (`StaffFileTimeService`) | clock | primary |
+| `file_time` | My day manual overlay Done or auto session close (`StaffFileTimeService`, `StaffMatterSessionService`) | clock | primary |
 
 Widen the column to at least VARCHAR(64). `office_visit_complete` overflowed VARCHAR(20).
 
-**`file_time` rules:** `created_by` = logged-in staff; `client_id` = matter’s client; `use_for` = `matter`; `task_status` = 0; `pin` = 0. Subject example: `logged 11m drafting on JARN2504926-485_1` (no client display name). Admin / no-file overlay rows do **not** write `activities_logs`. Do **not** set `task_status = 1` — overlay Done must never appear in `StaffWorkloadService` completed-action queries. Filter chip: **File time**.
+**`file_time` rules:** `created_by` = logged-in staff; `client_id` = record’s client/lead/company; `use_for` = `matter` when a matter is linked; `task_status` = 0; `pin` = 0. Manual overlay subject example: `logged 11m drafting on JARN2504926-485_1`. Auto session example: `logged 11m on JARN2504926-485_1 · 3 activities` or `· reviewed file`. The same `activities_logs` row may be **updated** when minutes are edited or the session reopens and closes again. Admin / no-file manual overlay rows do **not** write `activities_logs`. Do **not** set `task_status = 1` — file time must never appear in `StaffWorkloadService` completed-action queries. Filter chip: **File time**.
 ### Icon map only — not written today
 
 The model maps `followup_scheduled`, `followup_completed`, `followup_rescheduled`, `followup_cancelled` to calendar icons. **No current writer sets those types.** Action lifecycle uses subjects (`Set action for …`, `completed action for …`) and usually the DB default type `note`. When porting, either set real types (`action_assigned`, `action_completed`) or keep using `activity`.

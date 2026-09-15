@@ -993,7 +993,8 @@
         matterSearch: "{{ route('dashboard.my-day.matter-search') }}",
         copySummary: "{{ route('dashboard.my-day.copy-summary') }}",
         start: "{{ route('dashboard.my-day.file-time.start') }}",
-        fileTimeBase: "{{ url('/dashboard/my-day/file-time') }}"
+        fileTimeBase: "{{ url('/dashboard/my-day/file-time') }}",
+        sessionsBase: "{{ url('/dashboard/my-day/sessions') }}"
     };
 </script>
 <script src="{{ asset('js/dashboard-optimized.js') }}"></script>

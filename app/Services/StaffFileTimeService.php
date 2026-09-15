@@ -260,6 +260,7 @@ class StaffFileTimeService
         int $staffId,
         StaffDayCrmEventsService $crmEvents,
         StaffDayHoursService $hours,
+        ?StaffMatterSessionService $matterSessions = null,
         ?Carbon $day = null,
     ): array {
         $staff = Staff::query()->find($staffId);
@@ -339,6 +340,36 @@ class StaffFileTimeService
         }
 
         $lines[] = '';
+        $lines[] = '— Time on files (auto) —';
+        $autoLines = [];
+        $openedRefs = [];
+        if ($matterSessions !== null) {
+            $sessionsPayload = $matterSessions->sessionsForBoard($staffId, $day);
+            foreach ($sessionsPayload['auto'] as $row) {
+                $eventLabel = ! empty($row['is_reviewed_only'])
+                    ? 'reviewed file'
+                    : (($row['event_count'] ?? 0).' activities');
+                $autoLines[] = "{$row['ref']} · {$row['confirmed_minutes']}m · {$eventLabel}";
+            }
+            foreach ($sessionsPayload['opened'] as $row) {
+                $openedRefs[] = (string) ($row['ref'] ?? '—');
+            }
+        }
+        if ($autoLines === []) {
+            $lines[] = '(none)';
+        } else {
+            array_push($lines, ...$autoLines);
+        }
+
+        $lines[] = '';
+        $lines[] = '— Files opened —';
+        if ($openedRefs === []) {
+            $lines[] = '(none)';
+        } else {
+            array_push($lines, ...$openedRefs);
+        }
+
+        $lines[] = '';
         $lines[] = '— Still open —';
         if ($stillOpen === []) {
             $lines[] = '(none)';
@@ -353,6 +384,8 @@ class StaffFileTimeService
             'crm_events' => $events['items'],
             'overlay' => $overlayDone,
             'admin' => $adminDone,
+            'auto' => $autoLines,
+            'opened' => $openedRefs,
             'still_open' => $stillOpen,
             'text' => implode("\n", $lines),
         ];

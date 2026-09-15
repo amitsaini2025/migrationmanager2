@@ -11,6 +11,7 @@
     $entries = $board['entries'] ?? [];
     $tally = $board['tally'] ?? [];
     $byMatter = $board['by_matter'] ?? [];
+    $sessions = $board['sessions'] ?? ['auto' => [], 'opened' => [], 'event_minutes' => []];
     $dateLabel = $board['date'] ?? ($hours['date'] ?? '');
 @endphp
 
@@ -21,6 +22,7 @@
     data-initial-entries='@json($entries)'
     data-initial-tally='@json($tally)'
     data-initial-by-matter='@json($byMatter)'
+    data-initial-sessions='@json($sessions)'
 >
     <div class="my-day-head">
         <div>
@@ -38,6 +40,11 @@
     </div>
 
     <x-dashboard.file-time-board />
+
+    <div class="my-day-split">
+        <x-dashboard.file-time-auto :sessions="$sessions" />
+        <x-dashboard.files-opened :sessions="$sessions" />
+    </div>
 
     <div class="my-day-split my-day-split--bottom">
         <x-dashboard.file-time-by-matter :rows="$byMatter" />

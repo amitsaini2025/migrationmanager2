@@ -1198,6 +1198,11 @@ $(document).ready(function() {
 <script src="{{ URL::asset('js/crm/clients/notes-tab.js') }}?v={{ time() }}"></script>
 <script src="{{ URL::asset('js/crm/clients/personaldetails-tab.js') }}?v={{ time() }}"></script>
 <script src="{{ URL::asset('js/crm/clients/verify-link.js') }}?v={{ time() }}"></script>
+@include('partials.my-day-session-script', [
+    'myDayClientId' => $fetchedData->id ?? null,
+    'myDayMatterId' => $latestClientMatterId ?? null,
+    'myDayRef' => $id1 ?? ($matterNumber ?? 'file'),
+])
 {{-- Main detail page JavaScript --}}
 <script src="{{ URL::asset('js/crm/clients/detail-main.js') }}?v={{ time() }}"></script>
 

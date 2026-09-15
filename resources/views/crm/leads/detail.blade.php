@@ -518,5 +518,10 @@ $(document).delegate('.selecttemplate', 'change', function(){
 
 });
 </script>
+@include('partials.my-day-session-script', [
+    'myDayClientId' => $fetchedData->id ?? null,
+    'myDayMatterId' => null,
+    'myDayRef' => trim(($fetchedData->first_name ?? '').' '.($fetchedData->last_name ?? '')) ?: 'lead',
+])
 @endpush
 

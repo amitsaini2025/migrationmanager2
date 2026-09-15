@@ -117,6 +117,12 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping(10)
             ->appendOutputTo(storage_path('logs/appointment-sync.log'));
 
+        $schedule->command('my-day:close-stale-sessions')
+            ->everyFiveMinutes()
+            ->timezone('Australia/Melbourne')
+            ->withoutOverlapping(5)
+            ->runInBackground();
+
         // Appointment Sync System - Send reminders daily at 9 AM
         $schedule->command('booking:send-reminders')
             ->dailyAt('09:00')

@@ -12,7 +12,7 @@ Stack facts this spec assumes (README): Laravel 13 / PHP 8.3, **PostgreSQL** pri
 
 ## Agreed product brief
 
-Efficiency and workload are built from **what staff did on clients/leads/companies and their matters**. **Hours in CRM** are a **header** (reuse session / login / presence). They are **not** the score. **Call/in-person duration is out** on file notes (no timer on `notes`). **Duration is in only** via the separate **My day overlay** (`staff_file_time_entries` / `StaffFileTimeService`) — confirmed minutes at Done, posted as `activities_logs.activity_type = file_time`. Overlay time is **not** Layer A contact and must **never** increment `StaffWorkloadService` card totals.
+Efficiency and workload are built from **what staff did on clients/leads/companies and their matters**. **Hours in CRM** are a **header** (reuse session / login / presence). They are **not** the score. **Call/in-person duration is out** on file notes (no timer on `notes`). **Duration is in only** via **My day**: manual overlay (`staff_file_time_entries` / `StaffFileTimeService`) and **auto sessions** on open files (`staff_matter_sessions` / `StaffMatterSessionService`) — both post as `activities_logs.activity_type = file_time`. Neither is Layer A contact and neither must **ever** increment `StaffWorkloadService` card totals.
 
 ### Domain model
 

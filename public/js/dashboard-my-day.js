@@ -22,6 +22,7 @@
         entries: safeJson(root.getAttribute('data-initial-entries'), []),
         tally: safeJson(root.getAttribute('data-initial-tally'), {}),
         byMatter: safeJson(root.getAttribute('data-initial-by-matter'), []),
+        sessions: safeJson(root.getAttribute('data-initial-sessions'), { auto: [], opened: [], event_minutes: {} }),
         selected: null,
         filterKey: null,
         pendingDoneId: null,
@@ -92,6 +93,9 @@
         state.entries = board.entries || [];
         state.tally = board.tally || {};
         state.byMatter = board.by_matter || [];
+        if (board.sessions) {
+            state.sessions = board.sessions;
+        }
         renderAll();
         refreshSummary();
     }
@@ -292,6 +296,132 @@
         });
     }
 
+    function renderAutoSessions() {
+        var list = document.getElementById('myDayAutoList');
+        if (!list) {
+            return;
+        }
+        var auto = (state.sessions && state.sessions.auto) || [];
+        if (!auto.length) {
+            list.innerHTML = '<p class="my-day-empty">No auto file time recorded yet today.</p>';
+            return;
+        }
+        list.innerHTML = auto.map(function (row) {
+            var meta = row.is_reviewed_only
+                ? 'reviewed file'
+                : ((row.event_count || 0) + ' activities');
+            if (row.posted) {
+                meta += ' · posted';
+            }
+            var del = row.posted
+                ? ''
+                : '<button type="button" class="my-day-auto-delete" data-session-id="' + row.id + '">Delete</button>';
+            return '<div class="my-day-auto-row" data-session-id="' + row.id + '">' +
+                '<div class="my-day-auto-ref">' + escapeHtml(row.ref || '—') + '</div>' +
+                '<label class="my-day-auto-mins"><input type="number" class="my-day-auto-mins-input" min="1" max="480" value="' +
+                escapeAttr(String(row.confirmed_minutes || 1)) + '" aria-label="Minutes"><span>m</span></label>' +
+                '<div class="my-day-auto-meta">' + escapeHtml(meta) + '</div>' + del + '</div>';
+        }).join('');
+        list.querySelectorAll('.my-day-auto-mins-input').forEach(function (input) {
+            input.addEventListener('change', function () {
+                var rowEl = input.closest('.my-day-auto-row');
+                var id = rowEl && rowEl.getAttribute('data-session-id');
+                var mins = parseInt(input.value, 10);
+                if (!id || mins < 1 || mins > 480) {
+                    return;
+                }
+                api(routes.sessionsBase + '/' + id, { method: 'PATCH', body: { confirmed_minutes: mins } })
+                    .then(refreshFromIndex)
+                    .catch(showError);
+            });
+        });
+        list.querySelectorAll('.my-day-auto-delete').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = btn.getAttribute('data-session-id');
+                if (!id || !window.confirm('Delete this auto session?')) {
+                    return;
+                }
+                api(routes.sessionsBase + '/' + id, { method: 'DELETE' })
+                    .then(refreshFromIndex)
+                    .catch(showError);
+            });
+        });
+    }
+
+    function renderOpenedFiles() {
+        var list = document.getElementById('myDayOpenedList');
+        var badge = document.getElementById('myDayOpenedCount');
+        var opened = (state.sessions && state.sessions.opened) || [];
+        if (badge) {
+            badge.textContent = String(opened.length);
+        }
+        if (!list) {
+            return;
+        }
+        if (!opened.length) {
+            list.innerHTML = '<li class="my-day-empty">No files opened without recorded time.</li>';
+            return;
+        }
+        list.innerHTML = opened.map(function (row) {
+            return '<li>' + escapeHtml(row.ref || '—') + '</li>';
+        }).join('');
+    }
+
+    function renderCrmMinuteChips() {
+        var map = (state.sessions && state.sessions.event_minutes) || {};
+        document.querySelectorAll('.my-day-crm-item[data-event-key]').forEach(function (el) {
+            var key = el.getAttribute('data-event-key');
+            var mins = key ? map[key] : null;
+            var existing = el.querySelector('.my-day-mins-chip');
+            if (existing) {
+                existing.remove();
+            }
+            if (!mins) {
+                return;
+            }
+            var chip = document.createElement('span');
+            chip.className = 'my-day-mins-chip';
+            chip.textContent = mins + 'm auto';
+            el.querySelector('.my-day-crm-title')?.appendChild(chip);
+        });
+    }
+
+    function refreshFromIndex() {
+        return api(routes.index, { method: 'GET' }).then(function (data) {
+            if (data.board) {
+                applyBoard(data.board);
+            }
+            if (data.crm_events) {
+                renderCrmList(data.crm_events);
+            }
+        });
+    }
+
+    function renderCrmList(payload) {
+        var wrap = document.getElementById('myDayCrmList');
+        if (!wrap || !payload) {
+            return;
+        }
+        var items = payload.items || [];
+        var more = payload.more || 0;
+        if (!items.length) {
+            wrap.innerHTML = '<p class="my-day-empty">No CRM events logged by you today yet.</p>';
+            return;
+        }
+        var html = items.map(function (item) {
+            return '<div class="my-day-crm-item" data-event-key="' + escapeAttr(item.key || '') + '">' +
+                '<div class="my-day-crm-kind">' + escapeHtml(item.kind || '') + '</div>' +
+                '<div><div class="my-day-crm-title">' + escapeHtml(item.title || '') + '</div>' +
+                (item.ref ? '<div class="my-day-crm-ref">' + escapeHtml(item.ref) + '</div>' : '') +
+                '</div><span class="my-day-tag">' + escapeHtml(item.time || '') + '</span></div>';
+        }).join('');
+        if (more > 0) {
+            html += '<p class="my-day-more">… and ' + more + ' more</p>';
+        }
+        wrap.innerHTML = html;
+        renderCrmMinuteChips();
+    }
+
     function renderAll() {
         renderPresets();
         renderChosen();
@@ -299,6 +429,9 @@
         renderTally();
         renderMatterRows();
         renderFilterbar();
+        renderAutoSessions();
+        renderOpenedFiles();
+        renderCrmMinuteChips();
         ensureTick();
     }
 

@@ -509,7 +509,7 @@ class ClientEoiRoiController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "Confirmation email " . strtolower($action) . " successfully to {$client->email}",
-                'sent_at' => $eoiReference->confirmation_email_sent_at->format('d/m/Y H:i'),
+                'sent_at' => $eoiReference->confirmation_email_sent_at?->toIso8601String() ?? now()->toIso8601String(),
                 'attachment_count' => count($attachments)
             ]);
 
@@ -622,7 +622,7 @@ class ClientEoiRoiController extends Controller
                     'file_name' => $doc->file_name ?: ('document_' . $doc->id),
                     'category' => $categoryTitle,
                     'file_size_mb' => $fileSizeMb,
-                    'created_at' => $doc->created_at->format('d/m/Y'),
+                    'created_at' => $doc->created_at?->toIso8601String(),
                 ];
                 
                 // Check if document references the EOI number
@@ -1101,7 +1101,7 @@ class ClientEoiRoiController extends Controller
             'staff_verified' => (bool) $eoi->staff_verified,
             'verification_date' => $eoi->confirmation_date?->format('d/m/Y H:i'),
             'verified_by' => $eoi->verifier ? ($eoi->verifier->first_name . ' ' . $eoi->verifier->last_name) : null,
-            'email_sent_at' => $eoi->confirmation_email_sent_at?->format('d/m/Y H:i'),
+            'email_sent_at' => $eoi->confirmation_email_sent_at?->toIso8601String(),
             'client_confirmation_status' => $eoi->client_confirmation_status,
             'client_confirmation_date' => $eoi->client_last_confirmation?->format('d/m/Y H:i'),
             'client_notes' => $eoi->client_confirmation_notes,

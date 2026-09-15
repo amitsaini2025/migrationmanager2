@@ -765,7 +765,7 @@ class ClientDocumentsController extends Controller
                         $response['filekey'] = $name;
                         $response['doccategory'] = $checklistName;
                         $response['uploaded_by'] = Auth::user()->first_name ?? 'Staff';
-                        $response['uploaded_at'] = $obj->created_at ? $obj->created_at->format('d/m/Y H:i') : now()->format('d/m/Y H:i');
+                        $response['uploaded_at'] = $obj->created_at?->toIso8601String() ?? now()->toIso8601String();
                     }
                 }
             }
@@ -1696,7 +1696,7 @@ class ClientDocumentsController extends Controller
                         $response['filetype'] = $extension;
                         $response['fileurl'] = $fileUrl;
                         $response['uploaded_by'] = Auth::user()->first_name ?? 'Staff';
-                        $response['uploaded_at'] = $obj->created_at ? $obj->created_at->format('d/m/Y H:i') : now()->format('d/m/Y H:i');
+                        $response['uploaded_at'] = $obj->created_at?->toIso8601String() ?? now()->toIso8601String();
                         $response['filekey'] = $name;
                         $response['doccategory'] = $checklistName;
                         $response['doctype'] = $doctype;

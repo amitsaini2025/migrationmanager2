@@ -696,7 +696,7 @@ class EoiRoiSheetController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Confirmation email sent successfully to ' . $eoi->client->email,
-                'sent_at' => $eoi->confirmation_email_sent_at->format('d/m/Y H:i')
+                'sent_at' => $eoi->confirmation_email_sent_at?->toIso8601String() ?? now()->toIso8601String()
             ]);
 
         } catch (\Exception $e) {

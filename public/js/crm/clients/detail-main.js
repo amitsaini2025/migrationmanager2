@@ -766,7 +766,7 @@
 
     function formatClientDocDateTime(iso) {
         if (typeof window.formatDisplayDateTime === 'function') {
-            return window.formatDisplayDateTime(iso) || '';
+            return window.formatDisplayDateTime(iso) || (iso ? String(iso) : '');
         }
         if (!iso) return '';
         var d = new Date(iso);

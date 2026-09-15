@@ -53,13 +53,20 @@
             if (ap === 'am' && hour === 12) {
                 hour = 0;
             }
+            if (hour > 23 || minute > 59 || second > 59) {
+                return null;
+            }
+
             var fromLegacy = new Date(year, month, day, hour, minute, second);
-            // Reject JS date rollover (e.g. 31/02/2026 → March).
+            // Reject JS date rollover (e.g. 31/02/2026 → March, 14:99 → 15:39).
             if (
                 isNaN(fromLegacy.getTime()) ||
                 fromLegacy.getFullYear() !== year ||
                 fromLegacy.getMonth() !== month ||
-                fromLegacy.getDate() !== day
+                fromLegacy.getDate() !== day ||
+                fromLegacy.getHours() !== hour ||
+                fromLegacy.getMinutes() !== minute ||
+                fromLegacy.getSeconds() !== second
             ) {
                 return null;
             }

@@ -82,18 +82,46 @@ class OfficeVisitNotificationCreatedAtFormatTest extends TestCase
             .'const format = ctx.window.formatDisplayDateTime;'
             .'const iso = format("2026-09-15T12:25:00+10:00");'
             .'const legacy = format("15/09/2026 12:25 PM");'
+            .'const legacy24 = format("15/09/2026 14:30");'
+            .'const dateOnly = format("15/09/2026");'
             .'const invalid = format("not-a-date");'
             .'const rolled = format("31/02/2026 12:25 PM");'
-            .'console.log(JSON.stringify({ iso: iso, legacy: legacy, invalid: invalid, rolled: rolled }));';
+            .'const badMinute = format("15/09/2026 12:99");'
+            .'console.log(JSON.stringify({ iso: iso, legacy: legacy, legacy24: legacy24, dateOnly: dateOnly, invalid: invalid, rolled: rolled, badMinute: badMinute }));';
 
         $result = $this->runNodeScript($script);
         $decoded = json_decode($result, true);
 
         Assert::assertIsArray($decoded);
-        Assert::assertSame('15 Sep 2026, 12:25 pm', $decoded['iso']);
+        // ISO with an offset is converted to the runtime local zone; only the calendar day is stable here.
+        Assert::assertMatchesRegularExpression('/^\d{1,2} Sep 2026, \d{1,2}:\d{2} (am|pm)$/', $decoded['iso']);
         Assert::assertSame('15 Sep 2026, 12:25 pm', $decoded['legacy']);
+        Assert::assertSame('15 Sep 2026, 2:30 pm', $decoded['legacy24']);
+        Assert::assertSame('15 Sep 2026, 12:00 am', $decoded['dateOnly']);
         Assert::assertSame('', $decoded['invalid']);
         Assert::assertSame('', $decoded['rolled']);
+        Assert::assertSame('', $decoded['badMinute']);
+    }
+
+    public function test_other_format_display_datetime_json_payloads_use_iso8601(): void
+    {
+        $eoi = file_get_contents(base_path('app/Http/Controllers/CRM/ClientEoiRoiController.php'));
+        Assert::assertNotFalse($eoi);
+        Assert::assertStringContainsString("email_sent_at' => \$eoi->confirmation_email_sent_at?->toIso8601String()", $eoi);
+        Assert::assertStringNotContainsString("email_sent_at' => \$eoi->confirmation_email_sent_at?->format('d/m/Y H:i')", $eoi);
+        Assert::assertStringContainsString("created_at' => \$doc->created_at?->toIso8601String()", $eoi);
+
+        $docs = file_get_contents(base_path('app/Http/Controllers/CRM/Clients/ClientDocumentsController.php'));
+        Assert::assertNotFalse($docs);
+        Assert::assertStringContainsString("uploaded_at'] = \$obj->created_at?->toIso8601String()", $docs);
+        Assert::assertStringNotContainsString("uploaded_at'] = \$obj->created_at ? \$obj->created_at->format('d/m/Y H:i')", $docs);
+
+        $eoiJs = file_get_contents(base_path('public/js/clients/eoi-roi.js'));
+        Assert::assertNotFalse($eoiJs);
+        Assert::assertStringContainsString(
+            'formatDisplayDateTime(eoi.email_sent_at) || eoi.email_sent_at',
+            $eoiJs
+        );
     }
 
     private function runNodeScript(string $script): string

@@ -50,7 +50,7 @@
             return '';
         }
         if (typeof window.formatDisplayDateTime === 'function') {
-            return window.formatDisplayDateTime(timestamp);
+            return window.formatDisplayDateTime(timestamp) || '';
         }
         const date = new Date(timestamp);
         if (Number.isNaN(date.getTime())) {

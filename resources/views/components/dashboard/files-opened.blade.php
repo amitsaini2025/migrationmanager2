@@ -8,7 +8,7 @@
 
 <section class="my-day-card my-day-opened" id="myDayOpenedSection">
     <h3>Files opened <span class="my-day-opened-badge" id="myDayOpenedCount">{{ count($opened) }}</span></h3>
-    <p class="my-day-lead">Tabs you opened today with no recorded work yet (under 2 minutes and no CRM write).</p>
+    <p class="my-day-lead">Opened today with no recorded work yet (&lt;2m, no CRM write).</p>
     <ul class="my-day-opened-list" id="myDayOpenedList">
         @forelse ($opened as $row)
             <li>

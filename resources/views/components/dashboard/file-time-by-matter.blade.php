@@ -2,7 +2,7 @@
 
 <section class="my-day-card">
     <h3>Time by matter</h3>
-    <p class="my-day-lead">Overlay minutes only. Click a row to filter the board.</p>
+    <p class="my-day-lead">Overlay minutes. Click a row to filter the board.</p>
     <div class="table-responsive">
         <table class="my-day-matter-table">
             <thead>

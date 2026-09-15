@@ -1,8 +1,8 @@
 @props(['items' => [], 'more' => 0])
 
 <section class="my-day-card">
-    <h3>Already in CRM — do not log again</h3>
-    <p class="my-day-lead">Emails, documents, bookings, file notes, and completed actions from today.</p>
+    <h3>Already in CRM</h3>
+    <p class="my-day-lead">Do not log again — emails, docs, bookings, notes, completed actions.</p>
     <div id="myDayCrmList">
         @forelse($items as $item)
             <div class="my-day-crm-item" data-event-key="{{ $item['key'] ?? '' }}">

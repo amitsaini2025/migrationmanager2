@@ -8,7 +8,7 @@
 
 <section class="my-day-card my-day-auto" id="myDayAutoSection">
     <h3>Time on files (auto)</h3>
-    <p class="my-day-lead">Focused time while a client, lead, or company file tab was open. Editable minutes; posts to the feed when recorded.</p>
+    <p class="my-day-lead">Focused tab time on open files. Edit minutes; posts when recorded.</p>
     <div id="myDayAutoList">
         @forelse ($auto as $row)
             <div class="my-day-auto-row" data-session-id="{{ $row['id'] }}">

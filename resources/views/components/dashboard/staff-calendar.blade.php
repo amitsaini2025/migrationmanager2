@@ -18,7 +18,7 @@
                     @icon('fa-calendar-days')
                     Calendar
                 </h2>
-                <p class="dashboard-calendar-subtitle">Website bookings only. Choose a calendar to view its appointments.</p>
+                <p class="dashboard-calendar-subtitle">Website bookings. Pick a calendar to view appointments.</p>
             </div>
             <div class="dashboard-calendar-header-right">
                 <div class="dashboard-calendar-stats">

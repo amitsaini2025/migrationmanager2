@@ -27,10 +27,10 @@
     <div class="my-day-head">
         <div>
             <h2>My day</h2>
-            <p class="my-day-sub">CRM events you already logged, plus optional time-on-file for work the CRM cannot see. Workload cards above stay CRM-only.</p>
+            <p class="my-day-sub">Logged CRM work + optional file time. Queue above stays CRM-only.</p>
         </div>
         <div class="my-day-stamp">
-            <span class="my-day-hours">Hours in CRM <b id="myDayHoursLabel">{{ $hoursLabel }}</b> <span>· header only</span></span>
+            <span class="my-day-hours">Hours in CRM <b id="myDayHoursLabel">{{ $hoursLabel }}</b></span>
         </div>
     </div>
 
@@ -52,10 +52,11 @@
             <x-dashboard.file-time-tally :tally="$tally" />
             <section class="my-day-card">
                 <h3>End-of-day summary</h3>
-                <p class="my-day-lead">CRM events + overlay time. Copy instead of rewriting the day in Teams.</p>
+                <p class="my-day-lead">Copy for Teams instead of rewriting the day. Copy also saves this date for admin review.</p>
                 <pre class="my-day-eod" id="myDayEod" aria-live="polite">Loading summary…</pre>
+                <p class="my-day-hint" id="myDayEodSaved" hidden></p>
                 <button type="button" class="my-day-btn" id="myDayCopyBtn">Copy summary</button>
-                <p class="my-day-hint">Overlay posts to the matter feed automatically on Done. Admin / no file stays on My day only.</p>
+                <p class="my-day-hint">Done posts to the matter feed. Admin / no file stays here only.</p>
             </section>
         </div>
     </div>

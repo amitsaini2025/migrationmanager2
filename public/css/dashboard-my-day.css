@@ -7,8 +7,8 @@
     --my-day-brand: var(--primary-color, #12457e);
     --my-day-brand-lite: #1a6fd4;
     --my-day-surface: var(--card-bg-color, #fff);
-    --my-day-radius: 14px;
-    margin: 22px 0 28px;
+    --my-day-radius: 10px;
+    margin: 14px 0 18px;
     color: var(--my-day-ink);
 }
 
@@ -16,14 +16,14 @@
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
     flex-wrap: wrap;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
 }
 
 .my-day-head h2 {
-    margin: 0 0 4px;
-    font-size: 1.25rem;
+    margin: 0 0 2px;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--my-day-brand);
 }
@@ -33,19 +33,19 @@
 .my-day-hint {
     margin: 0;
     color: var(--my-day-muted);
-    font-size: 0.875rem;
+    font-size: 0.8rem;
 }
 
-.my-day-lead { margin: 0 0 12px; }
-.my-day-hint { margin-top: 10px; font-size: 0.8rem; }
+.my-day-lead { margin: 0 0 8px; }
+.my-day-hint { margin-top: 6px; font-size: 0.75rem; }
 
 .my-day-hours {
     display: inline-block;
     background: var(--my-day-surface);
     border: 1px solid var(--my-day-line);
-    border-radius: 20px;
-    padding: 4px 12px;
-    font-size: 0.85rem;
+    border-radius: 16px;
+    padding: 3px 10px;
+    font-size: 0.8rem;
 }
 
 .my-day-hours span { color: var(--my-day-muted); }
@@ -53,11 +53,11 @@
 .my-day-split {
     display: grid;
     grid-template-columns: 1.15fr 0.85fr;
-    gap: 18px;
+    gap: 12px;
     align-items: start;
 }
 
-.my-day-split--bottom { margin-top: 18px; }
+.my-day-split--bottom { margin-top: 12px; }
 
 @media (max-width: 1040px) {
     .my-day-split { grid-template-columns: 1fr; }
@@ -67,23 +67,23 @@
     background: var(--my-day-surface);
     border: 1px solid var(--my-day-line);
     border-radius: var(--my-day-radius);
-    box-shadow: 0 1px 2px rgba(20, 40, 70, 0.06), 0 6px 18px rgba(20, 40, 70, 0.05);
-    padding: 16px 18px;
+    box-shadow: 0 1px 2px rgba(20, 40, 70, 0.05);
+    padding: 12px 14px;
 }
 
 .my-day-card h3 {
-    margin: 0 0 4px;
-    font-size: 0.95rem;
+    margin: 0 0 2px;
+    font-size: 0.9rem;
     font-weight: 600;
 }
 
-.my-day-side { display: flex; flex-direction: column; gap: 14px; }
+.my-day-side { display: flex; flex-direction: column; gap: 10px; }
 
 .my-day-crm-item {
     display: grid;
-    grid-template-columns: 100px 1fr auto;
-    gap: 10px;
-    padding: 10px 0;
+    grid-template-columns: 88px 1fr auto;
+    gap: 8px;
+    padding: 7px 0;
     border-bottom: 1px solid #f1f5fa;
     align-items: start;
 }

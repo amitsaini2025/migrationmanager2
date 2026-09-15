@@ -1,6 +1,6 @@
 <section class="my-day-card">
     <h3>Time on a file</h3>
-    <p class="my-day-lead">Optional clock while you work. At Done you confirm approx minutes. One timer at a time.</p>
+    <p class="my-day-lead">For work CRM cannot see. Confirm minutes at Done. One timer at a time.</p>
     <div class="my-day-capture">
         <div class="my-day-picker">
             <input type="text" id="myDayMatterSearch" class="form-control" placeholder="Matter ref, client, subclass…" autocomplete="off" aria-label="Search matter">

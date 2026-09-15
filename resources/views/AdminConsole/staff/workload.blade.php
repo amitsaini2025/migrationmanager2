@@ -23,7 +23,7 @@
                             </form>
                         </div>
                         <div class="card-body">
-                            <p class="text-muted mb-3">{{ $dateLabel }} ({{ config('app.timezone') }}) — active staff only. Pending is open queue as of today. My day is the same copy-summary staff see on the dashboard for that date (not stored; generated on open).</p>
+                            <p class="text-muted mb-3">{{ $dateLabel }} ({{ config('app.timezone') }}) — active staff only. Pending is open queue as of today. My day Summary uses the saved snapshot for that date (Copy on dashboard, or 23:55 Melbourne job). Opening a missing day saves a backfill from live data.</p>
                             <div class="table-responsive">
                                 <table class="table table-striped table-sm">
                                     <thead>
@@ -95,6 +95,7 @@
                 </button>
             </div>
             <div class="modal-body">
+                <p class="text-muted small mb-2" id="staffMyDayMeta" hidden></p>
                 <pre id="staffMyDayText" class="mb-0" style="white-space:pre-wrap;font-size:0.9rem;max-height:60vh;overflow:auto;">Loading…</pre>
             </div>
             <div class="modal-footer">
@@ -112,6 +113,7 @@
     var modalEl = document.getElementById('staffMyDayModal');
     var titleEl = document.getElementById('staffMyDayModalLabel');
     var textEl = document.getElementById('staffMyDayText');
+    var metaEl = document.getElementById('staffMyDayMeta');
     var copyBtn = document.getElementById('staffMyDayCopy');
     var lastText = '';
 
@@ -133,6 +135,10 @@
             var name = btn.getAttribute('data-name') || 'Staff';
             titleEl.textContent = name + ' — My day';
             textEl.textContent = 'Loading…';
+            if (metaEl) {
+                metaEl.hidden = true;
+                metaEl.textContent = '';
+            }
             lastText = '';
             showModal();
             fetch(url, {
@@ -157,6 +163,12 @@
             }).then(function (data) {
                 lastText = (data.summary && data.summary.text) || '(none)';
                 textEl.textContent = lastText;
+                if (metaEl && data.summary && data.summary.saved_at) {
+                    var when = new Date(data.summary.saved_at);
+                    var whenLabel = Number.isNaN(when.getTime()) ? data.summary.saved_at : when.toLocaleString();
+                    metaEl.textContent = 'Saved ' + whenLabel + (data.summary.source ? ' (' + data.summary.source + ')' : '');
+                    metaEl.hidden = false;
+                }
             }).catch(function (err) {
                 textEl.textContent = err && err.message ? err.message : 'Could not load summary';
             });

@@ -602,6 +602,22 @@
         });
     }
 
+    function markSaved(iso) {
+        var el = document.getElementById('myDayEodSaved');
+        if (!el) {
+            return;
+        }
+        if (!iso) {
+            el.hidden = true;
+            el.textContent = '';
+            return;
+        }
+        var when = new Date(iso);
+        var label = Number.isNaN(when.getTime()) ? iso : when.toLocaleString();
+        el.textContent = 'Saved ' + label;
+        el.hidden = false;
+    }
+
     function refreshSummary() {
         api(routes.copySummary, { method: 'GET' }).then(function (data) {
             var pre = document.getElementById('myDayEod');
@@ -613,12 +629,13 @@
 
     function setupCopy() {
         document.getElementById('myDayCopyBtn')?.addEventListener('click', function () {
-            api(routes.copySummary, { method: 'GET' }).then(function (data) {
+            api(routes.saveSummary, { method: 'POST', body: {} }).then(function (data) {
                 var text = data.summary?.text || '';
                 var pre = document.getElementById('myDayEod');
                 if (pre) {
                     pre.textContent = text;
                 }
+                markSaved(data.summary?.saved_at);
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     return navigator.clipboard.writeText(text);
                 }
@@ -632,7 +649,7 @@
                 var btn = document.getElementById('myDayCopyBtn');
                 if (btn) {
                     var old = btn.textContent;
-                    btn.textContent = 'Copied';
+                    btn.textContent = 'Copied & saved';
                     setTimeout(function () { btn.textContent = old; }, 1500);
                 }
             }).catch(showError);

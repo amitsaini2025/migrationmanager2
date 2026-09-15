@@ -123,6 +123,12 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping(5)
             ->runInBackground();
 
+        $schedule->command('my-day:snapshot-summaries')
+            ->dailyAt('23:55')
+            ->timezone('Australia/Melbourne')
+            ->withoutOverlapping(30)
+            ->appendOutputTo(storage_path('logs/my-day-snapshot-summaries.log'));
+
         // Appointment Sync System - Send reminders daily at 9 AM
         $schedule->command('booking:send-reminders')
             ->dailyAt('09:00')

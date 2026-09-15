@@ -4,10 +4,8 @@ namespace App\Http\Controllers\AdminConsole;
 
 use App\Http\Controllers\Controller;
 use App\Models\Staff;
-use App\Services\StaffDayCrmEventsService;
-use App\Services\StaffDayHoursService;
-use App\Services\StaffFileTimeService;
-use App\Services\StaffMatterSessionService;
+use App\Models\StaffDaySummary;
+use App\Services\StaffDaySummaryService;
 use App\Services\StaffWorkloadService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -18,10 +16,7 @@ class StaffWorkloadController extends Controller
 {
     public function __construct(
         protected StaffWorkloadService $staffWorkloadService,
-        protected StaffFileTimeService $staffFileTimeService,
-        protected StaffDayCrmEventsService $staffDayCrmEventsService,
-        protected StaffDayHoursService $staffDayHoursService,
-        protected StaffMatterSessionService $staffMatterSessionService,
+        protected StaffDaySummaryService $staffDaySummaryService,
     ) {
         $this->middleware('auth:admin');
         $this->middleware('adminconsole');
@@ -43,14 +38,15 @@ class StaffWorkloadController extends Controller
     public function myDay(Request $request, Staff $staff): JsonResponse
     {
         $day = $this->parseDay($request->query('date'));
+        $stored = $this->staffDaySummaryService->find((int) $staff->id, $day);
 
-        $summary = $this->staffFileTimeService->copySummary(
-            (int) $staff->id,
-            $this->staffDayCrmEventsService,
-            $this->staffDayHoursService,
-            $this->staffMatterSessionService,
-            $day,
-        );
+        if ($stored === null) {
+            $stored = $this->staffDaySummaryService->snapshotStaff(
+                (int) $staff->id,
+                StaffDaySummary::SOURCE_BACKFILL,
+                $day,
+            );
+        }
 
         return response()->json([
             'success' => true,
@@ -58,7 +54,7 @@ class StaffWorkloadController extends Controller
                 'id' => (int) $staff->id,
                 'name' => trim(($staff->first_name ?? '').' '.($staff->last_name ?? '')),
             ],
-            'summary' => $summary,
+            'summary' => $this->staffDaySummaryService->payload($stored),
         ]);
     }
 

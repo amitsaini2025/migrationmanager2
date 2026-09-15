@@ -86,8 +86,8 @@
     </div>
 
     <p class="workload-legend">
-        Queue = assigned actions still open. Done = completed today (other vs Call). Updates = action updates today.
-        Contact notes live in My day — Already in CRM.
+        Queue = open assigned actions. Done = completed today (other vs Call). Updates = action updates.
+        Contact notes are in My day.
     </p>
 </section>
 

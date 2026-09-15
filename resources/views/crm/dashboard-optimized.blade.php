@@ -172,7 +172,7 @@
 
 @push('styles')
 @once
-<link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v={{ @filemtime(public_path('css/dashboard.css')) ?: time() }}">
 <link rel="stylesheet" href="{{ asset('css/dashboard-calendar.css') }}?v={{ @filemtime(public_path('css/dashboard-calendar.css')) ?: time() }}">
 <link rel="stylesheet" href="{{ asset('css/dashboard-my-day.css') }}?v={{ @filemtime(public_path('css/dashboard-my-day.css')) ?: time() }}">
 <style>
@@ -184,7 +184,7 @@
 /* Microsoft To Do Style Task Widget */
 .todo-container {
     background: #fafafa;
-    border-radius: 12px;
+    border-radius: 10px;
     overflow: hidden;
     display: flex;
     flex-direction: column; /* Use flexbox for internal layout */
@@ -194,7 +194,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px;
+    padding: 12px 14px;
     background: white;
     border-bottom: 1px solid #e0e0e0;
 }
@@ -250,7 +250,7 @@
     background: white;
     flex: 1; /* Allow container to grow and fill available space */
     min-height: 0; /* Important for flex children with overflow */
-    max-height: 500px; /* Prevent containers from becoming extremely long */
+    max-height: 420px; /* Prevent containers from becoming extremely long */
     overflow-y: auto; /* Enable scrolling when content exceeds container */
 }
 
@@ -992,6 +992,7 @@
         index: "{{ route('dashboard.my-day') }}",
         matterSearch: "{{ route('dashboard.my-day.matter-search') }}",
         copySummary: "{{ route('dashboard.my-day.copy-summary') }}",
+        saveSummary: "{{ route('dashboard.my-day.copy-summary.save') }}",
         start: "{{ route('dashboard.my-day.file-time.start') }}",
         fileTimeBase: "{{ url('/dashboard/my-day/file-time') }}",
         sessionsBase: "{{ url('/dashboard/my-day/sessions') }}"

@@ -267,10 +267,10 @@
                     '" data-event="' + encodeURIComponent(JSON.stringify(payload)) + '">';
                 html += '<div class="dashboard-upcoming-item-time">' + escapeHtml(formatEventTime(event.start || props.starts_at, tz)) + '</div>';
                 html += '<div class="dashboard-upcoming-item-body">';
-                html += '<div class="dashboard-upcoming-item-meta">';
+                html += '<div class="dashboard-upcoming-item-main">';
+                html += '<div class="dashboard-upcoming-title">' + escapeHtml(event.title || props.client_name || 'Appointment') + '</div>';
                 html += '<span class="dashboard-upcoming-type dashboard-upcoming-type--' + escapeHtml(status) + '">' + escapeHtml(props.status_label || props.status || 'Appointment') + '</span>';
                 html += '</div>';
-                html += '<div class="dashboard-upcoming-title">' + escapeHtml(event.title || props.client_name || 'Appointment') + '</div>';
                 if (props.location) {
                     html += '<div class="dashboard-upcoming-sub">' + escapeHtml(props.location) + '</div>';
                 }

@@ -74,14 +74,6 @@
             </div>
         </div>
 
-        <div class="dashboard-calendar-legend" aria-label="Appointment status colours">
-            <span class="dashboard-cal-legend-item"><span class="dashboard-cal-dot dashboard-cal-dot--awaiting-confirmation"></span> Pending</span>
-            <span class="dashboard-cal-legend-item"><span class="dashboard-cal-dot dashboard-cal-dot--pending"></span> Payment Pending</span>
-            <span class="dashboard-cal-legend-item"><span class="dashboard-cal-dot dashboard-cal-dot--paid"></span> Paid</span>
-            <span class="dashboard-cal-legend-item"><span class="dashboard-cal-dot dashboard-cal-dot--confirmed"></span> Confirmed</span>
-            <span class="dashboard-cal-legend-item"><span class="dashboard-cal-dot dashboard-cal-dot--completed"></span> Completed</span>
-        </div>
-
         <div class="dashboard-calendar-body">
             <div class="dashboard-calendar-wrapper">
                 <div

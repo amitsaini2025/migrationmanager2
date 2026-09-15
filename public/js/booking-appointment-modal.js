@@ -188,8 +188,10 @@
             hour12: true,
         });
         var duration = props.duration_minutes || 15;
-        if (event.end) {
-            var diffMinutes = Math.round((event.end.getTime() - event.start.getTime()) / (1000 * 60));
+        var startMs = event.start ? new Date(event.start).getTime() : NaN;
+        var endMs = event.end ? new Date(event.end).getTime() : NaN;
+        if (!isNaN(startMs) && !isNaN(endMs)) {
+            var diffMinutes = Math.round((endMs - startMs) / (1000 * 60));
             if (diffMinutes > 0 && diffMinutes < 1440) {
                 duration = diffMinutes;
             }

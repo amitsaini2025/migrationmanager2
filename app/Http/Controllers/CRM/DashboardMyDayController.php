@@ -65,7 +65,7 @@ class DashboardMyDayController extends Controller
     public function pause(Request $request, StaffFileTimeEntry $entry): JsonResponse
     {
         $staff = $this->staffOrAbort();
-        $clock = $request->integer('clock_seconds') ?: null;
+        $clock = $this->optionalClockSeconds($request);
         $updated = $this->fileTime->pause((int) $staff->id, $entry, $clock);
 
         return response()->json([
@@ -78,7 +78,7 @@ class DashboardMyDayController extends Controller
     public function park(Request $request, StaffFileTimeEntry $entry): JsonResponse
     {
         $staff = $this->staffOrAbort();
-        $clock = $request->integer('clock_seconds') ?: null;
+        $clock = $this->optionalClockSeconds($request);
         $updated = $this->fileTime->park((int) $staff->id, $entry, $clock);
 
         return response()->json([
@@ -255,5 +255,14 @@ class DashboardMyDayController extends Controller
             abort(404, 'Matter not found');
         }
         $this->ensureCrmRecordAccess((int) $matter->client_id);
+    }
+
+    protected function optionalClockSeconds(Request $request): ?int
+    {
+        if (! $request->exists('clock_seconds')) {
+            return null;
+        }
+
+        return $request->integer('clock_seconds');
     }
 }

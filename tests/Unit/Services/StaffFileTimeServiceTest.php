@@ -104,6 +104,42 @@ class StaffFileTimeServiceTest extends TestCase
         $this->assertSame(1, StaffFileTimeEntry::query()->where('is_running', true)->count());
     }
 
+    #[Test]
+    public function reopen_continues_from_confirmed_minutes_and_done_updates_same_feed_row(): void
+    {
+        $today = Carbon::parse('2026-09-15 13:00:00', 'Australia/Melbourne');
+        Carbon::setTestNow($today);
+
+        $this->insertStaff(1);
+        $this->insertClient(10);
+        $this->insertMatter(5, 10, 'JARN2504926-485_1');
+
+        $entry = $this->service->start(1, [
+            'kind' => StaffFileTimeEntry::KIND_DRAFT,
+            'title' => 'Nomination letter',
+            'client_matter_id' => 5,
+        ]);
+        $done = $this->service->done(1, $entry->fresh(), 11);
+        $feedId = $done->activities_log_id;
+
+        Carbon::setTestNow($today->copy()->addMinutes(5));
+        $reopened = $this->service->reopen(1, $done->fresh());
+
+        $this->assertSame(StaffFileTimeEntry::STATUS_DOING, $reopened->status);
+        $this->assertTrue((bool) $reopened->is_running);
+        $this->assertSame(11 * 60, (int) $reopened->clock_seconds);
+        $this->assertNull($reopened->confirmed_minutes);
+        $this->assertSame($feedId, $reopened->activities_log_id);
+        $this->assertFalse($this->service->serialize($reopened)['posted']);
+
+        $again = $this->service->done(1, $reopened->fresh(), 18);
+
+        $this->assertSame($feedId, $again->activities_log_id);
+        $this->assertSame(1, DB::table('activities_logs')->count());
+        $log = DB::table('activities_logs')->where('id', $feedId)->first();
+        $this->assertStringContainsString('logged 18m', (string) $log->subject);
+    }
+
     private function createSchema(): void
     {
         Schema::dropIfExists('staff_file_time_entries');

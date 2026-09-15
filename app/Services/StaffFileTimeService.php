@@ -57,8 +57,9 @@ class StaffFileTimeService
      */
     public function start(int $staffId, array $data): StaffFileTimeEntry
     {
-        $isAdmin = (bool) ($data['admin'] ?? false);
-        $matterId = isset($data['client_matter_id']) ? (int) $data['client_matter_id'] : null;
+        $isAdmin = filter_var($data['admin'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $matterId = isset($data['client_matter_id']) ? (int) $data['client_matter_id'] : 0;
+        $matterId = $matterId > 0 ? $matterId : null;
 
         if (! $isAdmin && $matterId === null) {
             throw ValidationException::withMessages([
@@ -184,12 +185,16 @@ class StaffFileTimeService
         return DB::transaction(function () use ($staffId, $entry) {
             $this->pauseAllRunning($staffId, $entry->id);
 
+            $fromConfirmed = $entry->confirmed_minutes !== null
+                ? ((int) $entry->confirmed_minutes) * 60
+                : 0;
+            $entry->clock_seconds = max((int) $entry->clock_seconds, $fromConfirmed);
             $entry->status = StaffFileTimeEntry::STATUS_DOING;
             $entry->confirmed_minutes = null;
             $entry->completed_at = null;
             $entry->is_running = true;
             $entry->started_at = now();
-            // Keep activities_log_id history; do not delete feed row.
+            // Keep activities_log_id; Done updates that feed row. Start a new block for a separate day entry.
             $entry->save();
 
             return $entry->fresh();
@@ -207,7 +212,7 @@ class StaffFileTimeService
             $entry->title = trim((string) $data['title']);
         }
 
-        if (($data['admin'] ?? false) === true) {
+        if (filter_var($data['admin'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $entry->client_matter_id = null;
             $entry->client_id = null;
         } elseif (array_key_exists('client_matter_id', $data) && $data['client_matter_id']) {
@@ -373,7 +378,7 @@ class StaffFileTimeService
             'client_id' => $entry->client_id,
             'matter_no' => $matterNo,
             'is_admin' => $entry->isAdmin(),
-            'posted' => $entry->isPosted(),
+            'posted' => $entry->status === StaffFileTimeEntry::STATUS_DONE && $entry->isPosted(),
             'activities_log_id' => $entry->activities_log_id,
             'started_at' => optional($entry->started_at)?->toIso8601String(),
             'completed_at' => optional($entry->completed_at)?->toIso8601String(),
@@ -387,8 +392,7 @@ class StaffFileTimeService
         $ref = $matter?->client_unique_matter_no ?? ('matter #'.$entry->client_matter_id);
         $minutes = (int) $entry->confirmed_minutes;
         $kindLabel = $entry->kindLabel();
-
-        return ActivitiesLog::query()->create([
+        $payload = [
             'client_id' => $entry->client_id,
             'created_by' => $staffId,
             'subject' => "logged {$minutes}m {$kindLabel} on {$ref}",
@@ -397,7 +401,19 @@ class StaffFileTimeService
             'use_for' => 'matter',
             'task_status' => 0,
             'pin' => 0,
-        ]);
+        ];
+
+        if ($entry->activities_log_id) {
+            $existing = ActivitiesLog::query()->find($entry->activities_log_id);
+            if ($existing) {
+                $existing->fill($payload);
+                $existing->save();
+
+                return $existing;
+            }
+        }
+
+        return ActivitiesLog::query()->create($payload);
     }
 
     protected function pauseAllRunning(int $staffId, ?int $exceptId = null): void
@@ -428,7 +444,7 @@ class StaffFileTimeService
             return $base;
         }
 
-        return $base + max(0, (int) $entry->started_at->diffInSeconds(now()));
+        return $base + max(0, now()->getTimestamp() - $entry->started_at->getTimestamp());
     }
 
     protected function assertOwnedOpen(int $staffId, StaffFileTimeEntry $entry): void

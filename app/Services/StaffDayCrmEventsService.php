@@ -200,7 +200,6 @@ class StaffDayCrmEventsService
             ->whereBetween('created_at', [$start, $end])
             ->where(function ($q) {
                 $q->where('activity_type', 'stage')
-                    ->orWhere('activity_type', 'email')
                     ->orWhere('activity_type', 'like', 'eoi_%')
                     ->orWhere('subject', 'like', 'completed action for%')
                     ->orWhere('subject', 'like', 'Updated action for%');
@@ -221,8 +220,6 @@ class StaffDayCrmEventsService
                     $kind = 'Action updated';
                 } elseif ($type === 'stage') {
                     $kind = 'Stage';
-                } elseif ($type === 'email') {
-                    $kind = 'Email';
                 } elseif (str_starts_with($type, 'eoi_')) {
                     $kind = 'EOI';
                 } else {

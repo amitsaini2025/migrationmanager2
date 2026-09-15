@@ -7491,6 +7491,9 @@ success: function(response) {
                         } else if (activityType === 'document') {
                             subjectIcon = crmI('fas fa-file-alt');
                             iconClass = '';
+                        } else if (activityType === 'file_time') {
+                            subjectIcon = crmI('fas fa-clock');
+                            iconClass = 'feed-icon-file-time';
                         } else if (/uploaded email:/i.test(subjectLower)) {
                             subjectIcon = crmI('fas fa-envelope');
                             iconClass = 'feed-icon-email';

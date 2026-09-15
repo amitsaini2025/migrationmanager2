@@ -83,6 +83,44 @@ class StaffDayCrmEventsServiceTest extends TestCase
         $this->assertNotContains('Other staff', $titles);
     }
 
+    #[Test]
+    public function skips_feed_email_when_email_logs_already_cover_sends(): void
+    {
+        $today = Carbon::parse('2026-09-15 14:00:00', 'Australia/Melbourne');
+        Carbon::setTestNow($today);
+
+        DB::table('email_logs')->insert([
+            'id' => 1,
+            'user_id' => 1,
+            'subject' => 'Staff sent mail',
+            'mail_body_type' => 'sent',
+            'conversion_type' => null,
+            'created_at' => $today,
+            'updated_at' => $today,
+        ]);
+
+        DB::table('activities_logs')->insert([
+            'id' => 11,
+            'client_id' => 1,
+            'created_by' => 1,
+            'subject' => 'uploaded email: Staff sent mail',
+            'activity_type' => 'email',
+            'task_group' => null,
+            'task_status' => 0,
+            'pin' => 0,
+            'created_at' => $today,
+            'updated_at' => $today,
+        ]);
+
+        $result = $this->service->forStaff(1, $today);
+        $emailTitles = collect($result['items'])
+            ->filter(fn (array $row): bool => str_contains((string) $row['kind'], 'Email'))
+            ->pluck('title')
+            ->all();
+
+        $this->assertSame(['Staff sent mail'], $emailTitles);
+    }
+
     private function createSchema(): void
     {
         foreach (['email_logs', 'documents', 'booking_appointments', 'sms_logs', 'notes', 'activities_logs', 'client_matters'] as $table) {

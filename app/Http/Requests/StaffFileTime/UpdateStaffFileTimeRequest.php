@@ -11,6 +11,13 @@ class UpdateStaffFileTimeRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->exists('admin')) {
+            $this->merge(['admin' => $this->boolean('admin')]);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */

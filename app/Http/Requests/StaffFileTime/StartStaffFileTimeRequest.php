@@ -5,12 +5,20 @@ namespace App\Http\Requests\StaffFileTime;
 use App\Models\StaffFileTimeEntry;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StartStaffFileTimeRequest extends FormRequest
 {
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->exists('admin')) {
+            $this->merge(['admin' => $this->boolean('admin')]);
+        }
     }
 
     /**
@@ -26,14 +34,16 @@ class StartStaffFileTimeRequest extends FormRequest
         ];
     }
 
-    public function withValidator($validator): void
+    public function after(): array
     {
-        $validator->after(function ($validator): void {
-            $admin = filter_var($this->input('admin'), FILTER_VALIDATE_BOOLEAN);
-            $matterId = (int) $this->input('client_matter_id');
-            if (! $admin && $matterId < 1) {
-                $validator->errors()->add('client_matter_id', 'Choose a matter or Admin / no file.');
-            }
-        });
+        return [
+            function (Validator $validator): void {
+                $admin = $this->boolean('admin');
+                $matterId = (int) $this->input('client_matter_id');
+                if (! $admin && $matterId < 1) {
+                    $validator->errors()->add('client_matter_id', 'Choose a matter or Admin / no file.');
+                }
+            },
+        ];
     }
 }

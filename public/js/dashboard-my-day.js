@@ -276,8 +276,14 @@
             bar.innerHTML = '';
             return;
         }
+        var row = (state.byMatter || []).find(function (r) {
+            return String(r.key) === String(state.filterKey);
+        });
+        var label = row && row.matter_no
+            ? row.matter_no
+            : (state.filterKey === 'admin' ? 'Admin / no file' : String(state.filterKey));
         bar.hidden = false;
-        bar.innerHTML = 'Filtered to <b>' + escapeHtml(String(state.filterKey === 'admin' ? 'Admin / no file' : state.filterKey)) + '</b> <button type="button" id="myDayClearFilter">Clear</button>';
+        bar.innerHTML = 'Filtered to <b>' + escapeHtml(label) + '</b> <button type="button" id="myDayClearFilter">Clear</button>';
         document.getElementById('myDayClearFilter')?.addEventListener('click', function () {
             state.filterKey = null;
             renderFilterbar();

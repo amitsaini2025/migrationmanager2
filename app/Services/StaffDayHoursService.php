@@ -6,6 +6,7 @@ use App\Http\Middleware\TrackStaffCrmActivity;
 use App\Models\StaffLoginLog;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class StaffDayHoursService
 {
@@ -14,17 +15,19 @@ class StaffDayHoursService
     ) {}
 
     /**
-     * Hours-in-CRM header for today. Presence only — not an efficiency score.
+     * Hours-in-CRM header for the Melbourne calendar day — not last-login duration.
      *
-     * Formula: prefer today's TrackStaffCrmActivity row span (created_at → updated_at).
-     * Fallback: earliest login / presence message today → latest updated_at / sessions.last_activity.
+     * Span: first TrackStaffCrmActivity presence today → now (capped at end of day).
+     * Session last_activity can extend the end if later. Login-log "Logged in" is ignored.
      *
      * @return array{label: string, minutes: int, seconds: int, source: string, date: string}
      */
     public function forStaff(int $staffId, ?Carbon $day = null): array
     {
         [$start, $end] = $this->workloadService->dayBounds($day);
+        $tz = (string) config('app.timezone');
         $dateKey = $start->toDateString();
+        $now = now($tz);
 
         $presence = StaffLoginLog::query()
             ->where('user_id', $staffId)
@@ -33,41 +36,39 @@ class StaffDayHoursService
             ->orderBy('created_at')
             ->first();
 
-        if ($presence) {
-            $from = Carbon::parse($presence->created_at)->timezone((string) config('app.timezone'));
-            $to = Carbon::parse($presence->updated_at ?? $presence->created_at)->timezone((string) config('app.timezone'));
-            if ($to->lt($from)) {
-                $to = $from->copy();
-            }
-            $seconds = max(0, (int) $from->diffInSeconds($to));
-
-            return $this->payload($seconds, 'presence', $dateKey);
+        if (! $presence) {
+            return $this->payload(0, 'none', $dateKey);
         }
 
-        $loginLike = StaffLoginLog::query()
-            ->where('user_id', $staffId)
-            ->whereBetween('created_at', [$start, $end])
-            ->orderBy('created_at')
-            ->get(['created_at', 'updated_at', 'message']);
+        $from = Carbon::parse($presence->created_at)->timezone($tz);
+        $to = Carbon::parse($presence->updated_at ?? $presence->created_at)->timezone($tz);
 
-        if ($loginLike->isNotEmpty()) {
-            $from = Carbon::parse($loginLike->first()->created_at);
-            $to = Carbon::parse($loginLike->max('updated_at') ?? $loginLike->last()->created_at);
+        if ($now->betweenIncluded($start, $end) && $now->gt($to)) {
+            $to = $now->copy();
+        }
+
+        if (Schema::hasTable('sessions')) {
             $sessionLast = DB::table('sessions')
                 ->where('user_id', $staffId)
                 ->max('last_activity');
             if ($sessionLast) {
-                $sessionAt = Carbon::createFromTimestamp((int) $sessionLast);
+                $sessionAt = Carbon::createFromTimestamp((int) $sessionLast)->timezone($tz);
                 if ($sessionAt->betweenIncluded($start, $end) && $sessionAt->gt($to)) {
                     $to = $sessionAt;
                 }
             }
-            $seconds = max(0, (int) $from->diffInSeconds($to));
-
-            return $this->payload($seconds, 'login_logs', $dateKey);
         }
 
-        return $this->payload(0, 'none', $dateKey);
+        if ($to->gt($end)) {
+            $to = $end->copy();
+        }
+        if ($to->lt($from)) {
+            $to = $from->copy();
+        }
+
+        $seconds = max(0, $to->getTimestamp() - $from->getTimestamp());
+
+        return $this->payload($seconds, 'today_presence', $dateKey);
     }
 
     /**

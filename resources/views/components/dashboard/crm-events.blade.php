@@ -13,7 +13,12 @@
                         <div class="my-day-crm-ref">{{ $item['ref'] }}</div>
                     @endif
                 </div>
-                <span class="my-day-tag">{{ $item['time'] ?? '' }}</span>
+                <div class="my-day-crm-meta">
+                    <span class="my-day-tag">{{ $item['time'] ?? '' }}</span>
+                    @if(!empty($item['minutes']))
+                        <span class="my-day-mins-chip">{{ (int) $item['minutes'] }}m</span>
+                    @endif
+                </div>
             </div>
         @empty
             <p class="my-day-empty">No CRM events logged by you today yet.</p>

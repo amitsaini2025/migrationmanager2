@@ -237,6 +237,12 @@
 }
 .my-day-crm-title { font-size: 0.9rem; font-weight: 500; }
 .my-day-crm-ref { font-size: 0.75rem; color: #5b3fd6; font-weight: 600; margin-top: 2px; }
+.my-day-crm-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
 .my-day-tag {
     font-size: 0.7rem;
     font-weight: 600;
@@ -560,7 +566,7 @@
 
 .my-day-mins-chip {
     display: inline-block;
-    margin-left: 8px;
+    margin-left: 0;
     padding: 1px 7px;
     border-radius: 999px;
     background: #e8f5ef;
@@ -568,6 +574,7 @@
     font-size: 0.72rem;
     font-weight: 600;
     vertical-align: middle;
+    white-space: nowrap;
 }
 
 .my-day-filterbar {

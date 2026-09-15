@@ -257,6 +257,89 @@ class StaffFileTimeServiceTest extends TestCase
     }
 
     #[Test]
+    public function attach_minutes_to_crm_events_uses_manual_logs_when_no_auto_split(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-15 17:00:00', 'Australia/Melbourne'));
+        $this->insertStaff(1);
+        $this->insertClient(10);
+        $this->insertMatter(5, 10, 'JARN2504926-485_1');
+
+        $this->service->logCompleted(1, [
+            'kind' => StaffFileTimeEntry::KIND_IMMI,
+            'title' => 'Immi portal check',
+            'confirmed_minutes' => 18,
+            'client_matter_id' => 5,
+        ]);
+
+        $board = $this->service->boardForStaff(1);
+        $enriched = $this->service->attachMinutesToCrmEvents(
+            [
+                'items' => [
+                    [
+                        'key' => 'note:99',
+                        'kind' => 'Call note',
+                        'title' => 'Matter Discussion',
+                        'ref' => 'JARN2504926-485_1',
+                        'time' => '3:03 pm',
+                        'client_id' => 10,
+                        'client_matter_id' => 5,
+                    ],
+                    [
+                        'key' => 'note:100',
+                        'kind' => 'Email',
+                        'title' => 'Other matter',
+                        'ref' => 'OTHER',
+                        'time' => '2:00 pm',
+                        'client_id' => 99,
+                        'client_matter_id' => 88,
+                    ],
+                ],
+                'more' => 0,
+            ],
+            ['auto' => [], 'opened' => [], 'event_minutes' => []],
+            $board,
+        );
+
+        $this->assertSame(18, $enriched['items'][0]['minutes'] ?? null);
+        $this->assertArrayNotHasKey('minutes', $enriched['items'][1]);
+    }
+
+    #[Test]
+    public function attach_minutes_to_crm_events_prefers_auto_event_minutes(): void
+    {
+        $enriched = $this->service->attachMinutesToCrmEvents(
+            [
+                'items' => [
+                    [
+                        'key' => 'note:1',
+                        'kind' => 'In-person note',
+                        'title' => 'Matter Discussion',
+                        'ref' => 'Somnath',
+                        'time' => '4:08 pm',
+                        'client_id' => 22,
+                        'client_matter_id' => null,
+                    ],
+                ],
+                'more' => 0,
+            ],
+            [
+                'auto' => [
+                    [
+                        'client_id' => 22,
+                        'client_matter_id' => null,
+                        'confirmed_minutes' => 40,
+                    ],
+                ],
+                'opened' => [],
+                'event_minutes' => ['note:1' => 25],
+            ],
+            ['entries' => []],
+        );
+
+        $this->assertSame(25, $enriched['items'][0]['minutes'] ?? null);
+    }
+
+    #[Test]
     public function second_start_pauses_previous_running_timer(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-09-15 12:00:00', 'Australia/Melbourne'));

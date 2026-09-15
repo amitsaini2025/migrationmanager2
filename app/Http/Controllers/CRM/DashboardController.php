@@ -51,9 +51,13 @@ class DashboardController extends Controller
         $dashboardData['calendarStats'] = ['today' => 0, 'this_week' => 0, 'upcoming' => 0];
         $dashboardData['workload'] = $this->staffWorkloadService->getDashboardWorkload($staffId);
         $dashboardData['myDayHours'] = $this->staffDayHoursService->forStaff($staffId);
-        $dashboardData['myDayCrmEvents'] = $this->staffDayCrmEventsService->forStaff($staffId);
         $board = $this->staffFileTimeService->boardForStaff($staffId);
         $board['sessions'] = $this->staffMatterSessionService->sessionsForBoard($staffId);
+        $dashboardData['myDayCrmEvents'] = $this->staffFileTimeService->attachMinutesToCrmEvents(
+            $this->staffDayCrmEventsService->forStaff($staffId),
+            $board['sessions'],
+            $board,
+        );
         $dashboardData['myDayBoard'] = $board;
         $dashboardData['bookingConsultants'] = $this->bookingConsultantsForModal();
 

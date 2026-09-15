@@ -41,13 +41,19 @@ class DashboardMyDayController extends Controller
         $staff = $this->staffOrAbort();
 
         $board = $this->fileTime->boardForStaff((int) $staff->id);
+        $sessions = $this->matterSessions->sessionsForBoard((int) $staff->id);
+        $crmEvents = $this->fileTime->attachMinutesToCrmEvents(
+            $this->crmEvents->forStaff((int) $staff->id),
+            $sessions,
+            $board,
+        );
 
         return response()->json([
             'success' => true,
             'hours' => $this->hours->forStaff((int) $staff->id),
-            'crm_events' => $this->crmEvents->forStaff((int) $staff->id),
+            'crm_events' => $crmEvents,
             'board' => array_merge($board, [
-                'sessions' => $this->matterSessions->sessionsForBoard((int) $staff->id),
+                'sessions' => $sessions,
             ]),
         ]);
     }

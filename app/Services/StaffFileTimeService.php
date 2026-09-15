@@ -483,6 +483,57 @@ class StaffFileTimeService
     }
 
     /**
+     * Attach resolved file-time minutes onto CRM event rows for My Day UI.
+     * Does not invent duration — only fills when auto sessions or manual logs exist.
+     *
+     * @param  array{items?: list<array<string, mixed>>, more?: int, total?: int, date?: string}  $crmEvents
+     * @param  array{auto?: list<array<string, mixed>>, opened?: list<array<string, mixed>>, event_minutes?: array<string, int>}  $sessionsPayload
+     * @param  array{entries?: list<array<string, mixed>>}  $board
+     * @return array{items: list<array<string, mixed>>, more?: int, total?: int, date?: string}
+     */
+    public function attachMinutesToCrmEvents(array $crmEvents, array $sessionsPayload, array $board = []): array
+    {
+        $items = $crmEvents['items'] ?? [];
+        if ($items === []) {
+            $crmEvents['items'] = [];
+
+            return $crmEvents;
+        }
+
+        $overlayDone = [];
+        foreach ($board['entries'] ?? [] as $entry) {
+            if (($entry['status'] ?? null) !== StaffFileTimeEntry::STATUS_DONE) {
+                continue;
+            }
+            if (! empty($entry['is_admin'])) {
+                continue;
+            }
+
+            $overlayDone[] = [
+                'minutes' => (int) ($entry['confirmed_minutes'] ?? 0),
+                'client_matter_id' => $entry['client_matter_id'] ?? null,
+                'client_id' => $entry['client_id'] ?? null,
+            ];
+        }
+
+        $resolved = $this->resolveCrmEventMinutes($items, $sessionsPayload, $overlayDone);
+
+        $crmEvents['items'] = array_map(static function (array $item) use ($resolved): array {
+            $key = (string) ($item['key'] ?? '');
+            $mins = ($key !== '' && isset($resolved[$key])) ? (int) $resolved[$key] : 0;
+            if ($mins > 0) {
+                $item['minutes'] = $mins;
+            } else {
+                unset($item['minutes']);
+            }
+
+            return $item;
+        }, $items);
+
+        return $crmEvents;
+    }
+
+    /**
      * Prefer auto-session event splits; otherwise share remaining record minutes
      * (auto sessions, then manual logs) across CRM rows for that matter/client/lead.
      *

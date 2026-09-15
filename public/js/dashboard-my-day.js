@@ -412,22 +412,48 @@
         }).join('');
     }
 
+    function crmEventMinutes(item) {
+        var fromItem = parseInt(item && item.minutes, 10);
+        if (fromItem > 0) {
+            return fromItem;
+        }
+        var key = item && item.key ? String(item.key) : '';
+        var map = (state.sessions && state.sessions.event_minutes) || {};
+        var fromMap = key ? parseInt(map[key], 10) : 0;
+        return fromMap > 0 ? fromMap : null;
+    }
+
     function renderCrmMinuteChips() {
         var map = (state.sessions && state.sessions.event_minutes) || {};
         document.querySelectorAll('.my-day-crm-item[data-event-key]').forEach(function (el) {
             var key = el.getAttribute('data-event-key');
-            var mins = key ? map[key] : null;
-            var existing = el.querySelector('.my-day-mins-chip');
+            var fromMap = key ? parseInt(map[key], 10) : 0;
+            var meta = el.querySelector('.my-day-crm-meta');
+            if (!meta) {
+                meta = document.createElement('div');
+                meta.className = 'my-day-crm-meta';
+                var tag = el.querySelector('.my-day-tag');
+                if (tag) {
+                    tag.replaceWith(meta);
+                    meta.appendChild(tag);
+                } else {
+                    el.appendChild(meta);
+                }
+            }
+            var existing = meta.querySelector('.my-day-mins-chip');
+            var existingMins = existing ? parseInt(existing.textContent, 10) : 0;
             if (existing) {
                 existing.remove();
             }
+            // Prefer auto session splits; keep SSR/API minutes when map has none.
+            var mins = fromMap > 0 ? fromMap : (existingMins > 0 ? existingMins : 0);
             if (!mins) {
                 return;
             }
             var chip = document.createElement('span');
             chip.className = 'my-day-mins-chip';
-            chip.textContent = mins + 'm auto';
-            el.querySelector('.my-day-crm-title')?.appendChild(chip);
+            chip.textContent = mins + 'm';
+            meta.appendChild(chip);
         });
     }
 
@@ -454,17 +480,21 @@
             return;
         }
         var html = items.map(function (item) {
+            var mins = crmEventMinutes(item);
+            var minsHtml = mins
+                ? '<span class="my-day-mins-chip">' + escapeHtml(String(mins)) + 'm</span>'
+                : '';
             return '<div class="my-day-crm-item" data-event-key="' + escapeAttr(item.key || '') + '">' +
                 '<div class="my-day-crm-kind">' + escapeHtml(item.kind || '') + '</div>' +
                 '<div><div class="my-day-crm-title">' + escapeHtml(item.title || '') + '</div>' +
                 (item.ref ? '<div class="my-day-crm-ref">' + escapeHtml(item.ref) + '</div>' : '') +
-                '</div><span class="my-day-tag">' + escapeHtml(item.time || '') + '</span></div>';
+                '</div><div class="my-day-crm-meta"><span class="my-day-tag">' +
+                escapeHtml(item.time || '') + '</span>' + minsHtml + '</div></div>';
         }).join('');
         if (more > 0) {
             html += '<p class="my-day-more">… and ' + more + ' more</p>';
         }
         wrap.innerHTML = html;
-        renderCrmMinuteChips();
     }
 
     function renderAll() {

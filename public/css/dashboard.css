@@ -72,7 +72,7 @@ body[data-crm-layout="dashboard"] .main-footer {
 
 /* Workload strip (replaces top KPI row) */
 .workload-strip {
-    margin-bottom: 28px;
+    margin-bottom: 20px;
     width: 100%;
 }
 
@@ -82,21 +82,142 @@ body[data-crm-layout="dashboard"] .main-footer {
     align-items: baseline;
     justify-content: space-between;
     gap: 8px 16px;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
 }
 
 .workload-strip-header h2 {
     margin: 0;
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     font-weight: 700;
     color: #2c3e50;
 }
 
 .workload-strip-date {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: #6c757d;
 }
 
+/* Compact queue bar (replaces four equal hero cards) */
+.workload-queue-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 0.8fr);
+    gap: 10px;
+    align-items: stretch;
+}
+
+.workload-chip {
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    padding: 12px 14px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    box-shadow: none;
+}
+
+.workload-chip[data-workload-metric],
+.workload-chip-part {
+    cursor: pointer;
+}
+
+.workload-chip[data-workload-metric]:hover,
+.workload-chip[data-workload-metric]:focus {
+    border-color: rgba(78, 115, 223, 0.45);
+    outline: none;
+}
+
+.workload-chip--queue {
+    border-color: rgba(246, 194, 62, 0.55);
+    background: #fffdf6;
+}
+
+.workload-chip--queue .workload-chip-count {
+    color: #b8860b;
+    font-size: 1.65rem;
+}
+
+.workload-chip--done .workload-chip-count {
+    color: #13855c;
+    font-size: 1.45rem;
+}
+
+.workload-chip--updates {
+    opacity: 0.92;
+}
+
+.workload-chip--updates .workload-chip-count {
+    color: #5a6a85;
+    font-size: 1.25rem;
+}
+
+.workload-chip-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #6c757d;
+}
+
+.workload-chip-count {
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 2px 0 2px;
+}
+
+.workload-chip-meta,
+.workload-chip-split {
+    font-size: 0.75rem;
+    color: #5a6268;
+    line-height: 1.35;
+}
+
+.workload-chip-part {
+    appearance: none;
+    background: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: #224abe;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.workload-chip-part:hover,
+.workload-chip-part:focus {
+    color: #1a3599;
+    outline: none;
+}
+
+.workload-chip-sep {
+    margin: 0 0.2rem;
+    color: #adb5bd;
+}
+
+.workload-chip-link {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #4e73df;
+    text-decoration: none;
+}
+
+.workload-chip-link:hover {
+    text-decoration: underline;
+}
+
+.workload-legend {
+    margin: 8px 0 0;
+    font-size: 0.75rem;
+    color: #868e96;
+    line-height: 1.4;
+}
+
+/* Legacy four-card layout (kept for any leftover markup) */
 .workload-cards {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -927,6 +1048,14 @@ body[data-crm-layout="dashboard"] .main-footer {
         grid-template-columns: 1fr 1fr;
     }
 
+    .workload-queue-bar {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .workload-chip--updates {
+        grid-column: 1 / -1;
+    }
+
     .workload-cards {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -978,6 +1107,14 @@ body[data-crm-layout="dashboard"] .main-footer {
 @media (max-width: 576px) {
     .kpi-cards {
         grid-template-columns: 1fr;
+    }
+
+    .workload-queue-bar {
+        grid-template-columns: 1fr;
+    }
+
+    .workload-chip--updates {
+        grid-column: auto;
     }
 
     .workload-cards {

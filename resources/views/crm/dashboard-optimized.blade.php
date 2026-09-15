@@ -1360,26 +1360,26 @@ document.addEventListener('keydown', function(e) {
 
 document.addEventListener('DOMContentLoaded', function() {
     const metricTitles = {
-        completed_excl_call: 'Completed (excl. Call)',
-        updated: 'Updated today',
-        pending: 'Pending actions',
-        call_completed: 'Call completed today',
+        completed_excl_call: 'Done — other actions',
+        updated: 'Action updates today',
+        pending: 'Queue — pending actions',
+        call_completed: 'Done — calls closed',
         call_notes: 'Call notes today',
         in_person: 'In-person today'
     };
 
-    document.querySelectorAll('.workload-card[data-workload-metric]').forEach(function(card) {
-        card.addEventListener('click', function() {
-            const metric = card.getAttribute('data-workload-metric');
+    document.querySelectorAll('[data-workload-metric]').forEach(function(el) {
+        el.addEventListener('click', function() {
+            const metric = el.getAttribute('data-workload-metric');
             if (!metric) {
                 return;
             }
             openWorkloadDrilldown(metric);
         });
-        card.addEventListener('keydown', function(e) {
+        el.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                card.click();
+                el.click();
             }
         });
     });

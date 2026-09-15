@@ -144,10 +144,11 @@ class StaffDayCrmEventsService
             ->map(function (EmailLog $log): array {
                 $isSent = ($log->mail_body_type ?? '') === 'sent';
                 $kind = $isSent ? 'Email out' : 'Email';
-                $clientId = Schema::hasColumn('email_logs', 'client_id') && $log->client_id !== null
+                $attrs = $log->getAttributes();
+                $clientId = array_key_exists('client_id', $attrs) && $log->client_id !== null
                     ? (int) $log->client_id
                     : null;
-                $matterId = Schema::hasColumn('email_logs', 'client_matter_id')
+                $matterId = array_key_exists('client_matter_id', $attrs)
                     && $log->client_matter_id !== null
                     && is_numeric($log->client_matter_id)
                     ? (int) $log->client_matter_id
@@ -192,12 +193,13 @@ class StaffDayCrmEventsService
             ])))
             ->map(function (Document $doc): array {
                 $title = (string) ($doc->file_name ?: $doc->name ?: $doc->doc_name ?: 'Document');
-                $matterId = Schema::hasColumn('documents', 'client_matter_id')
+                $attrs = $doc->getAttributes();
+                $matterId = array_key_exists('client_matter_id', $attrs)
                     && $doc->client_matter_id !== null
                     && is_numeric($doc->client_matter_id)
                     ? (int) $doc->client_matter_id
                     : null;
-                $clientId = Schema::hasColumn('documents', 'client_id') && $doc->client_id !== null
+                $clientId = array_key_exists('client_id', $attrs) && $doc->client_id !== null
                     ? (int) $doc->client_id
                     : null;
 
@@ -205,7 +207,7 @@ class StaffDayCrmEventsService
                     'Document',
                     $title,
                     $doc->created_at,
-                    $this->personOrMatterRef($clientId, $matterId ?? $doc->client_matter_id ?? null),
+                    $this->personOrMatterRef($clientId, $matterId),
                     'document:'.$doc->id,
                     $clientId,
                     $matterId,
@@ -435,14 +437,12 @@ class StaffDayCrmEventsService
         }
 
         if (! array_key_exists($clientId, $this->clientLabelCache)) {
-            $admin = Admin::query()->find($clientId);
+            $admin = Admin::query()->find($clientId, ['id', 'first_name', 'last_name']);
             if (! $admin) {
                 $this->clientLabelCache[$clientId] = null;
             } else {
                 $name = trim((string) ($admin->first_name ?? '').' '.($admin->last_name ?? ''));
-                if ($name === '') {
-                    $name = trim((string) ($admin->company_name_or_personal_name ?? ''));
-                }
+                // Avoid company relation accessors here — keep this list cheap and side-effect free.
                 $this->clientLabelCache[$clientId] = $name !== '' ? $name : ('Record #'.$clientId);
             }
         }

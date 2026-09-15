@@ -14,6 +14,20 @@ class DashboardWorkloadMarkupTest extends TestCase
         $this->assertStringContainsString('x-dashboard.workload-strip', $blade);
         $this->assertStringContainsString('x-dashboard.my-day', $blade);
 
+        $strip = file_get_contents(resource_path('views/components/dashboard/workload-strip.blade.php'));
+        $this->assertNotFalse($strip);
+        $this->assertStringContainsString('workload-queue-bar', $strip);
+        $this->assertStringContainsString('workload-chip--queue', $strip);
+        $this->assertStringContainsString('workload-chip--done', $strip);
+        $this->assertStringContainsString('workload-chip--updates', $strip);
+        $this->assertStringContainsString('data-workload-metric="pending"', $strip);
+        $this->assertStringContainsString('data-workload-metric="completed_excl_call"', $strip);
+        $this->assertStringContainsString('data-workload-metric="call_completed"', $strip);
+        $this->assertStringContainsString('data-workload-metric="updated"', $strip);
+        $this->assertStringNotContainsString('call notes today', $strip);
+        $this->assertStringNotContainsString('in-person today', $strip);
+        $this->assertStringNotContainsString('x-dashboard.workload-card', $strip);
+
         $myDay = file_get_contents(resource_path('views/components/dashboard/my-day.blade.php'));
         $this->assertNotFalse($myDay);
         $this->assertStringContainsString('x-dashboard.file-time-auto', $myDay);

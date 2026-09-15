@@ -252,6 +252,8 @@ class StaffFileTimeService
      *     crm_events: list<array<string, mixed>>,
      *     overlay: list<array<string, mixed>>,
      *     admin: list<array<string, mixed>>,
+     *     auto: list<string>,
+     *     opened: list<string>,
      *     still_open: list<array<string, mixed>>,
      *     text: string
      * }

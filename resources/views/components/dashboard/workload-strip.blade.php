@@ -5,64 +5,92 @@
     $updated = $workload['updated'] ?? [];
     $pending = $workload['pending'] ?? [];
     $callCompleted = $workload['call_completed'] ?? [];
-    $callNotes = $workload['contact_today']['call_notes'] ?? [];
-    $inPerson = $workload['contact_today']['in_person'] ?? [];
 
-    $pendingExtras = [];
-    if (($pending['call'] ?? 0) > 0 || ($pending['other'] ?? 0) > 0) {
-        $pendingExtras[] = 'Call: '.($pending['call'] ?? 0).' · Other: '.($pending['other'] ?? 0);
-    }
-    if (($callNotes['total'] ?? 0) > 0) {
-        $noteLine = '📞 '.$callNotes['total'].' call notes today';
-        if (($callNotes['new'] ?? 0) > 0 || ($callNotes['returning'] ?? 0) > 0) {
-            $noteLine .= ' ('.($callNotes['new'] ?? 0).' new · '.($callNotes['returning'] ?? 0).' returning)';
-        }
-        $pendingExtras[] = $noteLine;
-    }
-    if (($inPerson['total'] ?? 0) > 0) {
-        $pendingExtras[] = '👤 '.$inPerson['total'].' in-person today';
-    }
+    $pendingTotal = (int) ($pending['total'] ?? 0);
+    $completedTotal = (int) ($completed['total'] ?? 0);
+    $callCompletedTotal = (int) ($callCompleted['total'] ?? 0);
+    $updatedTotal = (int) ($updated['total'] ?? 0);
+    $doneTotal = $completedTotal + $callCompletedTotal;
+
+    $pendingClients = (int) ($pending['clients'] ?? 0);
+    $pendingLeads = (int) ($pending['leads'] ?? 0);
+    $pendingPersonal = (int) ($pending['personal'] ?? 0);
+    $pendingCall = (int) ($pending['call'] ?? 0);
+    $pendingOther = (int) ($pending['other'] ?? 0);
 @endphp
 
-<section class="workload-strip" aria-label="My workload today">
+<section class="workload-strip workload-strip--compact" aria-label="My workload today">
     <div class="workload-strip-header">
         <h2>My Workload — Today</h2>
         <span class="workload-strip-date">{{ $workload['date_label'] ?? '' }} ({{ $workload['timezone'] ?? config('app.timezone') }})</span>
     </div>
-    <div class="workload-cards">
-        <x-dashboard.workload-card
-            title="Completed (excl. Call)"
-            metric="completed_excl_call"
-            :data="$completed"
-            icon="fa-check-circle"
-            icon-class="icon-success"
-        />
-        <x-dashboard.workload-card
-            title="Updated"
-            metric="updated"
-            :data="$updated"
-            icon="fa-edit"
-            icon-class="icon-active"
-        />
-        <x-dashboard.workload-card
-            title="Pending"
-            metric="pending"
-            :data="$pending"
-            icon="fa-hourglass-half"
-            icon-class="icon-pending"
-            :route="route('assignee.action')"
-            :extra-lines="$pendingExtras"
-        />
-        <x-dashboard.workload-card
-            title="Call completed"
-            metric="call_completed"
-            :data="$callCompleted"
-            icon="fa-phone"
-            icon-class="icon-call"
-            :route="route('assignee.action_completed', ['group_type' => 'Call'])"
-        />
+
+    <div class="workload-queue-bar" role="list">
+        {{-- Queue first: only actionable card --}}
+        <div
+            class="workload-chip workload-chip--queue"
+            role="listitem"
+            data-workload-metric="pending"
+            tabindex="0"
+            title="Open queue details"
+        >
+            <span class="workload-chip-label">Queue</span>
+            <span class="workload-chip-count">{{ number_format($pendingTotal) }}</span>
+            <span class="workload-chip-meta">
+                {{ $pendingClients }} clients · {{ $pendingLeads }} leads
+                @if($pendingPersonal > 0)· {{ $pendingPersonal }} personal @endif
+            </span>
+            @if($pendingCall > 0 || $pendingOther > 0)
+                <span class="workload-chip-meta">Call: {{ $pendingCall }} · Other: {{ $pendingOther }}</span>
+            @endif
+            <a href="{{ route('assignee.action') }}" class="workload-chip-link" onclick="event.stopPropagation()">View queue →</a>
+        </div>
+
+        {{-- Done: one visual chip, two drill-downs (other vs call) --}}
+        <div class="workload-chip workload-chip--done" role="listitem">
+            <span class="workload-chip-label">Done</span>
+            <span class="workload-chip-count" aria-hidden="true">{{ number_format($doneTotal) }}</span>
+            <span class="workload-chip-split">
+                <button
+                    type="button"
+                    class="workload-chip-part"
+                    data-workload-metric="completed_excl_call"
+                    title="Other actions completed today"
+                >{{ number_format($completedTotal) }} other</button>
+                <span class="workload-chip-sep" aria-hidden="true">·</span>
+                <button
+                    type="button"
+                    class="workload-chip-part"
+                    data-workload-metric="call_completed"
+                    title="Call actions completed today"
+                >{{ number_format($callCompletedTotal) }} call</button>
+            </span>
+            <a
+                href="{{ route('assignee.action_completed', ['group_type' => 'Call']) }}"
+                class="workload-chip-link"
+                onclick="event.stopPropagation()"
+            >Call list →</a>
+        </div>
+
+        {{-- Updates: demoted end-of-day tally --}}
+        <div
+            class="workload-chip workload-chip--updates"
+            role="listitem"
+            data-workload-metric="updated"
+            tabindex="0"
+            title="Action updates today"
+        >
+            <span class="workload-chip-label">Updates</span>
+            <span class="workload-chip-count">{{ number_format($updatedTotal) }}</span>
+            <span class="workload-chip-meta">Action updates today</span>
+        </div>
     </div>
-    <p class="workload-legend">Clients / leads / personal on each card. New = record created in last {{ config('crm.workload.new_record_days', 14) }} days. Returning = no live contact in {{ config('crm.workload.returning_gap_days', 365) }}+ days.</p>
+
+    <p class="workload-legend">
+        Queue = assigned actions still open. Done = completed today (other vs Call). Updates = action updates today.
+        Clients / leads / personal on Queue. New = record created in last {{ config('crm.workload.new_record_days', 14) }} days.
+        Contact notes live in My day — Already in CRM.
+    </p>
 </section>
 
 <div class="modal fade" id="workloadDrilldownModal" tabindex="-1" role="dialog" aria-labelledby="workloadDrilldownModalLabel" aria-hidden="true">

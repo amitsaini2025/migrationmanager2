@@ -29,9 +29,17 @@
     }
 
     function currentRecord() {
+        var clientId = parseInt(cfg.clientId, 10);
+        var matterId = cfg.clientMatterId ? parseInt(cfg.clientMatterId, 10) : null;
+        if (!clientId || isNaN(clientId)) {
+            return null;
+        }
+        if (matterId !== null && isNaN(matterId)) {
+            matterId = null;
+        }
         return {
-            clientId: parseInt(cfg.clientId, 10),
-            matterId: cfg.clientMatterId ? parseInt(cfg.clientMatterId, 10) : null,
+            clientId: clientId,
+            matterId: matterId,
             ref: cfg.ref || 'file'
         };
     }
@@ -61,6 +69,9 @@
 
     function sendBlur() {
         var rec = currentRecord();
+        if (!rec) {
+            return;
+        }
         var payload = {
             client_id: rec.clientId,
             client_matter_id: rec.matterId,
@@ -88,6 +99,9 @@
             return;
         }
         var rec = currentRecord();
+        if (!rec) {
+            return;
+        }
         postJson(cfg.routes.heartbeat, {
             client_id: rec.clientId,
             client_matter_id: rec.matterId,
@@ -262,7 +276,13 @@
             return;
         }
         sel.addEventListener('change', function () {
-            onFocusLoss();
+            // Flush the previous matter, then start a fresh accumulator for the new one.
+            if (localTick || focusedSeconds > 0) {
+                onFocusLoss();
+            }
+            focusedSeconds = 0;
+            sessionId = null;
+            lastTickAt = null;
             syncMatterFromSelect();
             if (isFocused()) {
                 onFocusGain();
@@ -291,6 +311,7 @@
                 return;
             }
             localTick = false;
+            stopHeartbeatLoop();
         });
     }
 

@@ -74,7 +74,18 @@
     border-color: var(--my-day-brand-lite);
 }
 
-.my-day-manual { margin-top: 12px; }
+.my-day-manual {
+    margin: 0 0 12px;
+    padding: 10px 0;
+    border-top: 1px solid var(--my-day-line);
+    border-bottom: 1px solid var(--my-day-line);
+}
+.my-day-manual-heading {
+    margin: 0 0 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--my-day-muted);
+}
 .my-day-manual-list { display: flex; flex-direction: column; gap: 8px; }
 .my-day-manual-row {
     display: flex;
@@ -115,6 +126,16 @@
 .my-day-split--bottom { margin-top: 12px; }
 
 .my-day-eod-wrap { margin-top: 12px; }
+
+.my-day-eod-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.my-day-eod-head h3 { margin: 0 0 2px; }
+.my-day-eod-head .my-day-lead { margin: 0; }
 
 @media (max-width: 1040px) {
     .my-day-split { grid-template-columns: 1fr; }

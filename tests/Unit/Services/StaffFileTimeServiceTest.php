@@ -3,6 +3,8 @@
 namespace Tests\Unit\Services;
 
 use App\Models\StaffFileTimeEntry;
+use App\Services\StaffDayCrmEventsService;
+use App\Services\StaffDayHoursService;
 use App\Services\StaffFileTimeService;
 use App\Services\StaffWorkloadService;
 use Carbon\Carbon;
@@ -123,6 +125,43 @@ class StaffFileTimeServiceTest extends TestCase
         $this->assertSame(StaffFileTimeEntry::STATUS_DONE, $done->status);
         $this->assertNull($done->activities_log_id);
         $this->assertSame(0, DB::table('activities_logs')->count());
+    }
+
+    #[Test]
+    public function copy_summary_includes_manual_logs(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-15 14:00:00', 'Australia/Melbourne'));
+        $this->insertStaff(1);
+        $this->insertClient(10);
+        $this->insertMatter(5, 10, 'JARN2504926-485_1');
+
+        $this->service->logCompleted(1, [
+            'kind' => StaffFileTimeEntry::KIND_IMMI,
+            'title' => 'Immi portal check',
+            'confirmed_minutes' => 8,
+            'client_matter_id' => 5,
+        ]);
+        $this->service->logCompleted(1, [
+            'kind' => StaffFileTimeEntry::KIND_OTHER,
+            'title' => 'Mailbox skim',
+            'confirmed_minutes' => 12,
+            'admin' => true,
+        ]);
+
+        $crmEvents = $this->createMock(StaffDayCrmEventsService::class);
+        $crmEvents->method('forStaff')->willReturn(['items' => [], 'more' => 0]);
+
+        $hours = $this->createMock(StaffDayHoursService::class);
+        $hours->method('forStaff')->willReturn(['label' => '3h 20m']);
+
+        $summary = $this->service->copySummary(1, $crmEvents, $hours);
+
+        $this->assertStringContainsString('— Manual logs —', $summary['text']);
+        $this->assertStringContainsString('JARN2504926-485_1 · Immi/portal · Immi portal check · 8m', $summary['text']);
+        $this->assertStringContainsString('— Admin / no file —', $summary['text']);
+        $this->assertStringContainsString('Admin · other · Mailbox skim · 12m', $summary['text']);
+        $this->assertCount(1, $summary['overlay']);
+        $this->assertCount(1, $summary['admin']);
     }
 
     #[Test]

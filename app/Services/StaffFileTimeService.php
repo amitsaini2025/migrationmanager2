@@ -359,6 +359,7 @@ class StaffFileTimeService
                 $line = [
                     'ref' => $entry['matter_no'] ?? 'Admin',
                     'kind' => $entry['kind'],
+                    'kind_label' => $entry['kind_label'] ?? $entry['kind'],
                     'title' => $entry['title'],
                     'minutes' => $entry['confirmed_minutes'],
                 ];

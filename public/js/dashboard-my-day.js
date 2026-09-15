@@ -810,7 +810,9 @@
         renderPresets();
     });
     document.getElementById('myDayDoneOk')?.addEventListener('click', confirmDone);
-    document.getElementById('myDayAddBtn')?.addEventListener('click', openLogModal);
+    document.querySelectorAll('.my-day-add-btn').forEach(function (btn) {
+        btn.addEventListener('click', openLogModal);
+    });
     document.getElementById('myDayLogSave')?.addEventListener('click', submitLog);
     document.getElementById('myDayTitleInput')?.addEventListener('input', updateLogSaveEnabled);
     document.getElementById('myDayLogMins')?.addEventListener('input', updateLogSaveEnabled);

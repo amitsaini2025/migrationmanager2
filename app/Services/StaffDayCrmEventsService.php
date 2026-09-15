@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ActivitiesLog;
+use App\Models\Admin;
 use App\Models\BookingAppointment;
 use App\Models\ClientMatter;
 use App\Models\Document;
@@ -17,6 +18,12 @@ use Illuminate\Support\Str;
 class StaffDayCrmEventsService
 {
     public const LIST_CAP = 50;
+
+    /** @var array<int, string|null> */
+    protected array $clientLabelCache = [];
+
+    /** @var array<int, string|null> */
+    protected array $matterNoCache = [];
 
     public function __construct(
         protected StaffWorkloadService $workloadService,
@@ -150,7 +157,7 @@ class StaffDayCrmEventsService
                     $kind,
                     (string) ($log->subject ?: 'Email'),
                     $log->created_at,
-                    $this->matterNo($matterId),
+                    $this->personOrMatterRef($clientId, $matterId),
                     'email_log:'.$log->id,
                     $clientId,
                     $matterId,
@@ -198,7 +205,7 @@ class StaffDayCrmEventsService
                     'Document',
                     $title,
                     $doc->created_at,
-                    $this->matterNo($matterId ?? $doc->client_matter_id ?? null),
+                    $this->personOrMatterRef($clientId, $matterId ?? $doc->client_matter_id ?? null),
                     'document:'.$doc->id,
                     $clientId,
                     $matterId,
@@ -230,7 +237,10 @@ class StaffDayCrmEventsService
                     'Booking',
                     $title,
                     $appt->created_at,
-                    null,
+                    $this->personOrMatterRef(
+                        $appt->client_id !== null ? (int) $appt->client_id : null,
+                        null,
+                    ),
                     'booking:'.$appt->id,
                     $appt->client_id !== null ? (int) $appt->client_id : null,
                     null,
@@ -270,7 +280,7 @@ class StaffDayCrmEventsService
                     ? (int) $sms->client_id
                     : null;
 
-                return $this->row('SMS', $title, $at, null, 'sms:'.$sms->id, $clientId, null);
+                return $this->row('SMS', $title, $at, $this->personOrMatterRef($clientId, null), 'sms:'.$sms->id, $clientId, null);
             });
     }
 
@@ -332,7 +342,10 @@ class StaffDayCrmEventsService
                     $kind,
                     $subject !== '' ? $subject : $kind,
                     $log->created_at,
-                    null,
+                    $this->personOrMatterRef(
+                        $log->client_id !== null ? (int) $log->client_id : null,
+                        $matterId,
+                    ),
                     'feed:'.$log->id,
                     $log->client_id !== null ? (int) $log->client_id : null,
                     $matterId,
@@ -364,14 +377,17 @@ class StaffDayCrmEventsService
                 $kind = stripos($group, 'person') !== false ? 'In-person note' : 'Call note';
                 $title = (string) ($note->title ?: $kind);
 
+                $clientId = $note->client_id !== null ? (int) $note->client_id : null;
+                $matterId = $note->matter_id !== null && is_numeric($note->matter_id) ? (int) $note->matter_id : null;
+
                 return $this->row(
                     $kind,
                     $title,
                     $note->created_at,
-                    $this->matterNo($note->matter_id ?? null),
+                    $this->personOrMatterRef($clientId, $matterId),
                     'note:'.$note->id,
-                    $note->client_id !== null ? (int) $note->client_id : null,
-                    $note->matter_id !== null && is_numeric($note->matter_id) ? (int) $note->matter_id : null,
+                    $clientId,
+                    $matterId,
                 );
             });
     }
@@ -402,6 +418,38 @@ class StaffDayCrmEventsService
         ];
     }
 
+    protected function personOrMatterRef(?int $clientId, mixed $matterId): ?string
+    {
+        $matter = $this->matterNo($matterId);
+        if ($matter !== null && $matter !== '') {
+            return $matter;
+        }
+
+        return $this->clientLabel($clientId);
+    }
+
+    protected function clientLabel(?int $clientId): ?string
+    {
+        if ($clientId === null || $clientId < 1 || ! Schema::hasTable('admins')) {
+            return null;
+        }
+
+        if (! array_key_exists($clientId, $this->clientLabelCache)) {
+            $admin = Admin::query()->find($clientId);
+            if (! $admin) {
+                $this->clientLabelCache[$clientId] = null;
+            } else {
+                $name = trim((string) ($admin->first_name ?? '').' '.($admin->last_name ?? ''));
+                if ($name === '') {
+                    $name = trim((string) ($admin->company_name_or_personal_name ?? ''));
+                }
+                $this->clientLabelCache[$clientId] = $name !== '' ? $name : ('Record #'.$clientId);
+            }
+        }
+
+        return $this->clientLabelCache[$clientId];
+    }
+
     protected function matterNo(mixed $matterId): ?string
     {
         if ($matterId === null || $matterId === '') {
@@ -418,13 +466,12 @@ class StaffDayCrmEventsService
             return null;
         }
 
-        static $cache = [];
-        if (! array_key_exists($id, $cache)) {
-            $cache[$id] = ClientMatter::query()
+        if (! array_key_exists($id, $this->matterNoCache)) {
+            $this->matterNoCache[$id] = ClientMatter::query()
                 ->where('id', $id)
                 ->value('client_unique_matter_no');
         }
 
-        return $cache[$id] ? (string) $cache[$id] : null;
+        return $this->matterNoCache[$id] ? (string) $this->matterNoCache[$id] : null;
     }
 }

@@ -214,9 +214,45 @@ class StaffDayCrmEventsServiceTest extends TestCase
         $this->assertNotContains('Other client', $titles);
     }
 
+    #[Test]
+    public function contact_note_without_matter_uses_client_name_as_ref(): void
+    {
+        $today = Carbon::parse('2026-09-15 14:00:00', 'Australia/Melbourne');
+        Carbon::setTestNow($today);
+
+        DB::table('admins')->insert([
+            'id' => 10,
+            'type' => 'client',
+            'first_name' => 'Priya',
+            'last_name' => 'Singh',
+            'created_at' => $today,
+            'updated_at' => $today,
+        ]);
+
+        DB::table('notes')->insert([
+            'id' => 50,
+            'user_id' => 1,
+            'client_id' => 10,
+            'matter_id' => null,
+            'type' => 'client',
+            'is_action' => 0,
+            'assigned_to' => null,
+            'task_group' => 'In-Person',
+            'title' => 'Matter Discussion',
+            'created_at' => $today,
+            'updated_at' => $today,
+        ]);
+
+        $result = $this->service->forStaff(1, $today);
+        $item = collect($result['items'])->firstWhere('title', 'Matter Discussion');
+
+        $this->assertNotNull($item);
+        $this->assertSame('Priya Singh', $item['ref']);
+    }
+
     private function createSchema(): void
     {
-        foreach (['email_logs', 'documents', 'booking_appointments', 'sms_logs', 'notes', 'activities_logs', 'client_matters'] as $table) {
+        foreach (['email_logs', 'documents', 'booking_appointments', 'sms_logs', 'notes', 'activities_logs', 'client_matters', 'admins'] as $table) {
             Schema::dropIfExists($table);
         }
 
@@ -286,6 +322,14 @@ class StaffDayCrmEventsServiceTest extends TestCase
         Schema::create('client_matters', function (Blueprint $table) {
             $table->increments('id');
             $table->string('client_unique_matter_no')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('admins', function (Blueprint $table) {
+            $table->increments('id');
+            $table->string('type')->nullable();
+            $table->string('first_name')->nullable();
+            $table->string('last_name')->nullable();
             $table->timestamps();
         });
     }

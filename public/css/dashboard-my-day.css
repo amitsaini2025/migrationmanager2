@@ -413,6 +413,13 @@
     font-size: 0.85rem;
 }
 
+.my-day-opened-mins {
+    margin-left: 8px;
+    color: var(--my-day-muted);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
 .my-day-mins-chip {
     display: inline-block;
     margin-left: 8px;

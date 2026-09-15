@@ -6,6 +6,10 @@
         return;
     }
 
+    cfg.csrf = cfg.csrf
+        || (document.querySelector('meta[name="csrf-token"]') || {}).content
+        || '';
+
     var IDLE_MS = 15 * 60 * 1000;
     var IDLE_GRACE_MS = 2 * 60 * 1000;
     var HEARTBEAT_MS = 60 * 1000;
@@ -240,6 +244,18 @@
         });
     }
 
+    function syncMatterFromSelect() {
+        var sel = document.getElementById('sel_matter_id_client_detail');
+        if (!sel || !sel.value) {
+            return;
+        }
+        cfg.clientMatterId = parseInt(sel.value, 10) || null;
+        var opt = sel.options[sel.selectedIndex];
+        if (opt) {
+            cfg.ref = opt.getAttribute('data-clientuniquematterno') || opt.textContent.trim() || cfg.ref;
+        }
+    }
+
     function bindMatterChange() {
         var sel = document.getElementById('sel_matter_id_client_detail');
         if (!sel) {
@@ -247,13 +263,21 @@
         }
         sel.addEventListener('change', function () {
             onFocusLoss();
-            var opt = sel.options[sel.selectedIndex];
-            cfg.clientMatterId = sel.value ? parseInt(sel.value, 10) : null;
-            cfg.ref = opt ? (opt.getAttribute('data-clientuniquematterno') || opt.textContent.trim()) : cfg.ref;
+            syncMatterFromSelect();
             if (isFocused()) {
                 onFocusGain();
             }
         });
+    }
+
+    function startTracking() {
+        syncMatterFromSelect();
+        bindInputReset();
+        bindMatterChange();
+        requestAnimationFrame(tickLoop);
+        if (isFocused()) {
+            onFocusGain();
+        }
     }
 
     if (channel) {
@@ -285,11 +309,9 @@
     });
     window.addEventListener('pagehide', onFocusLoss);
 
-    bindInputReset();
-    bindMatterChange();
-    requestAnimationFrame(tickLoop);
-
-    if (isFocused()) {
-        onFocusGain();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startTracking);
+    } else {
+        startTracking();
     }
 })();

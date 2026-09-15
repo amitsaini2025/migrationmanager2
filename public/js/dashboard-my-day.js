@@ -363,7 +363,8 @@
             return;
         }
         list.innerHTML = opened.map(function (row) {
-            return '<li>' + escapeHtml(row.ref || '—') + '</li>';
+            var mins = row.minutes ? '<span class="my-day-opened-mins">' + escapeHtml(String(row.minutes)) + 'm</span>' : '';
+            return '<li>' + escapeHtml(row.ref || '—') + mins + '</li>';
         }).join('');
     }
 

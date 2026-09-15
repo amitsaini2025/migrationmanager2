@@ -177,6 +177,7 @@ class StaffMatterSessionService
                     'client_id' => $session->client_id,
                     'client_matter_id' => $session->client_matter_id,
                     'focused_seconds' => (int) $session->focused_seconds,
+                    'minutes' => max(0, (int) round(((int) $session->focused_seconds) / 60)),
                 ];
 
                 continue;

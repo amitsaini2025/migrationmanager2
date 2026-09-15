@@ -274,6 +274,12 @@ class StaffFileTimeService
         $events = $crmEvents->forStaff($staffId, $day);
         $board = $this->boardForStaff($staffId, $day);
 
+        $sessionsPayload = ['auto' => [], 'opened' => [], 'event_minutes' => []];
+        if ($matterSessions !== null) {
+            $sessionsPayload = $matterSessions->sessionsForBoard($staffId, $day);
+        }
+        $eventMinutes = $sessionsPayload['event_minutes'] ?? [];
+
         $overlayDone = [];
         $adminDone = [];
         $stillOpen = [];
@@ -312,7 +318,12 @@ class StaffFileTimeService
         } else {
             foreach ($events['items'] as $item) {
                 $ref = $item['ref'] ?: '—';
-                $lines[] = "{$ref} · {$item['kind']} · {$item['title']} · {$item['time']}";
+                $line = "{$ref} · {$item['kind']} · {$item['title']} · {$item['time']}";
+                $mins = $eventMinutes[$item['key'] ?? ''] ?? null;
+                if ($mins) {
+                    $line .= " · {$mins}m";
+                }
+                $lines[] = $line;
             }
             if (($events['more'] ?? 0) > 0) {
                 $lines[] = '… and '.$events['more'].' more';
@@ -343,17 +354,17 @@ class StaffFileTimeService
         $lines[] = '— Time on files (auto) —';
         $autoLines = [];
         $openedRefs = [];
-        if ($matterSessions !== null) {
-            $sessionsPayload = $matterSessions->sessionsForBoard($staffId, $day);
-            foreach ($sessionsPayload['auto'] as $row) {
-                $eventLabel = ! empty($row['is_reviewed_only'])
-                    ? 'reviewed file'
-                    : (($row['event_count'] ?? 0).' activities');
-                $autoLines[] = "{$row['ref']} · {$row['confirmed_minutes']}m · {$eventLabel}";
-            }
-            foreach ($sessionsPayload['opened'] as $row) {
-                $openedRefs[] = (string) ($row['ref'] ?? '—');
-            }
+        foreach ($sessionsPayload['auto'] as $row) {
+            $eventLabel = ! empty($row['is_reviewed_only'])
+                ? 'reviewed file'
+                : (($row['event_count'] ?? 0).' activities');
+            $autoLines[] = "{$row['ref']} · {$row['confirmed_minutes']}m · {$eventLabel}";
+        }
+        foreach ($sessionsPayload['opened'] as $row) {
+            $mins = (int) ($row['minutes'] ?? max(0, (int) round(((int) ($row['focused_seconds'] ?? 0)) / 60)));
+            $openedRefs[] = $mins > 0
+                ? ((string) ($row['ref'] ?? '—'))." · {$mins}m (open)"
+                : (string) ($row['ref'] ?? '—');
         }
         if ($autoLines === []) {
             $lines[] = '(none)';

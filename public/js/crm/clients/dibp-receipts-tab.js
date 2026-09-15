@@ -344,6 +344,7 @@
                 myfile_key: fileEl.getAttribute('data-filename') || ''
             });
             dibpReceiptsShowUnusedPane();
+            window.alert(payload.message || 'Receipt moved to Not Used.');
         }).catch(function () {
             dibpReceiptsUnusedBusy = false;
             window.alert('Unable to move this receipt to Not Used.');
@@ -373,6 +374,7 @@
             if (doc.id) {
                 appendDibpReceiptChecklistRow(doc);
             }
+            window.alert(payload.message || 'Receipt moved back to Receipts.');
         }).catch(function () {
             dibpReceiptsUnusedBusy = false;
             window.alert('Unable to move this receipt back.');
@@ -401,6 +403,7 @@
                 return;
             }
             dibpReceiptsRemoveUnusedRow(payload.id || fileEl.getAttribute('data-id'));
+            window.alert(payload.message || 'Receipt deleted.');
         }).catch(function () {
             dibpReceiptsUnusedBusy = false;
             window.alert('Unable to delete this receipt.');

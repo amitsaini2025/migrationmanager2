@@ -314,8 +314,11 @@ class DibpReceiptUnusedTest extends TestCase
         $js = file_get_contents($this->projectPath('public/js/crm/clients/dibp-receipts-tab.js'));
         Assert::assertNotFalse($js);
         Assert::assertStringContainsString('dibpReceiptsMarkUnused', $js);
+        Assert::assertStringContainsString("payload.message || 'Receipt moved to Not Used.'", $js);
         Assert::assertStringContainsString('dibpReceiptsRestoreUnused', $js);
+        Assert::assertStringContainsString("payload.message || 'Receipt moved back to Receipts.'", $js);
         Assert::assertStringContainsString('dibpReceiptsDeleteUnused', $js);
+        Assert::assertStringContainsString("payload.message || 'Receipt deleted.'", $js);
         Assert::assertStringContainsString('dibpReceiptsShowUnusedPane', $js);
         Assert::assertStringContainsString('data-unused-url', $js);
         Assert::assertStringContainsString('dibp-receipts-unused-file', $js);

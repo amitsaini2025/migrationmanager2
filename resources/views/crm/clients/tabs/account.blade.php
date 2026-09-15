@@ -21,7 +21,6 @@
     $dibp_receipts_lists = $accountTabPayload['dibp_receipts_lists'] ?? collect();
     $dibp_receipts_unused_lists = $accountTabPayload['dibp_receipts_unused_lists'] ?? collect();
     $dibp_receipts_checklists = $accountTabPayload['dibp_receipts_checklists'] ?? collect();
-    $dibpReceiptsShowUnusedUi = empty($fetchedData->is_company);
 @endphp
 
            <!-- Account Tab -->
@@ -639,11 +638,9 @@
          data-rename-checklist-url="{{ route('clients.documents.renameDibpReceiptChecklist') }}"
          data-download-url="{{ route('clients.documents.downloadDibpReceiptDocument') }}"
          data-hubdoc-url="{{ route('clients.documents.sendDibpReceiptToHubdoc') }}"
-         @if ($dibpReceiptsShowUnusedUi)
          data-unused-url="{{ route('clients.documents.markDibpReceiptUnused') }}"
          data-restore-url="{{ route('clients.documents.restoreDibpReceipt') }}"
          data-delete-url="{{ route('clients.documents.deleteDibpReceiptUnused') }}"
-         @endif
          data-clientid="{{ (int) ($fetchedData->id ?? 0) }}">
         <div class="dibp-receipts-body">
             <div class="dibp-receipts-table-container" style="vertical-align: top; margin-top: 10px; width: 760px; overflow: visible;">
@@ -656,11 +653,9 @@
                         <button type="button" class="btn dibp-receipts-bulk-toggle" id="dibp-receipts-bulk-toggle" aria-pressed="false" aria-controls="dibp-receipts-bulk-dropzone-container">
                             @icon('fa-upload') <span class="dibp-receipts-bulk-toggle-label">Bulk Upload</span>
                         </button>
-                        @if ($dibpReceiptsShowUnusedUi)
                         <button type="button" class="btn dibp-receipts-unused-toggle" id="dibp-receipts-unused-toggle" aria-pressed="false" aria-controls="dibp-receipts-unused">
                             @icon('fa-ban') <span class="dibp-receipts-unused-toggle-label">Not Used</span>
                         </button>
-                        @endif
                     </div>
                 </div>
                 <div id="dibp-receipts-bulk-dropzone-container" class="dibp-receipts-bulk-dropzone-container" hidden>
@@ -739,7 +734,6 @@
             <div id="dibp-receipts-preview" class="dibp-receipts-preview">
                 <p>Click on a file to preview it here.</p>
             </div>
-            @if ($dibpReceiptsShowUnusedUi)
             <div id="dibp-receipts-unused" class="dibp-receipts-unused" hidden>
                 <h3>Not Used Receipts</h3>
                 <p>Unused DIBP receipts for this matter. Right-click a file to move it back or delete it.</p>
@@ -775,7 +769,6 @@
                     </tbody>
                 </table>
             </div>
-            @endif
         </div>
     </div>
 </div>
@@ -856,13 +849,10 @@
     <button type="button" class="dibp-receipts-context-item" data-action="send-hubdoc" id="dibp-receipts-send-hubdoc">
         @icon('fa-paper-plane') Send to Hubdoc
     </button>
-    @if ($dibpReceiptsShowUnusedUi)
     <button type="button" class="dibp-receipts-context-item" data-action="mark-unused" id="dibp-receipts-mark-unused">
         @icon('fa-ban') Not Used
     </button>
-    @endif
 </div>
-@if ($dibpReceiptsShowUnusedUi)
 <div id="dibp-receipts-unused-context-menu" class="dibp-receipts-context-menu" hidden>
     <button type="button" class="dibp-receipts-context-item" data-action="restore-unused">
         @icon('fa-undo') Back to Receipt
@@ -871,7 +861,6 @@
         @icon('fa-trash') Delete
     </button>
 </div>
-@endif
 
 <!-- Account Tab JavaScript -->
 <script>

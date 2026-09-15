@@ -125,7 +125,8 @@ class AccountTabDibpReceiptsToggleTest extends TestCase
         Assert::assertStringContainsString('id="dibp-receipts-unused-toggle"', $panel);
         Assert::assertStringContainsString('data-action="mark-unused"', $panel);
         Assert::assertStringContainsString('Back to Receipt', $panel);
-        Assert::assertStringContainsString('empty($fetchedData->is_company)', $blade);
+        Assert::assertStringNotContainsString('$dibpReceiptsShowUnusedUi', $blade);
+        Assert::assertStringNotContainsString('empty($fetchedData->is_company)', $blade);
         Assert::assertStringNotContainsString('class="notuseddoc"', $panel);
         Assert::assertStringNotContainsString('class="backtodoc"', $panel);
         Assert::assertStringNotContainsString('id="notuseddocuments-tab"', $panel);

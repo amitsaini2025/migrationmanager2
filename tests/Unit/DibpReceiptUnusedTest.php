@@ -286,8 +286,8 @@ class DibpReceiptUnusedTest extends TestCase
     {
         $blade = file_get_contents($this->projectPath('resources/views/crm/clients/tabs/account.blade.php'));
         Assert::assertNotFalse($blade);
-        Assert::assertStringContainsString('$dibpReceiptsShowUnusedUi', $blade);
-        Assert::assertStringContainsString('empty($fetchedData->is_company)', $blade);
+        Assert::assertStringNotContainsString('$dibpReceiptsShowUnusedUi', $blade);
+        Assert::assertStringNotContainsString('empty($fetchedData->is_company)', $blade);
         Assert::assertStringContainsString('id="dibp-receipts-unused"', $blade);
         Assert::assertStringContainsString('id="dibp-receipts-unused-list"', $blade);
         Assert::assertStringContainsString('id="dibp-receipts-unused-toggle"', $blade);
@@ -304,6 +304,12 @@ class DibpReceiptUnusedTest extends TestCase
         Assert::assertStringNotContainsString('class="deletenote"', $blade);
         Assert::assertStringNotContainsString('id="notuseddocuments-tab"', $blade);
         Assert::assertStringNotContainsString('notuseddocumnetlist', $blade);
+
+        $companyDetail = file_get_contents($this->projectPath('resources/views/crm/companies/detail.blade.php'));
+        Assert::assertNotFalse($companyDetail);
+        Assert::assertStringContainsString('crm.clients.tabs.account', $companyDetail);
+        Assert::assertStringContainsString('dibp-receipts-tab.js', $companyDetail);
+        Assert::assertStringNotContainsString('account-tab.js', $companyDetail);
 
         $js = file_get_contents($this->projectPath('public/js/crm/clients/dibp-receipts-tab.js'));
         Assert::assertNotFalse($js);

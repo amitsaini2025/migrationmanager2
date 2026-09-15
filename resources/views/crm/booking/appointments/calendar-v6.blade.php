@@ -10,44 +10,28 @@
     <div class="row">
         <div class="col-12">
             <!-- Back and Calendar Type Navigation -->
-            <div class="mb-3">
-                <a href="{{ route('booking.appointments.index') }}" class="btn btn-sm btn-secondary">
+            <div class="mb-3 d-flex flex-wrap align-items-center">
+                <a href="{{ route('booking.appointments.index') }}" class="btn btn-sm btn-secondary mr-2 mb-1">
                     @icon('fa-arrow-left') Back to List
                 </a>
-                <div class="btn-group ml-2" role="group">
-                    <a href="{{ route('booking.appointments.calendar', ['type' => 'paid']) }}" 
-                       class="btn btn-sm {{ $type === 'paid' ? 'btn-primary' : 'btn-outline-primary' }}">
-                        @icon('fa-calendar-check') Employer Sponsored Calendar
-                    </a>
-                    <a href="{{ route('booking.appointments.calendar', ['type' => 'jrp']) }}" 
-                       class="btn btn-sm {{ $type === 'jrp' ? 'btn-primary' : 'btn-outline-primary' }}">
-                        @icon('fa-calendar') JRP
-                    </a>
-                    <a href="{{ route('booking.appointments.calendar', ['type' => 'education']) }}" 
-                       class="btn btn-sm {{ $type === 'education' ? 'btn-primary' : 'btn-outline-primary' }}">
-                        @icon('fa-graduation-cap') Education
-                    </a>
-                    <a href="{{ route('booking.appointments.calendar', ['type' => 'tourist']) }}" 
-                       class="btn btn-sm {{ $type === 'tourist' ? 'btn-primary' : 'btn-outline-primary' }}"
-                       title="Vijay(Tourist Visa)">
-                        @icon('fa-plane') Vijay
-                    </a>
-                    <a href="{{ route('booking.appointments.calendar', ['type' => 'adelaide']) }}" 
-                       class="btn btn-sm {{ $type === 'adelaide' ? 'btn-primary' : 'btn-outline-primary' }}">
-                        @icon('fa-city') Adelaide
-                    </a>
-                    <a href="{{ route('booking.appointments.calendar', ['type' => 'adelaide_education']) }}" 
-                       class="btn btn-sm {{ $type === 'adelaide_education' ? 'btn-primary' : 'btn-outline-primary' }}">
-                        @icon('fa-graduation-cap') Adelaide Education
-                    </a>
-                    <a href="{{ route('booking.appointments.calendar', ['type' => 'ajay']) }}" 
-                       class="btn btn-sm {{ $type === 'ajay' ? 'btn-primary' : 'btn-outline-primary' }}">
-                        @icon('fa-calendar-alt') Ajay Calendar
-                    </a>
-                    <a href="{{ route('booking.appointments.calendar', ['type' => 'arun']) }}" 
-                       class="btn btn-sm {{ $type === 'arun' ? 'btn-primary' : 'btn-outline-primary' }}">
-                        @icon('fa-calendar-alt') Arun Calendar
-                    </a>
+                <a href="{{ route('booking.appointments.calendar', ['type' => $type]) }}"
+                   class="btn btn-sm btn-primary mb-1 mr-2">
+                    @icon('fa-calendar-alt') {{ $calendarTitle }}
+                </a>
+                <div class="dropdown d-inline-block mb-1">
+                    <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="otherCalendarsDropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Other calendars
+                    </button>
+                    <div class="dropdown-menu" aria-labelledby="otherCalendarsDropdown">
+                        @foreach($calendarTypes ?? [] as $calendarType)
+                            @if(($calendarType['key'] ?? '') !== $type)
+                                <a class="dropdown-item" href="{{ route('booking.appointments.calendar', ['type' => $calendarType['key']]) }}"
+                                   @if(($calendarType['key'] ?? '') === 'tourist') title="Vijay(Tourist Visa)" @endif>
+                                    {{ $calendarType['label'] }}
+                                </a>
+                            @endif
+                        @endforeach
+                    </div>
                 </div>
             </div>
 

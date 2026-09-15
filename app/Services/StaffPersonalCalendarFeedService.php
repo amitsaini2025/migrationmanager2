@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Admin;
 use App\Models\BookingAppointment;
+use App\Models\Staff;
 use App\Support\BookingAppointmentStatus;
 use App\Support\StaffClientVisibility;
 use Carbon\Carbon;
@@ -11,6 +12,7 @@ use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 /**
  * Dashboard appointment calendar feed.
@@ -38,11 +40,58 @@ class StaffPersonalCalendarFeedService
         'arun' => 'Arun',
     ];
 
+    /**
+     * Email local-part / first-name hints for the staff member's home calendar.
+     * Arun Kumar's operational calendar is Employer Sponsored, not "Arun Calendar".
+     *
+     * @var array<string, string>
+     */
+    public const STAFF_CALENDAR_HINTS = [
+        'ajay' => 'ajay',
+        'vijay' => 'tourist',
+        'shubham' => 'jrp',
+        'yadwinder' => 'jrp',
+        'education' => 'education',
+        'adelaide' => 'adelaide',
+        'arun' => 'paid',
+        'tourist' => 'tourist',
+    ];
+
     public function normalizeCalendarType(?string $type): string
     {
         $type = strtolower(trim((string) $type));
 
         return array_key_exists($type, self::CALENDAR_TYPES) ? $type : self::DEFAULT_TYPE;
+    }
+
+    public function labelForType(string $type): string
+    {
+        $type = $this->normalizeCalendarType($type);
+
+        return self::CALENDAR_TYPES[$type];
+    }
+
+    /**
+     * Home calendar for a logged-in staff member. Unknown staff keep Employer Sponsored.
+     */
+    public function defaultTypeForStaff(?Staff $staff): string
+    {
+        if ($staff === null) {
+            return self::DEFAULT_TYPE;
+        }
+
+        $email = strtolower(trim((string) $staff->email));
+        $local = $email !== '' ? Str::before($email, '@') : '';
+        if ($local !== '' && isset(self::STAFF_CALENDAR_HINTS[$local])) {
+            return self::STAFF_CALENDAR_HINTS[$local];
+        }
+
+        $first = strtolower(trim((string) $staff->first_name));
+        if ($first !== '' && isset(self::STAFF_CALENDAR_HINTS[$first])) {
+            return self::STAFF_CALENDAR_HINTS[$first];
+        }
+
+        return self::DEFAULT_TYPE;
     }
 
     /**

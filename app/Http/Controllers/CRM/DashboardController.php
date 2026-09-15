@@ -34,8 +34,9 @@ class DashboardController extends Controller
     {
         $dashboardData = $this->dashboardService->getDashboardData($request);
 
+        $staff = Auth::user() instanceof Staff ? Auth::user() : null;
         $dashboardData['calendarTypes'] = $this->personalCalendarFeed->calendarTypeOptions();
-        $dashboardData['defaultCalendarType'] = StaffPersonalCalendarFeedService::DEFAULT_TYPE;
+        $dashboardData['defaultCalendarType'] = $this->personalCalendarFeed->defaultTypeForStaff($staff);
         $dashboardData['calendarStats'] = ['today' => 0, 'this_week' => 0, 'upcoming' => 0];
         $dashboardData['workload'] = $this->staffWorkloadService->getDashboardWorkload((int) Auth::id());
 

@@ -17,6 +17,7 @@ use App\Services\BansalAppointmentSync\NotificationService;
 use App\Services\BookingAppointmentConfirmationReminderService;
 use App\Services\BookingAppointmentManualPaymentService;
 use App\Services\BookingAppointmentRequestPaymentService;
+use App\Services\StaffPersonalCalendarFeedService;
 use App\Support\BansalSchedulingServiceType;
 use App\Support\BookingAppointmentStatus;
 use App\Support\StaffClientVisibility;
@@ -391,8 +392,12 @@ class BookingAppointmentsController extends Controller
         // Use distinct() to ensure no duplicates
         $consultants = AppointmentConsultant::active()->shownInFilter()->distinct()->get();
 
-        // Use FullCalendar v6 version
-        return view('crm.booking.appointments.calendar-v6', compact('type', 'appointments', 'calendarTitle', 'stats', 'consultants'));
+        $calendarTypes = [];
+        foreach (StaffPersonalCalendarFeedService::CALENDAR_TYPES as $key => $label) {
+            $calendarTypes[] = ['key' => $key, 'label' => $label];
+        }
+
+        return view('crm.booking.appointments.calendar-v6', compact('type', 'appointments', 'calendarTitle', 'stats', 'consultants', 'calendarTypes'));
     }
 
     /**

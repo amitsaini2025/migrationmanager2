@@ -5,6 +5,10 @@
     'defaultType' => 'paid',
 ])
 
+@php
+    $currentCalendarLabel = collect($calendarTypes)->firstWhere('key', $defaultType)['label'] ?? 'Calendar';
+@endphp
+
 <section class="dashboard-calendar-section" id="myCalendarSection" aria-label="Appointment calendar">
     <div class="dashboard-calendar-card">
         <div class="dashboard-calendar-header">
@@ -33,17 +37,40 @@
             </div>
         </div>
 
-        <div class="dashboard-calendar-types" role="tablist" aria-label="Calendar type">
-            @foreach($calendarTypes as $calendarType)
+        <div class="dashboard-calendar-types" role="group" aria-label="Calendar type">
+            <button
+                type="button"
+                class="dashboard-cal-type-btn is-active"
+                id="dashboardCalPrimary"
+                data-calendar-type="{{ $defaultType }}"
+                @if($defaultType === 'tourist') title="Vijay(Tourist Visa)" @endif
+            >{{ $currentCalendarLabel }}</button>
+            <div class="dashboard-cal-more" id="dashboardCalMore">
                 <button
                     type="button"
-                    class="dashboard-cal-type-btn{{ ($calendarType['key'] ?? '') === $defaultType ? ' is-active' : '' }}"
-                    data-calendar-type="{{ $calendarType['key'] }}"
-                    role="tab"
-                    aria-selected="{{ ($calendarType['key'] ?? '') === $defaultType ? 'true' : 'false' }}"
-                    @if(($calendarType['key'] ?? '') === 'tourist') title="Vijay(Tourist Visa)" @endif
-                >{{ $calendarType['label'] }}</button>
-            @endforeach
+                    class="dashboard-cal-more-btn"
+                    id="dashboardCalMoreBtn"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    aria-controls="dashboardCalMoreMenu"
+                >
+                    Other calendars
+                    @icon('fa-chevron-down')
+                </button>
+                <div class="dashboard-cal-more-menu" id="dashboardCalMoreMenu" role="listbox" hidden>
+                    @foreach($calendarTypes as $calendarType)
+                        @if(($calendarType['key'] ?? '') !== $defaultType)
+                            <button
+                                type="button"
+                                class="dashboard-cal-type-option"
+                                data-calendar-type="{{ $calendarType['key'] }}"
+                                role="option"
+                                @if(($calendarType['key'] ?? '') === 'tourist') title="Vijay(Tourist Visa)" @endif
+                            >{{ $calendarType['label'] }}</button>
+                        @endif
+                    @endforeach
+                </div>
+            </div>
         </div>
 
         <div class="dashboard-calendar-legend" aria-label="Appointment status colours">
@@ -61,6 +88,7 @@
                     class="dashboard-calendar-container"
                     data-timezone="{{ $timezone }}"
                     data-calendar-type="{{ $defaultType }}"
+                    data-calendar-types='@json($calendarTypes)'
                 ></div>
             </div>
 

@@ -82,10 +82,67 @@
 .dashboard-calendar-types {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 8px;
     padding: 12px 24px;
     background: var(--card-bg-color, #fff);
     border-bottom: 1px solid var(--border-color, #e0e0e0);
+}
+
+.dashboard-cal-more {
+    position: relative;
+}
+
+.dashboard-cal-more-btn {
+    border: 1px solid var(--border-color, #e0e0e0);
+    background: #fff;
+    color: var(--text-color, #333);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    line-height: 1.2;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dashboard-cal-more-btn:hover,
+.dashboard-cal-more-btn[aria-expanded="true"] {
+    border-color: var(--primary-color, #005792);
+    background: rgba(0, 87, 146, 0.06);
+}
+
+.dashboard-cal-more-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 20;
+    min-width: 220px;
+    padding: 6px;
+    background: #fff;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 87, 146, 0.12);
+}
+
+.dashboard-cal-type-option {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    color: var(--primary-color, #005792);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.dashboard-cal-type-option:hover {
+    background: rgba(0, 87, 146, 0.08);
 }
 
 .dashboard-cal-type-btn {

@@ -24,15 +24,76 @@
         return type || DEFAULT_TYPE;
     }
 
+    function calendarTypes() {
+        var el = calendarEl();
+        var raw = el && el.getAttribute('data-calendar-types');
+        if (!raw) {
+            return [];
+        }
+        try {
+            var parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function typeLabel(type) {
+        var match = calendarTypes().find(function (item) {
+            return item && item.key === type;
+        });
+        return match && match.label ? match.label : type;
+    }
+
     function setSelectedType(type) {
         var el = calendarEl();
         if (el) {
             el.setAttribute('data-calendar-type', type);
         }
-        document.querySelectorAll('.dashboard-cal-type-btn').forEach(function (btn) {
-            var active = btn.getAttribute('data-calendar-type') === type;
-            btn.classList.toggle('is-active', active);
-            btn.setAttribute('aria-selected', active ? 'true' : 'false');
+        renderTypeSwitcher(type);
+    }
+
+    function closeTypeMenu() {
+        var menu = document.getElementById('dashboardCalMoreMenu');
+        var btn = document.getElementById('dashboardCalMoreBtn');
+        if (menu) {
+            menu.hidden = true;
+        }
+        if (btn) {
+            btn.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    function renderTypeSwitcher(type) {
+        var primary = document.getElementById('dashboardCalPrimary');
+        var menu = document.getElementById('dashboardCalMoreMenu');
+        if (primary) {
+            primary.setAttribute('data-calendar-type', type);
+            primary.textContent = typeLabel(type);
+            if (type === 'tourist') {
+                primary.setAttribute('title', 'Vijay(Tourist Visa)');
+            } else {
+                primary.removeAttribute('title');
+            }
+        }
+        if (!menu) {
+            return;
+        }
+        menu.innerHTML = '';
+        calendarTypes().forEach(function (item) {
+            if (!item || item.key === type) {
+                return;
+            }
+            var option = document.createElement('button');
+            option.type = 'button';
+            option.className = 'dashboard-cal-type-option';
+            option.setAttribute('data-calendar-type', item.key);
+            option.setAttribute('role', 'option');
+            option.textContent = item.label || item.key;
+            if (item.key === 'tourist') {
+                option.setAttribute('title', 'Vijay(Tourist Visa)');
+            }
+            menu.appendChild(option);
         });
     }
 
@@ -257,14 +318,49 @@
     }
 
     function bindTypeSwitcher(calendar) {
-        document.querySelectorAll('.dashboard-cal-type-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var type = btn.getAttribute('data-calendar-type');
-                if (!type || type === selectedType()) return;
-                setSelectedType(type);
-                calendar.refetchEvents();
-                loadUpcoming();
+        var moreWrap = document.getElementById('dashboardCalMore');
+        var moreBtn = document.getElementById('dashboardCalMoreBtn');
+        var menu = document.getElementById('dashboardCalMoreMenu');
+        var typesEl = document.querySelector('.dashboard-calendar-types');
+
+        function selectType(type) {
+            if (!type || type === selectedType()) {
+                closeTypeMenu();
+                return;
+            }
+            setSelectedType(type);
+            closeTypeMenu();
+            calendar.refetchEvents();
+            loadUpcoming();
+        }
+
+        if (typesEl) {
+            typesEl.addEventListener('click', function (event) {
+                var option = event.target.closest('.dashboard-cal-type-option');
+                if (option) {
+                    selectType(option.getAttribute('data-calendar-type'));
+                }
             });
+        }
+
+        if (moreBtn && menu) {
+            moreBtn.addEventListener('click', function (event) {
+                event.stopPropagation();
+                var willOpen = menu.hidden;
+                menu.hidden = !willOpen;
+                moreBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+            });
+        }
+
+        document.addEventListener('click', function (event) {
+            if (moreWrap && !moreWrap.contains(event.target)) {
+                closeTypeMenu();
+            }
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeTypeMenu();
+            }
         });
     }
 

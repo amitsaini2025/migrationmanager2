@@ -12,6 +12,7 @@ class DashboardMyDayRoutesTest extends TestCase
         $this->getJson(route('dashboard.my-day'))->assertUnauthorized();
         $this->getJson(route('dashboard.my-day.matter-search', ['q' => 'test']))->assertUnauthorized();
         $this->getJson(route('dashboard.my-day.copy-summary'))->assertUnauthorized();
+        $this->postJson(route('dashboard.my-day.copy-summary.save'))->assertUnauthorized();
         $this->postJson(route('dashboard.my-day.file-time.start'), [
             'kind' => 'draft',
             'title' => 'x',
@@ -22,6 +23,7 @@ class DashboardMyDayRoutesTest extends TestCase
     public function test_copy_summary_route_is_registered(): void
     {
         $this->assertTrue(Route::has('dashboard.my-day.copy-summary'));
+        $this->assertTrue(Route::has('dashboard.my-day.copy-summary.save'));
         $this->assertTrue(Route::has('dashboard.my-day.file-time.start'));
     }
 }

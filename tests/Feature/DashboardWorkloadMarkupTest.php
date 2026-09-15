@@ -36,6 +36,11 @@ class DashboardWorkloadMarkupTest extends TestCase
         $this->assertNotFalse($myDay);
         $this->assertStringContainsString('x-dashboard.file-time-auto', $myDay);
         $this->assertStringContainsString('x-dashboard.files-opened', $myDay);
+        $this->assertStringNotContainsString('x-dashboard.file-time-board', $myDay);
+        $this->assertStringNotContainsString('x-dashboard.file-time-capture', $myDay);
+        $this->assertStringNotContainsString('In progress', $myDay);
+        $this->assertStringNotContainsString('Parked', $myDay);
+        $this->assertStringNotContainsString('Done today', $myDay);
         $this->assertStringContainsString('workloadDrilldownModal', $blade);
         $this->assertStringNotContainsString('Active Matters', $blade);
         $this->assertStringNotContainsString('Urgent Notes Deadlines', $blade);

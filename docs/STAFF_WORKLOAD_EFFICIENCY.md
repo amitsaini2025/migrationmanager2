@@ -1,6 +1,6 @@
 # Staff workload and efficiency
 
-Spec for a **My day** view in **migrationmanager2** — a registered **migration practice CRM**. **Dashboard My day is individual staff only** (no ranking). Admin Console **Staff Workload** can open the same generated copy-summary for a chosen staff and date; that text is **not stored**, it is assembled on demand.
+Spec for a **My day** view in **migrationmanager2** — a registered **migration practice CRM**. **Dashboard My day is individual staff only** (no ranking). Admin Console **Staff Workload** opens the saved copy-summary for a staff + date (`staff_day_summaries`, one row per staff per Melbourne day). Copy on the dashboard saves it; a 23:55 Melbourne job snapshots active staff; opening a missing day backfills from live data.
 
 The unit of work is the **matter** (`client_matters`): a visa application, ART appeal, nomination/sponsorship file, EOI/ROI, skill assessment, or bridging-visa file sitting on a **client or lead** (`admins`). Almost every open file has **three named staff** (Migration Agent, Person Responsible, Person Assisting). Staff chase **people** (calls, consults) and **files** (stages, Immi/ART, checklists, Form 956, lodgement).
 

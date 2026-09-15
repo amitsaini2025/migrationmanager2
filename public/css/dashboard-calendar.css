@@ -172,9 +172,9 @@
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
     align-items: stretch;
-    height: 620px;
-    min-height: 620px;
-    max-height: 620px;
+    height: 520px;
+    min-height: 520px;
+    max-height: 520px;
 }
 
 .dashboard-calendar-wrapper {
@@ -472,8 +472,8 @@
     .dashboard-calendar-wrapper {
         border-right: none;
         border-bottom: 1px solid var(--border-color, #e0e0e0);
-        height: 560px;
-        max-height: 560px;
+        height: 460px;
+        max-height: 460px;
     }
 
     .dashboard-upcoming-panel {

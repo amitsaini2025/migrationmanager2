@@ -40,17 +40,17 @@ class StaffDaySummaryService
         $date = $start->toDateString();
         $body = (string) ($summary['text'] ?? '');
 
-        $row = StaffDaySummary::query()->updateOrCreate(
-            [
-                'staff_id' => $staffId,
-                'summary_date' => $date,
-            ],
-            [
-                'body' => $body,
-                'source' => $source,
-                'saved_at' => now(),
-            ],
-        );
+        $row = $this->find($staffId, $day);
+        if ($row === null) {
+            $row = new StaffDaySummary;
+            $row->staff_id = $staffId;
+            $row->summary_date = $date;
+        }
+
+        $row->body = $body;
+        $row->source = $source;
+        $row->saved_at = now();
+        $row->save();
 
         return $row->fresh() ?? $row;
     }

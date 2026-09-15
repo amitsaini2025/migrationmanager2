@@ -12,7 +12,7 @@ Stack facts this spec assumes (README): Laravel 13 / PHP 8.3, **PostgreSQL** pri
 
 ## Agreed product brief
 
-Efficiency and workload are built from **what staff did on clients/leads/companies and their matters**. **Hours in CRM** are a **header** (reuse session / login / presence). They are **not** the score. **Call/in-person duration is out** (no timer on notes).
+Efficiency and workload are built from **what staff did on clients/leads/companies and their matters**. **Hours in CRM** are a **header** (reuse session / login / presence). They are **not** the score. **Call/in-person duration is out** on file notes (no timer on `notes`). **Duration is in only** via the separate **My day overlay** (`staff_file_time_entries` / `StaffFileTimeService`) — confirmed minutes at Done, posted as `activities_logs.activity_type = file_time`. Overlay time is **not** Layer A contact and must **never** increment `StaffWorkloadService` card totals.
 
 ### Domain model
 
@@ -601,6 +601,6 @@ Week vs last week; days in stage; waiting↔active tags; due strip; visit-withou
 
 ## 14. Summary for implementers
 
-**Hours** = presence strip, not a score. **Contact** = created Call / In-Person **file notes** (`is_action = 0`, **`task_group`**, who logged it). Empty contact on a lodge/docs/956/call-not-picked day is expected. **Worked on** = unique people + **matters** (visa applications, ART appeals, nomination/SBS, EOI, skill assessment, bridging) from staff writes. **Open work** = people (`user_id` or MA/PR/PA) + unique matters in any of the **three roles**, with **as MA / as PR / as PA** subcounts, split active/waiting/closed when `workload_class` exists, plus quiet (7–13d) / inactive (14+d) by **this staff**. **My day** = logged-in user only. **No Team today.** **Not in v1** = timers, ranking, ghost credit, treating Immi/ART wait as failure, bansalcrm2 college/application model, Layer A on `notes.title`.
+**Hours** = presence strip, not a score. **Contact** = created Call / In-Person **file notes** (`is_action = 0`, **`task_group`**, who logged it). Empty contact on a lodge/docs/956/call-not-picked day is expected. **Worked on** = unique people + **matters** (visa applications, ART appeals, nomination/SBS, EOI, skill assessment, bridging) from staff writes. **Open work** = people (`user_id` or MA/PR/PA) + unique matters in any of the **three roles**, with **as MA / as PR / as PA** subcounts, split active/waiting/closed when `workload_class` exists, plus quiet (7–13d) / inactive (14+d) by **this staff**. **My day** = logged-in user only. **No Team today.** Overlay timers live in `staff_file_time_entries` (not `notes`); `file_time` feed rows must not count as completed actions. **Not in Layer A** = timers on Call/In-person notes, ranking, ghost credit, treating Immi/ART wait as failure, bansalcrm2 college/application model, Layer A on `notes.title`.
 
 **Three code facts that will bite you if skipped:** file-note type is `notes.task_group` (with `is_action = 0` **and** `assigned_to IS NULL`); “actions completed” comes from the `completed action for …` feed row, not `notes` (no completion timestamp, group updates by `unique_group_id`); `workflow_file_notes` is an append-only per-stage store with no reliable author and no feed row.

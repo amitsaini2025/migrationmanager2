@@ -17,6 +17,12 @@
 
         <x-dashboard.workload-strip :workload="$workload ?? []" />
 
+        <x-dashboard.my-day
+            :hours="$myDayHours ?? []"
+            :crm-events="$myDayCrmEvents ?? []"
+            :board="$myDayBoard ?? []"
+        />
+
         <x-dashboard.staff-calendar
             :stats="$calendarStats ?? ['today' => 0, 'this_week' => 0, 'upcoming' => 0]"
             :timezone="config('app.timezone')"
@@ -168,6 +174,7 @@
 @once
 <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
 <link rel="stylesheet" href="{{ asset('css/dashboard-calendar.css') }}?v={{ @filemtime(public_path('css/dashboard-calendar.css')) ?: time() }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-my-day.css') }}?v={{ @filemtime(public_path('css/dashboard-my-day.css')) ?: time() }}">
 <style>
 .dashboard-matters-fragment--loading {
     opacity: 0.55;
@@ -981,10 +988,18 @@
     if (typeof window.dashboardRoutes === 'undefined') {
         console.error('Dashboard routes not defined');
     }
+    window.dashboardMyDayRoutes = {
+        index: "{{ route('dashboard.my-day') }}",
+        matterSearch: "{{ route('dashboard.my-day.matter-search') }}",
+        copySummary: "{{ route('dashboard.my-day.copy-summary') }}",
+        start: "{{ route('dashboard.my-day.file-time.start') }}",
+        fileTimeBase: "{{ url('/dashboard/my-day/file-time') }}"
+    };
 </script>
 <script src="{{ asset('js/dashboard-optimized.js') }}"></script>
 <script src="{{ asset('js/booking-appointment-modal.js') }}?v={{ @filemtime(public_path('js/booking-appointment-modal.js')) ?: time() }}"></script>
 <script src="{{ asset('js/dashboard-calendar.js') }}?v={{ @filemtime(public_path('js/dashboard-calendar.js')) ?: time() }}"></script>
+<script src="{{ asset('js/dashboard-my-day.js') }}?v={{ @filemtime(public_path('js/dashboard-my-day.js')) ?: time() }}"></script>
 <script>
 $(function () {
     function getDashboardAddTaskPopoverHtml() {

@@ -1,0 +1,388 @@
+/* My day — dashboard overlay (CRM events + file time). Scoped to .my-day */
+
+.my-day {
+    --my-day-ink: var(--text-color, #1d2b3a);
+    --my-day-muted: var(--text-muted-color, #6b7c93);
+    --my-day-line: var(--border-color, #dbe3ee);
+    --my-day-brand: var(--primary-color, #12457e);
+    --my-day-brand-lite: #1a6fd4;
+    --my-day-surface: var(--card-bg-color, #fff);
+    --my-day-radius: 14px;
+    margin: 22px 0 28px;
+    color: var(--my-day-ink);
+}
+
+.my-day-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.my-day-head h2 {
+    margin: 0 0 4px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--my-day-brand);
+}
+
+.my-day-sub,
+.my-day-lead,
+.my-day-hint {
+    margin: 0;
+    color: var(--my-day-muted);
+    font-size: 0.875rem;
+}
+
+.my-day-lead { margin: 0 0 12px; }
+.my-day-hint { margin-top: 10px; font-size: 0.8rem; }
+
+.my-day-hours {
+    display: inline-block;
+    background: var(--my-day-surface);
+    border: 1px solid var(--my-day-line);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.85rem;
+}
+
+.my-day-hours span { color: var(--my-day-muted); }
+
+.my-day-split {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 18px;
+    align-items: start;
+}
+
+.my-day-split--bottom { margin-top: 18px; }
+
+@media (max-width: 1040px) {
+    .my-day-split { grid-template-columns: 1fr; }
+}
+
+.my-day-card {
+    background: var(--my-day-surface);
+    border: 1px solid var(--my-day-line);
+    border-radius: var(--my-day-radius);
+    box-shadow: 0 1px 2px rgba(20, 40, 70, 0.06), 0 6px 18px rgba(20, 40, 70, 0.05);
+    padding: 16px 18px;
+}
+
+.my-day-card h3 {
+    margin: 0 0 4px;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.my-day-side { display: flex; flex-direction: column; gap: 14px; }
+
+.my-day-crm-item {
+    display: grid;
+    grid-template-columns: 100px 1fr auto;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f5fa;
+    align-items: start;
+}
+
+.my-day-crm-item:last-child { border-bottom: 0; }
+.my-day-crm-kind {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--my-day-brand);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding-top: 2px;
+}
+.my-day-crm-title { font-size: 0.9rem; font-weight: 500; }
+.my-day-crm-ref { font-size: 0.75rem; color: #5b3fd6; font-weight: 600; margin-top: 2px; }
+.my-day-tag {
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 20px;
+    padding: 2px 8px;
+    background: #eef2f7;
+    color: #516275;
+    white-space: nowrap;
+}
+
+.my-day-empty,
+.my-day-more { color: var(--my-day-muted); font-size: 0.85rem; margin: 8px 0 0; }
+
+.my-day-capture {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+.my-day-picker { position: relative; flex: 1.2; min-width: 220px; }
+#myDayTitleInput { flex: 1; min-width: 180px; }
+
+.my-day-results {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid var(--my-day-line);
+    border-radius: 10px;
+    box-shadow: 0 10px 26px rgba(20, 40, 70, 0.14);
+    max-height: 280px;
+    overflow: auto;
+}
+
+.my-day-res {
+    padding: 9px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5fa;
+}
+.my-day-res:hover { background: #f4f8ff; }
+.my-day-res .rref { font-size: 0.75rem; color: var(--my-day-brand); font-weight: 600; }
+.my-day-res .rmat { font-size: 0.85rem; font-weight: 500; }
+.my-day-res .rstage { font-size: 0.7rem; color: var(--my-day-muted); }
+
+.my-day-chosen {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: #f5f7fd;
+    border: 1px solid #d8dcf3;
+    border-left: 3px solid #5b3fd6;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-top: 10px;
+}
+.my-day-chosen.admin {
+    border-left-color: #a8620f;
+    background: #fdf8f0;
+    border-color: #f2dcb4;
+}
+.my-day-chosen .ref { font-weight: 600; color: #5b3fd6; font-size: 0.85rem; }
+.my-day-chosen.admin .ref { color: #8c5c11; }
+
+.my-day-admin-btn {
+    margin-top: 10px;
+    border: 1px dashed #d2b48c;
+    background: #fff;
+    border-radius: 9px;
+    padding: 7px 12px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: #8c5c11;
+}
+
+.my-day-presets {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.my-day-preset {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    border: 1px solid var(--my-day-line);
+    background: #fbfcfe;
+    border-radius: 11px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+.my-day-preset:hover:not(:disabled) { border-color: var(--my-day-brand-lite); background: #f4f8ff; }
+.my-day-preset:disabled { opacity: 0.42; cursor: not-allowed; }
+.my-day-preset .swatch { width: 11px; height: 11px; border-radius: 3px; }
+
+.my-day-board-wrap { margin-top: 18px; }
+.my-day-board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+}
+@media (max-width: 780px) {
+    .my-day-board { grid-template-columns: 1fr; }
+}
+
+.my-day-col {
+    background: var(--my-day-surface);
+    border: 1px solid var(--my-day-line);
+    border-radius: var(--my-day-radius);
+    padding: 14px;
+    min-height: 180px;
+}
+.my-day-colhead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.my-day-colhead h4 { margin: 0; font-size: 0.85rem; font-weight: 600; }
+.my-day-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 7px;
+    vertical-align: 1px;
+}
+.my-day-count {
+    background: #eef3fa;
+    color: var(--my-day-brand);
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 20px;
+    padding: 2px 9px;
+}
+
+.my-day-note {
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(30, 50, 80, 0.1);
+    box-shadow: 0 1px 1px rgba(20, 40, 70, 0.05), 0 4px 10px rgba(20, 40, 70, 0.04);
+}
+.my-day-note .type { font-size: 0.72rem; font-weight: 600; opacity: 0.75; margin-bottom: 3px; }
+.my-day-note .title { font-size: 0.9rem; font-weight: 500; margin-bottom: 6px; word-break: break-word; }
+.my-day-note.done .title { text-decoration: line-through; opacity: 0.55; }
+.my-day-note .ref-chip {
+    display: block;
+    font-size: 0.72rem;
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(30, 50, 80, 0.14);
+    border-radius: 8px;
+    padding: 5px 9px;
+    font-weight: 600;
+}
+.my-day-note .foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 9px;
+    gap: 8px;
+}
+.my-day-timer { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 0.85rem; }
+.my-day-timer.live::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #e04f4f;
+    margin-right: 6px;
+    vertical-align: 1px;
+    animation: myDayBlip 1.6s infinite;
+}
+@keyframes myDayBlip { 50% { opacity: 0.25; } }
+.my-day-acts { display: flex; gap: 5px; flex-wrap: wrap; }
+.my-day-acts button {
+    border: 1px solid rgba(30, 50, 80, 0.16);
+    background: rgba(255, 255, 255, 0.65);
+    border-radius: 7px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 4px 8px;
+    cursor: pointer;
+}
+.my-day-posted { font-size: 0.7rem; font-weight: 600; color: #0f6b4f; margin-top: 6px; }
+
+.my-day-kpis {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+.my-day-kpi {
+    background: #f7f9fc;
+    border: 1px solid var(--my-day-line);
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+.my-day-kpi .n { font-size: 1.25rem; font-weight: 600; line-height: 1.2; }
+.my-day-kpi .l { font-size: 0.72rem; color: var(--my-day-muted); }
+
+.my-day-bars { display: flex; flex-direction: column; gap: 8px; }
+.my-day-bar-row { display: grid; grid-template-columns: 1fr auto; gap: 6px; font-size: 0.8rem; }
+.my-day-track {
+    grid-column: 1 / -1;
+    height: 6px;
+    background: #eef2f7;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.my-day-fill { height: 100%; border-radius: 4px; }
+
+.my-day-btn {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    background: var(--my-day-brand);
+    color: #fff;
+    border: 1px solid var(--my-day-brand);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-top: 8px;
+}
+
+.my-day-eod {
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+    background: #f7f9fc;
+    border: 1px solid var(--my-day-line);
+    border-radius: 10px;
+    padding: 12px;
+    max-height: 280px;
+    overflow: auto;
+    line-height: 1.55;
+    margin: 0;
+}
+
+.my-day-matter-table { width: 100%; border-collapse: collapse; }
+.my-day-matter-table th {
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--my-day-muted);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--my-day-line);
+}
+.my-day-matter-table td {
+    padding: 10px;
+    border-bottom: 1px solid #f1f5fa;
+    font-size: 0.85rem;
+}
+.my-day-matter-row { cursor: pointer; }
+.my-day-matter-row:hover td { background: #f7fafd; }
+.my-day-matter-row.active td { background: #f5f7fd; }
+.my-day-refcell { font-weight: 600; color: #5b3fd6; font-size: 0.8rem; word-break: break-all; }
+
+.my-day-filterbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    background: #f5f7fd;
+    border: 1px solid #d8dcf3;
+    border-radius: 9px;
+    padding: 8px 13px;
+    margin-bottom: 12px;
+}
+.my-day-filterbar button {
+    border: 0;
+    background: transparent;
+    color: var(--my-day-brand);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .my-day-timer.live::before { animation: none; }
+}

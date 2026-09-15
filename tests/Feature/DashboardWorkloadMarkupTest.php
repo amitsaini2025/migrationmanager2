@@ -12,6 +12,7 @@ class DashboardWorkloadMarkupTest extends TestCase
         $this->assertNotFalse($blade);
 
         $this->assertStringContainsString('x-dashboard.workload-strip', $blade);
+        $this->assertStringContainsString('x-dashboard.my-day', $blade);
         $this->assertStringContainsString('workloadDrilldownModal', $blade);
         $this->assertStringNotContainsString('Active Matters', $blade);
         $this->assertStringNotContainsString('Urgent Notes Deadlines', $blade);

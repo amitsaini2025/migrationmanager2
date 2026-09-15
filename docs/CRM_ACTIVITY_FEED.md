@@ -182,9 +182,11 @@ The Eloquent model extends `Authenticatable` and uses `Notifiable` / `Sortable`.
 | `office_visit_complete` | Session completed | same | secondary |
 | `eoi_confirmation` | Client confirmed EOI | same | secondary |
 | `eoi_amendment` | Client requested EOI amendment | same | secondary |
+| `file_time` | My day overlay Done with a matter linked (`StaffFileTimeService`) | clock | primary |
 
 Widen the column to at least VARCHAR(64). `office_visit_complete` overflowed VARCHAR(20).
 
+**`file_time` rules:** `created_by` = logged-in staff; `client_id` = matter’s client; `use_for` = `matter`; `task_status` = 0; `pin` = 0. Subject example: `logged 11m drafting on JARN2504926-485_1` (no client display name). Admin / no-file overlay rows do **not** write `activities_logs`. Do **not** set `task_status = 1` — overlay Done must never appear in `StaffWorkloadService` completed-action queries. Filter chip: **File time**.
 ### Icon map only — not written today
 
 The model maps `followup_scheduled`, `followup_completed`, `followup_rescheduled`, `followup_cancelled` to calendar icons. **No current writer sets those types.** Action lifecycle uses subjects (`Set action for …`, `completed action for …`) and usually the DB default type `note`. When porting, either set real types (`action_assigned`, `action_completed`) or keep using `activity`.

@@ -66,6 +66,9 @@
         <button class="activity-filter-btn" data-filter="financial">
             @icon('fa-dollar-sign') Financial
         </button>
+        <button class="activity-filter-btn" data-filter="file_time">
+            @icon('fa-clock') File time
+        </button>
     </div>
     
     <ul class="feed-list">

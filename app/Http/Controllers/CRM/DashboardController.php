@@ -9,6 +9,9 @@ use App\Models\CheckinLog;
 use App\Models\Note;
 use App\Models\Staff;
 use App\Services\DashboardService;
+use App\Services\StaffDayCrmEventsService;
+use App\Services\StaffDayHoursService;
+use App\Services\StaffFileTimeService;
 use App\Services\StaffPersonalCalendarFeedService;
 use App\Services\StaffWorkloadService;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +28,9 @@ class DashboardController extends Controller
         protected DashboardService $dashboardService,
         protected StaffPersonalCalendarFeedService $personalCalendarFeed,
         protected StaffWorkloadService $staffWorkloadService,
+        protected StaffDayHoursService $staffDayHoursService,
+        protected StaffDayCrmEventsService $staffDayCrmEventsService,
+        protected StaffFileTimeService $staffFileTimeService,
     ) {
         $this->middleware('auth:admin');
     }
@@ -37,10 +43,14 @@ class DashboardController extends Controller
         $dashboardData = $this->dashboardService->getDashboardData($request);
 
         $staff = Auth::user() instanceof Staff ? Auth::user() : null;
+        $staffId = (int) Auth::id();
         $dashboardData['calendarTypes'] = $this->personalCalendarFeed->calendarTypeOptions();
         $dashboardData['defaultCalendarType'] = $this->personalCalendarFeed->defaultTypeForStaff($staff);
         $dashboardData['calendarStats'] = ['today' => 0, 'this_week' => 0, 'upcoming' => 0];
-        $dashboardData['workload'] = $this->staffWorkloadService->getDashboardWorkload((int) Auth::id());
+        $dashboardData['workload'] = $this->staffWorkloadService->getDashboardWorkload($staffId);
+        $dashboardData['myDayHours'] = $this->staffDayHoursService->forStaff($staffId);
+        $dashboardData['myDayCrmEvents'] = $this->staffDayCrmEventsService->forStaff($staffId);
+        $dashboardData['myDayBoard'] = $this->staffFileTimeService->boardForStaff($staffId);
         $dashboardData['bookingConsultants'] = $this->bookingConsultantsForModal();
 
         return view('crm.dashboard-optimized', $dashboardData);

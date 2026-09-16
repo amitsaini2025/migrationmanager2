@@ -10,6 +10,16 @@
      * Initialize Activity Feed functionality
      */
     var SCROLL_LOAD_THRESHOLD_PX = 120;
+    var deepLinkFocusState = {
+        done: false,
+        loadAttempts: 0,
+        maxLoads: 8
+    };
+    // Capture before sidebar pushState can drop the hash on initial tab activation.
+    var pendingDeepLinkActivityId = (function() {
+        var match = String(window.location.hash || '').match(/^#activity_(\d+)$/);
+        return match ? match[1] : null;
+    })();
 
     function init() {
         setupFilterButtons();
@@ -18,6 +28,10 @@
         setupRefreshButton();
         setupLoadMoreButton();
         setupInfiniteScroll();
+        // Hash may already be present before the first AJAX page finishes.
+        window.setTimeout(function() {
+            tryFocusHashedActivity();
+        }, 0);
     }
 
     function getActivityFeedScroller() {
@@ -76,6 +90,55 @@
      */
     function afterActivitiesLoaded() {
         fillFeedIfNotScrollable();
+        tryFocusHashedActivity();
+    }
+
+    /**
+     * My Day note links open Activity with #activity_{id}. Scroll into view and briefly highlight.
+     * Does nothing when there is no matching hash (other entry points unchanged).
+     */
+    function tryFocusHashedActivity() {
+        if (deepLinkFocusState.done) {
+            return;
+        }
+
+        var activityId = pendingDeepLinkActivityId;
+        if (!activityId) {
+            var match = String(window.location.hash || '').match(/^#activity_(\d+)$/);
+            if (!match) {
+                return;
+            }
+            activityId = match[1];
+        }
+
+        var el = document.getElementById('activity_' + activityId);
+        if (!el) {
+            if (deepLinkFocusState.loadAttempts < deepLinkFocusState.maxLoads && canLoadMoreActivities()) {
+                deepLinkFocusState.loadAttempts += 1;
+                window.loadActivities({ reset: false, append: true });
+            }
+            return;
+        }
+
+        var $el = $(el);
+        if (!$el.is(':visible')) {
+            var $allBtn = $('.activity-filter-btn[data-filter="all"]');
+            if ($allBtn.length && !$allBtn.hasClass('active')) {
+                $allBtn.trigger('click');
+            }
+        }
+
+        if (typeof el.scrollIntoView === 'function') {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        $el.addClass('feed-item--deep-link-focus');
+        window.setTimeout(function() {
+            $el.removeClass('feed-item--deep-link-focus');
+        }, 3500);
+
+        deepLinkFocusState.done = true;
+        pendingDeepLinkActivityId = null;
     }
 
     function setupInfiniteScroll() {

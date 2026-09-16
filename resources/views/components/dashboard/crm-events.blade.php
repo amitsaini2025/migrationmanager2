@@ -8,7 +8,13 @@
             <div class="my-day-crm-item" data-event-key="{{ $item['key'] ?? '' }}">
                 <div class="my-day-crm-kind">{{ $item['kind'] ?? '' }}</div>
                 <div>
-                    <div class="my-day-crm-title">{{ $item['title'] ?? '' }}</div>
+                    <div class="my-day-crm-title">
+                        @if(!empty($item['url']) && str_starts_with((string) ($item['key'] ?? ''), 'note:'))
+                            <a href="{{ $item['url'] }}">{{ $item['title'] ?? '' }}</a>
+                        @else
+                            {{ $item['title'] ?? '' }}
+                        @endif
+                    </div>
                     @if(!empty($item['ref']))
                         <div class="my-day-crm-ref">
                             @if(!empty($item['url']))

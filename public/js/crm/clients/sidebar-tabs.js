@@ -240,7 +240,15 @@
             newUrl += '/' + SidebarTabs.matterId;
         }
         newUrl += '/' + tabId;
-        
+
+        // Keep My Day note deep-links (#activity_{id}) when staying on Activity.
+        if (tabId === 'activityfeed') {
+            var hash = String(window.location.hash || '');
+            if (/^#activity_\d+$/.test(hash)) {
+                newUrl += hash;
+            }
+        }
+
         window.history.pushState({tab: tabId}, '', newUrl);
     }
 

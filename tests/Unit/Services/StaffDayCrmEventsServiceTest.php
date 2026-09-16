@@ -240,6 +240,21 @@ class StaffDayCrmEventsServiceTest extends TestCase
             'assigned_to' => null,
             'task_group' => 'In-Person',
             'title' => 'Matter Discussion',
+            'description' => '<p>Discussed next steps</p>',
+            'created_at' => $today,
+            'updated_at' => $today,
+        ]);
+
+        DB::table('activities_logs')->insert([
+            'id' => 501,
+            'client_id' => 10,
+            'created_by' => 1,
+            'subject' => 'added In-person Notes',
+            'description' => '<p>Discussed next steps</p>',
+            'activity_type' => 'note',
+            'task_group' => null,
+            'task_status' => 0,
+            'pin' => 0,
             'created_at' => $today,
             'updated_at' => $today,
         ]);
@@ -250,7 +265,7 @@ class StaffDayCrmEventsServiceTest extends TestCase
         $this->assertNotNull($item);
         $this->assertSame('PRIY2616001', $item['ref']);
         $this->assertSame(
-            route('clients.detail', [base64_encode(convert_uuencode('10')), 'noteterm']),
+            route('clients.detail', [base64_encode(convert_uuencode('10')), 'activityfeed']).'#activity_501',
             $item['url']
         );
     }
@@ -388,6 +403,21 @@ class StaffDayCrmEventsServiceTest extends TestCase
             'assigned_to' => null,
             'task_group' => 'Call',
             'title' => 'Matter Discussion',
+            'description' => 'Called about docs',
+            'created_at' => $today,
+            'updated_at' => $today,
+        ]);
+
+        DB::table('activities_logs')->insert([
+            'id' => 511,
+            'client_id' => 11,
+            'created_by' => 1,
+            'subject' => 'added Call Notes - ART_1',
+            'description' => 'Called about docs',
+            'activity_type' => 'note',
+            'task_group' => null,
+            'task_status' => 0,
+            'pin' => 0,
             'created_at' => $today,
             'updated_at' => $today,
         ]);
@@ -398,7 +428,7 @@ class StaffDayCrmEventsServiceTest extends TestCase
         $this->assertNotNull($item);
         $this->assertSame('MANP2616002-ART_1', $item['ref']);
         $this->assertSame(
-            route('clients.detail', [base64_encode(convert_uuencode('11')), 'ART_1', 'noteterm']),
+            route('clients.detail', [base64_encode(convert_uuencode('11')), 'ART_1', 'activityfeed']).'#activity_511',
             $item['url']
         );
     }
@@ -466,6 +496,7 @@ class StaffDayCrmEventsServiceTest extends TestCase
             $table->unsignedInteger('client_id')->nullable();
             $table->unsignedInteger('created_by')->nullable();
             $table->string('subject')->nullable();
+            $table->text('description')->nullable();
             $table->string('activity_type', 64)->nullable();
             $table->string('task_group')->nullable();
             $table->integer('task_status')->default(0);

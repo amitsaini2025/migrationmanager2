@@ -511,9 +511,13 @@
                     '<button type="button" class="my-day-crm-show-more" aria-expanded="false">Show more</button>' +
                     '</div>';
             }
+            var isNote = String(item.key || '').indexOf('note:') === 0;
+            var titleHtml = (isNote && item.url)
+                ? '<a href="' + escapeAttr(item.url) + '">' + escapeHtml(item.title || '') + '</a>'
+                : escapeHtml(item.title || '');
             return '<div class="my-day-crm-item" data-event-key="' + escapeAttr(item.key || '') + '">' +
                 '<div class="my-day-crm-kind">' + escapeHtml(item.kind || '') + '</div>' +
-                '<div><div class="my-day-crm-title">' + escapeHtml(item.title || '') + '</div>' +
+                '<div><div class="my-day-crm-title">' + titleHtml + '</div>' +
                 (item.ref
                     ? '<div class="my-day-crm-ref">' +
                         (item.url

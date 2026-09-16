@@ -832,6 +832,12 @@
         .feed-list { list-style: none; }
         .feed-item { display: flex; gap: 15px; padding: 14px 0; border-bottom: 1px solid #e9ecef; align-items: flex-start; }
         .feed-item--stage { padding: 14px 0; }
+        .feed-item--deep-link-focus {
+            background: rgba(255, 243, 205, 0.95);
+            box-shadow: inset 3px 0 0 #ffc107;
+            border-radius: 6px;
+            transition: background 0.35s ease;
+        }
         .feed-item:last-child { border-bottom: none; }
         .feed-icon { font-size: 1.1em; color: #6c757d; width: 25px; text-align: center; flex-shrink: 0; padding-top: 2px; }
         .feed-item--email .feed-icon { color: #0d6efd; }

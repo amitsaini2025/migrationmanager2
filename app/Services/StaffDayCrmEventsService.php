@@ -364,12 +364,12 @@ class StaffDayCrmEventsService
             return collect();
         }
 
-        $columns = ['id', 'title', 'task_group', 'matter_id', 'client_id', 'created_at'];
+        $columns = ['id', 'user_id', 'title', 'task_group', 'matter_id', 'client_id', 'created_at'];
         if (Schema::hasColumn('notes', 'description')) {
             $columns[] = 'description';
         }
 
-        return Note::query()
+        $notes = Note::query()
             ->where('user_id', $staffId)
             ->where('is_action', 0)
             ->whereNull('assigned_to')
@@ -377,33 +377,159 @@ class StaffDayCrmEventsService
             ->whereBetween('created_at', [$start, $end])
             ->orderByDesc('created_at')
             ->limit(40)
-            ->get($columns)
-            ->map(function (Note $note): array {
-                $group = (string) ($note->task_group ?? '');
-                $kind = $this->contactNoteKind($group);
-                $title = (string) ($note->title ?: $kind);
+            ->get($columns);
 
-                $clientId = $note->client_id !== null ? (int) $note->client_id : null;
-                $matterId = $note->matter_id !== null && is_numeric($note->matter_id) ? (int) $note->matter_id : null;
+        $activityLogIds = $this->activityLogIdsForNotes($notes);
 
-                $row = $this->row(
-                    $kind,
-                    $title,
-                    $note->created_at,
-                    $this->personOrMatterRef($clientId, $matterId),
-                    'note:'.$note->id,
-                    $clientId,
-                    $matterId,
-                );
-                $row['url'] = $this->notesRecordUrl($clientId, $matterId);
+        return $notes->map(function (Note $note) use ($activityLogIds): array {
+            $group = (string) ($note->task_group ?? '');
+            $kind = $this->contactNoteKind($group);
+            $title = (string) ($note->title ?: $kind);
 
-                $body = $this->noteBodyPlain($note->description ?? null);
-                if ($body !== '') {
-                    $row['body'] = $body;
+            $clientId = $note->client_id !== null ? (int) $note->client_id : null;
+            $matterId = $note->matter_id !== null && is_numeric($note->matter_id) ? (int) $note->matter_id : null;
+
+            $row = $this->row(
+                $kind,
+                $title,
+                $note->created_at,
+                $this->personOrMatterRef($clientId, $matterId),
+                'note:'.$note->id,
+                $clientId,
+                $matterId,
+            );
+            $row['url'] = $this->notesRecordUrl(
+                $clientId,
+                $matterId,
+                $activityLogIds[(int) $note->id] ?? null,
+            );
+
+            $body = $this->noteBodyPlain($note->description ?? null);
+            if ($body !== '') {
+                $row['body'] = $body;
+            }
+
+            return $row;
+        });
+    }
+
+    /**
+     * Map contact note ids to matching activities_logs rows (created when the note was saved).
+     *
+     * @param  Collection<int, Note>  $notes
+     * @return array<int, int>
+     */
+    protected function activityLogIdsForNotes(Collection $notes): array
+    {
+        if ($notes->isEmpty() || ! Schema::hasTable('activities_logs')) {
+            return [];
+        }
+
+        $clientIds = $notes->pluck('client_id')
+            ->filter(fn ($id): bool => $id !== null && (int) $id > 0)
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($clientIds->isEmpty()) {
+            return [];
+        }
+
+        $createdAts = $notes->pluck('created_at')->filter();
+        if ($createdAts->isEmpty()) {
+            return [];
+        }
+
+        $start = Carbon::parse($createdAts->min())->subMinutes(2);
+        $end = Carbon::parse($createdAts->max())->addMinutes(2);
+
+        $hasDescription = Schema::hasColumn('activities_logs', 'description');
+        $columns = ['id', 'client_id', 'created_by', 'created_at'];
+        if ($hasDescription) {
+            $columns[] = 'description';
+        }
+
+        $userIds = $notes->pluck('user_id')
+            ->filter(fn ($id): bool => $id !== null && (int) $id > 0)
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $logsQuery = ActivitiesLog::query()
+            ->whereIn('client_id', $clientIds->all())
+            ->where('activity_type', 'note')
+            ->whereBetween('created_at', [$start, $end])
+            ->orderBy('id');
+
+        if ($userIds !== []) {
+            $logsQuery->whereIn('created_by', $userIds);
+        }
+
+        $logs = $logsQuery->get($columns);
+        if ($logs->isEmpty()) {
+            return [];
+        }
+
+        $map = [];
+        $usedLogIds = [];
+
+        foreach ($notes as $note) {
+            $noteId = (int) $note->id;
+            $noteClientId = $note->client_id !== null ? (int) $note->client_id : null;
+            $noteUserId = $note->user_id !== null ? (int) $note->user_id : null;
+            if ($noteClientId === null || $noteClientId < 1) {
+                continue;
+            }
+
+            $noteAt = Carbon::parse($note->created_at)->getTimestamp();
+            $notePlain = $this->noteBodyPlain($note->description ?? null);
+
+            $bestId = null;
+            $bestScore = PHP_INT_MAX;
+
+            foreach ($logs as $log) {
+                $logId = (int) $log->id;
+                if (isset($usedLogIds[$logId])) {
+                    continue;
                 }
 
-                return $row;
-            });
+                if ((int) $log->client_id !== $noteClientId) {
+                    continue;
+                }
+
+                if ($noteUserId !== null && (int) $log->created_by !== $noteUserId) {
+                    continue;
+                }
+
+                $diffSeconds = abs(Carbon::parse($log->created_at)->getTimestamp() - $noteAt);
+                if ($diffSeconds > 120) {
+                    continue;
+                }
+
+                $score = $diffSeconds;
+                if ($hasDescription && $notePlain !== '') {
+                    $logPlain = $this->noteBodyPlain((string) ($log->description ?? ''));
+                    if ($logPlain !== '' && (str_contains($logPlain, $notePlain) || str_contains($notePlain, $logPlain))) {
+                        $score -= 1000;
+                    } elseif ($logPlain !== '') {
+                        continue;
+                    }
+                }
+
+                if ($score < $bestScore) {
+                    $bestScore = $score;
+                    $bestId = $logId;
+                }
+            }
+
+            if ($bestId !== null) {
+                $map[$noteId] = $bestId;
+                $usedLogIds[$bestId] = true;
+            }
+        }
+
+        return $map;
     }
 
     protected function contactNoteKind(string $taskGroup): string
@@ -490,7 +616,7 @@ class StaffDayCrmEventsService
         return route('clients.detail', $encoded);
     }
 
-    protected function notesRecordUrl(?int $clientId, mixed $matterId): ?string
+    protected function notesRecordUrl(?int $clientId, mixed $matterId, ?int $activityLogId = null): ?string
     {
         if ($clientId === null || $clientId < 1) {
             return null;
@@ -500,10 +626,16 @@ class StaffDayCrmEventsService
         $matterNo = $this->matterNo($matterId);
 
         if ($matterNo !== null && $matterNo !== '') {
-            return route('clients.detail', [$encoded, $matterNo, 'noteterm']);
+            $url = route('clients.detail', [$encoded, $matterNo, 'activityfeed']);
+        } else {
+            $url = route('clients.detail', [$encoded, 'activityfeed']);
         }
 
-        return route('clients.detail', [$encoded, 'noteterm']);
+        if ($activityLogId !== null && $activityLogId > 0) {
+            return $url.'#activity_'.$activityLogId;
+        }
+
+        return $url;
     }
 
     protected function clientOrLeadRef(?int $clientId): ?string

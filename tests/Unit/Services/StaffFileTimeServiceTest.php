@@ -257,6 +257,45 @@ class StaffFileTimeServiceTest extends TestCase
     }
 
     #[Test]
+    public function copy_summary_still_open_includes_opened_sessions_with_url(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-15 17:15:00', 'Australia/Melbourne'));
+        $this->insertStaff(1);
+
+        $crmEvents = $this->createMock(StaffDayCrmEventsService::class);
+        $crmEvents->method('forStaff')->willReturn(['items' => [], 'more' => 0]);
+
+        $hours = $this->createMock(StaffDayHoursService::class);
+        $hours->method('forStaff')->willReturn(['label' => '1h']);
+
+        $url = route('clients.detail', [base64_encode(convert_uuencode('10')), 'APC_8']);
+        $matterSessions = $this->createMock(StaffMatterSessionService::class);
+        $matterSessions->method('sessionsForBoard')->willReturn([
+            'auto' => [],
+            'opened' => [
+                [
+                    'id' => 9,
+                    'ref' => 'JANE0000010-APC_8',
+                    'url' => $url,
+                    'client_id' => 10,
+                    'client_matter_id' => 5,
+                    'focused_seconds' => 45,
+                    'minutes' => 1,
+                ],
+            ],
+            'event_minutes' => [],
+        ]);
+
+        $summary = $this->service->copySummary(1, $crmEvents, $hours, $matterSessions);
+
+        $this->assertStringContainsString('— Still open —', $summary['text']);
+        $this->assertStringContainsString('JANE0000010-APC_8', $summary['text']);
+        $this->assertCount(1, $summary['still_open']);
+        $this->assertSame('JANE0000010-APC_8', $summary['still_open'][0]['ref']);
+        $this->assertSame($url, $summary['still_open'][0]['url']);
+    }
+
+    #[Test]
     public function attach_minutes_to_crm_events_uses_manual_logs_when_no_auto_split(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-09-15 17:00:00', 'Australia/Melbourne'));

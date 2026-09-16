@@ -809,7 +809,38 @@
             if (pre && data.summary) {
                 pre.textContent = data.summary.text || '';
             }
+            renderStillOpenLinks(data.summary && data.summary.still_open);
         }).catch(function () { /* ignore summary errors on load */ });
+    }
+
+    function renderStillOpenLinks(items) {
+        var list = document.getElementById('myDayStillOpenList');
+        var count = document.getElementById('myDayStillOpenCount');
+        var rows = Array.isArray(items) ? items : [];
+        if (count) {
+            count.textContent = String(rows.length);
+        }
+        if (!list) {
+            return;
+        }
+        if (!rows.length) {
+            list.innerHTML = '<li class="my-day-empty">No files still open.</li>';
+            return;
+        }
+        list.innerHTML = rows.map(function (row) {
+            var ref = escapeHtml(row.ref || '—');
+            var label = row.url
+                ? '<a href="' + escapeAttr(row.url) + '">' + ref + '</a>'
+                : ref;
+            var meta = '';
+            if (row.kind && row.kind !== 'opened') {
+                meta = '<span class="my-day-still-open-meta">' +
+                    escapeHtml(String(row.kind)) +
+                    (row.status ? ' · ' + escapeHtml(String(row.status)) : '') +
+                    '</span>';
+            }
+            return '<li>' + label + meta + '</li>';
+        }).join('');
     }
 
     function setupCopy() {

@@ -67,6 +67,13 @@
                 </div>
             </div>
 
+            <div class="my-day-still-open" id="myDayStillOpenSection">
+                <h4 class="my-day-manual-heading">Still open <span class="my-day-opened-badge" id="myDayStillOpenCount">0</span></h4>
+                <ul class="my-day-still-open-list" id="myDayStillOpenList">
+                    <li class="my-day-empty">No files still open.</li>
+                </ul>
+            </div>
+
             <pre class="my-day-eod" id="myDayEod" aria-live="polite">Loading summary…</pre>
             <p class="my-day-hint" id="myDayEodSaved" hidden></p>
             <button type="button" class="my-day-btn" id="myDayCopyBtn">Copy summary</button>

@@ -352,6 +352,7 @@ class StaffFileTimeService
         $overlayDone = [];
         $adminDone = [];
         $stillOpen = [];
+        $seenStillOpen = [];
         foreach ($board['entries'] as $entry) {
             if ($entry['status'] === StaffFileTimeEntry::STATUS_DONE) {
                 $line = [
@@ -368,14 +369,39 @@ class StaffFileTimeService
                 } else {
                     $overlayDone[] = $line;
                 }
-            } else {
-                $stillOpen[] = [
-                    'ref' => $entry['matter_no'] ?? 'Admin',
-                    'kind' => $entry['kind'],
-                    'title' => $entry['title'],
-                    'status' => $entry['status'],
-                ];
             }
+        }
+
+        foreach ($sessionsPayload['opened'] as $row) {
+            $this->pushStillOpen($stillOpen, $seenStillOpen, [
+                'ref' => (string) ($row['ref'] ?? '—'),
+                'kind' => 'opened',
+                'title' => 'Opened today',
+                'status' => 'accessed',
+                'url' => $row['url'] ?? null,
+                'client_id' => $row['client_id'] ?? null,
+                'client_matter_id' => $row['client_matter_id'] ?? null,
+            ]);
+        }
+
+        foreach ($board['entries'] as $entry) {
+            if ($entry['status'] === StaffFileTimeEntry::STATUS_DONE) {
+                continue;
+            }
+
+            $matterNo = $entry['matter_no'] ?? null;
+            $this->pushStillOpen($stillOpen, $seenStillOpen, [
+                'ref' => $entry['matter_no'] ?? 'Admin',
+                'kind' => $entry['kind'],
+                'title' => $entry['title'],
+                'status' => $entry['status'],
+                'url' => $this->recordUrl(
+                    isset($entry['client_id']) ? (int) $entry['client_id'] : null,
+                    is_string($matterNo) ? $matterNo : null,
+                ),
+                'client_id' => $entry['client_id'] ?? null,
+                'client_matter_id' => $entry['client_matter_id'] ?? null,
+            ]);
         }
 
         $crmMinutes = $this->resolveCrmEventMinutes(
@@ -466,7 +492,11 @@ class StaffFileTimeService
             $lines[] = '(none)';
         } else {
             foreach ($stillOpen as $item) {
-                $lines[] = "{$item['ref']} · {$item['kind']} · {$item['title']} · {$item['status']}";
+                if (($item['kind'] ?? '') === 'opened') {
+                    $lines[] = (string) ($item['ref'] ?? '—');
+                } else {
+                    $lines[] = "{$item['ref']} · {$item['kind']} · {$item['title']} · {$item['status']}";
+                }
             }
         }
 
@@ -642,6 +672,43 @@ class StaffFileTimeService
         }
 
         return null;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $stillOpen
+     * @param  array<string, true>  $seen
+     * @param  array<string, mixed>  $item
+     */
+    protected function pushStillOpen(array &$stillOpen, array &$seen, array $item): void
+    {
+        $clientId = (int) ($item['client_id'] ?? 0);
+        $matterId = (int) ($item['client_matter_id'] ?? 0);
+        $key = $clientId > 0 || $matterId > 0
+            ? $clientId.'|'.$matterId
+            : 'ref:'.(string) ($item['ref'] ?? '');
+
+        if (isset($seen[$key])) {
+            return;
+        }
+
+        $seen[$key] = true;
+        $stillOpen[] = $item;
+    }
+
+    protected function recordUrl(?int $clientId, ?string $matterRef): ?string
+    {
+        if ($clientId === null || $clientId < 1) {
+            return null;
+        }
+
+        $encoded = base64_encode(convert_uuencode((string) $clientId));
+        $matterRef = trim((string) $matterRef);
+
+        if ($matterRef !== '') {
+            return route('clients.detail', [$encoded, $matterRef]);
+        }
+
+        return route('clients.detail', $encoded);
     }
 
     /**

@@ -12,7 +12,11 @@
     <ul class="my-day-opened-list" id="myDayOpenedList">
         @forelse ($opened as $row)
             <li>
-                {{ $row['ref'] ?? '—' }}
+                @if (! empty($row['url']))
+                    <a href="{{ $row['url'] }}">{{ $row['ref'] ?? '—' }}</a>
+                @else
+                    {{ $row['ref'] ?? '—' }}
+                @endif
                 @if (! empty($row['minutes']))
                     <span class="my-day-opened-mins">{{ (int) $row['minutes'] }}m</span>
                 @endif

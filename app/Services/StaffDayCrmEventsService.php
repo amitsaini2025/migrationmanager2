@@ -413,6 +413,7 @@ class StaffDayCrmEventsService
             'kind' => $kind,
             'title' => $title,
             'ref' => $ref,
+            'url' => $this->recordUrl($clientId, $clientMatterId),
             'time' => $carbon->format('g:i a'),
             'sort_at' => $carbon->timestamp,
             'client_id' => $clientId,
@@ -423,11 +424,34 @@ class StaffDayCrmEventsService
     protected function personOrMatterRef(?int $clientId, mixed $matterId): ?string
     {
         $matter = $this->matterNo($matterId);
+        $client = $this->clientOrLeadRef($clientId);
+
+        // Match client detail sidebar: {client_id}-{client_unique_matter_no}
+        if ($client !== null && $client !== '' && $matter !== null && $matter !== '') {
+            return $client.'-'.$matter;
+        }
+
         if ($matter !== null && $matter !== '') {
             return $matter;
         }
 
-        return $this->clientOrLeadRef($clientId);
+        return $client;
+    }
+
+    protected function recordUrl(?int $clientId, mixed $matterId): ?string
+    {
+        if ($clientId === null || $clientId < 1) {
+            return null;
+        }
+
+        $encoded = base64_encode(convert_uuencode((string) $clientId));
+        $matterNo = $this->matterNo($matterId);
+
+        if ($matterNo !== null && $matterNo !== '') {
+            return route('clients.detail', [$encoded, $matterNo]);
+        }
+
+        return route('clients.detail', $encoded);
     }
 
     protected function clientOrLeadRef(?int $clientId): ?string

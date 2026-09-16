@@ -361,7 +361,11 @@
                 ? ''
                 : '<button type="button" class="my-day-auto-delete" data-session-id="' + row.id + '">Delete</button>';
             return '<div class="my-day-auto-row" data-session-id="' + row.id + '">' +
-                '<div class="my-day-auto-ref">' + escapeHtml(row.ref || '—') + '</div>' +
+                '<div class="my-day-auto-ref">' +
+                (row.url
+                    ? '<a href="' + escapeAttr(row.url) + '">' + escapeHtml(row.ref || '—') + '</a>'
+                    : escapeHtml(row.ref || '—')) +
+                '</div>' +
                 '<label class="my-day-auto-mins"><input type="number" class="my-day-auto-mins-input" min="1" max="480" value="' +
                 escapeAttr(String(row.confirmed_minutes || 1)) + '" aria-label="Minutes"><span>m</span></label>' +
                 '<div class="my-day-auto-meta">' + escapeHtml(meta) + '</div>' + del + '</div>';
@@ -408,7 +412,11 @@
         }
         list.innerHTML = opened.map(function (row) {
             var mins = row.minutes ? '<span class="my-day-opened-mins">' + escapeHtml(String(row.minutes)) + 'm</span>' : '';
-            return '<li>' + escapeHtml(row.ref || '—') + mins + '</li>';
+            return '<li>' +
+                (row.url
+                    ? '<a href="' + escapeAttr(row.url) + '">' + escapeHtml(row.ref || '—') + '</a>'
+                    : escapeHtml(row.ref || '—')) +
+                mins + '</li>';
         }).join('');
     }
 
@@ -487,7 +495,13 @@
             return '<div class="my-day-crm-item" data-event-key="' + escapeAttr(item.key || '') + '">' +
                 '<div class="my-day-crm-kind">' + escapeHtml(item.kind || '') + '</div>' +
                 '<div><div class="my-day-crm-title">' + escapeHtml(item.title || '') + '</div>' +
-                (item.ref ? '<div class="my-day-crm-ref">' + escapeHtml(item.ref) + '</div>' : '') +
+                (item.ref
+                    ? '<div class="my-day-crm-ref">' +
+                        (item.url
+                            ? '<a href="' + escapeAttr(item.url) + '">' + escapeHtml(item.ref) + '</a>'
+                            : escapeHtml(item.ref)) +
+                      '</div>'
+                    : '') +
                 '</div><div class="my-day-crm-meta"><span class="my-day-tag">' +
                 escapeHtml(item.time || '') + '</span>' + minsHtml + '</div></div>';
         }).join('');

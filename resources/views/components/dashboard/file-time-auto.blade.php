@@ -12,7 +12,13 @@
     <div id="myDayAutoList">
         @forelse ($auto as $row)
             <div class="my-day-auto-row" data-session-id="{{ $row['id'] }}">
-                <div class="my-day-auto-ref">{{ $row['ref'] ?? '—' }}</div>
+                <div class="my-day-auto-ref">
+                    @if (! empty($row['url']))
+                        <a href="{{ $row['url'] }}">{{ $row['ref'] ?? '—' }}</a>
+                    @else
+                        {{ $row['ref'] ?? '—' }}
+                    @endif
+                </div>
                 <label class="my-day-auto-mins">
                     <input type="number" class="my-day-auto-mins-input" min="1" max="480" value="{{ $row['confirmed_minutes'] ?? 1 }}" aria-label="Minutes">
                     <span>m</span>

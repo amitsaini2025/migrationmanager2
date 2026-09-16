@@ -157,7 +157,7 @@ class StaffMatterSessionService
         $sessionDate = $start->toDateString();
 
         $sessions = StaffMatterSession::query()
-            ->with('clientMatter')
+            ->with(['clientMatter', 'client'])
             ->where('staff_id', $staffId)
             ->whereDate('session_date', $sessionDate)
             ->orderByDesc('started_at')
@@ -174,6 +174,7 @@ class StaffMatterSessionService
                 $opened[] = [
                     'id' => $session->id,
                     'ref' => $ref,
+                    'url' => $this->recordUrl($session),
                     'client_id' => $session->client_id,
                     'client_matter_id' => $session->client_matter_id,
                     'focused_seconds' => (int) $session->focused_seconds,
@@ -200,6 +201,7 @@ class StaffMatterSessionService
             $auto[] = [
                 'id' => $session->id,
                 'ref' => $ref,
+                'url' => $this->recordUrl($session),
                 'client_id' => $session->client_id,
                 'client_matter_id' => $session->client_matter_id,
                 'status' => $session->status,
@@ -374,13 +376,19 @@ class StaffMatterSessionService
 
     protected function recordRef(StaffMatterSession $session): string
     {
-        $matterRef = $session->clientMatter?->client_unique_matter_no;
-        if ($matterRef) {
-            return (string) $matterRef;
-        }
-
         $client = $session->client;
         $code = $client ? trim((string) ($client->client_id ?? '')) : '';
+        $matterRef = trim((string) ($session->clientMatter?->client_unique_matter_no ?? ''));
+
+        // Match client detail sidebar: {client_id}-{client_unique_matter_no}
+        if ($code !== '' && $matterRef !== '') {
+            return $code.'-'.$matterRef;
+        }
+
+        if ($matterRef !== '') {
+            return $matterRef;
+        }
+
         if ($code !== '') {
             return $code;
         }
@@ -388,6 +396,23 @@ class StaffMatterSessionService
         $name = $client ? trim(($client->first_name ?? '').' '.($client->last_name ?? '')) : '';
 
         return $name !== '' ? $name : 'Record #'.$session->client_id;
+    }
+
+    protected function recordUrl(StaffMatterSession $session): ?string
+    {
+        $clientId = $session->client_id !== null ? (int) $session->client_id : 0;
+        if ($clientId < 1) {
+            return null;
+        }
+
+        $encoded = base64_encode(convert_uuencode((string) $clientId));
+        $matterRef = trim((string) ($session->clientMatter?->client_unique_matter_no ?? ''));
+
+        if ($matterRef !== '') {
+            return route('clients.detail', [$encoded, $matterRef]);
+        }
+
+        return route('clients.detail', $encoded);
     }
 
     /**

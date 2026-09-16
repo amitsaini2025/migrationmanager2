@@ -10,7 +10,13 @@
                 <div>
                     <div class="my-day-crm-title">{{ $item['title'] ?? '' }}</div>
                     @if(!empty($item['ref']))
-                        <div class="my-day-crm-ref">{{ $item['ref'] }}</div>
+                        <div class="my-day-crm-ref">
+                            @if(!empty($item['url']))
+                                <a href="{{ $item['url'] }}">{{ $item['ref'] }}</a>
+                            @else
+                                {{ $item['ref'] }}
+                            @endif
+                        </div>
                     @endif
                 </div>
                 <div class="my-day-crm-meta">

@@ -42,11 +42,16 @@ class DashboardWorkloadMarkupTest extends TestCase
         $this->assertStringContainsString('x-dashboard.file-time-auto', $myDay);
         $this->assertStringContainsString('x-dashboard.files-opened', $myDay);
 
+        $fileTimeAuto = file_get_contents(resource_path('views/components/dashboard/file-time-auto.blade.php'));
+        $this->assertNotFalse($fileTimeAuto);
+        $this->assertStringContainsString("row['url']", $fileTimeAuto);
+
         $crmEvents = file_get_contents(resource_path('views/components/dashboard/crm-events.blade.php'));
         $this->assertNotFalse($crmEvents);
         $this->assertStringContainsString('my-day-crm-meta', $crmEvents);
         $this->assertStringContainsString('my-day-mins-chip', $crmEvents);
         $this->assertStringContainsString("item['minutes']", $crmEvents);
+        $this->assertStringContainsString("item['url']", $crmEvents);
         $this->assertStringContainsString('myDayAddBtn', $myDay);
         $this->assertStringContainsString('myDayAddBtnEod', $myDay);
         $this->assertStringContainsString('myDayLogModal', $myDay);

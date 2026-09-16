@@ -249,10 +249,14 @@ class StaffDayCrmEventsServiceTest extends TestCase
 
         $this->assertNotNull($item);
         $this->assertSame('PRIY2616001', $item['ref']);
+        $this->assertSame(
+            route('clients.detail', base64_encode(convert_uuencode('10'))),
+            $item['url']
+        );
     }
 
     #[Test]
-    public function contact_note_with_matter_prefers_matter_ref_over_client_ref(): void
+    public function contact_note_with_matter_uses_client_and_matter_ref(): void
     {
         $today = Carbon::parse('2026-09-15 14:30:00', 'Australia/Melbourne');
         Carbon::setTestNow($today);
@@ -292,7 +296,11 @@ class StaffDayCrmEventsServiceTest extends TestCase
         $item = collect($result['items'])->firstWhere('key', 'note:51');
 
         $this->assertNotNull($item);
-        $this->assertSame('ART_1', $item['ref']);
+        $this->assertSame('MANP2616002-ART_1', $item['ref']);
+        $this->assertSame(
+            route('clients.detail', [base64_encode(convert_uuencode('11')), 'ART_1']),
+            $item['url']
+        );
     }
 
     private function createSchema(): void

@@ -272,6 +272,34 @@ class StaffMatterSessionServiceTest extends TestCase
         $this->assertSame(0, DB::table('activities_logs')->where('activity_type', 'file_time')->count());
     }
 
+    #[Test]
+    public function board_refs_use_client_id_and_matter_nickname(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-15 16:00:00', 'Australia/Melbourne'));
+        $this->insertStaff(1);
+        $this->insertClient(10);
+        $this->insertMatter(5, 10, 'APC_8');
+
+        $this->service->heartbeat(1, 10, 5, 30);
+
+        $opened = $this->service->sessionsForBoard(1)['opened'] ?? [];
+        $this->assertNotEmpty($opened);
+        $this->assertSame('JANE0000010-APC_8', $opened[0]['ref']);
+        $this->assertSame(
+            route('clients.detail', [base64_encode(convert_uuencode('10')), 'APC_8']),
+            $opened[0]['url']
+        );
+
+        $this->service->heartbeat(1, 10, 5, 120);
+        $auto = $this->service->sessionsForBoard(1)['auto'] ?? [];
+        $this->assertNotEmpty($auto);
+        $this->assertSame('JANE0000010-APC_8', $auto[0]['ref']);
+        $this->assertSame(
+            route('clients.detail', [base64_encode(convert_uuencode('10')), 'APC_8']),
+            $auto[0]['url']
+        );
+    }
+
     private function createSchema(): void
     {
         foreach (['staff_matter_sessions', 'staff_file_time_entries', 'activities_logs', 'notes', 'client_matters', 'admins', 'staff'] as $table) {

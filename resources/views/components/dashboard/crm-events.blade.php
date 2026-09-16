@@ -18,6 +18,12 @@
                             @endif
                         </div>
                     @endif
+                    @if(!empty($item['body']))
+                        <div class="my-day-crm-body is-collapsed">
+                            <div class="my-day-crm-body-text">{{ $item['body'] }}</div>
+                            <button type="button" class="my-day-crm-show-more" aria-expanded="false">Show more</button>
+                        </div>
+                    @endif
                 </div>
                 <div class="my-day-crm-meta">
                     <span class="my-day-tag">{{ $item['time'] ?? '' }}</span>

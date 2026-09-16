@@ -364,6 +364,11 @@ class StaffDayCrmEventsService
             return collect();
         }
 
+        $columns = ['id', 'title', 'task_group', 'matter_id', 'client_id', 'created_at'];
+        if (Schema::hasColumn('notes', 'description')) {
+            $columns[] = 'description';
+        }
+
         return Note::query()
             ->where('user_id', $staffId)
             ->where('is_action', 0)
@@ -372,7 +377,7 @@ class StaffDayCrmEventsService
             ->whereBetween('created_at', [$start, $end])
             ->orderByDesc('created_at')
             ->limit(40)
-            ->get(['id', 'title', 'task_group', 'matter_id', 'client_id', 'created_at'])
+            ->get($columns)
             ->map(function (Note $note): array {
                 $group = (string) ($note->task_group ?? '');
                 $kind = $this->contactNoteKind($group);
@@ -381,7 +386,7 @@ class StaffDayCrmEventsService
                 $clientId = $note->client_id !== null ? (int) $note->client_id : null;
                 $matterId = $note->matter_id !== null && is_numeric($note->matter_id) ? (int) $note->matter_id : null;
 
-                return $this->row(
+                $row = $this->row(
                     $kind,
                     $title,
                     $note->created_at,
@@ -390,6 +395,13 @@ class StaffDayCrmEventsService
                     $clientId,
                     $matterId,
                 );
+
+                $body = $this->noteBodyPlain($note->description ?? null);
+                if ($body !== '') {
+                    $row['body'] = $body;
+                }
+
+                return $row;
             });
     }
 
@@ -407,6 +419,14 @@ class StaffDayCrmEventsService
             '' => 'Note',
             default => $taskGroup.' note',
         };
+    }
+
+    protected function noteBodyPlain(?string $html): string
+    {
+        $plain = html_entity_decode(strip_tags((string) $html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $plain = preg_replace('/\s+/u', ' ', $plain) ?? '';
+
+        return trim($plain);
     }
 
     /**

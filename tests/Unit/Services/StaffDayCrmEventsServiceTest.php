@@ -326,6 +326,36 @@ class StaffDayCrmEventsServiceTest extends TestCase
     }
 
     #[Test]
+    public function contact_note_includes_hidden_body_for_show_more(): void
+    {
+        $today = Carbon::parse('2026-09-15 16:00:00', 'Australia/Melbourne');
+        Carbon::setTestNow($today);
+
+        DB::table('notes')->insert([
+            'id' => 70,
+            'user_id' => 1,
+            'client_id' => 10,
+            'matter_id' => null,
+            'type' => 'client',
+            'is_action' => 0,
+            'assigned_to' => null,
+            'task_group' => 'Attention',
+            'title' => 'Matter Discussion',
+            'description' => '<p>Test attention. Pls ignore.</p>',
+            'created_at' => $today,
+            'updated_at' => $today,
+        ]);
+
+        $result = $this->service->forStaff(1, $today);
+        $item = collect($result['items'])->firstWhere('key', 'note:70');
+
+        $this->assertNotNull($item);
+        $this->assertSame('Test attention. Pls ignore.', $item['body'] ?? null);
+        $this->assertArrayNotHasKey('body_preview', $item);
+        $this->assertArrayNotHasKey('body_expandable', $item);
+    }
+
+    #[Test]
     public function contact_note_with_matter_uses_client_and_matter_ref(): void
     {
         $today = Carbon::parse('2026-09-15 14:30:00', 'Australia/Melbourne');
@@ -426,6 +456,7 @@ class StaffDayCrmEventsServiceTest extends TestCase
             $table->string('type')->nullable();
             $table->tinyInteger('is_action')->default(0);
             $table->string('title')->nullable();
+            $table->text('description')->nullable();
             $table->string('task_group')->nullable();
             $table->timestamps();
         });

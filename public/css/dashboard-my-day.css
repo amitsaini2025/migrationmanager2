@@ -239,6 +239,26 @@
 .my-day-crm-ref { font-size: 0.75rem; color: #5b3fd6; font-weight: 600; margin-top: 2px; }
 .my-day-crm-ref a { color: inherit; text-decoration: none; }
 .my-day-crm-ref a:hover { text-decoration: underline; }
+.my-day-crm-body { margin-top: 4px; }
+.my-day-crm-body.is-collapsed .my-day-crm-body-text { display: none; }
+.my-day-crm-body-text {
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: #516275;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.my-day-crm-show-more {
+    margin-top: 2px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--my-day-brand);
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.my-day-crm-show-more:hover { text-decoration: underline; }
 .my-day-crm-meta {
     display: flex;
     flex-direction: column;

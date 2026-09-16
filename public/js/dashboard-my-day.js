@@ -492,6 +492,13 @@
             var minsHtml = mins
                 ? '<span class="my-day-mins-chip">' + escapeHtml(String(mins)) + 'm</span>'
                 : '';
+            var bodyHtml = '';
+            if (item.body) {
+                bodyHtml = '<div class="my-day-crm-body is-collapsed">' +
+                    '<div class="my-day-crm-body-text">' + escapeHtml(item.body) + '</div>' +
+                    '<button type="button" class="my-day-crm-show-more" aria-expanded="false">Show more</button>' +
+                    '</div>';
+            }
             return '<div class="my-day-crm-item" data-event-key="' + escapeAttr(item.key || '') + '">' +
                 '<div class="my-day-crm-kind">' + escapeHtml(item.kind || '') + '</div>' +
                 '<div><div class="my-day-crm-title">' + escapeHtml(item.title || '') + '</div>' +
@@ -502,6 +509,7 @@
                             : escapeHtml(item.ref)) +
                       '</div>'
                     : '') +
+                bodyHtml +
                 '</div><div class="my-day-crm-meta"><span class="my-day-tag">' +
                 escapeHtml(item.time || '') + '</span>' + minsHtml + '</div></div>';
         }).join('');
@@ -509,6 +517,28 @@
             html += '<p class="my-day-more">… and ' + more + ' more</p>';
         }
         wrap.innerHTML = html;
+    }
+
+    function setupCrmBodyToggle() {
+        var wrap = document.getElementById('myDayCrmList');
+        if (!wrap || wrap.dataset.bodyToggleBound === '1') {
+            return;
+        }
+        wrap.dataset.bodyToggleBound = '1';
+        wrap.addEventListener('click', function (event) {
+            var btn = event.target.closest('.my-day-crm-show-more');
+            if (!btn || !wrap.contains(btn)) {
+                return;
+            }
+            var body = btn.closest('.my-day-crm-body');
+            if (!body) {
+                return;
+            }
+            var expanding = body.classList.contains('is-collapsed');
+            body.classList.toggle('is-collapsed', !expanding);
+            btn.setAttribute('aria-expanded', expanding ? 'true' : 'false');
+            btn.textContent = expanding ? 'Show less' : 'Show more';
+        });
     }
 
     function renderAll() {
@@ -891,6 +921,7 @@
     setupEodCollapse();
     setupMatterSearch();
     setupCopy();
+    setupCrmBodyToggle();
     renderAll();
     refreshSummary();
 })();

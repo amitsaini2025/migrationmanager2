@@ -256,6 +256,76 @@ class StaffDayCrmEventsServiceTest extends TestCase
     }
 
     #[Test]
+    public function contact_notes_include_all_note_types(): void
+    {
+        $today = Carbon::parse('2026-09-15 15:00:00', 'Australia/Melbourne');
+        Carbon::setTestNow($today);
+
+        DB::table('notes')->insert([
+            [
+                'id' => 60,
+                'user_id' => 1,
+                'client_id' => 10,
+                'matter_id' => null,
+                'type' => 'client',
+                'is_action' => 0,
+                'assigned_to' => null,
+                'task_group' => 'Email',
+                'title' => 'Email follow-up',
+                'created_at' => $today,
+                'updated_at' => $today,
+            ],
+            [
+                'id' => 61,
+                'user_id' => 1,
+                'client_id' => 10,
+                'matter_id' => null,
+                'type' => 'client',
+                'is_action' => 0,
+                'assigned_to' => null,
+                'task_group' => 'Others',
+                'title' => 'General update',
+                'created_at' => $today,
+                'updated_at' => $today,
+            ],
+            [
+                'id' => 62,
+                'user_id' => 1,
+                'client_id' => 10,
+                'matter_id' => null,
+                'type' => 'client',
+                'is_action' => 0,
+                'assigned_to' => null,
+                'task_group' => 'Attention',
+                'title' => 'Needs review',
+                'created_at' => $today,
+                'updated_at' => $today,
+            ],
+            [
+                'id' => 63,
+                'user_id' => 1,
+                'client_id' => 10,
+                'matter_id' => null,
+                'type' => 'client',
+                'is_action' => 1,
+                'assigned_to' => null,
+                'task_group' => 'Email',
+                'title' => 'Assigned action',
+                'created_at' => $today,
+                'updated_at' => $today,
+            ],
+        ]);
+
+        $result = $this->service->forStaff(1, $today);
+        $notes = collect($result['items'])->filter(fn (array $row): bool => str_starts_with((string) ($row['key'] ?? ''), 'note:'));
+
+        $this->assertSame('Email note', $notes->firstWhere('title', 'Email follow-up')['kind'] ?? null);
+        $this->assertSame('Other note', $notes->firstWhere('title', 'General update')['kind'] ?? null);
+        $this->assertSame('Attention note', $notes->firstWhere('title', 'Needs review')['kind'] ?? null);
+        $this->assertNull($notes->firstWhere('title', 'Assigned action'));
+    }
+
+    #[Test]
     public function contact_note_with_matter_uses_client_and_matter_ref(): void
     {
         $today = Carbon::parse('2026-09-15 14:30:00', 'Australia/Melbourne');

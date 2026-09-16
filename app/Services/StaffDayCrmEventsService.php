@@ -369,14 +369,13 @@ class StaffDayCrmEventsService
             ->where('is_action', 0)
             ->whereNull('assigned_to')
             ->whereIn('type', ['client', 'lead'])
-            ->whereIn('task_group', ['Call', 'In-Person'])
             ->whereBetween('created_at', [$start, $end])
             ->orderByDesc('created_at')
             ->limit(40)
             ->get(['id', 'title', 'task_group', 'matter_id', 'client_id', 'created_at'])
             ->map(function (Note $note): array {
                 $group = (string) ($note->task_group ?? '');
-                $kind = stripos($group, 'person') !== false ? 'In-person note' : 'Call note';
+                $kind = $this->contactNoteKind($group);
                 $title = (string) ($note->title ?: $kind);
 
                 $clientId = $note->client_id !== null ? (int) $note->client_id : null;
@@ -392,6 +391,22 @@ class StaffDayCrmEventsService
                     $matterId,
                 );
             });
+    }
+
+    protected function contactNoteKind(string $taskGroup): string
+    {
+        if (stripos($taskGroup, 'person') !== false) {
+            return 'In-person note';
+        }
+
+        return match (strtolower($taskGroup)) {
+            'call' => 'Call note',
+            'email' => 'Email note',
+            'others' => 'Other note',
+            'attention' => 'Attention note',
+            '' => 'Note',
+            default => $taskGroup.' note',
+        };
     }
 
     /**

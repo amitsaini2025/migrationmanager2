@@ -21,6 +21,11 @@ class StaffMatterSessionRoutesTest extends TestCase
         $this->assertTrue(Route::has('dashboard.my-day.sessions.blur'));
         $this->assertTrue(Route::has('dashboard.my-day.sessions.idle-cut'));
         $this->assertTrue(Route::has('dashboard.my-day.sessions.update'));
+        $this->assertTrue(Route::has('dashboard.my-day.sessions.update-minutes'));
         $this->assertTrue(Route::has('dashboard.my-day.sessions.destroy'));
+        $this->assertSame(
+            'POST',
+            Route::getRoutes()->getByName('dashboard.my-day.sessions.update-minutes')->methods()[0] ?? null
+        );
     }
 }

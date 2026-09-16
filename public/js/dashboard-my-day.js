@@ -74,9 +74,21 @@
         }
         return fetch(url, Object.assign({}, options, { headers: headers, credentials: 'same-origin' }))
             .then(function (res) {
-                return res.json().then(function (data) {
+                return res.text().then(function (text) {
+                    var data = {};
+                    if (text) {
+                        try {
+                            data = JSON.parse(text);
+                        } catch (e) {
+                            throw new Error(
+                                res.status
+                                    ? ('Request failed (' + res.status + ').')
+                                    : 'Invalid response from server.'
+                            );
+                        }
+                    }
                     if (!res.ok) {
-                        var msg = (data && (data.message || (data.errors && Object.values(data.errors)[0]))) || 'Request failed';
+                        var msg = (data && (data.message || (data.errors && Object.values(data.errors)[0]))) || ('Request failed (' + res.status + ').');
                         if (Array.isArray(msg)) {
                             msg = msg[0];
                         }
@@ -378,7 +390,7 @@
                 if (!id || mins < 1 || mins > 480) {
                     return;
                 }
-                api(routes.sessionsBase + '/' + id, { method: 'PATCH', body: { confirmed_minutes: mins } })
+                api(routes.sessionsBase + '/' + id + '/minutes', { method: 'POST', body: { confirmed_minutes: mins } })
                     .then(refreshFromIndex)
                     .catch(showError);
             });

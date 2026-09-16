@@ -205,6 +205,7 @@ final class RegisterWebRoutes
             $this->router->post('/dashboard/my-day/sessions/blur', [StaffMatterSessionController::class, 'blur'])->name('dashboard.my-day.sessions.blur');
             $this->router->post('/dashboard/my-day/sessions/{session}/idle-cut', [StaffMatterSessionController::class, 'idleCut'])->name('dashboard.my-day.sessions.idle-cut');
             $this->router->patch('/dashboard/my-day/sessions/{session}', [StaffMatterSessionController::class, 'update'])->name('dashboard.my-day.sessions.update');
+            $this->router->post('/dashboard/my-day/sessions/{session}/minutes', [StaffMatterSessionController::class, 'update'])->name('dashboard.my-day.sessions.update-minutes');
             $this->router->delete('/dashboard/my-day/sessions/{session}', [StaffMatterSessionController::class, 'destroy'])->name('dashboard.my-day.sessions.destroy');
             $this->router->post('/dashboard/column-preferences', [DashboardController::class, 'saveColumnPreferences'])->name('dashboard.column-preferences');
             $this->router->post('/dashboard/extend-deadline', [DashboardController::class, 'extendDeadlineDate'])->name('dashboard.extend-deadline');

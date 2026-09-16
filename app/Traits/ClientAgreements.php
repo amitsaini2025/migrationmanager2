@@ -990,7 +990,7 @@ trait ClientAgreements
      */
     protected function buildScheduleAFamilyMacroStrings(int $clientAdminId): array
     {
-        $partnerTypes = ['Husband', 'Wife', 'Ex-Husband', 'Ex-Wife', 'Defacto', 'Engaged'];
+        $partnerTypes = ClientRelationship::PARTNER_RELATIONSHIP_TYPES;
         $childTypes = ['Son', 'Daughter', 'Step Son', 'Step Daughter'];
 
         $rows = ClientRelationship::query()

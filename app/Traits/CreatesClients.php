@@ -981,7 +981,7 @@ trait CreatesClients
 
             // Update Partner Handling to include all family member types
             $familyTypes = [
-                'partner' => ['Husband', 'Wife', 'Ex-Wife', 'Defacto', 'Engaged'],
+                'partner' => \App\Models\ClientRelationship::PARTNER_RELATIONSHIP_TYPES,
                 'children' => ['Son', 'Daughter', 'Step Son', 'Step Daughter'],
                 'parent' => ['Father', 'Mother', 'Step Father', 'Step Mother', 'Mother-in-law', 'Father-in-law'],
                 'siblings' => ['Brother', 'Sister', 'Step Brother', 'Step Sister'],
@@ -998,6 +998,8 @@ trait CreatesClients
                         return 'Husband';
                     case 'Ex-Wife':
                         return 'Ex-Husband';
+                    case 'Ex-Husband':
+                        return 'Ex-Wife';
                     case 'Defacto':
                         return 'Defacto';
                     case 'Engaged':

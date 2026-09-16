@@ -4806,14 +4806,15 @@ class ClientPersonalDetailsController extends Controller
             }
 
             // Delete existing partner records for this client (filter by partner relationship types)
+            // Must match Partner UI / PARTNER_RELATIONSHIP_TYPES so Engaged & Ex-Husband are replaced, not orphaned.
             // First, get the related_client_ids that will be affected
             $existingRelationships = ClientRelationship::where('client_id', $client->id)
-                ->whereIn('relationship_type', ['Husband', 'Wife', 'Ex-Wife', 'Defacto'])
+                ->partners()
                 ->get();
             
             // Delete the main relationships
             ClientRelationship::where('client_id', $client->id)
-                ->whereIn('relationship_type', ['Husband', 'Wife', 'Ex-Wife', 'Defacto'])
+                ->partners()
                 ->delete();
             
             // Delete reciprocal relationships
@@ -4821,7 +4822,7 @@ class ClientPersonalDetailsController extends Controller
                 if ($relationship->related_client_id) {
                     ClientRelationship::where('client_id', $relationship->related_client_id)
                         ->where('related_client_id', $client->id)
-                        ->whereIn('relationship_type', ['Husband', 'Wife', 'Ex-Wife', 'Defacto'])
+                        ->partners()
                         ->delete();
                 }
             }
@@ -4955,6 +4956,8 @@ class ClientPersonalDetailsController extends Controller
                 return 'Mother-in-law'; // No specific reciprocal
             case 'Defacto':
                 return 'Defacto';
+            case 'Engaged':
+                return 'Engaged';
             default:
                 return $relationshipType; // Return same type if no specific reciprocal
         }

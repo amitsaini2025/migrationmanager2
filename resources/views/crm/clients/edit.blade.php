@@ -1321,7 +1321,7 @@
                         <!-- Summary View -->
                         <div id="partnerInfoSummary" class="summary-view">
                             @php
-                                $partners = $clientPartners->whereIn('relationship_type', ['Husband', 'Wife', 'Ex-Husband', 'Ex-Wife', 'Defacto', 'Engaged']);
+                                $partners = $clientPartners->whereIn('relationship_type', \App\Models\ClientRelationship::PARTNER_RELATIONSHIP_TYPES);
                             @endphp
                             @if($partners->count() > 0)
                                 <div style="margin-top: 15px;">
@@ -1363,7 +1363,7 @@
                                         :index="$index"
                                         :member="$partner"
                                         type="partner"
-                                        :relationshipOptions="['Husband', 'Wife', 'Ex-Husband', 'Ex-Wife', 'Defacto', 'Engaged']"
+                                        :relationshipOptions="\App\Models\ClientRelationship::PARTNER_RELATIONSHIP_TYPES"
                                     />
                                 @endforeach
                             </div>

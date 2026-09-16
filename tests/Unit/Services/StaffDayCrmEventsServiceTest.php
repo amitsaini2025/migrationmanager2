@@ -250,7 +250,7 @@ class StaffDayCrmEventsServiceTest extends TestCase
         $this->assertNotNull($item);
         $this->assertSame('PRIY2616001', $item['ref']);
         $this->assertSame(
-            route('clients.detail', base64_encode(convert_uuencode('10'))),
+            route('clients.detail', [base64_encode(convert_uuencode('10')), 'noteterm']),
             $item['url']
         );
     }
@@ -398,7 +398,7 @@ class StaffDayCrmEventsServiceTest extends TestCase
         $this->assertNotNull($item);
         $this->assertSame('MANP2616002-ART_1', $item['ref']);
         $this->assertSame(
-            route('clients.detail', [base64_encode(convert_uuencode('11')), 'ART_1']),
+            route('clients.detail', [base64_encode(convert_uuencode('11')), 'ART_1', 'noteterm']),
             $item['url']
         );
     }

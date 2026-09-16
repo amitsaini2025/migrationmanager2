@@ -409,10 +409,10 @@ class StaffMatterSessionService
         $matterRef = trim((string) ($session->clientMatter?->client_unique_matter_no ?? ''));
 
         if ($matterRef !== '') {
-            return route('clients.detail', [$encoded, $matterRef]);
+            return route('clients.detail', [$encoded, $matterRef, 'activityfeed']);
         }
 
-        return route('clients.detail', $encoded);
+        return route('clients.detail', [$encoded, 'activityfeed']);
     }
 
     /**

@@ -286,7 +286,7 @@ class StaffMatterSessionServiceTest extends TestCase
         $this->assertNotEmpty($opened);
         $this->assertSame('JANE0000010-APC_8', $opened[0]['ref']);
         $this->assertSame(
-            route('clients.detail', [base64_encode(convert_uuencode('10')), 'APC_8']),
+            route('clients.detail', [base64_encode(convert_uuencode('10')), 'APC_8', 'activityfeed']),
             $opened[0]['url']
         );
 
@@ -295,7 +295,7 @@ class StaffMatterSessionServiceTest extends TestCase
         $this->assertNotEmpty($auto);
         $this->assertSame('JANE0000010-APC_8', $auto[0]['ref']);
         $this->assertSame(
-            route('clients.detail', [base64_encode(convert_uuencode('10')), 'APC_8']),
+            route('clients.detail', [base64_encode(convert_uuencode('10')), 'APC_8', 'activityfeed']),
             $auto[0]['url']
         );
     }

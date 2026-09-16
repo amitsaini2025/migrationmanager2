@@ -395,6 +395,7 @@ class StaffDayCrmEventsService
                     $clientId,
                     $matterId,
                 );
+                $row['url'] = $this->notesRecordUrl($clientId, $matterId);
 
                 $body = $this->noteBodyPlain($note->description ?? null);
                 if ($body !== '') {
@@ -487,6 +488,22 @@ class StaffDayCrmEventsService
         }
 
         return route('clients.detail', $encoded);
+    }
+
+    protected function notesRecordUrl(?int $clientId, mixed $matterId): ?string
+    {
+        if ($clientId === null || $clientId < 1) {
+            return null;
+        }
+
+        $encoded = base64_encode(convert_uuencode((string) $clientId));
+        $matterNo = $this->matterNo($matterId);
+
+        if ($matterNo !== null && $matterNo !== '') {
+            return route('clients.detail', [$encoded, $matterNo, 'noteterm']);
+        }
+
+        return route('clients.detail', [$encoded, 'noteterm']);
     }
 
     protected function clientOrLeadRef(?int $clientId): ?string

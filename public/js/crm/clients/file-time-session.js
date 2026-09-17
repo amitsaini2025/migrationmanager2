@@ -107,8 +107,14 @@
             client_matter_id: rec.matterId,
             focused_seconds: focusedSeconds
         }).then(function (res) {
-            if (res && res.session && res.session.id) {
-                sessionId = res.session.id;
+            if (res && res.session) {
+                if (res.session.id) {
+                    sessionId = res.session.id;
+                }
+                if (typeof res.session.focused_seconds === 'number') {
+                    // Resume accrued focus after reload / another tab heartbeat.
+                    focusedSeconds = Math.max(focusedSeconds, parseInt(res.session.focused_seconds, 10) || 0);
+                }
             }
         });
     }

@@ -360,7 +360,11 @@
     }
 
     function autoTotalMinutes(row) {
-        return Math.max(1, parseInt(row.confirmed_minutes, 10) || 1);
+        var total = parseInt(row.confirmed_minutes, 10);
+        if (isNaN(total) || total < 0) {
+            return 0;
+        }
+        return total;
     }
 
     function autoShowsAverage(row) {
@@ -370,15 +374,15 @@
     function autoDisplayMinutes(row) {
         var total = autoTotalMinutes(row);
         var count = autoEventCount(row);
-        if (!autoShowsAverage(row)) {
-            return total;
+        if (!autoShowsAverage(row) || total < 1) {
+            return Math.max(1, total);
         }
         return Math.max(1, Math.round(total / count));
     }
 
     function autoConfirmedFromInput(row, entered) {
         var value = parseInt(entered, 10);
-        if (!value || value < 1) {
+        if (isNaN(value) || value < 1) {
             return null;
         }
         if (!autoShowsAverage(row)) {
@@ -400,7 +404,7 @@
         list.innerHTML = auto.map(function (row) {
             var count = autoEventCount(row);
             var total = autoTotalMinutes(row);
-            var showsAvg = autoShowsAverage(row);
+            var showsAvg = autoShowsAverage(row) && total > 0;
             var display = autoDisplayMinutes(row);
             var meta;
             if (row.is_reviewed_only) {

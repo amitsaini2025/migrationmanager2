@@ -300,6 +300,47 @@ class StaffMatterSessionServiceTest extends TestCase
         );
     }
 
+    #[Test]
+    public function auto_board_uses_one_minute_floor_but_keeps_longer_actual_minutes(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-15 17:00:00', 'Australia/Melbourne'));
+        $this->insertStaff(1);
+        $this->insertClient(10);
+        $this->insertMatter(5, 10, 'APC_8');
+
+        DB::table('notes')->insert([
+            'id' => 90,
+            'user_id' => 1,
+            'client_id' => 10,
+            'matter_id' => 5,
+            'type' => 'client',
+            'is_action' => 0,
+            'assigned_to' => null,
+            'task_group' => 'Call',
+            'title' => 'Quick note',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Short focus still floors to 1m once recorded.
+        $this->service->heartbeat(1, 10, 5, 10);
+        $short = $this->service->heartbeat(1, 10, 5, 20);
+        $this->assertSame(StaffMatterSession::STATUS_RECORDED, $short->status);
+
+        $autoShort = $this->service->sessionsForBoard(1)['auto'] ?? [];
+        $this->assertNotEmpty($autoShort);
+        $this->assertSame(1, (int) $autoShort[0]['confirmed_minutes']);
+        $this->assertGreaterThanOrEqual(1, (int) $autoShort[0]['event_count']);
+        $this->assertNotEmpty($autoShort[0]['events']);
+        $this->assertSame(1, (int) ($autoShort[0]['events'][0]['minutes'] ?? 0));
+
+        // Longer focus reports actual rounded minutes (not stuck at 1).
+        $this->service->heartbeat(1, 10, 5, 125);
+        $autoLong = $this->service->sessionsForBoard(1)['auto'] ?? [];
+        $this->assertNotEmpty($autoLong);
+        $this->assertSame(2, (int) $autoLong[0]['confirmed_minutes']);
+    }
+
     private function createSchema(): void
     {
         foreach (['staff_matter_sessions', 'staff_file_time_entries', 'activities_logs', 'notes', 'client_matters', 'admins', 'staff'] as $table) {

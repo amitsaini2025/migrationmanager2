@@ -17,7 +17,7 @@
                 if (! empty($row['events']) && is_array($row['events'])) {
                     $eventCount = max($eventCount, count($row['events']));
                 }
-                $showsAvg = empty($row['is_reviewed_only']) && $eventCount > 1;
+                $showsAvg = empty($row['is_reviewed_only']) && $eventCount > 1 && $totalMins > 0;
                 $displayMins = $showsAvg ? max(1, (int) round($totalMins / $eventCount)) : $totalMins;
             @endphp
             <div
@@ -42,7 +42,7 @@
                         max="480"
                         value="{{ $displayMins }}"
                         aria-label="{{ $showsAvg ? 'Average minutes per activity' : 'Minutes' }}"
-                        title="{{ $showsAvg ? 'Average per activity (session total '.$totalMins.'m). Editing sets average; total is average × activities.' : 'Session total minutes' }}"
+                        title="{{ $showsAvg ? 'Average per activity (session total '.$totalMins.'m). Editing sets average; total is average × activities.' : 'Session total minutes from focused tab time (min 1m when recorded)' }}"
                     >
                     <span>m</span>
                 </label>

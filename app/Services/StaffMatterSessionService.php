@@ -188,12 +188,12 @@ class StaffMatterSessionService
                 continue;
             }
 
-            $minutes = (int) ($session->confirmed_minutes ?? max(1, (int) round(((int) $session->focused_seconds) / 60)));
+            $minutes = $this->resolvedMinutes($session);
             $events = $this->eventsForSession($session);
             $splitEvents = $this->splitMinutesAcrossEvents($events, $minutes);
 
             foreach ($splitEvents as $event) {
-                if (isset($event['key'], $event['minutes'])) {
+                if (isset($event['key'], $event['minutes']) && (int) $event['minutes'] > 0) {
                     $eventMinutes[(string) $event['key']] = (int) $event['minutes'];
                 }
             }
@@ -224,7 +224,7 @@ class StaffMatterSessionService
     public function postToFeed(StaffMatterSession $session): ActivitiesLog
     {
         $ref = $this->recordRef($session);
-        $minutes = (int) ($session->confirmed_minutes ?? max(1, (int) round(((int) $session->focused_seconds) / 60)));
+        $minutes = $this->resolvedMinutes($session);
         $events = $this->eventsForSession($session);
         $eventCount = (int) ($session->event_count ?? $events->count());
 
@@ -296,7 +296,8 @@ class StaffMatterSessionService
         $session->status = StaffMatterSession::STATUS_CLOSED;
 
         if ($session->confirmed_minutes === null) {
-            $session->confirmed_minutes = max(0, (int) round(((int) $session->focused_seconds) / 60));
+            $minutes = max(0, (int) round(((int) $session->focused_seconds) / 60));
+            $session->confirmed_minutes = ($wasRecorded && $minutes < 1) ? 1 : $minutes;
         }
 
         if ($wasRecorded) {
@@ -416,15 +417,31 @@ class StaffMatterSessionService
     }
 
     /**
+     * Confirmed minutes when set; otherwise focused seconds rounded to whole minutes.
+     * Recorded sessions use a 1m floor so short CRM work never shows 0m, while longer
+     * focus still reports the real rounded duration (2m, 5m, …).
+     */
+    protected function resolvedMinutes(StaffMatterSession $session): int
+    {
+        if ($session->confirmed_minutes !== null) {
+            $minutes = max(0, (int) $session->confirmed_minutes);
+        } else {
+            $minutes = max(0, (int) round(((int) $session->focused_seconds) / 60));
+        }
+
+        if ($session->isRecordedForBoard() && $minutes < 1) {
+            return 1;
+        }
+
+        return $minutes;
+    }
+
+    /**
      * @param  Collection<int, array<string, mixed>>  $events
      * @return list<array<string, mixed>>
      */
     protected function splitMinutesAcrossEvents(Collection $events, int $minutes): array
     {
-        if ($minutes < 1) {
-            return [];
-        }
-
         $sorted = $events->sortBy([
             ['sort_at', 'asc'],
             ['key', 'asc'],
@@ -441,6 +458,18 @@ class StaffMatterSessionService
             }
 
             return [];
+        }
+
+        if ($minutes < 1) {
+            $result = [];
+            foreach ($sorted as $event) {
+                $row = $event;
+                unset($row['sort_at'], $row['client_id'], $row['client_matter_id']);
+                $row['minutes'] = 0;
+                $result[] = $row;
+            }
+
+            return $result;
         }
 
         $count = $sorted->count();

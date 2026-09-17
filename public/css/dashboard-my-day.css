@@ -573,6 +573,38 @@
     border-radius: 6px;
 }
 .my-day-auto-meta { color: var(--my-day-muted); font-size: 0.78rem; }
+.my-day-auto-events-btn {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--my-day-brand, #3d5a8a);
+    font-size: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.my-day-auto-events-btn:hover { color: #1f3a63; }
+.my-day-auto-events-list { display: grid; gap: 10px; }
+.my-day-auto-event {
+    padding: 10px 12px;
+    border: 1px solid #e8eef6;
+    border-radius: 8px;
+    background: #fafcfe;
+}
+.my-day-auto-event-kind {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--my-day-muted);
+    margin-bottom: 2px;
+}
+.my-day-auto-event-title { font-weight: 600; color: #243447; font-size: 0.9rem; }
+.my-day-auto-event-title a { color: inherit; text-decoration: none; }
+.my-day-auto-event-title a:hover { text-decoration: underline; }
+.my-day-auto-event-meta {
+    margin-top: 4px;
+    font-size: 0.78rem;
+    color: var(--my-day-muted);
+}
 .my-day-auto-delete {
     border: 0;
     background: transparent;

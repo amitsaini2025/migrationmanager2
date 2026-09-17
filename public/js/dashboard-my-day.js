@@ -363,16 +363,23 @@
             return;
         }
         list.innerHTML = auto.map(function (row) {
-            var meta = row.is_reviewed_only
-                ? 'reviewed file'
-                : ((row.event_count || 0) + ' activities');
+            var meta;
+            if (row.is_reviewed_only) {
+                meta = 'reviewed file';
+            } else if ((row.event_count || 0) > 0) {
+                meta = '<button type="button" class="my-day-auto-events-btn" data-session-id="' +
+                    escapeAttr(String(row.id)) + '">' +
+                    escapeHtml(String(row.event_count || 0)) + ' activities</button>';
+            } else {
+                meta = (row.event_count || 0) + ' activities';
+            }
             if (row.posted) {
                 meta += ' · posted';
             }
             var del = row.posted
                 ? ''
                 : '<button type="button" class="my-day-auto-delete" data-session-id="' + row.id + '">Delete</button>';
-            return '<div class="my-day-auto-row" data-session-id="' + row.id + '">' +
+            return '<div class="my-day-auto-row" data-session-id="' + escapeAttr(String(row.id)) + '">' +
                 '<div class="my-day-auto-ref">' +
                 (row.url
                     ? '<a href="' + escapeAttr(row.url) + '">' + escapeHtml(row.ref || '—') + '</a>'
@@ -380,7 +387,7 @@
                 '</div>' +
                 '<label class="my-day-auto-mins"><input type="number" class="my-day-auto-mins-input" min="1" max="480" value="' +
                 escapeAttr(String(row.confirmed_minutes || 1)) + '" aria-label="Minutes"><span>m</span></label>' +
-                '<div class="my-day-auto-meta">' + escapeHtml(meta) + '</div>' + del + '</div>';
+                '<div class="my-day-auto-meta">' + meta + '</div>' + del + '</div>';
         }).join('');
         list.querySelectorAll('.my-day-auto-mins-input').forEach(function (input) {
             input.addEventListener('change', function () {
@@ -395,6 +402,11 @@
                     .catch(showError);
             });
         });
+        list.querySelectorAll('.my-day-auto-events-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                openAutoEventsModal(btn.getAttribute('data-session-id'));
+            });
+        });
         list.querySelectorAll('.my-day-auto-delete').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var id = btn.getAttribute('data-session-id');
@@ -406,6 +418,69 @@
                     .catch(showError);
             });
         });
+    }
+
+    function openAutoEventsModal(sessionId) {
+        if (!sessionId) {
+            return;
+        }
+        var auto = (state.sessions && state.sessions.auto) || [];
+        var row = auto.find(function (item) {
+            return String(item.id) === String(sessionId);
+        });
+        if (!row) {
+            return;
+        }
+
+        var titleEl = document.getElementById('myDayAutoEventsModalLabel');
+        var refEl = document.getElementById('myDayAutoEventsRef');
+        var listEl = document.getElementById('myDayAutoEventsList');
+        var modalEl = document.getElementById('myDayAutoEventsModal');
+        if (!listEl || !modalEl) {
+            return;
+        }
+
+        if (titleEl) {
+            titleEl.textContent = 'Activities on this file';
+        }
+        if (refEl) {
+            refEl.textContent = row.ref || '—';
+        }
+
+        var events = Array.isArray(row.events) ? row.events : [];
+        if (!events.length) {
+            listEl.innerHTML = '<p class="my-day-empty">No CRM activities found for this session.</p>';
+        } else {
+            listEl.innerHTML = events.map(function (event) {
+                var title = event.title || event.kind || 'Activity';
+                var titleHtml = event.url
+                    ? '<a href="' + escapeAttr(event.url) + '">' + escapeHtml(title) + '</a>'
+                    : escapeHtml(title);
+                var metaParts = [];
+                if (event.time) {
+                    metaParts.push(String(event.time));
+                }
+                if (event.minutes) {
+                    metaParts.push(String(event.minutes) + 'm');
+                }
+                if (event.ref) {
+                    metaParts.push(String(event.ref));
+                }
+                return '<div class="my-day-auto-event">' +
+                    '<div class="my-day-auto-event-kind">' + escapeHtml(event.kind || 'Activity') + '</div>' +
+                    '<div class="my-day-auto-event-title">' + titleHtml + '</div>' +
+                    (metaParts.length
+                        ? '<div class="my-day-auto-event-meta">' + escapeHtml(metaParts.join(' · ')) + '</div>'
+                        : '') +
+                    '</div>';
+            }).join('');
+        }
+
+        if (window.bootstrap && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        } else if (window.jQuery) {
+            jQuery(modalEl).modal('show');
+        }
     }
 
     function renderOpenedFiles() {

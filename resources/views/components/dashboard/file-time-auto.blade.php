@@ -26,6 +26,12 @@
                 <div class="my-day-auto-meta">
                     @if (! empty($row['is_reviewed_only']))
                         reviewed file
+                    @elseif ((int) ($row['event_count'] ?? 0) > 0)
+                        <button
+                            type="button"
+                            class="my-day-auto-events-btn"
+                            data-session-id="{{ $row['id'] }}"
+                        >{{ (int) $row['event_count'] }} activities</button>
                     @else
                         {{ (int) ($row['event_count'] ?? 0) }} activities
                     @endif

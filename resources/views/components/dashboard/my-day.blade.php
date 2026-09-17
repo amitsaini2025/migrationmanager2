@@ -111,3 +111,23 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="myDayAutoEventsModal" tabindex="-1" role="dialog" aria-labelledby="myDayAutoEventsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="myDayAutoEventsModalLabel">Activities on this file</h5>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-2" id="myDayAutoEventsRef"></p>
+                <div id="myDayAutoEventsList" class="my-day-auto-events-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>

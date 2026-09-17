@@ -608,6 +608,15 @@
     font-size: 0.78rem;
     color: var(--my-day-muted);
 }
+.my-day-auto-event-meta a,
+#myDayAutoEventsRef a {
+    color: var(--my-day-brand, #3d5a8a);
+    text-decoration: none;
+}
+.my-day-auto-event-meta a:hover,
+#myDayAutoEventsRef a:hover {
+    text-decoration: underline;
+}
 .my-day-auto-delete {
     border: 0;
     background: transparent;

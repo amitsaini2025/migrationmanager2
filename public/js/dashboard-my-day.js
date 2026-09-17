@@ -500,9 +500,15 @@
             titleEl.textContent = 'Activities on this file';
         }
         if (refEl) {
-            refEl.textContent = count > 1
-                ? ((row.ref || '—') + ' · total ' + total + 'm · avg ' + autoDisplayMinutes(row) + 'm')
-                : ((row.ref || '—') + ' · ' + total + 'm');
+            var summary = count > 1
+                ? (' · total ' + total + 'm · avg ' + autoDisplayMinutes(row) + 'm')
+                : (' · ' + total + 'm');
+            if (row.url && row.ref) {
+                refEl.innerHTML = '<a href="' + escapeAttr(row.url) + '">' + escapeHtml(row.ref) + '</a>' +
+                    escapeHtml(summary);
+            } else {
+                refEl.textContent = (row.ref || '—') + summary;
+            }
         }
 
         var events = Array.isArray(row.events) ? row.events : [];
@@ -511,8 +517,9 @@
         } else {
             listEl.innerHTML = events.map(function (event) {
                 var title = event.title || event.kind || 'Activity';
-                var titleHtml = event.url
-                    ? '<a href="' + escapeAttr(event.url) + '">' + escapeHtml(title) + '</a>'
+                var linkUrl = event.url || row.url || '';
+                var titleHtml = linkUrl
+                    ? '<a href="' + escapeAttr(linkUrl) + '">' + escapeHtml(title) + '</a>'
                     : escapeHtml(title);
                 var eventMins = parseInt(event.minutes, 10);
                 if (isNaN(eventMins) || eventMins < 0) {
@@ -520,16 +527,20 @@
                 }
                 var metaParts = [];
                 if (event.time) {
-                    metaParts.push(String(event.time));
+                    metaParts.push(escapeHtml(String(event.time)));
                 }
-                metaParts.push(eventMins + 'm');
+                metaParts.push(escapeHtml(eventMins + 'm'));
                 if (event.ref) {
-                    metaParts.push(String(event.ref));
+                    metaParts.push(
+                        linkUrl
+                            ? '<a href="' + escapeAttr(linkUrl) + '">' + escapeHtml(String(event.ref)) + '</a>'
+                            : escapeHtml(String(event.ref))
+                    );
                 }
                 return '<div class="my-day-auto-event">' +
                     '<div class="my-day-auto-event-kind">' + escapeHtml(event.kind || 'Activity') + '</div>' +
                     '<div class="my-day-auto-event-title">' + titleHtml + '</div>' +
-                    '<div class="my-day-auto-event-meta">' + escapeHtml(metaParts.join(' · ')) + '</div>' +
+                    '<div class="my-day-auto-event-meta">' + metaParts.join(' · ') + '</div>' +
                     '</div>';
             }).join('');
         }

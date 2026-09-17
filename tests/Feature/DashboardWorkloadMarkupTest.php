@@ -46,6 +46,8 @@ class DashboardWorkloadMarkupTest extends TestCase
         $this->assertNotFalse($fileTimeAuto);
         $this->assertStringContainsString("row['url']", $fileTimeAuto);
         $this->assertStringContainsString('my-day-auto-events-btn', $fileTimeAuto);
+        $this->assertStringContainsString('data-total-minutes', $fileTimeAuto);
+        $this->assertStringContainsString('data-shows-avg', $fileTimeAuto);
 
         $crmEvents = file_get_contents(resource_path('views/components/dashboard/crm-events.blade.php'));
         $this->assertNotFalse($crmEvents);

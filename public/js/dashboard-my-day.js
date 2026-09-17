@@ -352,6 +352,41 @@
         });
     }
 
+    function autoEventCount(row) {
+        if (Array.isArray(row.events) && row.events.length) {
+            return row.events.length;
+        }
+        return parseInt(row.event_count, 10) || 0;
+    }
+
+    function autoTotalMinutes(row) {
+        return Math.max(1, parseInt(row.confirmed_minutes, 10) || 1);
+    }
+
+    function autoShowsAverage(row) {
+        return !row.is_reviewed_only && autoEventCount(row) > 1;
+    }
+
+    function autoDisplayMinutes(row) {
+        var total = autoTotalMinutes(row);
+        var count = autoEventCount(row);
+        if (!autoShowsAverage(row)) {
+            return total;
+        }
+        return Math.max(1, Math.round(total / count));
+    }
+
+    function autoConfirmedFromInput(row, entered) {
+        var value = parseInt(entered, 10);
+        if (!value || value < 1) {
+            return null;
+        }
+        if (!autoShowsAverage(row)) {
+            return Math.min(480, value);
+        }
+        return Math.min(480, Math.max(1, value * autoEventCount(row)));
+    }
+
     function renderAutoSessions() {
         var list = document.getElementById('myDayAutoList');
         if (!list) {
@@ -363,15 +398,19 @@
             return;
         }
         list.innerHTML = auto.map(function (row) {
+            var count = autoEventCount(row);
+            var total = autoTotalMinutes(row);
+            var showsAvg = autoShowsAverage(row);
+            var display = autoDisplayMinutes(row);
             var meta;
             if (row.is_reviewed_only) {
                 meta = 'reviewed file';
-            } else if ((row.event_count || 0) > 0) {
+            } else if (count > 0) {
                 meta = '<button type="button" class="my-day-auto-events-btn" data-session-id="' +
                     escapeAttr(String(row.id)) + '">' +
-                    escapeHtml(String(row.event_count || 0)) + ' activities</button>';
+                    escapeHtml(String(count)) + ' activities</button>';
             } else {
-                meta = (row.event_count || 0) + ' activities';
+                meta = '0 activities';
             }
             if (row.posted) {
                 meta += ' · posted';
@@ -379,22 +418,37 @@
             var del = row.posted
                 ? ''
                 : '<button type="button" class="my-day-auto-delete" data-session-id="' + row.id + '">Delete</button>';
-            return '<div class="my-day-auto-row" data-session-id="' + escapeAttr(String(row.id)) + '">' +
+            var minsTitle = showsAvg
+                ? ('Average per activity (session total ' + total + 'm). Editing sets average; total is average × activities.')
+                : 'Session total minutes';
+            return '<div class="my-day-auto-row" data-session-id="' + escapeAttr(String(row.id)) +
+                '" data-total-minutes="' + escapeAttr(String(total)) +
+                '" data-event-count="' + escapeAttr(String(count)) +
+                '" data-shows-avg="' + (showsAvg ? '1' : '0') + '">' +
                 '<div class="my-day-auto-ref">' +
                 (row.url
                     ? '<a href="' + escapeAttr(row.url) + '">' + escapeHtml(row.ref || '—') + '</a>'
                     : escapeHtml(row.ref || '—')) +
                 '</div>' +
                 '<label class="my-day-auto-mins"><input type="number" class="my-day-auto-mins-input" min="1" max="480" value="' +
-                escapeAttr(String(row.confirmed_minutes || 1)) + '" aria-label="Minutes"><span>m</span></label>' +
+                escapeAttr(String(display)) + '" aria-label="' +
+                (showsAvg ? 'Average minutes per activity' : 'Minutes') +
+                '" title="' + escapeAttr(minsTitle) + '"><span>m</span></label>' +
                 '<div class="my-day-auto-meta">' + meta + '</div>' + del + '</div>';
         }).join('');
         list.querySelectorAll('.my-day-auto-mins-input').forEach(function (input) {
             input.addEventListener('change', function () {
                 var rowEl = input.closest('.my-day-auto-row');
                 var id = rowEl && rowEl.getAttribute('data-session-id');
-                var mins = parseInt(input.value, 10);
-                if (!id || mins < 1 || mins > 480) {
+                var auto = (state.sessions && state.sessions.auto) || [];
+                var row = auto.find(function (item) {
+                    return String(item.id) === String(id);
+                });
+                if (!id || !row) {
+                    return;
+                }
+                var mins = autoConfirmedFromInput(row, input.value);
+                if (!mins) {
                     return;
                 }
                 api(routes.sessionsBase + '/' + id + '/minutes', { method: 'POST', body: { confirmed_minutes: mins } })
@@ -440,11 +494,15 @@
             return;
         }
 
+        var total = autoTotalMinutes(row);
+        var count = autoEventCount(row);
         if (titleEl) {
             titleEl.textContent = 'Activities on this file';
         }
         if (refEl) {
-            refEl.textContent = row.ref || '—';
+            refEl.textContent = count > 1
+                ? ((row.ref || '—') + ' · total ' + total + 'm · avg ' + autoDisplayMinutes(row) + 'm')
+                : ((row.ref || '—') + ' · ' + total + 'm');
         }
 
         var events = Array.isArray(row.events) ? row.events : [];
@@ -456,22 +514,22 @@
                 var titleHtml = event.url
                     ? '<a href="' + escapeAttr(event.url) + '">' + escapeHtml(title) + '</a>'
                     : escapeHtml(title);
+                var eventMins = parseInt(event.minutes, 10);
+                if (isNaN(eventMins) || eventMins < 0) {
+                    eventMins = 0;
+                }
                 var metaParts = [];
                 if (event.time) {
                     metaParts.push(String(event.time));
                 }
-                if (event.minutes) {
-                    metaParts.push(String(event.minutes) + 'm');
-                }
+                metaParts.push(eventMins + 'm');
                 if (event.ref) {
                     metaParts.push(String(event.ref));
                 }
                 return '<div class="my-day-auto-event">' +
                     '<div class="my-day-auto-event-kind">' + escapeHtml(event.kind || 'Activity') + '</div>' +
                     '<div class="my-day-auto-event-title">' + titleHtml + '</div>' +
-                    (metaParts.length
-                        ? '<div class="my-day-auto-event-meta">' + escapeHtml(metaParts.join(' · ')) + '</div>'
-                        : '') +
+                    '<div class="my-day-auto-event-meta">' + escapeHtml(metaParts.join(' · ')) + '</div>' +
                     '</div>';
             }).join('');
         }

@@ -267,23 +267,50 @@ class StaffDayCrmEventsService
 
         $columns = array_values(array_filter(['id', $bodyCol, $timeCol, 'client_id']));
 
-        return SmsLog::query()
+        $logs = SmsLog::query()
             ->where('sender_id', $staffId)
             ->whereBetween($timeCol, [$start, $end])
             ->orderByDesc($timeCol)
             ->limit(40)
-            ->get($columns)
-            ->map(function (SmsLog $sms) use ($timeCol, $bodyCol): array {
-                $at = $sms->{$timeCol} ?? $sms->created_at ?? null;
-                $body = $bodyCol !== null ? ($sms->{$bodyCol} ?? null) : null;
-                $title = (string) (Str::limit((string) ($body ?? 'SMS'), 80));
+            ->get($columns);
 
-                $clientId = Schema::hasColumn('sms_logs', 'client_id') && $sms->client_id !== null
-                    ? (int) $sms->client_id
-                    : null;
+        $activityIdsBySms = [];
+        if (
+            $logs->isNotEmpty()
+            && Schema::hasTable('activities_logs')
+            && Schema::hasColumn('activities_logs', 'sms_log_id')
+        ) {
+            $activityIdsBySms = ActivitiesLog::query()
+                ->whereIn('sms_log_id', $logs->pluck('id')->all())
+                ->orderBy('id')
+                ->get(['id', 'sms_log_id'])
+                ->groupBy(fn (ActivitiesLog $log): int => (int) $log->sms_log_id)
+                ->map(fn (Collection $group): int => (int) $group->first()->id)
+                ->all();
+        }
 
-                return $this->row('SMS', $title, $at, $this->personOrMatterRef($clientId, null), 'sms:'.$sms->id, $clientId, null);
-            });
+        return $logs->map(function (SmsLog $sms) use ($timeCol, $bodyCol, $activityIdsBySms): array {
+            $at = $sms->{$timeCol} ?? $sms->created_at ?? null;
+            $body = $bodyCol !== null ? ($sms->{$bodyCol} ?? null) : null;
+            $title = (string) (Str::limit((string) ($body ?? 'SMS'), 80));
+
+            $clientId = Schema::hasColumn('sms_logs', 'client_id') && $sms->client_id !== null
+                ? (int) $sms->client_id
+                : null;
+
+            $activityLogId = $activityIdsBySms[(int) $sms->id] ?? null;
+
+            return $this->row(
+                'SMS',
+                $title,
+                $at,
+                $this->personOrMatterRef($clientId, null),
+                'sms:'.$sms->id,
+                $clientId,
+                null,
+                $activityLogId,
+            );
+        });
     }
 
     /**
@@ -351,6 +378,7 @@ class StaffDayCrmEventsService
                     'feed:'.$log->id,
                     $log->client_id !== null ? (int) $log->client_id : null,
                     $matterId,
+                    (int) $log->id,
                 );
             });
     }
@@ -395,10 +423,6 @@ class StaffDayCrmEventsService
                 $note->created_at,
                 $this->personOrMatterRef($clientId, $matterId),
                 'note:'.$note->id,
-                $clientId,
-                $matterId,
-            );
-            $row['url'] = $this->notesRecordUrl(
                 $clientId,
                 $matterId,
                 $activityLogIds[(int) $note->id] ?? null,
@@ -567,6 +591,7 @@ class StaffDayCrmEventsService
         string $key,
         ?int $clientId = null,
         ?int $clientMatterId = null,
+        ?int $activityLogId = null,
     ): array {
         $carbon = $at ? Carbon::parse($at)->timezone((string) config('app.timezone')) : now();
 
@@ -575,7 +600,7 @@ class StaffDayCrmEventsService
             'kind' => $kind,
             'title' => $title,
             'ref' => $ref,
-            'url' => $this->recordUrl($clientId, $clientMatterId),
+            'url' => $this->activityFeedUrl($clientId, $clientMatterId, $activityLogId),
             'time' => $carbon->format('g:i a'),
             'sort_at' => $carbon->timestamp,
             'client_id' => $clientId,
@@ -600,23 +625,10 @@ class StaffDayCrmEventsService
         return $client;
     }
 
-    protected function recordUrl(?int $clientId, mixed $matterId): ?string
-    {
-        if ($clientId === null || $clientId < 1) {
-            return null;
-        }
-
-        $encoded = base64_encode(convert_uuencode((string) $clientId));
-        $matterNo = $this->matterNo($matterId);
-
-        if ($matterNo !== null && $matterNo !== '') {
-            return route('clients.detail', [$encoded, $matterNo]);
-        }
-
-        return route('clients.detail', $encoded);
-    }
-
-    protected function notesRecordUrl(?int $clientId, mixed $matterId, ?int $activityLogId = null): ?string
+    /**
+     * Deep-link to the client Activity tab, optionally focusing a specific feed row.
+     */
+    protected function activityFeedUrl(?int $clientId, mixed $matterId, ?int $activityLogId = null): ?string
     {
         if ($clientId === null || $clientId < 1) {
             return null;
@@ -636,6 +648,16 @@ class StaffDayCrmEventsService
         }
 
         return $url;
+    }
+
+    protected function notesRecordUrl(?int $clientId, mixed $matterId, ?int $activityLogId = null): ?string
+    {
+        return $this->activityFeedUrl($clientId, $matterId, $activityLogId);
+    }
+
+    protected function recordUrl(?int $clientId, mixed $matterId): ?string
+    {
+        return $this->activityFeedUrl($clientId, $matterId);
     }
 
     protected function clientOrLeadRef(?int $clientId): ?string

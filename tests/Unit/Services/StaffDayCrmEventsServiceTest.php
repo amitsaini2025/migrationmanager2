@@ -81,6 +81,13 @@ class StaffDayCrmEventsServiceTest extends TestCase
         $this->assertContains('Staff sent mail', $titles);
         $this->assertNotContains('System receipt', $titles);
         $this->assertNotContains('Other staff', $titles);
+
+        $feedItem = collect($result['items'])->firstWhere('key', 'feed:10');
+        $this->assertNotNull($feedItem);
+        $this->assertSame(
+            route('clients.detail', [base64_encode(convert_uuencode('1')), 'activityfeed']).'#activity_10',
+            $feedItem['url']
+        );
     }
 
     #[Test]
@@ -472,6 +479,7 @@ class StaffDayCrmEventsServiceTest extends TestCase
         Schema::create('sms_logs', function (Blueprint $table) {
             $table->increments('id');
             $table->unsignedInteger('sender_id')->nullable();
+            $table->unsignedInteger('client_id')->nullable();
             $table->text('message_content')->nullable();
             $table->timestamp('sent_at')->nullable();
             $table->timestamps();
@@ -495,6 +503,7 @@ class StaffDayCrmEventsServiceTest extends TestCase
             $table->increments('id');
             $table->unsignedInteger('client_id')->nullable();
             $table->unsignedInteger('created_by')->nullable();
+            $table->unsignedInteger('sms_log_id')->nullable();
             $table->string('subject')->nullable();
             $table->text('description')->nullable();
             $table->string('activity_type', 64)->nullable();

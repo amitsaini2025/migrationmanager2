@@ -128,9 +128,11 @@
             }
         }
 
-        if (typeof el.scrollIntoView === 'function') {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        scrollActivityToFeedTop(el);
+        // Re-run after filter/layout settles so the row stays at the top of the feed pane.
+        window.setTimeout(function() {
+            scrollActivityToFeedTop(el);
+        }, 50);
 
         $el.addClass('feed-item--deep-link-focus');
         window.setTimeout(function() {
@@ -139,6 +141,32 @@
 
         deepLinkFocusState.done = true;
         pendingDeepLinkActivityId = null;
+    }
+
+    /**
+     * Scroll the Activity feed pane so the target row sits near the top of the visible list.
+     */
+    function scrollActivityToFeedTop(el) {
+        if (!el) {
+            return;
+        }
+
+        var $feed = getActivityFeedScroller();
+        var feedEl = $feed[0];
+        if (feedEl && feedEl.contains(el)) {
+            var delta = el.getBoundingClientRect().top - feedEl.getBoundingClientRect().top;
+            var nextTop = feedEl.scrollTop + delta - 8;
+            if (typeof feedEl.scrollTo === 'function') {
+                feedEl.scrollTo({ top: Math.max(0, nextTop), behavior: 'smooth' });
+            } else {
+                feedEl.scrollTop = Math.max(0, nextTop);
+            }
+            return;
+        }
+
+        if (typeof el.scrollIntoView === 'function') {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     }
 
     function setupInfiniteScroll() {

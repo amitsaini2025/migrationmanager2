@@ -152,11 +152,6 @@ use App\Http\Controllers\Controller;
                 </button>
 
                 @php
-                    $detailsVerifiedByName = null;
-                    if (!empty($fetchedData->details_verified_by)) {
-                        $detailsVerifiedByName = optional($fetchedData->detailsVerifiedByStaff)->full_name
-                            ?: optional(\App\Models\Staff::find($fetchedData->details_verified_by))->full_name;
-                    }
                     $clientVerifySummary = app(\App\Services\ClientDetailVerificationService::class)
                         ->latestSubmittedSummary((int) $fetchedData->id);
                 @endphp
@@ -165,12 +160,6 @@ use App\Http\Controllers\Controller;
                     <div class="details-verify-heading">{{ $clientVerifySummary['heading'] }}</div>
                     <div class="details-verify-line"><strong>Verified By:</strong> {{ $clientVerifySummary['verified_by'] }}</div>
                     <div class="details-verify-line"><strong>Verified At:</strong> {{ $clientVerifySummary['verified_at'] }}</div>
-                </div>
-                @endif
-                @if(!empty($fetchedData->details_verified_at))
-                <div class="sidebar-details-verified-info" id="sidebarDetailsVerifiedInfo">
-                    <div class="details-verify-line"><strong>Verified By:</strong> {{ $detailsVerifiedByName ?: 'â€”' }}</div>
-                    <div class="details-verify-line"><strong>Verified At:</strong> {{ $fetchedData->details_verified_at->format('d/m/Y g:i A') }}</div>
                 </div>
                 @endif
             </div>

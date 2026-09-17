@@ -202,7 +202,12 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertStringContainsString('class="send-verify-link"', $detail);
         Assert::assertStringContainsString('id="sidebarClientVerifyInfo"', $detail);
         Assert::assertStringContainsString('latestSubmittedSummary', $detail);
-        Assert::assertStringContainsString('id="sidebarDetailsVerifiedInfo"', $detail);
+        Assert::assertStringNotContainsString('id="sidebarDetailsVerifiedInfo"', $detail);
+
+        $edit = file_get_contents($this->projectPath('resources/views/crm/clients/edit.blade.php'));
+        Assert::assertNotFalse($edit);
+        Assert::assertStringContainsString('id="detailsVerifyMeta"', $edit);
+        Assert::assertStringContainsString('id="btnVerifyDetails"', $edit);
         Assert::assertStringContainsString('class="send-sms-btn"', $detail);
         Assert::assertStringContainsString('data-bs-target="#create_appoint"', $detail);
         Assert::assertStringNotContainsString('js/tinymce/js/tinymce/tinymce.min.js', $detail);

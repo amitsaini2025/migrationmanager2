@@ -579,10 +579,13 @@
     background: transparent;
     color: var(--my-day-brand, #3d5a8a);
     font-size: inherit;
-    text-decoration: underline;
+    text-decoration: none;
     cursor: pointer;
 }
-.my-day-auto-events-btn:hover { color: #1f3a63; }
+.my-day-auto-events-btn:hover {
+    color: #1f3a63;
+    text-decoration: none;
+}
 .my-day-auto-events-list { display: grid; gap: 10px; }
 .my-day-auto-event {
     padding: 10px 12px;

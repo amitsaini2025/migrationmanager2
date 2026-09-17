@@ -228,10 +228,10 @@ final class ClientDetailVerificationFields
         }
 
         if ($confirmedCount < 1) {
-            return 'Request Change';
+            return 'Verification Confirmed';
         }
 
-        return 'Verification Confirmed and Request Changes';
+        return 'Verification Confirmed';
     }
 
     public static function formatVerifiedAt(?\DateTimeInterface $at): string

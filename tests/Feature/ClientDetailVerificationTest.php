@@ -271,7 +271,8 @@ class ClientDetailVerificationTest extends TestCase
             'declaration' => '1',
             'fields_json' => json_encode($payload),
         ])->assertOk()
-            ->assertSee('Verification Confirmed and Request Changes')
+            ->assertSee('Verification Confirmed')
+            ->assertDontSee('Verification Confirmed and Request Changes')
             ->assertSee('Verified By:')
             ->assertSee('Super1 Admin1')
             ->assertSee('Verified At:')
@@ -337,8 +338,8 @@ class ClientDetailVerificationTest extends TestCase
             'declaration' => '1',
             'fields_json' => json_encode($payload),
         ])->assertOk()
-            ->assertSee('Request Change')
-            ->assertDontSee('Verification Confirmed')
+            ->assertSee('Verification Confirmed')
+            ->assertDontSee('Verification Confirmed and Request Changes')
             ->assertSee('Super1 Admin1')
             ->assertSee(ClientDetailVerificationFields::formatVerifiedAt(now()));
     }
@@ -428,7 +429,8 @@ class ClientDetailVerificationTest extends TestCase
             'declaration' => '1',
             'fields_json' => json_encode($payload),
         ])->assertOk()
-            ->assertSee('Verification Confirmed and Request Changes')
+            ->assertSee('Verification Confirmed')
+            ->assertDontSee('Verification Confirmed and Request Changes')
             ->assertSee('Super1 Admin1')
             ->assertSee(ClientDetailVerificationFields::formatVerifiedAt(now()));
 
@@ -502,7 +504,8 @@ class ClientDetailVerificationTest extends TestCase
             'declaration' => '1',
             'fields_json' => json_encode($payload),
         ])->assertOk()
-            ->assertSee('Verification Confirmed and Request Changes')
+            ->assertSee('Verification Confirmed')
+            ->assertDontSee('Verification Confirmed and Request Changes')
             ->assertSee('Super1 Admin1');
 
         $visaField = ClientDetailVerificationField::query()
@@ -566,7 +569,7 @@ class ClientDetailVerificationTest extends TestCase
 
         $summary = app(ClientDetailVerificationService::class)->latestSubmittedSummary((int) $this->client->id);
         $this->assertNotNull($summary);
-        $this->assertSame('Verification Confirmed and Request Changes', $summary['heading']);
+        $this->assertSame('Verification Confirmed', $summary['heading']);
         $this->assertSame('Super1 Admin1', $summary['verified_by']);
         $this->assertSame(ClientDetailVerificationFields::formatVerifiedAt(now()), $summary['verified_at']);
 
@@ -584,7 +587,7 @@ class ClientDetailVerificationTest extends TestCase
 
         $afterAccept = app(ClientDetailVerificationService::class)->latestSubmittedSummary((int) $this->client->id);
         $this->assertNotNull($afterAccept);
-        $this->assertSame('Verification Confirmed and Request Changes', $afterAccept['heading']);
+        $this->assertSame('Verification Confirmed', $afterAccept['heading']);
         $this->assertSame('Super1 Admin1', $afterAccept['verified_by']);
     }
 

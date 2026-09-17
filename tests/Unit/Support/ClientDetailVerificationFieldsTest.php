@@ -105,11 +105,11 @@ class ClientDetailVerificationFieldsTest extends TestCase
     }
 
     #[Test]
-    public function result_heading_depends_on_confirm_and_change_mix(): void
+    public function result_heading_is_always_verification_confirmed(): void
     {
         $this->assertSame('Verification Confirmed', ClientDetailVerificationFields::resultHeading(11, 0));
-        $this->assertSame('Request Change', ClientDetailVerificationFields::resultHeading(0, 11));
-        $this->assertSame('Verification Confirmed and Request Changes', ClientDetailVerificationFields::resultHeading(10, 1));
+        $this->assertSame('Verification Confirmed', ClientDetailVerificationFields::resultHeading(0, 11));
+        $this->assertSame('Verification Confirmed', ClientDetailVerificationFields::resultHeading(10, 1));
         $this->assertSame('14/09/2026 4:44 PM', ClientDetailVerificationFields::formatVerifiedAt(Carbon::parse('2026-09-14 16:44:00')));
     }
 

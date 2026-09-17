@@ -204,6 +204,11 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertStringContainsString('latestSubmittedSummary', $detail);
         Assert::assertStringNotContainsString('id="sidebarDetailsVerifiedInfo"', $detail);
 
+        $verifiedInfoCss = file_get_contents($this->projectPath('public/css/client-detail.css'));
+        Assert::assertNotFalse($verifiedInfoCss);
+        Assert::assertStringContainsString('#sidebarClientVerifyInfo.sidebar-details-verified-info', $verifiedInfoCss);
+        Assert::assertStringContainsString('padding: 6px 8px', $verifiedInfoCss);
+
         $edit = file_get_contents($this->projectPath('resources/views/crm/clients/edit.blade.php'));
         Assert::assertNotFalse($edit);
         Assert::assertStringContainsString('id="detailsVerifyMeta"', $edit);

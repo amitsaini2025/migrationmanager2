@@ -1548,6 +1548,19 @@ input:checked + .toggle-slider:before { transform: translateX(18px); }
     font-weight: 700;
 }
 
+#sidebarClientVerifyInfo.sidebar-details-verified-info {
+    padding: 6px 8px;
+    line-height: 1.25;
+}
+
+#sidebarClientVerifyInfo .details-verify-heading {
+    margin-bottom: 2px;
+}
+
+#sidebarClientVerifyInfo .details-verify-line {
+    margin-bottom: 2px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .reference-chip {

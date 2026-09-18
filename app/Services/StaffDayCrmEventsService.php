@@ -17,8 +17,7 @@ use Illuminate\Support\Str;
 
 class StaffDayCrmEventsService
 {
-    /** Temporary testing value — revert to 50 after verifying “… and N more”. */
-    public const LIST_CAP = 10;
+    public const LIST_CAP = 50;
 
     /** Hard ceiling when My Day expands “… and N more”. */
     public const EXPAND_CAP = 500;

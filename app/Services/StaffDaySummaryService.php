@@ -95,7 +95,7 @@ class StaffDaySummaryService
         ];
     }
 
-    public function snapshotStaff(int $staffId, string $source, ?Carbon $day = null): StaffDaySummary
+    public function snapshotStaff(int $staffId, string $source, ?Carbon $day = null, ?int $crmLimit = null): StaffDaySummary
     {
         $summary = $this->fileTime->copySummary(
             $staffId,
@@ -103,6 +103,7 @@ class StaffDaySummaryService
             $this->hours,
             $this->matterSessions,
             $day,
+            $crmLimit,
         );
 
         return $this->upsert($staffId, $summary, $source, $day);

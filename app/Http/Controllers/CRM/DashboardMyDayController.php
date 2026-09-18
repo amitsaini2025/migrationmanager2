@@ -36,14 +36,15 @@ class DashboardMyDayController extends Controller
         $this->middleware('auth:admin');
     }
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $staff = $this->staffOrAbort();
+        $crmLimit = $this->crmLimitFromRequest($request);
 
         $board = $this->fileTime->boardForStaff((int) $staff->id);
         $sessions = $this->matterSessions->sessionsForBoard((int) $staff->id);
         $crmEvents = $this->fileTime->attachMinutesToCrmEvents(
-            $this->crmEvents->forStaff((int) $staff->id),
+            $this->crmEvents->forStaff((int) $staff->id, null, $crmLimit),
             $sessions,
             $board,
         );
@@ -255,7 +256,7 @@ class DashboardMyDayController extends Controller
         ]);
     }
 
-    public function copySummary(): JsonResponse
+    public function copySummary(Request $request): JsonResponse
     {
         $staff = $this->staffOrAbort();
         $summary = $this->fileTime->copySummary(
@@ -263,6 +264,8 @@ class DashboardMyDayController extends Controller
             $this->crmEvents,
             $this->hours,
             $this->matterSessions,
+            null,
+            $this->crmLimitFromRequest($request),
         );
 
         return response()->json([
@@ -271,12 +274,14 @@ class DashboardMyDayController extends Controller
         ]);
     }
 
-    public function saveCopySummary(): JsonResponse
+    public function saveCopySummary(Request $request): JsonResponse
     {
         $staff = $this->staffOrAbort();
         $row = $this->daySummaries->snapshotStaff(
             (int) $staff->id,
             StaffDaySummary::SOURCE_COPY,
+            null,
+            $this->crmLimitFromRequest($request),
         );
 
         return response()->json([
@@ -284,6 +289,16 @@ class DashboardMyDayController extends Controller
             'saved' => true,
             'summary' => $this->daySummaries->payload($row),
         ]);
+    }
+
+    protected function crmLimitFromRequest(Request $request): int
+    {
+        $crmLimit = $request->integer('crm_limit', StaffDayCrmEventsService::LIST_CAP);
+        if ($crmLimit < 1) {
+            $crmLimit = StaffDayCrmEventsService::LIST_CAP;
+        }
+
+        return min($crmLimit, StaffDayCrmEventsService::EXPAND_CAP);
     }
 
     protected function staffOrAbort(): Staff

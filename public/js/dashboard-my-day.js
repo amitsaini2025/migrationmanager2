@@ -27,7 +27,9 @@
         selectedKind: null,
         filterKey: null,
         pendingDoneId: null,
-        tickTimer: null
+        tickTimer: null,
+        crmLimit: null,
+        eodCrmLimit: null
     };
 
     function safeJson(raw, fallback) {
@@ -626,7 +628,7 @@
     }
 
     function refreshFromIndex() {
-        return api(routes.index, { method: 'GET' }).then(function (data) {
+        return api(myDayIndexUrl(), { method: 'GET' }).then(function (data) {
             if (data.board) {
                 applyBoard(data.board);
             }
@@ -643,6 +645,7 @@
         }
         var items = payload.items || [];
         var more = payload.more || 0;
+        var total = payload.total || (items.length + more);
         if (!items.length) {
             wrap.innerHTML = '<p class="my-day-empty">No CRM events logged by you today yet.</p>';
             return;
@@ -678,7 +681,8 @@
                 escapeHtml(item.time || '') + '</span>' + minsHtml + '</div></div>';
         }).join('');
         if (more > 0) {
-            html += '<p class="my-day-more">… and ' + more + ' more</p>';
+            html += '<button type="button" class="my-day-more my-day-more-btn" data-total="' +
+                escapeAttr(String(total)) + '">… and ' + more + ' more</button>';
         }
         wrap.innerHTML = html;
     }
@@ -690,6 +694,36 @@
         }
         wrap.dataset.bodyToggleBound = '1';
         wrap.addEventListener('click', function (event) {
+            var moreBtn = event.target.closest('.my-day-more-btn');
+            if (moreBtn && wrap.contains(moreBtn)) {
+                event.preventDefault();
+                if (moreBtn.disabled) {
+                    return;
+                }
+                var total = parseInt(moreBtn.getAttribute('data-total'), 10) || 0;
+                if (total < 1) {
+                    return;
+                }
+                moreBtn.disabled = true;
+                moreBtn.textContent = 'Loading…';
+                state.crmLimit = total;
+                api(myDayIndexUrl(), { method: 'GET' })
+                    .then(function (data) {
+                        if (data.crm_events) {
+                            renderCrmList(data.crm_events);
+                        }
+                    })
+                    .catch(function () {
+                        moreBtn.disabled = false;
+                        var remaining = parseInt(moreBtn.getAttribute('data-total'), 10) || total;
+                        var shown = wrap.querySelectorAll('.my-day-crm-item').length;
+                        var left = Math.max(0, remaining - shown);
+                        moreBtn.textContent = '… and ' + left + ' more';
+                        state.crmLimit = null;
+                    });
+                return;
+            }
+
             var btn = event.target.closest('.my-day-crm-show-more');
             if (!btn || !wrap.contains(btn)) {
                 return;
@@ -967,14 +1001,98 @@
         el.hidden = false;
     }
 
-    function refreshSummary() {
-        api(routes.copySummary, { method: 'GET' }).then(function (data) {
-            var pre = document.getElementById('myDayEod');
-            if (pre && data.summary) {
-                pre.textContent = data.summary.text || '';
+    function defaultCrmListCap() {
+        var cap = parseInt(routes.crmListCap, 10);
+        return cap > 0 ? cap : 50;
+    }
+
+    function withCrmLimit(url, limit) {
+        var sep = url.indexOf('?') >= 0 ? '&' : '?';
+        return url + sep + 'crm_limit=' + encodeURIComponent(limit);
+    }
+
+    function myDayIndexUrl() {
+        return withCrmLimit(routes.index, state.crmLimit || defaultCrmListCap());
+    }
+
+    function eodSummaryUrl() {
+        return withCrmLimit(routes.copySummary, state.eodCrmLimit || defaultCrmListCap());
+    }
+
+    function estimateCrmTotalFromText(beforeText, more) {
+        var marker = '— Already in CRM —';
+        var idx = beforeText.indexOf(marker);
+        var chunk = idx >= 0 ? beforeText.slice(idx + marker.length) : beforeText;
+        var shown = chunk.split('\n').filter(function (line) {
+            var t = line.trim();
+            return t !== '' && t !== '(none)';
+        }).length;
+        return shown + more;
+    }
+
+    function renderEodSummary(summary) {
+        var el = document.getElementById('myDayEod');
+        if (!el || !summary) {
+            return;
+        }
+        var text = String(summary.text || '');
+        var more = parseInt(summary.crm_more, 10) || 0;
+        var total = parseInt(summary.crm_total, 10) || 0;
+        var lineRe = /\n(?:…|\.\.\.) and (\d+) more\n/;
+        var lineMatch = text.match(lineRe);
+        if (lineMatch && !more) {
+            more = parseInt(lineMatch[1], 10) || 0;
+        }
+
+        if (more > 0) {
+            var parts = text.split(/\n(?:…|\.\.\.) and \d+ more\n/);
+            var before = parts[0] || text.replace(/\n(?:…|\.\.\.) and \d+ more(?=\n|$)/g, '');
+            var after = parts.length > 1 ? parts.slice(1).join('\n') : '';
+            if (!total) {
+                total = estimateCrmTotalFromText(before, more);
+            }
+            el.innerHTML = escapeHtml(before) +
+                '\n<button type="button" class="my-day-more my-day-more-btn my-day-eod-more-inline" data-total="' +
+                escapeAttr(String(total)) + '" data-more="' + escapeAttr(String(more)) +
+                '">… and ' + more + ' more</button>' +
+                (after ? '\n' + escapeHtml(after) : '');
+            return;
+        }
+
+        el.textContent = text.replace(/\n(?:…|\.\.\.) and \d+ more(?=\n|$)/g, '');
+    }
+
+    function expandEodCrmMore(btn) {
+        if (!btn || btn.disabled) {
+            return;
+        }
+        var total = parseInt(btn.getAttribute('data-total'), 10) || 0;
+        var more = parseInt(btn.getAttribute('data-more'), 10) || 0;
+        if (total < 1) {
+            return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'Loading…';
+        state.eodCrmLimit = total;
+        refreshSummary({ rethrow: true }).catch(function () {
+            state.eodCrmLimit = null;
+            btn.disabled = false;
+            btn.textContent = '… and ' + (more || total) + ' more';
+        });
+    }
+
+    function refreshSummary(options) {
+        options = options || {};
+        return api(eodSummaryUrl(), { method: 'GET' }).then(function (data) {
+            if (data.summary) {
+                renderEodSummary(data.summary);
             }
             renderStillOpenLinks(data.summary && data.summary.still_open);
-        }).catch(function () { /* ignore summary errors on load */ });
+        }).catch(function (err) {
+            if (options.rethrow) {
+                throw err;
+            }
+        });
     }
 
     function renderStillOpenLinks(items) {
@@ -1008,24 +1126,35 @@
     }
 
     function setupCopy() {
+        document.getElementById('myDayEod')?.addEventListener('click', function (event) {
+            var btn = event.target.closest('.my-day-eod-more-inline');
+            if (!btn || !document.getElementById('myDayEod').contains(btn)) {
+                return;
+            }
+            event.preventDefault();
+            expandEodCrmMore(btn);
+        });
+
         document.getElementById('myDayCopyBtn')?.addEventListener('click', function () {
             if (!routes.saveSummary) {
                 showError(new Error('Save summary is not available on this page.'));
                 return;
             }
-            api(routes.saveSummary, { method: 'POST', body: {} }).then(function (data) {
+            var saveUrl = withCrmLimit(routes.saveSummary, state.eodCrmLimit || defaultCrmListCap());
+            api(saveUrl, { method: 'POST', body: {} }).then(function (data) {
                 var text = data.summary?.text || '';
-                var pre = document.getElementById('myDayEod');
-                if (pre) {
-                    pre.textContent = text;
-                }
                 markSaved(data.summary?.saved_at);
+                var copied = Promise.resolve();
                 if (navigator.clipboard && navigator.clipboard.writeText) {
-                    return navigator.clipboard.writeText(text).catch(function () {
+                    copied = navigator.clipboard.writeText(text).catch(function () {
                         copyViaTextarea(text);
                     });
+                } else {
+                    copyViaTextarea(text);
                 }
-                copyViaTextarea(text);
+                return copied.then(function () {
+                    return refreshSummary();
+                });
             }).then(function () {
                 var btn = document.getElementById('myDayCopyBtn');
                 if (btn) {
@@ -1057,6 +1186,12 @@
             var collapsed = section.classList.toggle('is-collapsed');
             body.hidden = collapsed;
             toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            if (collapsed) {
+                // Next open uses default list cap again (so “… and N more” can reappear).
+                state.eodCrmLimit = null;
+            } else {
+                refreshSummary();
+            }
         });
     }
 

@@ -8,6 +8,7 @@
     $hoursLabel = $hours['label'] ?? '—';
     $eventItems = $crmEvents['items'] ?? [];
     $eventMore = (int) ($crmEvents['more'] ?? 0);
+    $eventTotal = (int) ($crmEvents['total'] ?? (count($eventItems) + $eventMore));
     $entries = $board['entries'] ?? [];
     $tally = $board['tally'] ?? [];
     $byMatter = $board['by_matter'] ?? [];
@@ -34,7 +35,7 @@
         </div>
     </div>
 
-    <x-dashboard.crm-events :items="$eventItems" :more="$eventMore" />
+    <x-dashboard.crm-events :items="$eventItems" :more="$eventMore" :total="$eventTotal" />
 
     <div class="my-day-split">
         <x-dashboard.file-time-auto :sessions="$sessions" />
@@ -74,7 +75,7 @@
                 </ul>
             </div>
 
-            <pre class="my-day-eod" id="myDayEod" aria-live="polite">Loading summary…</pre>
+            <div class="my-day-eod" id="myDayEod" aria-live="polite">Loading summary…</div>
             <p class="my-day-hint" id="myDayEodSaved" hidden></p>
             <button type="button" class="my-day-btn" id="myDayCopyBtn">Copy summary</button>
         </div>

@@ -58,12 +58,15 @@ class DashboardWorkloadMarkupTest extends TestCase
         $this->assertStringContainsString('my-day-crm-show-more', $crmEvents);
         $this->assertStringContainsString("item['body']", $crmEvents);
         $this->assertStringContainsString('is-collapsed', $crmEvents);
+        $this->assertStringContainsString('my-day-more-btn', $crmEvents);
+        $this->assertStringContainsString('data-total', $crmEvents);
         $this->assertStringContainsString('myDayAddBtn', $myDay);
         $this->assertStringContainsString('myDayAddBtnEod', $myDay);
         $this->assertStringContainsString('myDayLogModal', $myDay);
         $this->assertStringContainsString('myDayAutoEventsModal', $myDay);
         $this->assertStringContainsString('myDayManualList', $myDay);
         $this->assertStringContainsString('myDayEod', $myDay);
+        $this->assertStringNotContainsString('myDayEodMoreBtn', $myDay);
         $this->assertStringContainsString('myDayEodToggle', $myDay);
         $this->assertStringContainsString('myDayEodBody', $myDay);
         $this->assertStringContainsString('myDayStillOpenList', $myDay);

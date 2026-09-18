@@ -163,6 +163,39 @@ class StaffFileTimeServiceTest extends TestCase
         $this->assertStringContainsString('Admin · other · Mailbox skim · 12m', $summary['text']);
         $this->assertCount(1, $summary['overlay']);
         $this->assertCount(1, $summary['admin']);
+        $this->assertSame(0, $summary['crm_more']);
+        $this->assertSame(0, $summary['crm_total']);
+    }
+
+    #[Test]
+    public function copy_summary_includes_truncated_crm_more_line(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-15 14:00:00', 'Australia/Melbourne'));
+        $this->insertStaff(1);
+
+        $crmEvents = $this->createMock(StaffDayCrmEventsService::class);
+        $crmEvents->method('forStaff')->willReturn([
+            'items' => [
+                [
+                    'key' => 'email:1',
+                    'kind' => 'Email out',
+                    'title' => 'Hello',
+                    'ref' => 'REF_1',
+                    'time' => '2:00 pm',
+                ],
+            ],
+            'more' => 37,
+            'total' => 38,
+        ]);
+
+        $hours = $this->createMock(StaffDayHoursService::class);
+        $hours->method('forStaff')->willReturn(['label' => '1h']);
+
+        $summary = $this->service->copySummary(1, $crmEvents, $hours);
+
+        $this->assertSame(37, $summary['crm_more']);
+        $this->assertSame(38, $summary['crm_total']);
+        $this->assertStringContainsString('… and 37 more', $summary['text']);
     }
 
     #[Test]

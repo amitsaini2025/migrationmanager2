@@ -297,6 +297,21 @@
 
 .my-day-empty,
 .my-day-more { color: var(--my-day-muted); font-size: 0.85rem; margin: 8px 0 0; }
+button.my-day-more-btn {
+    display: inline-block;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+button.my-day-more-btn:hover:not(:disabled) { text-decoration: underline; }
+button.my-day-more-btn:disabled { cursor: wait; opacity: 0.7; }
+button.my-day-eod-more-inline {
+    color: var(--my-day-brand);
+    font-weight: 600;
+}
 
 .my-day-capture {
     display: flex;

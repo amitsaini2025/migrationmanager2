@@ -1,4 +1,8 @@
-@props(['items' => [], 'more' => 0])
+@props(['items' => [], 'more' => 0, 'total' => 0])
+
+@php
+    $listTotal = (int) ($total ?: (count($items) + (int) $more));
+@endphp
 
 <section class="my-day-card">
     <h3>Already in CRM</h3>
@@ -42,7 +46,11 @@
             <p class="my-day-empty">No CRM events logged by you today yet.</p>
         @endforelse
         @if($more > 0)
-            <p class="my-day-more">… and {{ $more }} more</p>
+            <button
+                type="button"
+                class="my-day-more my-day-more-btn"
+                data-total="{{ $listTotal }}"
+            >… and {{ $more }} more</button>
         @endif
     </div>
 </section>

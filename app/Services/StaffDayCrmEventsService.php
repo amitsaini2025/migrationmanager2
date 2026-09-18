@@ -17,7 +17,11 @@ use Illuminate\Support\Str;
 
 class StaffDayCrmEventsService
 {
-    public const LIST_CAP = 50;
+    /** Temporary testing value — revert to 50 after verifying “… and N more”. */
+    public const LIST_CAP = 10;
+
+    /** Hard ceiling when My Day expands “… and N more”. */
+    public const EXPAND_CAP = 500;
 
     /** @var array<int, string|null> */
     protected array $clientLabelCache = [];

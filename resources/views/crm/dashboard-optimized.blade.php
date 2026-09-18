@@ -996,7 +996,8 @@
         start: "{{ route('dashboard.my-day.file-time.start') }}",
         log: "{{ route('dashboard.my-day.file-time.log') }}",
         fileTimeBase: "{{ url('/dashboard/my-day/file-time') }}",
-        sessionsBase: "{{ url('/dashboard/my-day/sessions') }}"
+        sessionsBase: "{{ url('/dashboard/my-day/sessions') }}",
+        crmListCap: {{ (int) \App\Services\StaffDayCrmEventsService::LIST_CAP }}
     };
 </script>
 <script src="{{ asset('js/dashboard-optimized.js') }}"></script>

@@ -319,6 +319,8 @@ class StaffFileTimeService
      * @return array{
      *     hours_label: string,
      *     crm_events: list<array<string, mixed>>,
+     *     crm_more: int,
+     *     crm_total: int,
      *     overlay: list<array<string, mixed>>,
      *     admin: list<array<string, mixed>>,
      *     auto: list<string>,
@@ -333,6 +335,7 @@ class StaffFileTimeService
         StaffDayHoursService $hours,
         ?StaffMatterSessionService $matterSessions = null,
         ?Carbon $day = null,
+        ?int $crmLimit = null,
     ): array {
         $staff = Staff::query()->find($staffId);
         $name = $staff
@@ -341,8 +344,14 @@ class StaffFileTimeService
         [$start] = $this->workloadService->dayBounds($day);
         $dateLabel = $start->format('l, j M Y');
 
+        $limit = $crmLimit ?? StaffDayCrmEventsService::LIST_CAP;
+        if ($limit < 1) {
+            $limit = StaffDayCrmEventsService::LIST_CAP;
+        }
+        $limit = min($limit, StaffDayCrmEventsService::EXPAND_CAP);
+
         $hoursPayload = $hours->forStaff($staffId, $day);
-        $events = $crmEvents->forStaff($staffId, $day);
+        $events = $crmEvents->forStaff($staffId, $day, $limit);
         $board = $this->boardForStaff($staffId, $day);
 
         $sessionsPayload = ['auto' => [], 'opened' => [], 'event_minutes' => []];
@@ -503,6 +512,8 @@ class StaffFileTimeService
         return [
             'hours_label' => $hoursPayload['label'] ?? '—',
             'crm_events' => $events['items'],
+            'crm_more' => (int) ($events['more'] ?? 0),
+            'crm_total' => (int) ($events['total'] ?? count($events['items'] ?? [])),
             'overlay' => $overlayDone,
             'admin' => $adminDone,
             'auto' => $autoLines,

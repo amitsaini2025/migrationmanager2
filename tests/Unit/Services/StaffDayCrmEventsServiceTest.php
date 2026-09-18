@@ -440,6 +440,37 @@ class StaffDayCrmEventsServiceTest extends TestCase
         );
     }
 
+    #[Test]
+    public function for_staff_respects_limit_and_reports_more(): void
+    {
+        $today = Carbon::parse('2026-09-15 14:00:00', 'Australia/Melbourne');
+        Carbon::setTestNow($today);
+
+        $rows = [];
+        for ($i = 1; $i <= 55; $i++) {
+            $rows[] = [
+                'id' => $i,
+                'user_id' => 1,
+                'subject' => 'Mail '.$i,
+                'mail_body_type' => 'sent',
+                'conversion_type' => null,
+                'created_at' => $today->copy()->subSeconds($i),
+                'updated_at' => $today,
+            ];
+        }
+        DB::table('email_logs')->insert($rows);
+
+        $capped = $this->service->forStaff(1, $today, 50);
+        $this->assertSame(55, $capped['total']);
+        $this->assertCount(50, $capped['items']);
+        $this->assertSame(5, $capped['more']);
+
+        $expanded = $this->service->forStaff(1, $today, 55);
+        $this->assertSame(55, $expanded['total']);
+        $this->assertCount(55, $expanded['items']);
+        $this->assertSame(0, $expanded['more']);
+    }
+
     private function createSchema(): void
     {
         foreach (['email_logs', 'documents', 'booking_appointments', 'sms_logs', 'notes', 'activities_logs', 'client_matters', 'admins'] as $table) {

@@ -58,6 +58,7 @@ class DashboardController extends Controller
             $board['sessions'],
             $board,
         );
+        $dashboardData['myDayActivityCounts'] = $this->staffDayCrmEventsService->activityCountsForStaff($staffId);
         $dashboardData['myDayBoard'] = $board;
         $dashboardData['bookingConsultants'] = $this->bookingConsultantsForModal();
 

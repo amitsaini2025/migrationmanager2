@@ -21,6 +21,7 @@
             :hours="$myDayHours ?? []"
             :crm-events="$myDayCrmEvents ?? []"
             :board="$myDayBoard ?? []"
+            :activity-counts="$myDayActivityCounts ?? []"
         />
 
         <x-dashboard.staff-calendar

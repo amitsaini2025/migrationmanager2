@@ -471,6 +471,139 @@ class StaffDayCrmEventsServiceTest extends TestCase
         $this->assertSame(0, $expanded['more']);
     }
 
+    #[Test]
+    public function activity_counts_are_uncapped_and_scoped_to_this_staff_today(): void
+    {
+        $today = Carbon::parse('2026-09-15 14:00:00', 'Australia/Melbourne');
+        $yesterday = $today->copy()->subDay();
+        Carbon::setTestNow($today);
+
+        DB::table('activities_logs')->insert([
+            [
+                'id' => 1,
+                'client_id' => 1,
+                'created_by' => 1,
+                'subject' => 'Checklist sent to client',
+                'activity_type' => 'note',
+                'task_status' => 0,
+                'pin' => 0,
+                'created_at' => $today,
+                'updated_at' => $today,
+            ],
+            [
+                'id' => 2,
+                'client_id' => 1,
+                'created_by' => 1,
+                'subject' => 'Document Checklist sent to client',
+                'activity_type' => 'note',
+                'task_status' => 0,
+                'pin' => 0,
+                'created_at' => $today,
+                'updated_at' => $today,
+            ],
+            [
+                'id' => 3,
+                'client_id' => 1,
+                'created_by' => 2,
+                'subject' => 'Checklist sent to client',
+                'activity_type' => 'note',
+                'task_status' => 0,
+                'pin' => 0,
+                'created_at' => $today,
+                'updated_at' => $today,
+            ],
+            [
+                'id' => 4,
+                'client_id' => 1,
+                'created_by' => 1,
+                'subject' => 'completed action for Visa',
+                'activity_type' => 'note',
+                'task_status' => 1,
+                'pin' => 0,
+                'created_at' => $today,
+                'updated_at' => $today,
+            ],
+            [
+                'id' => 5,
+                'client_id' => 1,
+                'created_by' => 1,
+                'subject' => 'Updated action for Visa',
+                'activity_type' => 'note',
+                'task_status' => 1,
+                'pin' => 0,
+                'created_at' => $today,
+                'updated_at' => $today,
+            ],
+            [
+                'id' => 6,
+                'client_id' => 1,
+                'created_by' => 1,
+                'subject' => 'Checklist sent to client',
+                'activity_type' => 'note',
+                'task_status' => 0,
+                'pin' => 0,
+                'created_at' => $yesterday,
+                'updated_at' => $yesterday,
+            ],
+        ]);
+
+        DB::table('documents')->insert([
+            [
+                'id' => 1,
+                'created_by' => 1,
+                'user_id' => null,
+                'name' => 'Passport.pdf',
+                'created_at' => $today,
+                'updated_at' => $today,
+            ],
+            [
+                'id' => 2,
+                'created_by' => null,
+                'user_id' => 1,
+                'name' => 'Form.pdf',
+                'created_at' => $today,
+                'updated_at' => $today,
+            ],
+            [
+                'id' => 3,
+                'created_by' => 2,
+                'user_id' => 2,
+                'name' => 'Other.pdf',
+                'created_at' => $today,
+                'updated_at' => $today,
+            ],
+        ]);
+
+        DB::table('sms_logs')->insert([
+            [
+                'id' => 1,
+                'sender_id' => 1,
+                'message_content' => 'Please call',
+                'sent_at' => $today,
+                'created_at' => $today,
+                'updated_at' => $today,
+            ],
+            [
+                'id' => 2,
+                'sender_id' => 2,
+                'message_content' => 'Other SMS',
+                'sent_at' => $today,
+                'created_at' => $today,
+                'updated_at' => $today,
+            ],
+        ]);
+
+        $counts = $this->service->activityCountsForStaff(1, $today);
+        $list = $this->service->forStaff(1, $today, 50);
+
+        $this->assertSame(2, $counts['checklists']);
+        $this->assertSame(2, $counts['documents']);
+        $this->assertSame(1, $counts['actions']);
+        $this->assertSame(1, $counts['sms']);
+        $this->assertSame('2026-09-15', $counts['date']);
+        $this->assertNotContains('Checklist sent to client', collect($list['items'])->pluck('title')->all());
+    }
+
     private function createSchema(): void
     {
         foreach (['email_logs', 'documents', 'booking_appointments', 'sms_logs', 'notes', 'activities_logs', 'client_matters', 'admins'] as $table) {

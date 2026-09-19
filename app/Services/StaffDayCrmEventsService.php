@@ -66,6 +66,24 @@ class StaffDayCrmEventsService
     }
 
     /**
+     * Uncapped today-counts for the My Day activity strip. Does not change the capped event list.
+     *
+     * @return array{checklists: int, documents: int, actions: int, sms: int, date: string}
+     */
+    public function activityCountsForStaff(int $staffId, ?Carbon $day = null): array
+    {
+        [$start, $end] = $this->workloadService->dayBounds($day);
+
+        return [
+            'checklists' => $this->countChecklistSent($staffId, $start, $end),
+            'documents' => $this->countDocumentsUploaded($staffId, $start, $end),
+            'actions' => $this->countActionsCompleted($staffId, $start, $end),
+            'sms' => $this->countSmsSent($staffId, $start, $end),
+            'date' => $start->toDateString(),
+        ];
+    }
+
+    /**
      * CRM writes by this staff on one record within a time window (auto session promotion).
      *
      * @return Collection<int, array<string, mixed>>
@@ -711,5 +729,62 @@ class StaffDayCrmEventsService
         }
 
         return $this->matterNoCache[$id] ? (string) $this->matterNoCache[$id] : null;
+    }
+
+    protected function countChecklistSent(int $staffId, Carbon $start, Carbon $end): int
+    {
+        if (! Schema::hasTable('activities_logs')) {
+            return 0;
+        }
+
+        return ActivitiesLog::query()
+            ->where('created_by', $staffId)
+            ->whereBetween('created_at', [$start, $end])
+            ->where(function ($query): void {
+                $query->where('subject', 'Checklist sent to client')
+                    ->orWhere('subject', 'Document Checklist sent to client');
+            })
+            ->count();
+    }
+
+    protected function countDocumentsUploaded(int $staffId, Carbon $start, Carbon $end): int
+    {
+        if (! Schema::hasTable('documents')) {
+            return 0;
+        }
+
+        return Document::query()
+            ->where(function ($query) use ($staffId): void {
+                $query->where('created_by', $staffId)->orWhere('user_id', $staffId);
+            })
+            ->whereBetween('created_at', [$start, $end])
+            ->count();
+    }
+
+    protected function countActionsCompleted(int $staffId, Carbon $start, Carbon $end): int
+    {
+        if (! Schema::hasTable('activities_logs')) {
+            return 0;
+        }
+
+        return ActivitiesLog::query()
+            ->where('created_by', $staffId)
+            ->whereBetween('created_at', [$start, $end])
+            ->where('subject', 'like', 'completed action for%')
+            ->count();
+    }
+
+    protected function countSmsSent(int $staffId, Carbon $start, Carbon $end): int
+    {
+        if (! Schema::hasTable('sms_logs')) {
+            return 0;
+        }
+
+        $timeCol = Schema::hasColumn('sms_logs', 'sent_at') ? 'sent_at' : 'created_at';
+
+        return SmsLog::query()
+            ->where('sender_id', $staffId)
+            ->whereBetween($timeCol, [$start, $end])
+            ->count();
     }
 }

@@ -41,6 +41,25 @@ class DashboardWorkloadMarkupTest extends TestCase
         $this->assertStringNotContainsString('Copy for Teams instead of rewriting', $myDay);
         $this->assertStringContainsString('x-dashboard.file-time-auto', $myDay);
         $this->assertStringContainsString('x-dashboard.files-opened', $myDay);
+        $this->assertStringContainsString('x-dashboard.activity-counts', $myDay);
+        $splitPos = strpos($myDay, 'x-dashboard.files-opened');
+        $countsPos = strpos($myDay, 'x-dashboard.activity-counts');
+        $eodPos = strpos($myDay, 'id="myDayEodSection"');
+        $this->assertNotFalse($splitPos);
+        $this->assertNotFalse($countsPos);
+        $this->assertNotFalse($eodPos);
+        $this->assertTrue($splitPos < $countsPos && $countsPos < $eodPos);
+
+        $activityCounts = file_get_contents(resource_path('views/components/dashboard/activity-counts.blade.php'));
+        $this->assertNotFalse($activityCounts);
+        $this->assertStringContainsString('myDayCountChecklists', $activityCounts);
+        $this->assertStringContainsString('myDayCountDocuments', $activityCounts);
+        $this->assertStringContainsString('myDayCountActions', $activityCounts);
+        $this->assertStringContainsString('myDayCountSms', $activityCounts);
+        $this->assertLessThan(
+            strpos($activityCounts, 'myDayCountChecklists'),
+            strpos($activityCounts, 'Checklists sent')
+        );
 
         $fileTimeAuto = file_get_contents(resource_path('views/components/dashboard/file-time-auto.blade.php'));
         $this->assertNotFalse($fileTimeAuto);

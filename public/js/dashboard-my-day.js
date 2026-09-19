@@ -23,6 +23,12 @@
         tally: safeJson(root.getAttribute('data-initial-tally'), {}),
         byMatter: safeJson(root.getAttribute('data-initial-by-matter'), []),
         sessions: safeJson(root.getAttribute('data-initial-sessions'), { auto: [], opened: [], event_minutes: {} }),
+        activityCounts: safeJson(root.getAttribute('data-initial-activity-counts'), {
+            checklists: 0,
+            documents: 0,
+            actions: 0,
+            sms: 0
+        }),
         selected: null,
         selectedKind: null,
         filterKey: null,
@@ -639,7 +645,31 @@
             if (data.crm_events) {
                 renderCrmList(data.crm_events);
             }
+            if (data.activity_counts) {
+                applyActivityCounts(data.activity_counts);
+            }
         });
+    }
+
+    function applyActivityCounts(counts) {
+        if (!counts) {
+            return;
+        }
+        state.activityCounts = {
+            checklists: parseInt(counts.checklists, 10) || 0,
+            documents: parseInt(counts.documents, 10) || 0,
+            actions: parseInt(counts.actions, 10) || 0,
+            sms: parseInt(counts.sms, 10) || 0
+        };
+        renderActivityCounts();
+    }
+
+    function renderActivityCounts() {
+        var counts = state.activityCounts || {};
+        setText('myDayCountChecklists', String(counts.checklists || 0));
+        setText('myDayCountDocuments', String(counts.documents || 0));
+        setText('myDayCountActions', String(counts.actions || 0));
+        setText('myDayCountSms', String(counts.sms || 0));
     }
 
     function renderCrmList(payload) {
@@ -753,6 +783,7 @@
         renderFilterbar();
         renderAutoSessions();
         renderOpenedFiles();
+        renderActivityCounts();
         renderCrmMinuteChips();
         ensureTick();
     }

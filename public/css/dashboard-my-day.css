@@ -125,6 +125,25 @@
 
 .my-day-split--bottom { margin-top: 12px; }
 
+.my-day-activity-counts { margin-top: 12px; }
+.my-day-activity-counts .my-day-kpis { margin-bottom: 0; }
+.my-day-activity-kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.my-day-activity-counts .my-day-kpi {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+.my-day-activity-counts .my-day-kpi .l {
+    font-size: 0.8rem;
+    color: var(--my-day-ink);
+}
+.my-day-activity-counts .my-day-kpi .n {
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
 .my-day-eod-wrap { margin-top: 12px; }
 
 .my-day-eod-head {
@@ -219,6 +238,7 @@
 
 @media (max-width: 1040px) {
     .my-day-split { grid-template-columns: 1fr; }
+    .my-day-activity-kpis { grid-template-columns: 1fr 1fr; }
 }
 
 .my-day-card {

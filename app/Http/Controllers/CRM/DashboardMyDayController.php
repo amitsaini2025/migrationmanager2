@@ -53,6 +53,7 @@ class DashboardMyDayController extends Controller
             'success' => true,
             'hours' => $this->hours->forStaff((int) $staff->id),
             'crm_events' => $crmEvents,
+            'activity_counts' => $this->crmEvents->activityCountsForStaff((int) $staff->id),
             'board' => array_merge($board, [
                 'sessions' => $sessions,
             ]),

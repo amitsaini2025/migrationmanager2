@@ -2,6 +2,7 @@
     'hours' => [],
     'crmEvents' => [],
     'board' => [],
+    'activityCounts' => [],
 ])
 
 @php
@@ -24,6 +25,7 @@
     data-initial-tally='@json($tally)'
     data-initial-by-matter='@json($byMatter)'
     data-initial-sessions='@json($sessions)'
+    data-initial-activity-counts='@json($activityCounts)'
 >
     <div class="my-day-head">
         <div>
@@ -41,6 +43,8 @@
         <x-dashboard.file-time-auto :sessions="$sessions" />
         <x-dashboard.files-opened :sessions="$sessions" />
     </div>
+
+    <x-dashboard.activity-counts :counts="$activityCounts" />
 
     <section class="my-day-card my-day-eod-wrap is-collapsed" id="myDayEodSection">
         <div class="my-day-eod-head">

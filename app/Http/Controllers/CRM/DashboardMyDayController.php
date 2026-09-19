@@ -201,26 +201,13 @@ class DashboardMyDayController extends Controller
             return response()->json(['success' => true, 'results' => []]);
         }
 
-        $like = '%'.mb_strtolower($q).'%';
-
         $query = ClientMatter::query()
             ->with([
-                'client:id,first_name,last_name,type',
+                'client:id,first_name,last_name,type,client_id',
                 'matter:id,title,nick_name',
                 'workflowStage:id,name',
             ])
-            ->where(function ($builder) use ($like) {
-                $builder->whereRaw('LOWER(client_unique_matter_no) LIKE ?', [$like])
-                    ->orWhereHas('client', function ($client) use ($like) {
-                        $client->whereRaw('LOWER(first_name) LIKE ?', [$like])
-                            ->orWhereRaw('LOWER(last_name) LIKE ?', [$like])
-                            ->orWhereRaw("LOWER(CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,''))) LIKE ?", [$like]);
-                    })
-                    ->orWhereHas('matter', function ($matter) use ($like) {
-                        $matter->whereRaw('LOWER(title) LIKE ?', [$like])
-                            ->orWhereRaw('LOWER(nick_name) LIKE ?', [$like]);
-                    });
-            })
+            ->matchingFileSearch($q)
             ->orderByDesc('updated_at')
             ->limit(24);
 
@@ -238,10 +225,16 @@ class DashboardMyDayController extends Controller
             $matterTitle = $matter->matter?->nick_name ?: ($matter->matter?->title ?: '');
             $stage = $matter->workflowStage?->name;
 
+            $clientCode = $client ? trim((string) ($client->client_id ?? '')) : '';
+            $matterNo = trim((string) ($matter->client_unique_matter_no ?? ''));
+            $ref = ($clientCode !== '' && $matterNo !== '')
+                ? $clientCode.'-'.$matterNo
+                : ($matterNo !== '' ? $matterNo : $clientCode);
+
             return [
                 'id' => $matter->id,
                 'client_id' => $matter->client_id,
-                'ref' => $matter->client_unique_matter_no,
+                'ref' => $ref,
                 'client' => $clientName,
                 'matter' => $matterTitle,
                 'stage' => $stage,

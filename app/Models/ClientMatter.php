@@ -1,9 +1,13 @@
 <?php
+
 namespace App\Models;
 
+use App\Services\VisaSheetService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Kyslik\ColumnSortable\Sortable;
 
@@ -213,6 +217,52 @@ class ClientMatter extends Model
         return $query->whereNotNull('office_id');
     }
 
+    /**
+     * Match My Day file search: matter no, client unique id, combined
+     * client_id-matter_no, client name, or matter title.
+     */
+    public function scopeMatchingFileSearch($query, string $q)
+    {
+        $q = trim($q);
+        if ($q === '') {
+            return $query->whereRaw('0 = 1');
+        }
+
+        $like = '%'.mb_strtolower($q).'%';
+
+        return $query->where(function ($builder) use ($like, $q) {
+            $builder->whereRaw('LOWER(client_unique_matter_no) LIKE ?', [$like])
+                ->orWhereHas('client', function ($client) use ($like) {
+                    $client->whereRaw('LOWER(first_name) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(last_name) LIKE ?', [$like])
+                        ->orWhereRaw("LOWER(CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,''))) LIKE ?", [$like])
+                        ->orWhereRaw('LOWER(client_id) LIKE ?', [$like]);
+                })
+                ->orWhereHas('matter', function ($matter) use ($like) {
+                    $matter->whereRaw('LOWER(title) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(nick_name) LIKE ?', [$like]);
+                });
+
+            $dash = mb_strpos($q, '-');
+            if ($dash === false) {
+                return;
+            }
+
+            $clientCode = trim(mb_substr($q, 0, $dash));
+            $matterNo = trim(mb_substr($q, $dash + 1));
+            if ($clientCode === '' || $matterNo === '') {
+                return;
+            }
+
+            $builder->orWhere(function ($both) use ($clientCode, $matterNo) {
+                $both->whereRaw('LOWER(client_unique_matter_no) LIKE ?', ['%'.mb_strtolower($matterNo).'%'])
+                    ->whereHas('client', function ($client) use ($clientCode) {
+                        $client->whereRaw('LOWER(client_id) LIKE ?', ['%'.mb_strtolower($clientCode).'%']);
+                    });
+            });
+        });
+    }
+
     // ============================================
     // ACCESSORS & HELPERS
     // ============================================
@@ -230,7 +280,7 @@ class ClientMatter extends Model
      */
     public function hasOffice()
     {
-        return !is_null($this->office_id);
+        return ! is_null($this->office_id);
     }
 
     /**
@@ -249,7 +299,7 @@ class ClientMatter extends Model
     public function getVisaSheetType(): ?string
     {
         $matter = $this->matter;
-        if (!$matter) {
+        if (! $matter) {
             return null;
         }
         $nick = strtolower(trim($matter->nick_name ?? ''));
@@ -270,6 +320,7 @@ class ClientMatter extends Model
                 }
             }
         }
+
         return null;
     }
 
@@ -280,7 +331,7 @@ class ClientMatter extends Model
     public function recordChecklistSent(?int $staffId = null): bool
     {
         $sheetType = $this->getVisaSheetType();
-        if (!$sheetType) {
+        if (! $sheetType) {
             return false;
         }
         $config = config("sheets.visa_types.{$sheetType}", []);
@@ -288,7 +339,7 @@ class ClientMatter extends Model
         $remindersTable = $config['reminders_table'] ?? null;
         $refType = $config['reference_type'] ?? $sheetType;
 
-        if (!$modelClass || !class_exists($modelClass)) {
+        if (! $modelClass || ! class_exists($modelClass)) {
             return false;
         }
 
@@ -302,12 +353,12 @@ class ClientMatter extends Model
             $lookup,
             ['checklist_sent_at' => $now, 'created_by' => $staffId, 'updated_by' => $staffId]
         );
-        if (!$ref->wasRecentlyCreated) {
+        if (! $ref->wasRecentlyCreated) {
             $ref->update(['checklist_sent_at' => $now, 'updated_by' => $staffId]);
         }
 
-        if ($remindersTable && \Illuminate\Support\Facades\Schema::hasTable($remindersTable)) {
-            \Illuminate\Support\Facades\DB::table($remindersTable)->insert([
+        if ($remindersTable && Schema::hasTable($remindersTable)) {
+            DB::table($remindersTable)->insert([
                 'visa_type' => $refType,
                 'client_matter_id' => $this->id,
                 'type' => 'email',
@@ -319,7 +370,7 @@ class ClientMatter extends Model
         }
 
         // Move matter to Checklist workflow stage so it appears in the Checklist tab
-        $checklistStageId = \App\Services\VisaSheetService::getChecklistStageId();
+        $checklistStageId = VisaSheetService::getChecklistStageId();
         if ($checklistStageId) {
             $this->workflow_stage_id = $checklistStageId;
             $this->save();
@@ -347,12 +398,12 @@ class ClientMatter extends Model
         $remindersTable = $config['reminders_table'] ?? null;
         $refType = $config['reference_type'] ?? $sheetType;
 
-        if (! $remindersTable || ! \Illuminate\Support\Facades\Schema::hasTable($remindersTable)) {
+        if (! $remindersTable || ! Schema::hasTable($remindersTable)) {
             return false;
         }
 
         $now = now();
-        \Illuminate\Support\Facades\DB::table($remindersTable)->insert([
+        DB::table($remindersTable)->insert([
             'visa_type' => $refType,
             'client_matter_id' => $this->id,
             'type' => $type,
@@ -384,7 +435,7 @@ class ClientMatter extends Model
                     'new_other_reference' => $model->other_reference,
                     'changed_attributes' => $model->getDirty(),
                     'all_attributes' => $model->getAttributes(),
-                    'backtrace' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10)
+                    'backtrace' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10),
                 ]);
             }
         });
@@ -402,7 +453,7 @@ class ClientMatter extends Model
         });
 
         static::saved(function (ClientMatter $model) {
-            if ((int) $model->matter_status !== 1 || !$model->client_id) {
+            if ((int) $model->matter_status !== 1 || ! $model->client_id) {
                 return;
             }
             Admin::promoteLeadWithActiveMatterToClient((int) $model->client_id);

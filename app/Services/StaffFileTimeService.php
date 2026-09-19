@@ -9,6 +9,7 @@ use App\Models\StaffFileTimeEntry;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class StaffFileTimeService
@@ -30,7 +31,7 @@ class StaffFileTimeService
     {
         [$start, $end] = $this->workloadService->dayBounds($day);
         $entries = StaffFileTimeEntry::query()
-            ->with(['clientMatter:id,client_id,client_unique_matter_no,sel_matter_id'])
+            ->with($this->entryDisplayRelations())
             ->where('staff_id', $staffId)
             ->whereBetween('created_at', [$start, $end])
             ->orderByDesc('updated_at')
@@ -161,7 +162,7 @@ class StaffFileTimeService
 
             $entry->save();
 
-            return $entry->fresh(['clientMatter']);
+            return $entry->fresh($this->entryDisplayRelations());
         });
     }
 
@@ -230,7 +231,7 @@ class StaffFileTimeService
                 $entry->save();
             }
 
-            return $entry->fresh(['clientMatter']);
+            return $entry->fresh($this->entryDisplayRelations());
         });
     }
 
@@ -297,7 +298,7 @@ class StaffFileTimeService
 
         $entry->save();
 
-        return $entry->fresh(['clientMatter']);
+        return $entry->fresh($this->entryDisplayRelations());
     }
 
     public function deleteOpen(int $staffId, StaffFileTimeEntry $entry): void
@@ -754,8 +755,6 @@ class StaffFileTimeService
      */
     public function serialize(StaffFileTimeEntry $entry): array
     {
-        $matterNo = $entry->clientMatter?->client_unique_matter_no;
-
         return [
             'id' => $entry->id,
             'kind' => $entry->kind,
@@ -767,7 +766,7 @@ class StaffFileTimeService
             'confirmed_minutes' => $entry->confirmed_minutes,
             'client_matter_id' => $entry->client_matter_id,
             'client_id' => $entry->client_id,
-            'matter_no' => $matterNo,
+            'matter_no' => $this->displayMatterRef($entry),
             'is_admin' => $entry->isAdmin(),
             'posted' => $entry->status === StaffFileTimeEntry::STATUS_DONE && $entry->isPosted(),
             'activities_log_id' => $entry->activities_log_id,
@@ -775,6 +774,56 @@ class StaffFileTimeService
             'completed_at' => optional($entry->completed_at)?->toIso8601String(),
             'updated_at' => optional($entry->updated_at)?->toIso8601String(),
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function entryDisplayRelations(): array
+    {
+        $relations = ['clientMatter', 'client'];
+        if (Schema::hasTable('matters')) {
+            $relations[] = 'clientMatter.matter';
+        }
+
+        return $relations;
+    }
+
+    protected function displayMatterRef(StaffFileTimeEntry $entry): string
+    {
+        if ($entry->isAdmin()) {
+            return 'Admin / no file';
+        }
+
+        $unique = trim((string) ($entry->clientMatter?->client_unique_matter_no ?? ''));
+        if ($unique !== '') {
+            return $unique;
+        }
+
+        $client = $entry->client;
+        $clientName = $client
+            ? trim((string) ($client->first_name ?? '').' '.(string) ($client->last_name ?? ''))
+            : '';
+        $matter = ($entry->clientMatter && $entry->clientMatter->relationLoaded('matter'))
+            ? $entry->clientMatter->matter
+            : null;
+        $matterTitle = $matter
+            ? trim((string) (($matter->nick_name ?: $matter->title) ?? ''))
+            : '';
+
+        if ($clientName !== '' && $matterTitle !== '') {
+            return $clientName.' — '.$matterTitle;
+        }
+        if ($clientName !== '') {
+            return $clientName;
+        }
+        if ($matterTitle !== '') {
+            return $matterTitle;
+        }
+
+        $matterId = (int) ($entry->client_matter_id ?? 0);
+
+        return $matterId > 0 ? 'matter #'.$matterId : '—';
     }
 
     protected function postToMatterFeed(StaffFileTimeEntry $entry, int $staffId): ActivitiesLog
@@ -905,7 +954,7 @@ class StaffFileTimeService
                 $groups[$key] = [
                     'key' => $key,
                     'client_matter_id' => $entry->client_matter_id,
-                    'matter_no' => $entry->isAdmin() ? 'Admin / no file' : ($entry->clientMatter?->client_unique_matter_no ?? '—'),
+                    'matter_no' => $this->displayMatterRef($entry),
                     'is_admin' => $entry->isAdmin(),
                     'blocks' => 0,
                     'minutes' => 0,

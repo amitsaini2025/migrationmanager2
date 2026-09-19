@@ -178,6 +178,13 @@
         btn.disabled = !(state.selected && state.selectedKind && title && mins >= 1 && mins <= 480);
     }
 
+    function entryMatterLabel(entry) {
+        if (entry && entry.is_admin) {
+            return 'Admin / no file';
+        }
+        return (entry && entry.matter_no) ? String(entry.matter_no) : '—';
+    }
+
     function renderManualList() {
         var list = document.getElementById('myDayManualList');
         var badge = document.getElementById('myDayManualCount');
@@ -200,7 +207,7 @@
                 '<span class="my-day-manual-kind" style="background:' + p.bg + ';color:' + p.ink + '">' + escapeHtml(p.label) + '</span>' +
                 '<div class="my-day-manual-body">' +
                 '<div class="my-day-manual-title">' + escapeHtml(entry.title) + '</div>' +
-                '<div class="my-day-manual-meta">' + escapeHtml(entry.matter_no || 'Admin / no file') +
+                '<div class="my-day-manual-meta">' + escapeHtml(entryMatterLabel(entry)) +
                 (entry.posted ? ' · posted' : '') + '</div></div>' +
                 '<span class="my-day-manual-mins">' + escapeHtml(String(entry.confirmed_minutes || 0)) + 'm</span></div>';
         }).join('');
@@ -261,7 +268,7 @@
             note.innerHTML =
                 '<div class="type">' + escapeHtml(p.label) + '</div>' +
                 '<div class="title">' + escapeHtml(entry.title) + '</div>' +
-                '<span class="ref-chip">' + escapeHtml(entry.matter_no || 'Admin / no file') + '</span>' +
+                '<span class="ref-chip">' + escapeHtml(entryMatterLabel(entry)) + '</span>' +
                 '<div class="foot"><span class="' + timerClass + '" data-entry-id="' + entry.id + '">' + timeLabel + '</span>' +
                 '<div class="my-day-acts" data-entry-id="' + entry.id + '">' + acts + '</div></div>' +
                 (entry.posted ? '<div class="my-day-posted">Posted to matter feed</div>' : '');

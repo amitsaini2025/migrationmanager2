@@ -126,6 +126,48 @@ class StaffFileTimeServiceTest extends TestCase
         $this->assertSame(StaffFileTimeEntry::STATUS_DONE, $done->status);
         $this->assertNull($done->activities_log_id);
         $this->assertSame(0, DB::table('activities_logs')->count());
+        $this->assertTrue($this->service->serialize($done)['is_admin']);
+        $this->assertSame('Admin / no file', $this->service->serialize($done)['matter_no']);
+    }
+
+    #[Test]
+    public function serialize_keeps_unique_ref_and_falls_back_to_client_name_not_admin(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-15 13:00:00', 'Australia/Melbourne'));
+        $this->insertStaff(1);
+        $this->insertClient(10);
+        $this->insertMatter(5, 10, 'JARN2504926-485_1');
+        $this->insertMatter(6, 10, '');
+
+        $withRef = $this->service->logCompleted(1, [
+            'kind' => StaffFileTimeEntry::KIND_IMMI,
+            'title' => 'Immi check',
+            'confirmed_minutes' => 8,
+            'client_matter_id' => 5,
+        ]);
+        $withoutRef = $this->service->logCompleted(1, [
+            'kind' => StaffFileTimeEntry::KIND_DOCS,
+            'title' => 'Doc review',
+            'confirmed_minutes' => 6,
+            'client_matter_id' => 6,
+        ]);
+
+        $this->assertSame('JARN2504926-485_1', $this->service->serialize($withRef)['matter_no']);
+        $this->assertFalse($this->service->serialize($withoutRef)['is_admin']);
+        $this->assertSame('Jane Client', $this->service->serialize($withoutRef)['matter_no']);
+
+        $crmEvents = $this->createMock(StaffDayCrmEventsService::class);
+        $crmEvents->method('forStaff')->willReturn(['items' => [], 'more' => 0]);
+        $hours = $this->createMock(StaffDayHoursService::class);
+        $hours->method('forStaff')->willReturn(['label' => '1h']);
+        $summary = $this->service->copySummary(1, $crmEvents, $hours);
+
+        $this->assertStringContainsString('JARN2504926-485_1', $summary['text']);
+        $this->assertStringContainsString('Jane Client', $summary['text']);
+        $overlayRefs = array_column($summary['overlay'], 'ref');
+        $this->assertContains('JARN2504926-485_1', $overlayRefs);
+        $this->assertContains('Jane Client', $overlayRefs);
+        $this->assertNotContains('Admin / no file', $overlayRefs);
     }
 
     #[Test]
@@ -160,7 +202,7 @@ class StaffFileTimeServiceTest extends TestCase
         $this->assertStringContainsString('— Manual logs —', $summary['text']);
         $this->assertStringContainsString('JARN2504926-485_1 · Immi/portal · Immi portal check · 8m', $summary['text']);
         $this->assertStringContainsString('— Admin / no file —', $summary['text']);
-        $this->assertStringContainsString('Admin · other · Mailbox skim · 12m', $summary['text']);
+        $this->assertStringContainsString('Admin / no file · other · Mailbox skim · 12m', $summary['text']);
         $this->assertCount(1, $summary['overlay']);
         $this->assertCount(1, $summary['admin']);
         $this->assertSame(0, $summary['crm_more']);

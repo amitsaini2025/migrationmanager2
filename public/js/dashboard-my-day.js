@@ -395,10 +395,14 @@
 
     function renderAutoSessions() {
         var list = document.getElementById('myDayAutoList');
+        var badge = document.getElementById('myDayAutoCount');
+        var auto = (state.sessions && state.sessions.auto) || [];
+        if (badge) {
+            badge.textContent = String(auto.length);
+        }
         if (!list) {
             return;
         }
-        var auto = (state.sessions && state.sessions.auto) || [];
         if (!auto.length) {
             list.innerHTML = '<p class="my-day-empty">No auto file time recorded yet today.</p>';
             return;

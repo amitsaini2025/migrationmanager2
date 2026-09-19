@@ -7,7 +7,7 @@
 @endphp
 
 <section class="my-day-card my-day-auto" id="myDayAutoSection">
-    <h3>Time on files (auto)</h3>
+    <h3>Time on files (auto) <span class="my-day-opened-badge" id="myDayAutoCount">{{ count($auto) }}</span></h3>
     <p class="my-day-lead">Focused tab time on open files. With multiple activities the box shows the average; click activities for each share. Edit posts the session total.</p>
     <div id="myDayAutoList">
         @forelse ($auto as $row)

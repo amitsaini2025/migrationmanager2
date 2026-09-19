@@ -285,6 +285,7 @@ class StaffMatterSessionServiceTest extends TestCase
         $opened = $this->service->sessionsForBoard(1)['opened'] ?? [];
         $this->assertNotEmpty($opened);
         $this->assertSame('JANE0000010-APC_8', $opened[0]['ref']);
+        $this->assertTrue($opened[0]['is_current']);
         $this->assertSame(
             route('clients.detail', [base64_encode(convert_uuencode('10')), 'APC_8', 'activityfeed']),
             $opened[0]['url']
@@ -298,6 +299,23 @@ class StaffMatterSessionServiceTest extends TestCase
             route('clients.detail', [base64_encode(convert_uuencode('10')), 'APC_8', 'activityfeed']),
             $auto[0]['url']
         );
+    }
+
+    #[Test]
+    public function opened_board_keeps_stale_accessed_files_but_marks_them_not_current(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-15 16:00:00', 'Australia/Melbourne'));
+        $this->insertStaff(1);
+        $this->insertClient(10);
+        $this->insertMatter(5, 10, 'APC_8');
+
+        $this->service->heartbeat(1, 10, 5, 30);
+        Carbon::setTestNow(Carbon::parse('2026-09-15 16:05:00', 'Australia/Melbourne'));
+
+        $opened = $this->service->sessionsForBoard(1)['opened'] ?? [];
+        $this->assertNotEmpty($opened);
+        $this->assertSame('JANE0000010-APC_8', $opened[0]['ref']);
+        $this->assertFalse($opened[0]['is_current']);
     }
 
     #[Test]

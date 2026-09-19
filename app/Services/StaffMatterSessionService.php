@@ -179,6 +179,8 @@ class StaffMatterSessionService
                     'client_matter_id' => $session->client_matter_id,
                     'focused_seconds' => (int) $session->focused_seconds,
                     'minutes' => max(0, (int) round(((int) $session->focused_seconds) / 60)),
+                    'is_current' => $this->isCurrentlyOpen($session),
+                    'last_heartbeat_at' => optional($session->last_heartbeat_at)?->toIso8601String(),
                 ];
 
                 continue;
@@ -348,6 +350,22 @@ class StaffMatterSessionService
                 'last_heartbeat_at' => $now,
             ]);
         });
+    }
+
+    public function isCurrentlyOpen(StaffMatterSession $session, ?Carbon $now = null): bool
+    {
+        if ($session->status === StaffMatterSession::STATUS_CLOSED) {
+            return false;
+        }
+
+        $heartbeat = $session->last_heartbeat_at;
+        if ($heartbeat === null) {
+            return false;
+        }
+
+        $now = $now ?? now();
+
+        return $heartbeat->gte($now->copy()->subSeconds(self::HEARTBEAT_STALE_SECONDS));
     }
 
     protected function applyFocusedSeconds(StaffMatterSession $session, int $focusedSeconds): void

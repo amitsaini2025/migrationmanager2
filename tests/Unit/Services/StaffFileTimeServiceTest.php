@@ -314,6 +314,17 @@ class StaffFileTimeServiceTest extends TestCase
                     'client_matter_id' => 5,
                     'focused_seconds' => 45,
                     'minutes' => 1,
+                    'is_current' => true,
+                ],
+                [
+                    'id' => 10,
+                    'ref' => 'JANE0000010-APC_9',
+                    'url' => $url,
+                    'client_id' => 11,
+                    'client_matter_id' => 6,
+                    'focused_seconds' => 20,
+                    'minutes' => 0,
+                    'is_current' => false,
                 ],
             ],
             'event_minutes' => [],
@@ -323,9 +334,12 @@ class StaffFileTimeServiceTest extends TestCase
 
         $this->assertStringContainsString('— Still open —', $summary['text']);
         $this->assertStringContainsString('JANE0000010-APC_8', $summary['text']);
+        $this->assertStringContainsString('JANE0000010-APC_9', $summary['text']);
         $this->assertCount(1, $summary['still_open']);
         $this->assertSame('JANE0000010-APC_8', $summary['still_open'][0]['ref']);
         $this->assertSame($url, $summary['still_open'][0]['url']);
+        $this->assertSame(['JANE0000010-APC_8'], array_column($summary['still_open'], 'ref'));
+        $this->assertContains('JANE0000010-APC_9', $summary['opened']);
     }
 
     #[Test]

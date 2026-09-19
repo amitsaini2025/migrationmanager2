@@ -382,6 +382,10 @@ class StaffFileTimeService
         }
 
         foreach ($sessionsPayload['opened'] as $row) {
+            if (! $this->openedSessionIsCurrent($row)) {
+                continue;
+            }
+
             $this->pushStillOpen($stillOpen, $seenStillOpen, [
                 'ref' => (string) ($row['ref'] ?? '—'),
                 'kind' => 'opened',
@@ -683,6 +687,29 @@ class StaffFileTimeService
         }
 
         return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    protected function openedSessionIsCurrent(array $row): bool
+    {
+        if (array_key_exists('is_current', $row)) {
+            return (bool) $row['is_current'];
+        }
+
+        $heartbeat = $row['last_heartbeat_at'] ?? null;
+        if (! is_string($heartbeat) || $heartbeat === '') {
+            return false;
+        }
+
+        try {
+            $beat = Carbon::parse($heartbeat);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return $beat->gte(now()->subSeconds(StaffMatterSessionService::HEARTBEAT_STALE_SECONDS));
     }
 
     /**

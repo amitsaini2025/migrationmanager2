@@ -15,7 +15,6 @@
             
             var $zone = $('#ledgerDragDropZone');
             if ($zone.length === 0) {
-                console.warn('⚠️ Ledger drag zone not found');
                 return;
             }
             
@@ -284,7 +283,6 @@
 
             var $zones = $('.office-drag-drop-zone');
             if ($zones.length === 0) {
-                console.warn('⚠️ Office drag zones not found');
                 return;
             }
             

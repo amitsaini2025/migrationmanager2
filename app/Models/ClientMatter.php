@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Services\VisaSheetService;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -131,6 +133,40 @@ class ClientMatter extends Model
     public function matterType()
     {
         return $this->belongsTo(Matter::class, 'sel_matter_id');
+    }
+
+    /**
+     * Alias of matter() for callers that still use a visa_type_id foreign key name.
+     * client_matters stores that value in sel_matter_id.
+     */
+    public function visaType(): BelongsTo
+    {
+        return $this->belongsTo(Matter::class, 'sel_matter_id');
+    }
+
+    /**
+     * @param  Builder  $query
+     */
+    public function newEloquentBuilder($query): ClientMatterBuilder
+    {
+        return new ClientMatterBuilder($query);
+    }
+
+    /**
+     * @param  string  $column
+     */
+    public function qualifyColumn($column)
+    {
+        if ($column === 'visa_type_id') {
+            $column = 'sel_matter_id';
+        }
+
+        return parent::qualifyColumn($column);
+    }
+
+    public function getVisaTypeIdAttribute(): mixed
+    {
+        return $this->attributes['visa_type_id'] ?? $this->attributes['sel_matter_id'] ?? null;
     }
 
     /**

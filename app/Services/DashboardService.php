@@ -49,8 +49,8 @@ class DashboardService
     /**
      * Get all dashboard data.
      *
-     * When $deferHeavyWidgets is true (default), cases list and client matters table
-     * are omitted from the initial payload and loaded via AJAX fragments.
+     * When $deferHeavyWidgets is true (default), cases list, client matters table,
+     * and My day are omitted from the initial payload and loaded via AJAX after paint.
      */
     public function getDashboardData(Request $request, bool $deferHeavyWidgets = true): array
     {

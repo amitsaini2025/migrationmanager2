@@ -3,10 +3,11 @@
     'crmEvents' => [],
     'board' => [],
     'activityCounts' => [],
+    'deferred' => false,
 ])
 
 @php
-    $hoursLabel = $hours['label'] ?? '—';
+    $hoursLabel = $deferred ? '…' : ($hours['label'] ?? '—');
     $eventItems = $crmEvents['items'] ?? [];
     $eventMore = (int) ($crmEvents['more'] ?? 0);
     $eventTotal = (int) ($crmEvents['total'] ?? (count($eventItems) + $eventMore));
@@ -18,9 +19,10 @@
 @endphp
 
 <section
-    class="my-day"
+    class="my-day{{ $deferred ? ' my-day--loading' : '' }}"
     id="myDay"
     aria-label="My day"
+    @if($deferred) aria-busy="true" data-deferred="1" @endif
     data-initial-entries='@json($entries)'
     data-initial-tally='@json($tally)'
     data-initial-by-matter='@json($byMatter)'
@@ -37,14 +39,14 @@
         </div>
     </div>
 
-    <x-dashboard.crm-events :items="$eventItems" :more="$eventMore" :total="$eventTotal" />
+    <x-dashboard.crm-events :items="$eventItems" :more="$eventMore" :total="$eventTotal" :deferred="$deferred" />
 
     <div class="my-day-split">
-        <x-dashboard.file-time-auto :sessions="$sessions" />
-        <x-dashboard.files-opened :sessions="$sessions" />
+        <x-dashboard.file-time-auto :sessions="$sessions" :deferred="$deferred" />
+        <x-dashboard.files-opened :sessions="$sessions" :deferred="$deferred" />
     </div>
 
-    <x-dashboard.activity-counts :counts="$activityCounts" />
+    <x-dashboard.activity-counts :counts="$activityCounts" :deferred="$deferred" />
 
     <section class="my-day-card my-day-eod-wrap is-collapsed" id="myDayEodSection">
         <div class="my-day-eod-head">

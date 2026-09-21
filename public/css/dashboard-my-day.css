@@ -12,6 +12,14 @@
     color: var(--my-day-ink);
 }
 
+.my-day--loading .my-day-card {
+    pointer-events: none;
+}
+
+.my-day .dashboard-widget-loading {
+    padding: 24px 16px;
+}
+
 .my-day-head {
     display: flex;
     align-items: flex-end;

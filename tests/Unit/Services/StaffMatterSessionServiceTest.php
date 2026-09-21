@@ -251,6 +251,112 @@ class StaffMatterSessionServiceTest extends TestCase
     }
 
     #[Test]
+    public function board_attaches_each_files_events_from_one_day_load(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-15 14:00:00', 'Australia/Melbourne'));
+        $this->insertStaff(1);
+        $this->insertClient(10);
+        $this->insertClient(20);
+        $this->insertMatter(5, 10, 'MAT-A');
+        $this->insertMatter(6, 20, 'MAT-B');
+
+        DB::table('staff_matter_sessions')->insert([
+            [
+                'id' => 1,
+                'staff_id' => 1,
+                'client_id' => 10,
+                'client_matter_id' => 5,
+                'matter_key' => 5,
+                'session_date' => '2026-09-15',
+                'status' => StaffMatterSession::STATUS_RECORDED,
+                'focused_seconds' => 600,
+                'idle_cut_seconds' => 0,
+                'confirmed_minutes' => 10,
+                'event_count' => 1,
+                'is_reviewed_only' => false,
+                'started_at' => now()->subHours(2),
+                'last_heartbeat_at' => now()->subHour(),
+                'ended_at' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => 2,
+                'staff_id' => 1,
+                'client_id' => 20,
+                'client_matter_id' => 6,
+                'matter_key' => 6,
+                'session_date' => '2026-09-15',
+                'status' => StaffMatterSession::STATUS_RECORDED,
+                'focused_seconds' => 300,
+                'idle_cut_seconds' => 0,
+                'confirmed_minutes' => 5,
+                'event_count' => 1,
+                'is_reviewed_only' => false,
+                'started_at' => now()->subHour(),
+                'last_heartbeat_at' => now(),
+                'ended_at' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        DB::table('notes')->insert([
+            [
+                'id' => 1,
+                'user_id' => 1,
+                'client_id' => 10,
+                'matter_id' => 5,
+                'type' => 'client',
+                'is_action' => 0,
+                'assigned_to' => null,
+                'task_group' => 'Call',
+                'title' => 'File A note',
+                'created_at' => now()->subMinutes(90),
+                'updated_at' => now()->subMinutes(90),
+            ],
+            [
+                'id' => 2,
+                'user_id' => 1,
+                'client_id' => 20,
+                'matter_id' => 6,
+                'type' => 'client',
+                'is_action' => 0,
+                'assigned_to' => null,
+                'task_group' => 'Call',
+                'title' => 'File B note',
+                'created_at' => now()->subMinutes(20),
+                'updated_at' => now()->subMinutes(20),
+            ],
+        ]);
+
+        $board = $this->service->sessionsForBoard(1);
+        $auto = collect($board['auto']);
+        $this->assertCount(2, $auto);
+
+        $fileA = $auto->firstWhere('id', 1);
+        $fileB = $auto->firstWhere('id', 2);
+        $this->assertNotNull($fileA);
+        $this->assertNotNull($fileB);
+        $this->assertSame(['File A note'], collect($fileA['events'])->pluck('title')->all());
+        $this->assertSame(['File B note'], collect($fileB['events'])->pluck('title')->all());
+        $this->assertSame(10, (int) ($fileA['events'][0]['minutes'] ?? 0));
+        $this->assertSame(5, (int) ($fileB['events'][0]['minutes'] ?? 0));
+
+        $emptyPreload = $this->service->sessionsForBoard(1, null, collect());
+        $emptyTitles = collect($emptyPreload['auto'])->flatMap(
+            fn (array $row) => collect($row['events'] ?? [])->pluck('title')
+        )->all();
+        $this->assertNotContains('File A note', $emptyTitles);
+        $this->assertNotContains('File B note', $emptyTitles);
+
+        $preloaded = (new StaffDayCrmEventsService(new StaffWorkloadService))->loadDayEvents(1);
+        $reused = $this->service->sessionsForBoard(1, null, $preloaded);
+        $reusedFileA = collect($reused['auto'])->firstWhere('id', 1);
+        $this->assertSame(['File A note'], collect($reusedFileA['events'] ?? [])->pluck('title')->all());
+    }
+
+    #[Test]
     public function auto_session_does_not_change_workload_or_manual_running_timer(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-09-15 15:00:00', 'Australia/Melbourne'));

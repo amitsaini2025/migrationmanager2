@@ -1,5 +1,6 @@
 @props([
     'sessions' => [],
+    'deferred' => false,
 ])
 
 @php
@@ -7,9 +8,15 @@
 @endphp
 
 <section class="my-day-card my-day-auto" id="myDayAutoSection">
-    <h3>Time on files (auto) <span class="my-day-opened-badge" id="myDayAutoCount">{{ count($auto) }}</span></h3>
+    <h3>Time on files (auto) <span class="my-day-opened-badge" id="myDayAutoCount">{{ $deferred ? '…' : count($auto) }}</span></h3>
     <p class="my-day-lead">Focused tab time on open files. With multiple activities the box shows the average; click activities for each share. Edit posts the session total.</p>
     <div id="myDayAutoList">
+        @if($deferred)
+            <div class="dashboard-widget-loading">
+                <div class="spinner spinner-sm"></div>
+                <p>Loading auto file time…</p>
+            </div>
+        @else
         @forelse ($auto as $row)
             @php
                 $totalMins = max(1, (int) ($row['confirmed_minutes'] ?? 1));
@@ -69,5 +76,6 @@
         @empty
             <p class="my-day-empty">No auto file time recorded yet today.</p>
         @endforelse
+        @endif
     </div>
 </section>

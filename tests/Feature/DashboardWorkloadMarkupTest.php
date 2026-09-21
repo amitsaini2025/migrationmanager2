@@ -13,6 +13,7 @@ class DashboardWorkloadMarkupTest extends TestCase
 
         $this->assertStringContainsString('x-dashboard.workload-strip', $blade);
         $this->assertStringContainsString('x-dashboard.my-day', $blade);
+        $this->assertStringContainsString(':deferred="$defer_heavy_widgets ?? true"', $blade);
 
         $strip = file_get_contents(resource_path('views/components/dashboard/workload-strip.blade.php'));
         $this->assertNotFalse($strip);
@@ -42,6 +43,22 @@ class DashboardWorkloadMarkupTest extends TestCase
         $this->assertStringContainsString('x-dashboard.file-time-auto', $myDay);
         $this->assertStringContainsString('x-dashboard.files-opened', $myDay);
         $this->assertStringContainsString('x-dashboard.activity-counts', $myDay);
+        $this->assertStringContainsString('data-deferred="1"', $myDay);
+        $this->assertStringContainsString('my-day--loading', $myDay);
+        $this->assertStringContainsString(':deferred="$deferred"', $myDay);
+
+        $dashboardController = file_get_contents(app_path('Http/Controllers/CRM/DashboardController.php'));
+        $this->assertNotFalse($dashboardController);
+        $this->assertStringContainsString('defer_heavy_widgets', $dashboardController);
+        $this->assertStringContainsString('hydrateMyDay', $dashboardController);
+        $this->assertStringContainsString('boardForStaff', $dashboardController);
+
+        $myDayJs = file_get_contents(public_path('js/dashboard-my-day.js'));
+        $this->assertNotFalse($myDayJs);
+        $this->assertStringContainsString('function loadDeferredMyDay()', $myDayJs);
+        $this->assertStringContainsString("data-deferred') === '1'", $myDayJs);
+        $this->assertStringContainsString('refreshFromIndex()', $myDayJs);
+        $this->assertStringContainsString('applyHours(data.hours)', $myDayJs);
         $splitPos = strpos($myDay, 'x-dashboard.files-opened');
         $countsPos = strpos($myDay, 'x-dashboard.activity-counts');
         $eodPos = strpos($myDay, 'id="myDayEodSection"');
@@ -65,6 +82,8 @@ class DashboardWorkloadMarkupTest extends TestCase
         $this->assertNotFalse($fileTimeAuto);
         $this->assertStringContainsString("row['url']", $fileTimeAuto);
         $this->assertStringContainsString('myDayAutoCount', $fileTimeAuto);
+        $this->assertStringContainsString("deferred ? '…'", $fileTimeAuto);
+        $this->assertStringContainsString('Loading auto file time', $fileTimeAuto);
         $this->assertStringContainsString('my-day-opened-badge', $fileTimeAuto);
         $this->assertStringContainsString('my-day-auto-events-btn', $fileTimeAuto);
         $this->assertStringContainsString('data-total-minutes', $fileTimeAuto);

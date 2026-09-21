@@ -22,6 +22,7 @@
             :crm-events="$myDayCrmEvents ?? []"
             :board="$myDayBoard ?? []"
             :activity-counts="$myDayActivityCounts ?? []"
+            :deferred="$defer_heavy_widgets ?? true"
         />
 
         <x-dashboard.staff-calendar

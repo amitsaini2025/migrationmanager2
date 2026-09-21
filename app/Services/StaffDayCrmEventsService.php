@@ -11,6 +11,8 @@ use App\Models\EmailLog;
 use App\Models\Note;
 use App\Models\SmsLog;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -35,18 +37,14 @@ class StaffDayCrmEventsService
     /**
      * Read-only union of today's CRM writes by this staff. Does not write.
      *
+     * @param  Collection<int, array<string, mixed>>|null  $dayEvents
      * @return array{items: list<array<string, mixed>>, total: int, more: int, date: string}
      */
-    public function forStaff(int $staffId, ?Carbon $day = null, int $limit = self::LIST_CAP): array
+    public function forStaff(int $staffId, ?Carbon $day = null, int $limit = self::LIST_CAP, ?Collection $dayEvents = null): array
     {
         [$start, $end] = $this->workloadService->dayBounds($day);
-        $items = collect()
-            ->merge($this->emailEvents($staffId, $start, $end))
-            ->merge($this->documentEvents($staffId, $start, $end))
-            ->merge($this->bookingEvents($staffId, $start, $end))
-            ->merge($this->smsEvents($staffId, $start, $end))
-            ->merge($this->feedEvents($staffId, $start, $end))
-            ->merge($this->contactNoteEvents($staffId, $start, $end))
+        $items = ($dayEvents ?? $this->eventsForStaffWindow($staffId, $start, $end))
+            ->filter(fn (array $row): bool => empty($row['count_only']))
             ->sortByDesc(fn (array $row) => $row['sort_at'])
             ->values();
 
@@ -68,18 +66,52 @@ class StaffDayCrmEventsService
     /**
      * Uncapped today-counts for the My Day activity strip. Does not change the capped event list.
      *
+     * @param  Collection<int, array<string, mixed>>|null  $dayEvents
      * @return array{checklists: int, documents: int, actions: int, sms: int, date: string}
      */
-    public function activityCountsForStaff(int $staffId, ?Carbon $day = null): array
+    public function activityCountsForStaff(int $staffId, ?Carbon $day = null, ?Collection $dayEvents = null): array
     {
         [$start, $end] = $this->workloadService->dayBounds($day);
+        $items = $dayEvents ?? $this->eventsForStaffWindow($staffId, $start, $end, true);
+
+        return $this->activityCountsFromEvents($items, $start->toDateString());
+    }
+
+    /**
+     * KPI strip counts from an already-loaded day of CRM rows. No extra table scans.
+     *
+     * @param  Collection<int, array<string, mixed>>  $items
+     * @return array{checklists: int, documents: int, actions: int, sms: int, date: string}
+     */
+    public function activityCountsFromEvents(Collection $items, string $date): array
+    {
+        $checklists = 0;
+        $documents = 0;
+        $actions = 0;
+        $sms = 0;
+
+        foreach ($items as $row) {
+            $kind = (string) ($row['kind'] ?? '');
+            if (! empty($row['count_only']) || $kind === 'Checklist sent') {
+                $checklists++;
+
+                continue;
+            }
+            if ($kind === 'Document') {
+                $documents++;
+            } elseif ($kind === 'Action completed') {
+                $actions++;
+            } elseif ($kind === 'SMS') {
+                $sms++;
+            }
+        }
 
         return [
-            'checklists' => $this->countChecklistSent($staffId, $start, $end),
-            'documents' => $this->countDocumentsUploaded($staffId, $start, $end),
-            'actions' => $this->countActionsCompleted($staffId, $start, $end),
-            'sms' => $this->countSmsSent($staffId, $start, $end),
-            'date' => $start->toDateString(),
+            'checklists' => $checklists,
+            'documents' => $documents,
+            'actions' => $actions,
+            'sms' => $sms,
+            'date' => $date,
         ];
     }
 
@@ -95,45 +127,103 @@ class StaffDayCrmEventsService
         Carbon $start,
         Carbon $end,
     ): Collection {
-        $items = collect()
-            ->merge($this->emailEvents($staffId, $start, $end))
-            ->merge($this->documentEvents($staffId, $start, $end))
-            ->merge($this->bookingEvents($staffId, $start, $end))
-            ->merge($this->smsEvents($staffId, $start, $end))
-            ->merge($this->feedEvents($staffId, $start, $end))
-            ->merge($this->contactNoteEvents($staffId, $start, $end))
-            ->filter(function (array $row) use ($clientId, $clientMatterId): bool {
+        return $this->filterEventsForRecord(
+            $this->eventsForStaffWindow($staffId, $start, $end),
+            $clientId,
+            $clientMatterId,
+            $start,
+            $end,
+        );
+    }
+
+    /**
+     * Union of this staff's CRM writes in a window. One pass over the six sources.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function eventsForStaffWindow(int $staffId, Carbon $start, Carbon $end, bool $uncapped = false): Collection
+    {
+        $emailLimit = $uncapped ? null : 80;
+        $listLimit = $uncapped ? null : 40;
+
+        return collect()
+            ->merge($this->emailEvents($staffId, $start, $end, $emailLimit))
+            ->merge($this->documentEvents($staffId, $start, $end, $emailLimit))
+            ->merge($this->bookingEvents($staffId, $start, $end, $listLimit))
+            ->merge($this->smsEvents($staffId, $start, $end, $listLimit))
+            ->merge($this->feedEvents($staffId, $start, $end, $emailLimit))
+            ->merge($this->contactNoteEvents($staffId, $start, $end, $listLimit));
+    }
+
+    /**
+     * Uncapped today-window CRM rows for board, list, and activity counts.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function loadDayEvents(int $staffId, ?Carbon $day = null): Collection
+    {
+        [$start, $end] = $this->workloadService->dayBounds($day);
+
+        return $this->eventsForStaffWindow($staffId, $start, $end, true);
+    }
+
+    /**
+     * Scope already-loaded CRM rows to one client/matter and optional time window.
+     *
+     * @param  Collection<int, array<string, mixed>>  $items
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function filterEventsForRecord(
+        Collection $items,
+        int $clientId,
+        ?int $clientMatterId,
+        ?Carbon $start = null,
+        ?Carbon $end = null,
+    ): Collection {
+        $tz = (string) config('app.timezone');
+        $from = $start?->copy()->timezone($tz)->getTimestamp();
+        $to = $end?->copy()->timezone($tz)->getTimestamp();
+
+        return $items
+            ->filter(function (array $row) use ($clientId, $clientMatterId, $from, $to): bool {
+                if (! empty($row['count_only'])) {
+                    return false;
+                }
+
                 if ((int) ($row['client_id'] ?? 0) !== $clientId) {
                     return false;
                 }
 
-                if ($clientMatterId === null) {
-                    return true;
+                if ($clientMatterId !== null) {
+                    $rowMatter = $row['client_matter_id'] ?? null;
+                    if ($rowMatter !== null && $rowMatter !== '' && (int) $rowMatter !== $clientMatterId) {
+                        return false;
+                    }
                 }
 
-                $rowMatter = $row['client_matter_id'] ?? null;
-                if ($rowMatter === null || $rowMatter === '') {
-                    return true;
+                if ($from !== null && $to !== null) {
+                    $at = (int) ($row['sort_at'] ?? 0);
+                    if ($at < $from || $at > $to) {
+                        return false;
+                    }
                 }
 
-                return (int) $rowMatter === $clientMatterId;
+                return true;
             })
             ->sortBy(fn (array $row) => $row['sort_at'])
             ->values();
-
-        return $items;
     }
 
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    protected function emailEvents(int $staffId, Carbon $start, Carbon $end): Collection
+    protected function emailEvents(int $staffId, Carbon $start, Carbon $end, ?int $limit = 80): Collection
     {
         if (! Schema::hasTable('email_logs')) {
             return collect();
         }
 
-        return EmailLog::query()
+        $query = EmailLog::query()
             ->where('user_id', $staffId)
             ->whereBetween('created_at', [$start, $end])
             ->where(function ($q) {
@@ -151,8 +241,10 @@ class StaffDayCrmEventsService
                             ->where('mail_body_type', 'sent');
                     });
             })
-            ->orderByDesc('created_at')
-            ->limit(80)
+            ->orderByDesc('created_at');
+        $this->applySourceLimit($query, $limit);
+
+        return $query
             ->get(array_values(array_filter([
                 'id',
                 'subject',
@@ -190,19 +282,21 @@ class StaffDayCrmEventsService
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    protected function documentEvents(int $staffId, Carbon $start, Carbon $end): Collection
+    protected function documentEvents(int $staffId, Carbon $start, Carbon $end, ?int $limit = 80): Collection
     {
         if (! Schema::hasTable('documents')) {
             return collect();
         }
 
-        return Document::query()
+        $query = Document::query()
             ->where(function ($q) use ($staffId) {
                 $q->where('created_by', $staffId)->orWhere('user_id', $staffId);
             })
             ->whereBetween('created_at', [$start, $end])
-            ->orderByDesc('created_at')
-            ->limit(80)
+            ->orderByDesc('created_at');
+        $this->applySourceLimit($query, $limit);
+
+        return $query
             ->get(array_values(array_filter([
                 'id',
                 Schema::hasColumn('documents', 'file_name') ? 'file_name' : null,
@@ -239,17 +333,19 @@ class StaffDayCrmEventsService
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    protected function bookingEvents(int $staffId, Carbon $start, Carbon $end): Collection
+    protected function bookingEvents(int $staffId, Carbon $start, Carbon $end, ?int $limit = 40): Collection
     {
         if (! Schema::hasTable('booking_appointments')) {
             return collect();
         }
 
-        return BookingAppointment::query()
+        $query = BookingAppointment::query()
             ->where('user_id', $staffId)
             ->whereBetween('created_at', [$start, $end])
-            ->orderByDesc('created_at')
-            ->limit(40)
+            ->orderByDesc('created_at');
+        $this->applySourceLimit($query, $limit);
+
+        return $query
             ->get(['id', 'client_id', 'client_name', 'meeting_type', 'service_type', 'created_at'])
             ->map(function (BookingAppointment $appt): array {
                 $who = trim((string) ($appt->client_name ?? ''));
@@ -274,7 +370,7 @@ class StaffDayCrmEventsService
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    protected function smsEvents(int $staffId, Carbon $start, Carbon $end): Collection
+    protected function smsEvents(int $staffId, Carbon $start, Carbon $end, ?int $limit = 40): Collection
     {
         if (! Schema::hasTable('sms_logs')) {
             return collect();
@@ -288,12 +384,13 @@ class StaffDayCrmEventsService
 
         $columns = array_values(array_filter(['id', $bodyCol, $timeCol, 'client_id']));
 
-        $logs = SmsLog::query()
+        $query = SmsLog::query()
             ->where('sender_id', $staffId)
             ->whereBetween($timeCol, [$start, $end])
-            ->orderByDesc($timeCol)
-            ->limit(40)
-            ->get($columns);
+            ->orderByDesc($timeCol);
+        $this->applySourceLimit($query, $limit);
+
+        $logs = $query->get($columns);
 
         $activityIdsBySms = [];
         if (
@@ -339,27 +436,31 @@ class StaffDayCrmEventsService
      *
      * @return Collection<int, array<string, mixed>>
      */
-    protected function feedEvents(int $staffId, Carbon $start, Carbon $end): Collection
+    protected function feedEvents(int $staffId, Carbon $start, Carbon $end, ?int $limit = 80): Collection
     {
         if (! Schema::hasTable('activities_logs')) {
             return collect();
         }
 
-        return ActivitiesLog::query()
+        $query = ActivitiesLog::query()
             ->where('created_by', $staffId)
             ->whereBetween('created_at', [$start, $end])
             ->where(function ($q) {
                 $q->where('activity_type', 'stage')
                     ->orWhere('activity_type', 'like', 'eoi_%')
                     ->orWhere('subject', 'like', 'completed action for%')
-                    ->orWhere('subject', 'like', 'Updated action for%');
+                    ->orWhere('subject', 'like', 'Updated action for%')
+                    ->orWhere('subject', 'Checklist sent to client')
+                    ->orWhere('subject', 'Document Checklist sent to client');
             })
             ->where(function ($q) {
                 $q->whereNull('activity_type')
                     ->orWhere('activity_type', '!=', 'file_time');
             })
-            ->orderByDesc('created_at')
-            ->limit(80)
+            ->orderByDesc('created_at');
+        $this->applySourceLimit($query, $limit);
+
+        return $query
             ->get(array_values(array_filter([
                 'id',
                 'subject',
@@ -376,7 +477,10 @@ class StaffDayCrmEventsService
 
                 $subject = (string) ($log->subject ?? '');
                 $type = (string) ($log->activity_type ?? '');
-                if (str_starts_with(strtolower($subject), 'completed action for')) {
+                $countOnly = $this->isChecklistSubject($subject);
+                if ($countOnly) {
+                    $kind = 'Checklist sent';
+                } elseif (str_starts_with(strtolower($subject), 'completed action for')) {
                     $kind = 'Action completed';
                 } elseif (str_starts_with(strtolower($subject), 'updated action for')) {
                     $kind = 'Action updated';
@@ -388,7 +492,7 @@ class StaffDayCrmEventsService
                     $kind = 'Activity';
                 }
 
-                return $this->row(
+                $row = $this->row(
                     $kind,
                     $subject !== '' ? $subject : $kind,
                     $log->created_at,
@@ -401,13 +505,18 @@ class StaffDayCrmEventsService
                     $matterId,
                     (int) $log->id,
                 );
+                if ($countOnly) {
+                    $row['count_only'] = true;
+                }
+
+                return $row;
             });
     }
 
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    protected function contactNoteEvents(int $staffId, Carbon $start, Carbon $end): Collection
+    protected function contactNoteEvents(int $staffId, Carbon $start, Carbon $end, ?int $limit = 40): Collection
     {
         if (! Schema::hasTable('notes')) {
             return collect();
@@ -418,15 +527,16 @@ class StaffDayCrmEventsService
             $columns[] = 'description';
         }
 
-        $notes = Note::query()
+        $query = Note::query()
             ->where('user_id', $staffId)
             ->where('is_action', 0)
             ->whereNull('assigned_to')
             ->whereIn('type', ['client', 'lead'])
             ->whereBetween('created_at', [$start, $end])
-            ->orderByDesc('created_at')
-            ->limit(40)
-            ->get($columns);
+            ->orderByDesc('created_at');
+        $this->applySourceLimit($query, $limit);
+
+        $notes = $query->get($columns);
 
         $activityLogIds = $this->activityLogIdsForNotes($notes);
 
@@ -602,6 +712,19 @@ class StaffDayCrmEventsService
     }
 
     /**
+     * @param  Builder<Model>  $query
+     * @return Builder<Model>
+     */
+    protected function applySourceLimit(Builder $query, ?int $limit): Builder
+    {
+        if ($limit !== null) {
+            $query->limit($limit);
+        }
+
+        return $query;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     protected function row(
@@ -731,60 +854,9 @@ class StaffDayCrmEventsService
         return $this->matterNoCache[$id] ? (string) $this->matterNoCache[$id] : null;
     }
 
-    protected function countChecklistSent(int $staffId, Carbon $start, Carbon $end): int
+    protected function isChecklistSubject(string $subject): bool
     {
-        if (! Schema::hasTable('activities_logs')) {
-            return 0;
-        }
-
-        return ActivitiesLog::query()
-            ->where('created_by', $staffId)
-            ->whereBetween('created_at', [$start, $end])
-            ->where(function ($query): void {
-                $query->where('subject', 'Checklist sent to client')
-                    ->orWhere('subject', 'Document Checklist sent to client');
-            })
-            ->count();
-    }
-
-    protected function countDocumentsUploaded(int $staffId, Carbon $start, Carbon $end): int
-    {
-        if (! Schema::hasTable('documents')) {
-            return 0;
-        }
-
-        return Document::query()
-            ->where(function ($query) use ($staffId): void {
-                $query->where('created_by', $staffId)->orWhere('user_id', $staffId);
-            })
-            ->whereBetween('created_at', [$start, $end])
-            ->count();
-    }
-
-    protected function countActionsCompleted(int $staffId, Carbon $start, Carbon $end): int
-    {
-        if (! Schema::hasTable('activities_logs')) {
-            return 0;
-        }
-
-        return ActivitiesLog::query()
-            ->where('created_by', $staffId)
-            ->whereBetween('created_at', [$start, $end])
-            ->where('subject', 'like', 'completed action for%')
-            ->count();
-    }
-
-    protected function countSmsSent(int $staffId, Carbon $start, Carbon $end): int
-    {
-        if (! Schema::hasTable('sms_logs')) {
-            return 0;
-        }
-
-        $timeCol = Schema::hasColumn('sms_logs', 'sent_at') ? 'sent_at' : 'created_at';
-
-        return SmsLog::query()
-            ->where('sender_id', $staffId)
-            ->whereBetween($timeCol, [$start, $end])
-            ->count();
+        return $subject === 'Checklist sent to client'
+            || $subject === 'Document Checklist sent to client';
     }
 }

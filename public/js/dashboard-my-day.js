@@ -644,8 +644,16 @@
         });
     }
 
+    function applyHours(hours) {
+        if (!hours) {
+            return;
+        }
+        setText('myDayHoursLabel', hours.label || '—');
+    }
+
     function refreshFromIndex() {
         return api(myDayIndexUrl(), { method: 'GET' }).then(function (data) {
+            applyHours(data.hours);
             if (data.board) {
                 applyBoard(data.board);
             }
@@ -655,7 +663,50 @@
             if (data.activity_counts) {
                 applyActivityCounts(data.activity_counts);
             }
+            return data;
         });
+    }
+
+    function deferredLoadErrorHtml() {
+        return '<div class="dashboard-widget-loading">' +
+            '<p>Could not load My day. <a href="#" data-my-day-retry>Retry</a></p>' +
+            '</div>';
+    }
+
+    function showDeferredLoadError() {
+        setText('myDayHoursLabel', '—');
+        var crm = document.getElementById('myDayCrmList');
+        if (crm) {
+            crm.innerHTML = deferredLoadErrorHtml();
+        }
+        var auto = document.getElementById('myDayAutoList');
+        if (auto) {
+            auto.innerHTML = deferredLoadErrorHtml();
+        }
+        var opened = document.getElementById('myDayOpenedList');
+        if (opened) {
+            opened.innerHTML = '<li class="dashboard-widget-loading"><p>Could not load opened files. <a href="#" data-my-day-retry>Retry</a></p></li>';
+        }
+        setText('myDayAutoCount', '—');
+        setText('myDayOpenedCount', '—');
+        setText('myDayCountChecklists', '—');
+        setText('myDayCountDocuments', '—');
+        setText('myDayCountActions', '—');
+        setText('myDayCountSms', '—');
+    }
+
+    function loadDeferredMyDay() {
+        root.classList.add('my-day--loading');
+        root.setAttribute('aria-busy', 'true');
+        refreshFromIndex()
+            .catch(function () {
+                showDeferredLoadError();
+            })
+            .finally(function () {
+                root.classList.remove('my-day--loading');
+                root.removeAttribute('aria-busy');
+                root.removeAttribute('data-deferred');
+            });
     }
 
     function applyActivityCounts(counts) {
@@ -1294,6 +1345,20 @@
     setupMatterSearch();
     setupCopy();
     setupCrmBodyToggle();
-    renderAll();
-    refreshSummary();
+    root.addEventListener('click', function (event) {
+        var retry = event.target.closest('[data-my-day-retry]');
+        if (!retry || !root.contains(retry)) {
+            return;
+        }
+        event.preventDefault();
+        loadDeferredMyDay();
+    });
+    if (root.getAttribute('data-deferred') === '1') {
+        renderPresets();
+        renderChosen();
+        loadDeferredMyDay();
+    } else {
+        renderAll();
+        refreshSummary();
+    }
 })();

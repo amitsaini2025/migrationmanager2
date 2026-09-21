@@ -141,19 +141,20 @@ class StaffMatterSessionService
     }
 
     /**
+     * @param  Collection<int, array<string, mixed>>|null  $dayEvents
      * @return array{
      *     auto: list<array<string, mixed>>,
      *     opened: list<array<string, mixed>>,
      *     event_minutes: array<string, int>
      * }
      */
-    public function sessionsForBoard(int $staffId, ?Carbon $day = null): array
+    public function sessionsForBoard(int $staffId, ?Carbon $day = null, ?Collection $dayEvents = null): array
     {
         if (! Schema::hasTable('staff_matter_sessions')) {
             return ['auto' => [], 'opened' => [], 'event_minutes' => []];
         }
 
-        [$start] = $this->workloadService->dayBounds($day);
+        [$start, $end] = $this->workloadService->dayBounds($day);
         $sessionDate = $start->toDateString();
 
         $sessions = StaffMatterSession::query()
@@ -166,6 +167,15 @@ class StaffMatterSessionService
         $auto = [];
         $opened = [];
         $eventMinutes = [];
+
+        $needsEvents = $sessions->contains(
+            fn (StaffMatterSession $session): bool => $session->status !== StaffMatterSession::STATUS_ACCESSED
+                && $session->isRecordedForBoard()
+        );
+        if ($dayEvents === null && $needsEvents) {
+            $dayEvents = $this->crmEvents->eventsForStaffWindow($staffId, $start, $end, true);
+        }
+        $dayEvents ??= collect();
 
         foreach ($sessions as $session) {
             $ref = $this->recordRef($session);
@@ -191,7 +201,14 @@ class StaffMatterSessionService
             }
 
             $minutes = $this->resolvedMinutes($session);
-            $events = $this->eventsForSession($session);
+            [$windowStart, $windowEnd] = $this->sessionEventWindow($session);
+            $events = $this->crmEvents->filterEventsForRecord(
+                $dayEvents,
+                (int) $session->client_id,
+                $session->client_matter_id !== null ? (int) $session->client_matter_id : null,
+                $windowStart,
+                $windowEnd,
+            );
             $splitEvents = $this->splitMinutesAcrossEvents($events, $minutes);
 
             foreach ($splitEvents as $event) {
@@ -274,18 +291,26 @@ class StaffMatterSessionService
      */
     public function eventsForSession(StaffMatterSession $session): Collection
     {
-        $start = $session->started_at ?? Carbon::parse($session->session_date)->startOfDay();
-        $end = $session->last_heartbeat_at ?? now();
+        [$start, $end] = $this->sessionEventWindow($session);
 
-        $events = $this->crmEvents->forStaffOnRecord(
+        return $this->crmEvents->forStaffOnRecord(
             (int) $session->staff_id,
             (int) $session->client_id,
             $session->client_matter_id !== null ? (int) $session->client_matter_id : null,
             $start,
             $end,
         );
+    }
 
-        return $events;
+    /**
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    protected function sessionEventWindow(StaffMatterSession $session): array
+    {
+        $start = $session->started_at ?? Carbon::parse($session->session_date)->startOfDay();
+        $end = $session->last_heartbeat_at ?? now();
+
+        return [$start, $end];
     }
 
     protected function closeSession(StaffMatterSession $session, Carbon $endedAt): void

@@ -50,19 +50,32 @@ class DashboardController extends Controller
         $dashboardData['defaultCalendarType'] = $this->personalCalendarFeed->defaultTypeForStaff($staff);
         $dashboardData['calendarStats'] = ['today' => 0, 'this_week' => 0, 'upcoming' => 0];
         $dashboardData['workload'] = $this->staffWorkloadService->getDashboardWorkload($staffId);
-        $dashboardData['myDayHours'] = $this->staffDayHoursService->forStaff($staffId);
-        $board = $this->staffFileTimeService->boardForStaff($staffId);
-        $board['sessions'] = $this->staffMatterSessionService->sessionsForBoard($staffId);
-        $dashboardData['myDayCrmEvents'] = $this->staffFileTimeService->attachMinutesToCrmEvents(
-            $this->staffDayCrmEventsService->forStaff($staffId),
-            $board['sessions'],
-            $board,
-        );
-        $dashboardData['myDayActivityCounts'] = $this->staffDayCrmEventsService->activityCountsForStaff($staffId);
-        $dashboardData['myDayBoard'] = $board;
+        if (! ($dashboardData['defer_heavy_widgets'] ?? true)) {
+            $this->hydrateMyDay($dashboardData, $staffId);
+        }
         $dashboardData['bookingConsultants'] = $this->bookingConsultantsForModal();
 
         return view('crm.dashboard-optimized', $dashboardData);
+    }
+
+    /**
+     * SSR My day when heavy widgets are not deferred.
+     *
+     * @param  array<string, mixed>  $dashboardData
+     */
+    protected function hydrateMyDay(array &$dashboardData, int $staffId): void
+    {
+        $dashboardData['myDayHours'] = $this->staffDayHoursService->forStaff($staffId);
+        $dayEvents = $this->staffDayCrmEventsService->loadDayEvents($staffId);
+        $board = $this->staffFileTimeService->boardForStaff($staffId);
+        $board['sessions'] = $this->staffMatterSessionService->sessionsForBoard($staffId, null, $dayEvents);
+        $dashboardData['myDayCrmEvents'] = $this->staffFileTimeService->attachMinutesToCrmEvents(
+            $this->staffDayCrmEventsService->forStaff($staffId, null, StaffDayCrmEventsService::LIST_CAP, $dayEvents),
+            $board['sessions'],
+            $board,
+        );
+        $dashboardData['myDayActivityCounts'] = $this->staffDayCrmEventsService->activityCountsForStaff($staffId, null, $dayEvents);
+        $dashboardData['myDayBoard'] = $board;
     }
 
     /**

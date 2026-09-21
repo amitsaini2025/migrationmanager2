@@ -222,6 +222,58 @@ class StaffDayCrmEventsServiceTest extends TestCase
     }
 
     #[Test]
+    public function filter_events_for_record_reuses_a_shared_day_load(): void
+    {
+        $start = Carbon::parse('2026-09-15 09:00:00', 'Australia/Melbourne');
+        $end = Carbon::parse('2026-09-15 17:00:00', 'Australia/Melbourne');
+
+        DB::table('client_matters')->insert([
+            ['id' => 5, 'client_unique_matter_no' => 'MAT-A', 'created_at' => $start, 'updated_at' => $start],
+            ['id' => 6, 'client_unique_matter_no' => 'MAT-B', 'created_at' => $start, 'updated_at' => $start],
+        ]);
+
+        DB::table('notes')->insert([
+            [
+                'id' => 1,
+                'user_id' => 1,
+                'client_id' => 10,
+                'matter_id' => 5,
+                'type' => 'client',
+                'is_action' => 0,
+                'assigned_to' => null,
+                'task_group' => 'Call',
+                'title' => 'On matter A',
+                'created_at' => $start->copy()->addHour(),
+                'updated_at' => $start->copy()->addHour(),
+            ],
+            [
+                'id' => 2,
+                'user_id' => 1,
+                'client_id' => 20,
+                'matter_id' => 6,
+                'type' => 'client',
+                'is_action' => 0,
+                'assigned_to' => null,
+                'task_group' => 'Call',
+                'title' => 'On matter B',
+                'created_at' => $start->copy()->addHours(2),
+                'updated_at' => $start->copy()->addHours(2),
+            ],
+        ]);
+
+        $dayEvents = $this->service->eventsForStaffWindow(1, $start, $end, true);
+        $fileA = $this->service->filterEventsForRecord($dayEvents, 10, 5, $start, $end);
+        $fileB = $this->service->filterEventsForRecord($dayEvents, 20, 6, $start, $end);
+
+        $this->assertSame(['On matter A'], $fileA->pluck('title')->all());
+        $this->assertSame(['On matter B'], $fileB->pluck('title')->all());
+        $this->assertEquals(
+            $this->service->forStaffOnRecord(1, 10, 5, $start, $end)->pluck('key')->all(),
+            $fileA->pluck('key')->all(),
+        );
+    }
+
+    #[Test]
     public function contact_note_without_matter_uses_client_ref_as_ref(): void
     {
         $today = Carbon::parse('2026-09-15 14:00:00', 'Australia/Melbourne');
@@ -602,6 +654,18 @@ class StaffDayCrmEventsServiceTest extends TestCase
         $this->assertSame(1, $counts['sms']);
         $this->assertSame('2026-09-15', $counts['date']);
         $this->assertNotContains('Checklist sent to client', collect($list['items'])->pluck('title')->all());
+        $this->assertNotContains('Document Checklist sent to client', collect($list['items'])->pluck('title')->all());
+
+        [$start, $end] = (new StaffWorkloadService)->dayBounds($today);
+        $dayEvents = $this->service->eventsForStaffWindow(1, $start, $end, true);
+        $this->assertSame($counts, $this->service->activityCountsFromEvents($dayEvents, '2026-09-15'));
+        $this->assertSame($counts, $this->service->activityCountsForStaff(1, $today, $dayEvents));
+        $listFromDay = $this->service->forStaff(1, $today, 50, $dayEvents);
+        $this->assertSame(
+            collect($list['items'])->pluck('title')->all(),
+            collect($listFromDay['items'])->pluck('title')->all(),
+        );
+        $this->assertNotContains('Checklist sent to client', collect($listFromDay['items'])->pluck('title')->all());
     }
 
     private function createSchema(): void

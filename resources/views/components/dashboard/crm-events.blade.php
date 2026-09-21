@@ -1,4 +1,4 @@
-@props(['items' => [], 'more' => 0, 'total' => 0])
+@props(['items' => [], 'more' => 0, 'total' => 0, 'deferred' => false])
 
 @php
     $listTotal = (int) ($total ?: (count($items) + (int) $more));
@@ -8,6 +8,12 @@
     <h3>Already in CRM</h3>
     <p class="my-day-lead">Do not log again — emails, docs, bookings, notes, completed actions.</p>
     <div id="myDayCrmList">
+        @if($deferred)
+            <div class="dashboard-widget-loading">
+                <div class="spinner spinner-sm"></div>
+                <p>Loading today’s CRM events…</p>
+            </div>
+        @else
         @forelse($items as $item)
             <div class="my-day-crm-item" data-event-key="{{ $item['key'] ?? '' }}">
                 <div class="my-day-crm-kind">{{ $item['kind'] ?? '' }}</div>
@@ -51,6 +57,7 @@
                 class="my-day-more my-day-more-btn"
                 data-total="{{ $listTotal }}"
             >… and {{ $more }} more</button>
+        @endif
         @endif
     </div>
 </section>

@@ -1,12 +1,14 @@
 @props([
     'counts' => [],
+    'deferred' => false,
 ])
 
 @php
-    $checklists = (int) ($counts['checklists'] ?? 0);
-    $documents = (int) ($counts['documents'] ?? 0);
-    $actions = (int) ($counts['actions'] ?? 0);
-    $sms = (int) ($counts['sms'] ?? 0);
+    $placeholder = $deferred ? '…' : null;
+    $checklists = $placeholder ?? (int) ($counts['checklists'] ?? 0);
+    $documents = $placeholder ?? (int) ($counts['documents'] ?? 0);
+    $actions = $placeholder ?? (int) ($counts['actions'] ?? 0);
+    $sms = $placeholder ?? (int) ($counts['sms'] ?? 0);
 @endphp
 
 <section class="my-day-card my-day-activity-counts" id="myDayActivityCounts" aria-label="No. of activities">

@@ -54,15 +54,7 @@ use App\Http\Controllers\Controller;
                     <div class="client-actions">
                         <a href="javascript:;" class="create_note_d" datatype="note" title="Add Notes">@icon('fa-plus')</a>
                         <a href="javascript:;" data-id="{{@$fetchedData->id}}" data-email="{{@$fetchedData->email}}" data-name="{{@$fetchedData->first_name}} {{@$fetchedData->last_name}}" class="clientemail" title="Compose Mail">@icon('fa-envelope')</a>
-                        @php
-                            $googleReviewTemplate = \App\Models\EmailTemplate::crm()
-                                ->where(function ($q) {
-                                    $q->where('alias', 'google_review')->orWhere('name', 'like', '%Google Review%');
-                                })
-                                ->orderBy('id')
-                                ->first();
-                        @endphp
-                        <a href="javascript:;" class="send-google-review" data-id="{{@$fetchedData->id}}" data-email="{{@$fetchedData->email}}" data-name="{{@$fetchedData->first_name}} {{@$fetchedData->last_name}}" data-template-id="{{ optional($googleReviewTemplate)->id ?? '' }}" title="Send Google Review">@icon('fa-google')</a>
+                        <a href="javascript:;" class="send-google-review" data-id="{{@$fetchedData->id}}" data-email="{{@$fetchedData->email}}" data-name="{{@$fetchedData->first_name}} {{@$fetchedData->last_name}}" data-template-id="{{ $googleReviewTemplateId ?? '' }}" title="Send Google Review">@icon('fa-google')</a>
                         <a href="javascript:;" class="send-sms-btn" data-client-id="{{@$fetchedData->id}}" data-client-name="{{@$fetchedData->first_name}} {{@$fetchedData->last_name}}" title="Send SMS">@icon('fa-sms')</a>
                         <a href="javascript:;" datatype="not_picked_call" class="not_picked_call" title="Not Picked Call">@icon('fa-mobile-alt')</a>
                         <a href="javascript:;" data-bs-toggle="modal" data-bs-target="#create_appoint" title="Add Appointment">@icon('fa-calendar-plus')</a>
@@ -891,6 +883,7 @@ $(document).ready(function() {
             updateMailReadBit: '{{ URL::to("/clients/updatemailreadbit") }}',
             listAllMatters: '{{ URL::to("/clients/listAllMattersWRTSelClient") }}',
             getActivities: '{{ route("clients.activities") }}',
+            getActivityMessage: '{{ route("clients.activityMessage") }}',
             getNotes: '{{ URL::to("/get-notes") }}',
             updatePersonalCategory: '{{ route("clients.documents.updatePersonalDocCategory") }}',
             updateVisaCategory: '{{ route("clients.documents.updateVisaDocCategory") }}',
@@ -1069,7 +1062,13 @@ $(document).ready(function() {
                             }
                         }
 
-                        var descriptionHtml = description !== '' ? '<p>' + description + '</p>' : '';
+                        var descriptionHtml = '';
+                        if (v.message_truncated) {
+                            descriptionHtml = '<p class="feed-item-message" data-activity-id="' + v.activity_id + '">' + description +
+                                ' <button type="button" class="feed-item-show-more">Show more</button></p>';
+                        } else if (description !== '') {
+                            descriptionHtml = '<p>' + description + '</p>';
+                        }
                         var taskGroupHtml = taskGroup !== '' ? '<p>' + taskGroup + '</p>' : '';
                         var followupDateHtml = followupDate !== '' ? '<p>' + followupDate + '</p>' : '';
 
@@ -1176,24 +1175,24 @@ $(document).ready(function() {
 <script src="{{ URL::asset('js/crm/clients/modules/visa-expiry.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/subtabs.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/ledger-dragdrop.js') }}"></script>
-<script src="{{ URL::asset('js/crm/clients/workflow-tab.js') }}?v={{ time() }}"></script>
-<script src="{{ URL::asset('js/crm/clients/account-tab.js') }}?v={{ time() }}"></script>
-<script src="{{ URL::asset('js/crm/clients/dibp-receipts-tab.js') }}?v={{ time() }}"></script>
-<script src="{{ URL::asset('js/crm/clients/checklists-tab.js') }}?v={{ time() }}"></script>
-<script src="{{ URL::asset('js/crm/clients/emails-tab.js') }}?v={{ time() }}"></script>
-<script src="{{ URL::asset('js/crm/clients/personaldocuments-tab.js') }}?v={{ time() }}"></script>
-<script src="{{ URL::asset('js/crm/clients/visadocuments-tab.js') }}?v={{ time() }}"></script>
-<script src="{{ URL::asset('js/crm/clients/notuseddocuments-tab.js') }}?v={{ time() }}"></script>
-<script src="{{ URL::asset('js/crm/clients/notes-tab.js') }}?v={{ time() }}"></script>
-<script src="{{ URL::asset('js/crm/clients/personaldetails-tab.js') }}?v={{ time() }}"></script>
-<script src="{{ URL::asset('js/crm/clients/verify-link.js') }}?v={{ time() }}"></script>
+<script src="{{ URL::asset('js/crm/clients/workflow-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/workflow-tab.js') }}"></script>
+<script src="{{ URL::asset('js/crm/clients/account-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/account-tab.js') }}"></script>
+<script src="{{ URL::asset('js/crm/clients/dibp-receipts-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/dibp-receipts-tab.js') }}"></script>
+<script src="{{ URL::asset('js/crm/clients/checklists-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/checklists-tab.js') }}"></script>
+<script src="{{ URL::asset('js/crm/clients/emails-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/emails-tab.js') }}"></script>
+<script src="{{ URL::asset('js/crm/clients/personaldocuments-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/personaldocuments-tab.js') }}"></script>
+<script src="{{ URL::asset('js/crm/clients/visadocuments-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/visadocuments-tab.js') }}"></script>
+<script src="{{ URL::asset('js/crm/clients/notuseddocuments-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/notuseddocuments-tab.js') }}"></script>
+<script src="{{ URL::asset('js/crm/clients/notes-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/notes-tab.js') }}"></script>
+<script src="{{ URL::asset('js/crm/clients/personaldetails-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/personaldetails-tab.js') }}"></script>
+<script src="{{ URL::asset('js/crm/clients/verify-link.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/verify-link.js') }}"></script>
 @include('partials.my-day-session-script', [
     'myDayClientId' => $fetchedData->id ?? null,
     'myDayMatterId' => $latestClientMatterId ?? null,
     'myDayRef' => $id1 ?? ($matterNumber ?? 'file'),
 ])
 {{-- Main detail page JavaScript --}}
-<script src="{{ URL::asset('js/crm/clients/detail-main.js') }}?v={{ time() }}"></script>
+<script src="{{ URL::asset('js/crm/clients/detail-main.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/detail-main.js') }}"></script>
 
 {{-- Sidebar Toggle JavaScript --}}
 <script>

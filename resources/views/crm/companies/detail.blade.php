@@ -1432,6 +1432,7 @@ $(document).ready(function() {
             updateMailReadBit: '{{ URL::to("/clients/updatemailreadbit") }}',
             listAllMatters: '{{ URL::to("/clients/listAllMattersWRTSelClient") }}',
             getActivities: '{{ route("clients.activities") }}',
+            getActivityMessage: '{{ route("clients.activityMessage") }}',
             getNotes: '{{ URL::to("/get-notes") }}',
             updatePersonalCategory: '{{ route("clients.documents.updatePersonalDocCategory") }}',
             updateVisaCategory: '{{ route("clients.documents.updateVisaDocCategory") }}',
@@ -1591,7 +1592,13 @@ $(document).ready(function() {
                             }
                         }
 
-                        var descriptionHtml = description !== '' ? '<p>' + description + '</p>' : '';
+                        var descriptionHtml = '';
+                        if (v.message_truncated) {
+                            descriptionHtml = '<p class="feed-item-message" data-activity-id="' + v.activity_id + '">' + description +
+                                ' <button type="button" class="feed-item-show-more">Show more</button></p>';
+                        } else if (description !== '') {
+                            descriptionHtml = '<p>' + description + '</p>';
+                        }
                         var taskGroupHtml = taskGroup !== '' ? '<p>' + taskGroup + '</p>' : '';
                         var followupDateHtml = followupDate !== '' ? '<p>' + followupDate + '</p>' : '';
 
@@ -1697,20 +1704,20 @@ $(document).ready(function() {
 <script src="{{ URL::asset('js/crm/clients/modules/visa-expiry.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/subtabs.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/ledger-dragdrop.js') }}"></script>
-<script src="{{ URL::asset('js/crm/clients/workflow-tab.js') }}?v={{ time() }}"></script>
+<script src="{{ URL::asset('js/crm/clients/workflow-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/workflow-tab.js') }}"></script>
 {{-- Receipts handlers only. Do not load the Account lazy-loader script: company Account is already eager and that file re-runs invoice/ledger init. --}}
-<script src="{{ URL::asset('js/crm/clients/dibp-receipts-tab.js') }}?v={{ time() }}"></script>
+<script src="{{ URL::asset('js/crm/clients/dibp-receipts-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/dibp-receipts-tab.js') }}"></script>
 {{-- Bulk Upload toggle for eager Company Documents (same file as client detail). Lazy fetch is a no-op because the pane is already rendered. --}}
-<script src="{{ URL::asset('js/crm/clients/personaldocuments-tab.js') }}?v={{ time() }}"></script>
+<script src="{{ URL::asset('js/crm/clients/personaldocuments-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/personaldocuments-tab.js') }}"></script>
 {{-- Context menu handlers for the eager Not Used Documents tab (same file as client detail). Lazy fetch is a no-op here because the pane is already rendered. --}}
-<script src="{{ URL::asset('js/crm/clients/notuseddocuments-tab.js') }}?v={{ time() }}"></script>
+<script src="{{ URL::asset('js/crm/clients/notuseddocuments-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/notuseddocuments-tab.js') }}"></script>
 {{-- Main detail page JavaScript --}}
 @include('partials.my-day-session-script', [
     'myDayClientId' => $fetchedData->id ?? null,
     'myDayMatterId' => $latestClientMatterId ?? null,
     'myDayRef' => $id1 ?? ($matterNumber ?? 'file'),
 ])
-<script src="{{ URL::asset('js/crm/clients/detail-main.js') }}?v={{ time() }}"></script>
+<script src="{{ URL::asset('js/crm/clients/detail-main.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/detail-main.js') }}"></script>
 
 {{-- Sidebar Toggle JavaScript --}}
 <script>

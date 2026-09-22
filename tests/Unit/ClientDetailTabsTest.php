@@ -72,6 +72,30 @@ class ClientDetailTabsTest extends TestCase
     }
 
     #[Test]
+    public function activity_tab_skips_personal_data_tables(): void
+    {
+        Assert::assertFalse(ClientDetailTabs::shouldLoadPersonalDataTables('activityfeed'));
+        Assert::assertFalse(ClientDetailTabs::shouldLoadPersonalDataTables('ActivityFeed'));
+        Assert::assertFalse(ClientDetailTabs::shouldLoadPersonalDataTables('personaldetails'));
+        Assert::assertFalse(ClientDetailTabs::shouldLoadPersonalDataTables('noteterm'));
+        Assert::assertFalse(ClientDetailTabs::shouldLoadPersonalDataTables(null));
+        Assert::assertSame([
+            'clientAddresses',
+            'clientContacts',
+            'emails',
+            'qualifications',
+            'experiences',
+            'testScores',
+            'visaCountries',
+            'clientOccupations',
+            'ClientPoints',
+            'clientSpouseDetail',
+            'clientFamilyDetails',
+            'personalDetailContacts',
+        ], ClientDetailTabs::personalDataViewKeys());
+    }
+
+    #[Test]
     public function fragment_route_names_cover_registered_lazy_tabs_only(): void
     {
         Assert::assertSame([
@@ -192,6 +216,8 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertStringNotContainsString("@include('crm.clients.editclientmodal')", $detail);
         Assert::assertStringNotContainsString('UploadChecklist::all()', $detail);
         Assert::assertStringNotContainsString("EmailTemplate::crm()->orderBy('id', 'desc')->get()", $detail);
+        Assert::assertStringNotContainsString('EmailTemplate::crm()', $detail);
+        Assert::assertStringContainsString('googleReviewTemplateId', $detail);
         Assert::assertStringContainsString("@include('crm.clients.modals.lazy_stubs')", $detail);
         Assert::assertStringContainsString('lazy-modals.js', $detail);
         Assert::assertStringContainsString('js/crm/clients/utils/flatpickr-helpers.js', $detail);
@@ -799,7 +825,11 @@ class ClientDetailTabsTest extends TestCase
 
         Assert::assertStringContainsString('buildClientDetailMatterContext', $detailMethod);
         Assert::assertStringContainsString('ClientDetailTabs::slugs()', $detailMethod);
-        Assert::assertStringContainsString('personalDetailContacts', $detailMethod);
+        Assert::assertStringNotContainsString('shouldLoadPersonalDataTables', $detailMethod);
+        Assert::assertStringNotContainsString('$personalData', $detailMethod);
+        Assert::assertStringNotContainsString('personalDetailContacts', $detailMethod);
+        Assert::assertStringContainsString('googleReviewTemplateId', $detailMethod);
+        Assert::assertStringContainsString("'personalDetailContacts' => \$personalDetailContacts", $trait);
 
         foreach (ClientDetailTabs::detailDeferredViewKeys() as $key) {
             Assert::assertStringNotContainsString("'".$key."'", $detailMethod, 'detail() must not compact deferred key: '.$key);
@@ -896,6 +926,33 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertNotFalse($controller);
         Assert::assertStringContainsString('outstandingRequiredForCurrentStage($clientMatter, $staffAddedOnly)', $controller);
         Assert::assertStringContainsString('counts source=portal / portal_app items only', $controller);
+    }
+
+    #[Test]
+    public function detail_tab_scripts_use_file_mtime_cache_bust(): void
+    {
+        $existing = 'js/crm/clients/detail-main.js';
+        $fullPath = public_path($existing);
+        Assert::assertFileExists($fullPath);
+        Assert::assertSame((int) filemtime($fullPath), ClientDetailTabs::publicAssetVersion($existing));
+
+        $missing = ClientDetailTabs::publicAssetVersion('js/crm/clients/does-not-exist.js');
+        Assert::assertGreaterThanOrEqual(time() - 1, $missing);
+        Assert::assertLessThanOrEqual(time(), $missing);
+
+        foreach ([
+            'resources/views/crm/clients/detail.blade.php',
+            'resources/views/crm/companies/detail.blade.php',
+        ] as $relative) {
+            $blade = file_get_contents($this->projectPath($relative));
+            Assert::assertNotFalse($blade);
+            Assert::assertStringContainsString(
+                "ClientDetailTabs::publicAssetVersion('js/crm/clients/detail-main.js')",
+                $blade
+            );
+            Assert::assertStringNotContainsString("workflow-tab.js') }}?v={{ time() }}", $blade);
+            Assert::assertStringNotContainsString("detail-main.js') }}?v={{ time() }}", $blade);
+        }
     }
 
     private function projectPath(string $relative): string

@@ -228,6 +228,7 @@ Route::post('/clients/send-to-legal-crm/{id}', [ClientsController::class, 'sendT
 Route::post('/unarchive/{id}', [ClientsController::class, 'unarchive'])->name('clients.unarchive');
 Route::get('/change-client-status', [ClientsController::class, 'updateclientstatus'])->name('clients.updateclientstatus');
 Route::get('/get-activities', [ClientsController::class, 'activities'])->name('clients.activities');
+Route::get('/get-activity-message', [ClientsController::class, 'activityMessage'])->name('clients.activityMessage');
 Route::get('/deletecostagreement', [ClientsController::class, 'deletecostagreement'])->name('clients.deletecostagreement');
 Route::get('/deleteactivitylog', [ClientsController::class, 'deleteactivitylog'])->name('clients.deleteactivitylog');
 Route::post('/not-picked-call', [ClientsController::class, 'notpickedcall'])->name('clients.notpickedcall');

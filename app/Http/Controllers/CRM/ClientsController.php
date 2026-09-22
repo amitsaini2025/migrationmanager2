@@ -36,6 +36,11 @@ class ClientsController extends Controller
     /** @var bool|null Cached for the current request only */
     protected $googleReviewCrmTemplateExistsCache = null;
 
+    /** @var int|null Google Review CRM template id; null when none exists */
+    protected $googleReviewCrmTemplateIdCache = null;
+
+    protected bool $googleReviewCrmTemplateIdResolved = false;
+
     /**
      * Create a new controller instance.
      *

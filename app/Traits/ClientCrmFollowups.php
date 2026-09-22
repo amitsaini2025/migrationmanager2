@@ -13,10 +13,8 @@ use App\Models\ClientExperience;
 use App\Models\ClientMatter;
 use App\Models\ClientOccupation;
 use App\Models\ClientPassportInformation;
-use App\Models\ClientPoint;
 use App\Models\ClientQualification;
 use App\Models\ClientRelationship;
-use App\Models\ClientSpouseDetail;
 use App\Models\ClientTestScore;
 use App\Models\ClientTravelInformation;
 use App\Models\ClientVisaCountry;
@@ -167,13 +165,18 @@ trait ClientCrmFollowups
                         $activit->activity_type ?? null,
                         $activit->subject ?? null
                     );
+                    $feedMessage = NoteDescriptionHtml::forFeedList(
+                        $activit->description ?? '',
+                        $activit->activity_type ?? null
+                    );
                     $data[] = [
                         'activity_id' => $activit->id,
                         'subject' => $activit->subject ?? '',
                         'subject_without_staff_prefix' => $subjectWithoutStaffPrefix,
                         'createdname' => $admin ? substr($admin->first_name, 0, 1) : '?',
                         'name' => $fullName,
-                        'message' => NoteDescriptionHtml::forDisplay($activit->description ?? ''),
+                        'message' => $feedMessage['message'],
+                        'message_truncated' => $feedMessage['message_truncated'],
                         'date' => date('d M Y, H:i A', strtotime($activit->created_at)),
                         'created_at_ymd' => $activit->created_at ? Carbon::parse($activit->created_at)->format('Y-m-d') : '',
                         'followup_date' => ActivitiesLog::formatFollowupDateForDisplay($activit->followup_date),
@@ -220,6 +223,41 @@ trait ClientCrmFollowups
         echo $jsonOutput;
         ob_end_flush();
         exit;
+    }
+
+    /**
+     * Full purified description for one activity (Show more on truncated feed rows).
+     */
+    public function activityMessage(Request $request): JsonResponse
+    {
+        $activityId = (int) $request->input('id', 0);
+        if ($activityId < 1) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Activity ID is required',
+            ]);
+        }
+
+        $activity = ActivitiesLog::query()->find($activityId);
+        if (! $activity) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Activity not found',
+            ]);
+        }
+
+        if (! StaffClientVisibility::canAccessClientOrLead((int) $activity->client_id, Auth::user())) {
+            return response()->json([
+                'status' => false,
+                'message' => config('constants.unauthorized'),
+            ]);
+        }
+
+        return response()->json([
+            'status' => true,
+            'activity_id' => $activity->id,
+            'message' => NoteDescriptionHtml::forDisplay($activity->description ?? ''),
+        ]);
     }
 
     public function updateclientstatus(Request $request)
@@ -4758,23 +4796,7 @@ trait ClientCrmFollowups
                     ));
                 }
 
-                // Fetch other client-related data
-                $clientAddresses = ClientAddress::where('client_id', $id)->orderedForDisplay()->get();
-                $clientContacts = ClientContact::where('client_id', $id)->get();
-                $emails = ClientEmail::where('client_id', $id)->get() ?? [];
-                $qualifications = ClientQualification::where('client_id', $id)->orderByRaw('finish_date DESC NULLS LAST')->get() ?? [];
-                $experiences = ClientExperience::where('client_id', $id)->orderedForDisplay()->get() ?? [];
-                $testScores = ClientTestScore::where('client_id', $id)->get() ?? [];
-                $visaCountries = ClientVisaCountry::where('client_id', $id)->get() ?? [];
-                $clientSpouseDetail = ClientSpouseDetail::where('client_id', $id)->get();
-                $clientOccupations = ClientOccupation::where('client_id', $id)->get();
-                $ClientPoints = ClientPoint::where('client_id', $id)->get();
-
-                // Fetch client family details with optimized query
-                // Eager load related client to prevent N+1 queries in the view
-                $clientFamilyDetails = ClientRelationship::where('client_id', $id)
-                    ->with(['relatedClient:id,first_name,last_name,client_id'])
-                    ->get() ?? [];
+                // Personal-data tables belong to the Personal Details fragment only.
 
                 // Detect if current matter is EOI-related
                 $isEoiMatter = false;
@@ -4855,6 +4877,7 @@ trait ClientCrmFollowups
                 }
 
                 $showGoogleReviewReminderModal = $this->shouldShowGoogleReviewReminderModal($fetchedData);
+                $googleReviewTemplateId = $this->googleReviewCrmTemplateId();
 
                 // Companies where this client is the designated primary contact (separate from nominee nominations).
                 $primaryContactCompaniesForClient = Company::query()
@@ -4876,10 +4899,7 @@ trait ClientCrmFollowups
 
                 // Account / checklists / emails / documents / notes / workflow / portal
                 // load via fragment routes (or eager-if-active tab blades). Do not preload
-                // those payloads here — first paint is personal details + matter context.
-                $personalDetailContacts = $clientContacts->filter(function ($contact) {
-                    return ($contact->contact_type ?? '') !== 'Not In Use';
-                })->values();
+                // those payloads here — first paint is the shared shell + matter context.
 
                 if ($shouldLogClientDetailQueries) {
                     Log::info('Client detail query profile', [
@@ -4891,15 +4911,16 @@ trait ClientCrmFollowups
                     ]);
                 }
 
-                // Return the view with personal-details data + matter sidebar context only.
+                // Return the view with the shared shell + matter sidebar. Personal-data
+                // tables load from the Personal Details fragment, not this request.
                 return view('crm.clients.detail', array_merge(compact(
-                    'fetchedData', 'clientAddresses', 'clientContacts', 'emails', 'qualifications',
-                    'experiences', 'testScores', 'visaCountries', 'clientOccupations', 'ClientPoints', 'clientSpouseDetail',
-                    'encodeId', 'id1', 'clientFamilyDetails', 'activeTab', 'isEoiMatter',
+                    'fetchedData',
+                    'encodeId', 'id1', 'activeTab', 'isEoiMatter',
                     'staffName', 'matterNumber', 'officePhone', 'officeCountryCode',
                     'visibleNomineeNominations', 'notPickedCallSmsDefault',
                     'assignableStaff', 'leadStageLabels', 'showGoogleReviewReminderModal',
-                    'primaryContactCompaniesForClient', 'personalDetailContacts'
+                    'googleReviewTemplateId',
+                    'primaryContactCompaniesForClient'
                 ), $matterContext));
             } else {
                 return redirect()->route('clients.index')->with('error', 'Clients Not Exist');
@@ -5421,20 +5442,37 @@ trait ClientCrmFollowups
         ];
     }
 
+    /**
+     * Sidebar Google Review button needs this id on every tab, including Activity.
+     */
+    protected function googleReviewCrmTemplateId(): ?int
+    {
+        if ($this->googleReviewCrmTemplateIdResolved) {
+            return $this->googleReviewCrmTemplateIdCache;
+        }
+
+        $id = EmailTemplate::crm()
+            ->where(function ($q) {
+                $q->where('alias', 'google_review')
+                    ->orWhere('name', 'like', '%Google Review%');
+            })
+            ->orderBy('id')
+            ->value('id');
+
+        $this->googleReviewCrmTemplateIdCache = $id !== null ? (int) $id : null;
+        $this->googleReviewCrmTemplateIdResolved = true;
+        $this->googleReviewCrmTemplateExistsCache = $this->googleReviewCrmTemplateIdCache !== null;
+
+        return $this->googleReviewCrmTemplateIdCache;
+    }
+
     protected function googleReviewCrmTemplateExists(): bool
     {
         if ($this->googleReviewCrmTemplateExistsCache !== null) {
             return $this->googleReviewCrmTemplateExistsCache;
         }
 
-        $this->googleReviewCrmTemplateExistsCache = EmailTemplate::crm()
-            ->where(function ($q) {
-                $q->where('alias', 'google_review')
-                    ->orWhere('name', 'like', '%Google Review%');
-            })
-            ->exists();
-
-        return $this->googleReviewCrmTemplateExistsCache;
+        return $this->googleReviewCrmTemplateId() !== null;
     }
 
     /**

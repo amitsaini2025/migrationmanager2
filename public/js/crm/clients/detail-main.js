@@ -7525,6 +7525,13 @@ success: function(response) {
                         }
 
                         var description = v.message ?? '';
+                        var descriptionHtml = '';
+                        if (v.message_truncated) {
+                            descriptionHtml = '<p class="feed-item-message" data-activity-id="' + v.activity_id + '">' + description +
+                                ' <button type="button" class="feed-item-show-more">Show more</button></p>';
+                        } else if (description !== '') {
+                            descriptionHtml = '<p>' + description + '</p>';
+                        }
                         var taskGroup = v.task_group ?? '';
                         var followupDate = v.followup_date ?? '';
                         var date = v.date ?? '';
@@ -7557,7 +7564,7 @@ success: function(response) {
                         } else {
                             innerContent =
                                 '<p><strong>' + headline + '</strong></p>' +
-                                (description !== '' ? '<p>' + description + '</p>' : '') +
+                                descriptionHtml +
                                 (taskGroup !== '' ? '<p>' + taskGroup + '</p>' : '') +
                                 (followupDate !== '' ? '<p>' + followupDate + '</p>' : '') +
                                 '<span class="feed-timestamp">' + date + '</span>';

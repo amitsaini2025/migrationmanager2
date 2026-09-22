@@ -125,6 +125,51 @@ final class ClientDetailTabs
     }
 
     /**
+     * Personal-data tables belong to the Personal Details fragment, never detail().
+     */
+    public static function shouldLoadPersonalDataTables(?string $activeTab = null): bool
+    {
+        return false;
+    }
+
+    /**
+     * Cache-bust public JS/CSS from file mtime so reloads can reuse the browser cache.
+     */
+    public static function publicAssetVersion(string $relativePath): int
+    {
+        $fullPath = public_path($relativePath);
+        if (! is_file($fullPath)) {
+            return time();
+        }
+
+        return (int) filemtime($fullPath);
+    }
+
+    /**
+     * Compact keys that must not be built in ClientsController::detail() for people.
+     * The Personal Details fragment and company detail still own their own copies.
+     *
+     * @return list<string>
+     */
+    public static function personalDataViewKeys(): array
+    {
+        return [
+            'clientAddresses',
+            'clientContacts',
+            'emails',
+            'qualifications',
+            'experiences',
+            'testScores',
+            'visaCountries',
+            'clientOccupations',
+            'ClientPoints',
+            'clientSpouseDetail',
+            'clientFamilyDetails',
+            'personalDetailContacts',
+        ];
+    }
+
+    /**
      * View keys that must not be built in ClientsController::detail().
      * Those tabs load via fragment routes or eager-if-active blades that self-build.
      *

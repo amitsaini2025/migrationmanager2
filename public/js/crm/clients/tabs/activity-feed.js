@@ -28,6 +28,7 @@
         setupRefreshButton();
         setupLoadMoreButton();
         setupInfiniteScroll();
+        setupShowMore();
         // Hash may already be present before the first AJAX page finishes.
         window.setTimeout(function() {
             tryFocusHashedActivity();
@@ -202,6 +203,50 @@
             if (typeof window.loadActivities === 'function') {
                 window.loadActivities({ reset: false, append: true });
             }
+        });
+    }
+
+    function activityMessageUrl() {
+        if (window.ClientDetailConfig && window.ClientDetailConfig.urls && window.ClientDetailConfig.urls.getActivityMessage) {
+            return window.ClientDetailConfig.urls.getActivityMessage;
+        }
+        if (typeof site_url === 'string' && site_url !== '') {
+            return site_url.replace(/\/$/, '') + '/get-activity-message';
+        }
+        return '/get-activity-message';
+    }
+
+    /**
+     * Oversized rows send a text preview; fetch the purified HTML on demand.
+     */
+    function setupShowMore() {
+        $(document).off('click.activityFeedShowMore', '.feed-item-show-more').on('click.activityFeedShowMore', '.feed-item-show-more', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var $btn = $(this);
+            if ($btn.prop('disabled')) {
+                return;
+            }
+            var $msg = $btn.closest('.feed-item-message');
+            var activityId = parseInt($msg.attr('data-activity-id'), 10);
+            if (!activityId) {
+                return;
+            }
+            $btn.prop('disabled', true).text('Loading…');
+            $.ajax({
+                url: activityMessageUrl(),
+                type: 'GET',
+                dataType: 'json',
+                data: { id: activityId }
+            }).done(function(response) {
+                if (response && response.status && typeof response.message === 'string') {
+                    $msg.removeClass('feed-item-message').removeAttr('data-activity-id').html(response.message);
+                    return;
+                }
+                $btn.prop('disabled', false).text('Show more');
+            }).fail(function() {
+                $btn.prop('disabled', false).text('Show more');
+            });
         });
     }
 

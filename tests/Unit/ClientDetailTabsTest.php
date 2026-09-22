@@ -139,6 +139,10 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertStringContainsString('ensureNotesTabLoaded', $sidebarTabs);
         Assert::assertStringContainsString('ensurePersonalDetailsTabLoaded', $sidebarTabs);
         Assert::assertStringContainsString('ensureActivityFeedLoaded', $sidebarTabs);
+        Assert::assertStringContainsString('ensureClientDetailTabScript', $sidebarTabs);
+        Assert::assertStringContainsString("cfg.activeTab !== 'activityfeed'", $sidebarTabs);
+        Assert::assertStringContainsString('script[src*="detail-main.js"]', $sidebarTabs);
+        Assert::assertStringContainsString('callTabLoader', $sidebarTabs);
         Assert::assertContains('js/crm/clients/lazy-modals.js', ClientDetailTabs::tabScriptFilenames());
 
         $lazyModals = file_get_contents($this->projectPath('public/js/crm/clients/lazy-modals.js'));
@@ -218,6 +222,7 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertStringNotContainsString("EmailTemplate::crm()->orderBy('id', 'desc')->get()", $detail);
         Assert::assertStringNotContainsString('EmailTemplate::crm()', $detail);
         Assert::assertStringContainsString('googleReviewTemplateId', $detail);
+        Assert::assertStringContainsString('tabScripts:', $detail);
         Assert::assertStringContainsString("@include('crm.clients.modals.lazy_stubs')", $detail);
         Assert::assertStringContainsString('lazy-modals.js', $detail);
         Assert::assertStringContainsString('js/crm/clients/utils/flatpickr-helpers.js', $detail);
@@ -242,8 +247,11 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertStringContainsString('class="send-sms-btn"', $detail);
         Assert::assertStringContainsString('data-bs-target="#create_appoint"', $detail);
         Assert::assertStringNotContainsString('js/tinymce/js/tinymce/tinymce.min.js', $detail);
-        Assert::assertStringContainsString('ensureComposeOptionListsLoaded', $detail);
         Assert::assertStringContainsString('getComposeOptionLists', $detail);
+        $tinymceConfig = file_get_contents($this->projectPath('public/js/crm/clients/tinymce-email-config.js'));
+        Assert::assertNotFalse($tinymceConfig);
+        Assert::assertStringContainsString('ensureComposeOptionListsLoaded', $tinymceConfig);
+        Assert::assertStringContainsString('tinymce-email-config.js', $detail);
 
         $shellModals = file_get_contents($this->projectPath('resources/views/crm/clients/modals/shell_modals.blade.php'));
         Assert::assertNotFalse($shellModals);
@@ -829,6 +837,7 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertStringNotContainsString('$personalData', $detailMethod);
         Assert::assertStringNotContainsString('personalDetailContacts', $detailMethod);
         Assert::assertStringContainsString('googleReviewTemplateId', $detailMethod);
+        Assert::assertStringContainsString("Cache::remember('crm.google_review_template_id'", $trait);
         Assert::assertStringContainsString("'personalDetailContacts' => \$personalDetailContacts", $trait);
 
         foreach (ClientDetailTabs::detailDeferredViewKeys() as $key) {

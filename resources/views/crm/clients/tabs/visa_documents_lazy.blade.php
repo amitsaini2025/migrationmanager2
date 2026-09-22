@@ -12,8 +12,6 @@
      data-visadocuments-lazy="1"
      data-visadocuments-url="{{ $visaDocumentsTabFragmentUrl }}">
     <div class="card full-width documentalls-container">
-        <div class="workflow-v2-empty" data-visadocuments-lazy-placeholder style="padding: 24px; color: #6c757d;">
-            Loading visa documents&hellip;
-        </div>
+        <x-client-detail-tab-loading label="Loading visa documents…" data-visadocuments-lazy-placeholder />
     </div>
 </div>

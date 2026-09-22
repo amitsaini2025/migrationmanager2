@@ -58,6 +58,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -5451,15 +5452,22 @@ trait ClientCrmFollowups
             return $this->googleReviewCrmTemplateIdCache;
         }
 
-        $id = EmailTemplate::crm()
-            ->where(function ($q) {
-                $q->where('alias', 'google_review')
-                    ->orWhere('name', 'like', '%Google Review%');
-            })
-            ->orderBy('id')
-            ->value('id');
+        $cached = Cache::remember('crm.google_review_template_id', 86400, function (): array {
+            $id = EmailTemplate::crm()
+                ->where(function ($q) {
+                    $q->where('alias', 'google_review')
+                        ->orWhere('name', 'like', '%Google Review%');
+                })
+                ->orderBy('id')
+                ->value('id');
 
-        $this->googleReviewCrmTemplateIdCache = $id !== null ? (int) $id : null;
+            return ['id' => $id !== null ? (int) $id : null];
+        });
+
+        $resolvedId = is_array($cached) ? ($cached['id'] ?? null) : $cached;
+        $this->googleReviewCrmTemplateIdCache = $resolvedId !== null && (int) $resolvedId > 0
+            ? (int) $resolvedId
+            : null;
         $this->googleReviewCrmTemplateIdResolved = true;
         $this->googleReviewCrmTemplateExistsCache = $this->googleReviewCrmTemplateIdCache !== null;
 

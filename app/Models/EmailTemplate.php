@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Kyslik\ColumnSortable\Sortable;
 
 class EmailTemplate extends Model
@@ -16,7 +17,19 @@ class EmailTemplate extends Model
     public $sortable = ['id', 'name', 'subject', 'created_at', 'updated_at'];
 
     public const TYPE_CRM = 'crm';
+
+    protected static function booted(): void
+    {
+        $forgetGoogleReviewTemplate = function (): void {
+            Cache::forget('crm.google_review_template_id');
+        };
+
+        static::saved($forgetGoogleReviewTemplate);
+        static::deleted($forgetGoogleReviewTemplate);
+    }
+
     public const TYPE_MATTER_FIRST = 'matter_first';
+
     public const TYPE_MATTER_OTHER = 'matter_other';
 
     public function matter()

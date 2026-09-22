@@ -132,10 +132,74 @@
         });
     }
 
+    function snapshotLazyFields(existing) {
+        if (!existing || existing.getAttribute('data-lazy-modal') !== '1') {
+            return [];
+        }
+        var fields = [];
+        Array.prototype.slice.call(existing.querySelectorAll('input, select, textarea')).forEach(function(el) {
+            if (!el.name && !el.id) {
+                return;
+            }
+            if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) {
+                return;
+            }
+            if (el.type !== 'checkbox' && el.type !== 'radio' && (el.value == null || String(el.value) === '')) {
+                return;
+            }
+            fields.push({
+                name: el.name || '',
+                id: el.id || '',
+                type: el.type || '',
+                value: el.value,
+                checked: !!el.checked
+            });
+        });
+        return fields;
+    }
+
+    function cssIdent(value) {
+        if (window.CSS && typeof window.CSS.escape === 'function') {
+            return window.CSS.escape(value);
+        }
+        return String(value).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+    }
+
+    function restoreLazyFields(existing, fields) {
+        fields.forEach(function(field) {
+            var el = null;
+            if (field.id) {
+                el = existing.querySelector('#' + cssIdent(field.id));
+            }
+            if (!el && field.name) {
+                var nodes = existing.querySelectorAll('[name="' + String(field.name).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"]');
+                if (field.type === 'radio') {
+                    for (var i = 0; i < nodes.length; i++) {
+                        if (nodes[i].value === field.value) {
+                            el = nodes[i];
+                            break;
+                        }
+                    }
+                } else {
+                    el = nodes[0] || null;
+                }
+            }
+            if (!el) {
+                return;
+            }
+            if (field.type === 'checkbox' || field.type === 'radio') {
+                el.checked = true;
+                return;
+            }
+            el.value = field.value;
+        });
+    }
+
     function fillExistingModal(existing, incoming) {
         if (!existing || !incoming) {
             return;
         }
+        var keptFields = snapshotLazyFields(existing);
         Array.prototype.slice.call(incoming.attributes || []).forEach(function(attr) {
             if (attr.name === 'id' || attr.name === 'data-lazy-modal' || attr.name === 'data-lazy-pack' || attr.name === 'data-lazy-class') {
                 return;
@@ -148,6 +212,7 @@
         existing.removeAttribute('data-lazy-pack');
         existing.removeAttribute('data-lazy-class');
         existing.removeAttribute('aria-hidden');
+        restoreLazyFields(existing, keptFields);
     }
 
     function findStubForIncoming(incoming) {
@@ -228,6 +293,9 @@
         }
         if (typeof window.initReceiptModalDatepickers === 'function') {
             window.initReceiptModalDatepickers();
+        }
+        if (name === 'extra' && typeof window.initCreateNoteRecipientSelect === 'function') {
+            window.initCreateNoteRecipientSelect();
         }
     }
 
@@ -415,6 +483,10 @@
             return;
         }
         Object.keys(cfg.packs).forEach(function(name) {
+            // Extra modals are large. The first click loads that pack; do not fetch it during boot.
+            if (name === 'extra') {
+                return;
+            }
             ensurePack(name).catch(function() {});
         });
     }

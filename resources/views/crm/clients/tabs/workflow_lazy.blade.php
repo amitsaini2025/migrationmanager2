@@ -15,9 +15,7 @@
      data-workflow-url="{{ $workflowTabFragmentUrl }}">
     <div class="workflow-v2">
         <div class="card full-width workflow-tab-container">
-            <div class="workflow-v2-empty" data-workflow-lazy-placeholder>
-                Loading workflow&hellip;
-            </div>
+            <x-client-detail-tab-loading label="Loading workflow…" data-workflow-lazy-placeholder />
         </div>
     </div>
 </div>

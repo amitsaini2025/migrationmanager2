@@ -14,8 +14,6 @@
      data-personaldetails-lazy="1"
      data-personaldetails-url="{{ $personalDetailsTabFragmentUrl }}">
     <div class="card full-width">
-        <div class="workflow-v2-empty" data-personaldetails-lazy-placeholder style="padding: 24px; color: #6c757d;">
-            Loading personal details&hellip;
-        </div>
+        <x-client-detail-tab-loading label="Loading personal details…" data-personaldetails-lazy-placeholder />
     </div>
 </div>

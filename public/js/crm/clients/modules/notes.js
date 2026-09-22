@@ -122,8 +122,15 @@
             }
         });
 
-        if ($('#create_note').length && $('.js-data-example-ajaxcc').length) {
-            $('.js-data-example-ajaxcc').mmSelect({
+        window.initCreateNoteRecipientSelect = function() {
+            var $el = $('#create_note .js-data-example-ajaxcc');
+            if (!$el.length || $el.data('mmselect-ready')) {
+                return;
+            }
+            if (!window.ClientDetailConfig || !window.ClientDetailConfig.urls || !window.ClientDetailConfig.urls.getRecipients || typeof $el.mmSelect !== 'function') {
+                return;
+            }
+            $el.mmSelect({
                 multiple: true,
                 closeOnSelect: false,
                 dropdownParent: $('#create_note'),
@@ -138,7 +145,9 @@
                 templateResult: formatRepo,
                 templateSelection: formatRepoSelection
             });
-        }
+            $el.data('mmselect-ready', 1);
+        };
+        window.initCreateNoteRecipientSelect();
 
         $(document).on('click', '.opennoteform', function(e) {
             e.preventDefault();

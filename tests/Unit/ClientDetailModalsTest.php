@@ -45,6 +45,7 @@ class ClientDetailModalsTest extends TestCase
         ], ClientDetailModals::fragmentRouteNames());
         Assert::assertSame('shell', ClientDetailModals::packForModalId('emailmodal'));
         Assert::assertSame('extra', ClientDetailModals::packForModalId('create_note_d'));
+        Assert::assertContains('.opennoteform', ClientDetailModals::packTriggers()['extra']);
         Assert::assertNull(ClientDetailModals::packForModalId('checkinmodal'));
     }
 
@@ -58,6 +59,17 @@ class ClientDetailModalsTest extends TestCase
         foreach (ClientDetailModals::extraIds() as $id) {
             Assert::assertContains($id, $ids);
         }
+    }
+
+    #[Test]
+    public function extra_modal_pack_is_not_prefetched_on_boot(): void
+    {
+        $js = (string) file_get_contents(public_path('js/crm/clients/lazy-modals.js'));
+        $notes = (string) file_get_contents(public_path('js/crm/clients/modules/notes.js'));
+
+        Assert::assertStringContainsString("if (name === 'extra')", $js);
+        Assert::assertStringContainsString('initCreateNoteRecipientSelect', $js);
+        Assert::assertStringContainsString('window.initCreateNoteRecipientSelect', $notes);
     }
 
     #[Test]

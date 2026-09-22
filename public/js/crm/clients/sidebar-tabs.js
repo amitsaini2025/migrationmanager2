@@ -15,6 +15,70 @@
         initialized: false
     };
 
+    var tabScriptPromises = {};
+
+    function loadClientDetailScriptSrc(src) {
+        if (!src) {
+            return Promise.resolve();
+        }
+        if (tabScriptPromises[src]) {
+            return tabScriptPromises[src];
+        }
+        var path = src.split('?')[0];
+        var existing = document.querySelectorAll('script[src]');
+        for (var i = 0; i < existing.length; i++) {
+            var current = existing[i].src || '';
+            if (current.indexOf(path) !== -1 && existing[i].getAttribute('data-loading') !== '1') {
+                tabScriptPromises[src] = Promise.resolve();
+                return tabScriptPromises[src];
+            }
+        }
+        tabScriptPromises[src] = new Promise(function(resolve, reject) {
+            var script = document.createElement('script');
+            script.src = src;
+            script.async = false;
+            script.setAttribute('data-loading', '1');
+            script.onload = function() {
+                script.removeAttribute('data-loading');
+                resolve();
+            };
+            script.onerror = function() {
+                tabScriptPromises[src] = null;
+                reject(new Error('Failed to load ' + src));
+            };
+            document.body.appendChild(script);
+        });
+        return tabScriptPromises[src];
+    }
+
+    function ensureClientDetailTabScript(tabId) {
+        var cfg = window.ClientDetailConfig && window.ClientDetailConfig.tabScripts;
+        if (!cfg) {
+            return Promise.resolve();
+        }
+        var keys = [tabId];
+        if (tabId === 'workflow' || tabId === 'client_portal') {
+            keys = ['workflow'];
+        } else if (tabId === 'account') {
+            keys = ['account', 'dibpReceipts'];
+        }
+        return keys.reduce(function(chain, key) {
+            return chain.then(function() {
+                return loadClientDetailScriptSrc(cfg[key]);
+            });
+        }, Promise.resolve());
+    }
+
+    function callTabLoader(tabId, fnName) {
+        return ensureClientDetailTabScript(tabId).then(function() {
+            if (typeof window[fnName] === 'function') {
+                return window[fnName]();
+            }
+        });
+    }
+
+    window.ensureClientDetailTabScript = ensureClientDetailTabScript;
+
     /** Tabs where the right-rail activity feed should be visible (details tabs + dedicated Activity nav). */
     function isActivityFeedTab(tabId) {
         return tabId === 'personaldetails' || tabId === 'companydetails' || tabId === 'activityfeed';
@@ -128,8 +192,8 @@
             console.error('[SidebarTabs] Tab pane not found:', `#${tabId}-tab`);
         }
 
-        if (tabId === 'personaldetails' && typeof window.ensurePersonalDetailsTabLoaded === 'function') {
-            window.ensurePersonalDetailsTabLoaded().catch(function(err) {
+        if (tabId === 'personaldetails') {
+            callTabLoader('personaldetails', 'ensurePersonalDetailsTabLoaded').catch(function(err) {
                 console.error('[SidebarTabs] Failed to load Personal Details tab', err);
             });
         }
@@ -172,7 +236,16 @@
                 }
                 
                 console.log('[SidebarTabs] Loading EOI data for client:', clientId);
-                
+
+                var $tbody = $('#eoi-roi-tbody');
+                if ($tbody.length && typeof window.clientDetailTabLoadingHtml === 'function') {
+                    $tbody.html(
+                        '<tr class="eoi-roi-loading-row"><td colspan="8">' +
+                        window.clientDetailTabLoadingHtml('Loading EOI / ROI…') +
+                        '</td></tr>'
+                    );
+                }
+
                 $.ajax({
                     url: `/clients/${clientId}/eoi-roi`,
                     method: 'GET',
@@ -264,10 +337,7 @@
         // Filter content by matter
         switch(tabId) {
             case 'noteterm':
-                (typeof window.ensureNotesTabLoaded === 'function'
-                    ? window.ensureNotesTabLoaded()
-                    : Promise.resolve()
-                ).then(function() {
+                callTabLoader('noteterm', 'ensureNotesTabLoaded').then(function() {
                     ensureAllTabActive();
                     if (typeof window.filterNotes === 'function') {
                         window.filterNotes();
@@ -279,10 +349,7 @@
                 });
                 break;
             case 'visadocuments':
-                (typeof window.ensureVisaDocumentsTabLoaded === 'function'
-                    ? window.ensureVisaDocumentsTabLoaded()
-                    : Promise.resolve()
-                ).then(function() {
+                callTabLoader('visadocuments', 'ensureVisaDocumentsTabLoaded').then(function() {
                     filterVisaDocumentsByMatter(SidebarTabs.selectedMatter);
                 }).catch(function(err) {
                     console.error('[SidebarTabs] Failed to load Visa Documents tab', err);
@@ -290,27 +357,20 @@
                 // Form 956 PDF downloads on create only (detail-main.js); do not mass-download on tab open/reload
                 break;
             case 'personaldocuments':
-                if (typeof window.ensurePersonalDocumentsTabLoaded === 'function') {
-                    window.ensurePersonalDocumentsTabLoaded().catch(function(err) {
-                        console.error('[SidebarTabs] Failed to load Personal Documents tab', err);
-                    });
-                }
+                callTabLoader('personaldocuments', 'ensurePersonalDocumentsTabLoaded').catch(function(err) {
+                    console.error('[SidebarTabs] Failed to load Personal Documents tab', err);
+                });
                 break;
             case 'notuseddocuments':
-                if (typeof window.ensureNotUsedDocumentsTabLoaded === 'function') {
-                    window.ensureNotUsedDocumentsTabLoaded().catch(function(err) {
-                        console.error('[SidebarTabs] Failed to load Not Used Documents tab', err);
-                    });
-                }
+                callTabLoader('notuseddocuments', 'ensureNotUsedDocumentsTabLoaded').catch(function(err) {
+                    console.error('[SidebarTabs] Failed to load Not Used Documents tab', err);
+                });
                 break;
             case 'nominationdocuments':
                 filterNominationDocumentsByMatter(SidebarTabs.selectedMatter);
                 break;
             case 'client_portal':
-                (typeof window.ensureClientPortalTabLoaded === 'function'
-                    ? window.ensureClientPortalTabLoaded()
-                    : Promise.resolve()
-                ).then(function() {
+                callTabLoader('client_portal', 'ensureClientPortalTabLoaded').then(function() {
                     if (typeof window.ensureStageNavBackButtonVisible === 'function') {
                         window.ensureStageNavBackButtonVisible();
                     }
@@ -322,20 +382,19 @@
                 });
                 break;
             case 'emails':
-                if (typeof window.ensureEmailsTabLoaded === 'function') {
-                    window.ensureEmailsTabLoaded().catch(function(err) {
-                        console.error('[SidebarTabs] Failed to load Emails tab', err);
-                    });
-                } else if (typeof window.loadEmails === 'function') {
-                    // Company / pages without emails-tab.js: load once, then cache
-                    window.loadEmails();
-                }
+                ensureClientDetailTabScript('emails').then(function() {
+                    if (typeof window.ensureEmailsTabLoaded === 'function') {
+                        return window.ensureEmailsTabLoaded();
+                    }
+                    if (typeof window.loadEmails === 'function') {
+                        window.loadEmails();
+                    }
+                }).catch(function(err) {
+                    console.error('[SidebarTabs] Failed to load Emails tab', err);
+                });
                 break;
             case 'workflow':
-                (typeof window.ensureWorkflowTabLoaded === 'function'
-                    ? window.ensureWorkflowTabLoaded()
-                    : Promise.resolve()
-                ).then(function() {
+                callTabLoader('workflow', 'ensureWorkflowTabLoaded').then(function() {
                     if (typeof window.ensureStageNavBackButtonVisible === 'function') {
                         window.ensureStageNavBackButtonVisible();
                     }
@@ -347,18 +406,14 @@
                 });
                 break;
             case 'account':
-                if (typeof window.ensureAccountTabLoaded === 'function') {
-                    window.ensureAccountTabLoaded().catch(function(err) {
-                        console.error('[SidebarTabs] Failed to load Account tab', err);
-                    });
-                }
+                callTabLoader('account', 'ensureAccountTabLoaded').catch(function(err) {
+                    console.error('[SidebarTabs] Failed to load Account tab', err);
+                });
                 break;
             case 'checklists':
-                if (typeof window.ensureChecklistsTabLoaded === 'function') {
-                    window.ensureChecklistsTabLoaded().catch(function(err) {
-                        console.error('[SidebarTabs] Failed to load Checklists tab', err);
-                    });
-                }
+                callTabLoader('checklists', 'ensureChecklistsTabLoaded').catch(function(err) {
+                    console.error('[SidebarTabs] Failed to load Checklists tab', err);
+                });
                 break;
         }
     }
@@ -528,8 +583,8 @@
         const defaultTabs = ['personaldetails', 'companydetails'];
         if (defaultTabs.includes(tabId)) {
             // Eager Personal Details: no-op. Lazy stub (other URL, then restored): fetch once.
-            if (tabId === 'personaldetails' && typeof window.ensurePersonalDetailsTabLoaded === 'function') {
-                window.ensurePersonalDetailsTabLoaded().catch(function(err) {
+            if (tabId === 'personaldetails') {
+                callTabLoader('personaldetails', 'ensurePersonalDetailsTabLoaded').catch(function(err) {
                     console.error('[SidebarTabs] Failed to load Personal Details tab', err);
                 });
             }
@@ -586,6 +641,25 @@
         filterNominationDocumentsByMatter: filterNominationDocumentsByMatter,
         filterEmailsByMatter: filterEmailsByMatter
     };
+
+    // Activity does not load detail-main.js until the feed request finishes.
+    // That file is what normally calls init, which is also what starts the feed.
+    // Other tabs keep a detail-main.js tag, so this boot does not run there.
+    $(function() {
+        var cfg = window.ClientDetailConfig;
+        if (!cfg || cfg.activeTab !== 'activityfeed' || SidebarTabs.initialized) {
+            return;
+        }
+        if (document.querySelector('script[src*="detail-main.js"]')) {
+            return;
+        }
+        init({
+            clientId: cfg.encodeId,
+            matterId: cfg.matterId,
+            activeTab: cfg.activeTab,
+            selectedMatter: ''
+        });
+    });
 
 })(jQuery);
 

@@ -72,9 +72,8 @@
     </div>
     
     <ul class="feed-list">
-        <li class="feed-item feed-item--loading" id="activity-feed-loading" style="text-align: center; padding: 20px; color: #6c757d;">
-            @icon('fa-spinner', ['class' => 'fa-spin', 'style' => 'font-size: 1.5em; margin-bottom: 8px;'])
-            <p class="mb-0 small">Loading activities...</p>
+        <li class="feed-item feed-item--loading" id="activity-feed-loading">
+            <x-client-detail-tab-loading label="Loading activities…" />
         </li>
         <li class="feed-item feed-item-no-results" style="display: none; text-align: center; padding: 20px; color: #6c757d;">
             @icon('fa-filter', ['style' => 'font-size: 1.5em; margin-bottom: 8px; opacity: 0.5;'])

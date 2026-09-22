@@ -118,6 +118,7 @@ final class ClientDetailModals
             'extra' => [
                 '.create_note_d',
                 '.create_note',
+                '.opennoteform',
                 '.not_picked_call',
                 '.convertLeadToClient',
                 '.add_education_doc',

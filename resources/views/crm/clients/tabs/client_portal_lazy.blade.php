@@ -14,8 +14,6 @@
      data-portal-lazy="1"
      data-portal-url="{{ $portalTabFragmentUrl }}">
     <div class="card full-width client-portal-container">
-        <div class="workflow-v2-empty" data-portal-lazy-placeholder>
-            Loading client portal&hellip;
-        </div>
+        <x-client-detail-tab-loading label="Loading client portal…" data-portal-lazy-placeholder />
     </div>
 </div>

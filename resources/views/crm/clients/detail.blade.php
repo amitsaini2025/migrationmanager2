@@ -493,270 +493,14 @@ use App\Http\Controllers\Controller;
 @endsection
 @push('scripts')
 {{-- TinyMCE is already loaded by layouts.crm_client_detail --}}
-<script>
-// TinyMCE Configuration for Email Modals
-var tinymceEmailConfig = {
-    license_key: 'gpl',
-    height: 300,
-    menubar: false,
-    plugins: ['lists', 'link', 'autolink'],
-    toolbar: 'bold italic underline strikethrough | forecolor | bullist numlist | link',
-    convert_urls: false,
-    extended_valid_elements: 'table[border|cellpadding|cellspacing|width|style|class|align],thead,tbody,tfoot,tr[class|style],td[class|style|colspan|rowspan|align|valign|width],th[class|style|colspan|rowspan|align|valign|width],colgroup,col[span|width],hr[style|width]',
-    content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }',
-    branding: false,
-    promotion: false,
-    color_map: [
-        "000000", "Black", "333333", "Dark Gray", "666666", "Medium Gray",
-        "999999", "Light Gray", "CCCCCC", "Very Light Gray", "E0E0E0", "Pale Gray",
-        "F5F5F5", "Off White", "FFFFFF", "White", "DC2626", "Red",
-        "EA580C", "Orange", "D97706", "Amber", "059669", "Green",
-        "0891B2", "Cyan", "2563EB", "Blue", "7C3AED", "Purple",
-        "DB2777", "Pink", "EF4444", "Light Red", "F97316", "Light Orange",
-        "F59E0B", "Light Amber", "10B981", "Light Green", "06B6D4", "Light Cyan",
-        "3B82F6", "Light Blue", "8B5CF6", "Light Purple", "EC4899", "Light Pink"
-    ],
-    setup: function(editor) {
-        editor.on('change', function() {
-            editor.save();
-        });
-    }
-};
-
-// Initialize TinyMCE for all email modals
-function initTinyMCEForModals() {
-    if (typeof tinymce === 'undefined') {
-        var inShownModal = $('#compose_email_message, #sendmsg_message, #matter_email_message, #uploadmail_message').closest('.modal.show').length;
-        if (inShownModal && typeof window.ensureTinyMCELoaded === 'function') {
-            window.ensureTinyMCELoaded().then(initTinyMCEForModals);
-        }
-        return;
-    }
-    // Compose Email Modal
-    if ($('#compose_email_message').length && !tinymce.get('compose_email_message')) {
-        tinymce.init({
-            ...tinymceEmailConfig,
-            selector: '#compose_email_message',
-            init_instance_callback: function(editor) {
-                // Handle modal show event
-                $('#emailmodal').on('shown.bs.modal', function() {
-                    editor.focus();
-                });
-            }
-        });
-    }
-    
-    // Send Message Modal
-    if ($('#sendmsg_message').length && !tinymce.get('sendmsg_message')) {
-        tinymce.init({
-            ...tinymceEmailConfig,
-            selector: '#sendmsg_message',
-            init_instance_callback: function(editor) {
-                $('#sendmsgmodal').on('shown.bs.modal', function() {
-                    editor.focus();
-                });
-            }
-        });
-    }
-    
-    // Application Email Modal
-    if ($('#matter_email_message').length && !tinymce.get('matter_email_message')) {
-        tinymce.init({
-            ...tinymceEmailConfig,
-            selector: '#matter_email_message',
-            init_instance_callback: function(editor) {
-                $('#matteremailmodal').on('shown.bs.modal', function() {
-                    editor.focus();
-                });
-            }
-        });
-    }
-    
-    // Upload Mail Modal
-    if ($('#uploadmail_message').length && !tinymce.get('uploadmail_message')) {
-        tinymce.init({
-            ...tinymceEmailConfig,
-            selector: '#uploadmail_message',
-            init_instance_callback: function(editor) {
-                $('#uploadmail').on('shown.bs.modal', function() {
-                    editor.focus();
-                });
-            }
-        });
-    }
-}
-
-window.initTinyMCEForModals = initTinyMCEForModals;
-
-// Helper functions to save TinyMCE content before form validation
-window.saveComposeEmail = function() {
-    if (typeof tinymce !== 'undefined' && tinymce.get('compose_email_message')) {
-        tinymce.get('compose_email_message').save();
-    }
-    customValidate('sendmail');
-};
-
-window.saveSendMessage = function() {
-    if (typeof tinymce !== 'undefined' && tinymce.get('sendmsg_message')) {
-        tinymce.get('sendmsg_message').save();
-    }
-    customValidate('sendmsg');
-};
-
-window.saveApplicationEmail = function() {
-    if (typeof tinymce !== 'undefined' && tinymce.get('matter_email_message')) {
-        tinymce.get('matter_email_message').save();
-    }
-    customValidate('appkicationsendmail');
-};
-
-window.saveUploadMail = function() {
-    if (typeof tinymce !== 'undefined' && tinymce.get('uploadmail_message')) {
-        tinymce.get('uploadmail_message').save();
-    }
-    customValidate('uploadmail');
-};
-
-// Helper function to set TinyMCE content (can be called from anywhere)
-window.setTinyMCEContent = function(editorId, content) {
-    if (typeof tinymce !== 'undefined' && tinymce.get(editorId)) {
-        tinymce.get(editorId).setContent(content || '');
-    } else {
-        $('#' + editorId).val(content || '');
-        // Try to initialize if not already initialized
-        setTimeout(function() {
-            initTinyMCEForModals();
-            if (typeof tinymce !== 'undefined' && tinymce.get(editorId)) {
-                tinymce.get(editorId).setContent(content || '');
-            }
-        }, 200);
-    }
-};
-
-// Initialize TinyMCE when DOM is ready
-$(document).ready(function() {
-    // Call getallactivities after page load if pending (from receipt save)
-    var pendingClientId = localStorage.getItem('pendingGetActivities');
-    if (pendingClientId && typeof getallactivities === 'function') {
-        // Wait for page to fully load and account tab to be active
-        setTimeout(function() {
-            var activeTab = localStorage.getItem('activeTab');
-            
-            if (activeTab === 'accounts' || activeTab === 'account') {
-                getallactivities(pendingClientId);
-                localStorage.removeItem('pendingGetActivities');
-            } else {
-                // Retry after tab activation
-                setTimeout(function() {
-                    if (typeof getallactivities === 'function') {
-                        getallactivities(pendingClientId);
-                        localStorage.removeItem('pendingGetActivities');
-                    }
-                }, 1000);
-            }
-        }, 500);
-    }
-    
-    initTinyMCEForModals();
-    
-    // Re-initialize when modals are shown (in case they're dynamically loaded)
-    $('#emailmodal, #sendmsgmodal, #matteremailmodal, #uploadmail').on('shown.bs.modal', function() {
-        setTimeout(function() {
-            initTinyMCEForModals();
-        }, 100);
-    });
-    
-    // When compose modal opens: wait for CRM template/checklist lists, then apply matter defaults.
-    // Checklist attachment checkboxes stay unchecked until the user selects them.
-    $('#emailmodal').on('shown.bs.modal', function() {
-        var runComposeShown = function() {
-        var $templateSelect = $('#emailmodal select.selecttemplate');
-        if (typeof window.initComposeEmailTemplateSelect === 'function') {
-            if (!$('#compose_client_matter_id').val() && typeof window.restoreComposeEmailTemplateCrmOptions === 'function') {
-                window.restoreComposeEmailTemplateCrmOptions($templateSelect);
-            }
-            window.initComposeEmailTemplateSelect($templateSelect);
-        }
-        var clientMatterId = $('#compose_client_matter_id').val();
-        if (!clientMatterId || !window.ClientDetailConfig || !window.ClientDetailConfig.urls || !window.ClientDetailConfig.urls.getComposeDefaults) {
-            window.composeChecklistFilterIds = null;
-            if ($('#mychecklist-datatable').length && $.fn.DataTable && $.fn.DataTable.isDataTable('#mychecklist-datatable')) {
-                $('#mychecklist-datatable').DataTable().draw();
-            }
-            $('#emailmodal').removeData('composeMacroValues').removeData('pdfUrlForSign').removeData('fromSignatureSend');
-            $('#compose_signing_url').val('');
-            return;
-        }
-        $.get(window.ClientDetailConfig.urls.getComposeDefaults, { client_matter_id: clientMatterId })
-            .done(function(res) {
-                var $checklistCbs = $('#emailmodal .checklistfile-cb');
-                if (res.macro_values) {
-                    var macroVals = res.macro_values;
-                    var pdfUrl = ($('#emailmodal').data('pdfUrlForSign') || $('#compose_signing_url').val() || macroVals.PDF_url_for_sign || '').trim();
-                    if (pdfUrl) {
-                        macroVals = Object.assign({}, macroVals, { PDF_url_for_sign: pdfUrl });
-                        $('#compose_signing_url').val(pdfUrl);
-                        $('#emailmodal').data('pdfUrlForSign', pdfUrl);
-                    }
-                    $('#emailmodal').data('composeMacroValues', macroVals);
-                } else {
-                    $('#emailmodal').removeData('composeMacroValues');
-                }
-                if (res.matter_templates !== undefined && $templateSelect.length) {
-                    // Replace dropdown with matter-specific options only: First Email first, then Matter Other Email Templates
-                    $templateSelect.empty().append($('<option value="">Select</option>'));
-                    (res.matter_templates || []).forEach(function(t) {
-                        $templateSelect.append($('<option></option>').attr('value', t.id).text(t.name || 'Template'));
-                    });
-                    if (typeof window.syncComposeEmailTemplateSelectFromDom === 'function') {
-                        window.syncComposeEmailTemplateSelectFromDom($templateSelect);
-                    }
-                    // Reply/Forward from client email tab sets preserveReplyForwardBody so quoted content is not replaced by a template
-                    if (!$('#emailmodal').data('preserveReplyForwardBody')) {
-                        var fromSignature = $('#emailmodal').data('fromSignatureSend');
-                        var toSelect = res.template ? res.template.id : (res.matter_templates && res.matter_templates[0] ? res.matter_templates[0].id : null);
-                        if (toSelect) {
-                            $templateSelect.val(toSelect).trigger('change');
-                            if (fromSignature) $('#emailmodal').removeData('fromSignatureSend');
-                        }
-                    } else {
-                        // Keep body/subject from reply/forward; reset template UI without loading a template (empty val skips AJAX in .selecttemplate handler).
-                        $templateSelect.val('').trigger('change');
-                    }
-                }
-                // Filter checklist table by matter using DataTables API
-                window.composeChecklistFilterIds = (res.checklist_ids && res.checklist_ids.length) ? res.checklist_ids : [];
-                if ($('#mychecklist-datatable').length && $.fn.DataTable && $.fn.DataTable.isDataTable('#mychecklist-datatable')) {
-                    $('#mychecklist-datatable').DataTable().draw();
-                }
-                $checklistCbs.prop('checked', false);
-            })
-            .fail(function() {
-                window.composeChecklistFilterIds = null;
-                if ($('#mychecklist-datatable').length && $.fn.DataTable && $.fn.DataTable.isDataTable('#mychecklist-datatable')) {
-                    $('#mychecklist-datatable').DataTable().draw();
-                }
-            });
-        };
-        if (typeof window.ensureComposeOptionListsLoaded === 'function') {
-            $.when(window.ensureComposeOptionListsLoaded()).always(runComposeShown);
-        } else {
-            runComposeShown();
-        }
-    });
-
-    $('#emailmodal').on('hidden.bs.modal', function() {
-        $('#compose_signing_url').val('');
-        $(this).removeData('pdfUrlForSign').removeData('fromSignatureSend');
-    });
-});
-</script>
+<script src="{{ URL::asset('js/crm/clients/tinymce-email-config.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/tinymce-email-config.js') }}"></script>
 @include('components.inputmask-scripts')
 <script src="{{URL::to('/')}}/js/popover.js"></script>
 
 {{-- Activity Feed Functionality --}}
 <script src="{{ URL::asset('js/crm/clients/tabs/activity-feed.js') }}"></script>
 
+<script src="{{ URL::asset('js/crm/clients/client-detail-tab-loading.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/client-detail-tab-loading.js') }}"></script>
 {{-- Sidebar Tabs Management - Dedicated file for sidebar navigation --}}
 <script src="{{URL::asset('js/crm/clients/sidebar-tabs.js')}}?v={{ file_exists(public_path('js/crm/clients/sidebar-tabs.js')) ? filemtime(public_path('js/crm/clients/sidebar-tabs.js')) : time() }}"></script>
 
@@ -919,238 +663,45 @@ $(document).ready(function() {
                     triggers: @json(\App\Support\ClientDetailModals::packTriggers()['extra']),
                 },
             },
-        }
+        },
+        tabScripts: {
+            personaldetails: @json(URL::asset('js/crm/clients/personaldetails-tab.js').'?v='.\App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/personaldetails-tab.js')),
+            noteterm: @json(URL::asset('js/crm/clients/notes-tab.js').'?v='.\App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/notes-tab.js')),
+            personaldocuments: @json(URL::asset('js/crm/clients/personaldocuments-tab.js').'?v='.\App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/personaldocuments-tab.js')),
+            visadocuments: @json(URL::asset('js/crm/clients/visadocuments-tab.js').'?v='.\App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/visadocuments-tab.js')),
+            notuseddocuments: @json(URL::asset('js/crm/clients/notuseddocuments-tab.js').'?v='.\App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/notuseddocuments-tab.js')),
+            emails: @json(URL::asset('js/crm/clients/emails-tab.js').'?v='.\App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/emails-tab.js')),
+            account: @json(URL::asset('js/crm/clients/account-tab.js').'?v='.\App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/account-tab.js')),
+            dibpReceipts: @json(URL::asset('js/crm/clients/dibp-receipts-tab.js').'?v='.\App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/dibp-receipts-tab.js')),
+            checklists: @json(URL::asset('js/crm/clients/checklists-tab.js').'?v='.\App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/checklists-tab.js')),
+            workflow: @json(URL::asset('js/crm/clients/workflow-tab.js').'?v='.\App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/workflow-tab.js')),
+        },
+        actionScripts: [
+            @foreach ([
+                'js/crm/clients/utils/flatpickr-helpers.js',
+                'js/crm/clients/utils/editor-helpers.js',
+                'js/crm/clients/modules/references.js',
+                'js/crm/clients/modules/send-to-client.js',
+                'js/crm/clients/modules/notes.js',
+                'js/crm/clients/modules/checklist.js',
+                'js/crm/clients/modules/documents.js',
+                'js/crm/clients/modules/signature-placement.js',
+                'js/crm/clients/modules/accounts.js',
+                'js/crm/clients/modules/invoices.js',
+                'js/crm/clients/modules/appointments.js',
+                'js/crm/clients/modules/visa-expiry.js',
+                'js/crm/clients/modules/subtabs.js',
+                'js/crm/clients/modules/ledger-dragdrop.js',
+                'js/crm/clients/detail-main.js',
+            ] as $actionScript)
+            @json(URL::asset($actionScript).'?v='.\App\Support\ClientDetailTabs::publicAssetVersion($actionScript)),
+            @endforeach
+        ]
     };
     
-    // Global function to load activities feed (paginated via /get-activities)
-    window.ActivityFeedState = window.ActivityFeedState || { page: 1, hasMore: false, loading: false, pendingReset: false, fetched: false };
 
-    window.loadActivities = function(options) {
-        var opts = options || {};
-        var reset = opts.reset !== false;
-        var append = opts.append === true;
-
-        if (window.ActivityFeedState.loading) {
-            if (reset && !append) {
-                window.ActivityFeedState.pendingReset = true;
-            }
-            return;
-        }
-
-        if (reset) {
-            window.ActivityFeedState.pendingReset = false;
-            window.ActivityFeedState.page = 1;
-            window.ActivityFeedState.hasMore = false;
-            $('.activity-feed').scrollTop(0);
-        } else if (append) {
-            window.ActivityFeedState.page = (window.ActivityFeedState.page || 1) + 1;
-        }
-
-        window.ActivityFeedState.loading = true;
-        $('#activity-feed-loading').show();
-        $('#activity-feed-load-more').prop('disabled', true);
-
-        var requestData = {
-            id: window.ClientDetailConfig.clientId,
-            page: window.ActivityFeedState.page,
-            per_page: 40
-        };
-
-        var urlParams = new URLSearchParams(window.location.search);
-        var staffFilter = urlParams.get('staff') || urlParams.get('user');
-        var keywordFilter = urlParams.get('keyword');
-        if (staffFilter) {
-            requestData.staff = staffFilter;
-        }
-        if (keywordFilter) {
-            requestData.keyword = keywordFilter;
-        }
-
-        $.ajax({
-            url: window.ClientDetailConfig.urls.getActivities,
-            type: 'GET',
-            dataType: 'json',
-            data: requestData,
-            success: function(response) {
-                if (response.status && response.data) {
-                    // Escape template literal special characters to prevent syntax errors
-                    function escapeTemplateLiteral(str) {
-                        if (!str) return '';
-                        return String(str)
-                            .replace(/\\/g, '\\\\')
-                            .replace(/`/g, '\\`')
-                            .replace(/\$\{/g, '\\${');
-                    }
-                    
-                    var html = '';
-                    
-                    $.each(response.data, function (k, v) {
-                        var activityType = v.activity_type ?? '';
-                        var noteSubtypeClass = '';
-                        var subjectIcon;
-                        var iconClass = '';
-                        var subject = escapeTemplateLiteral(v.subject ?? '');
-                        var subjectLower = subject.toLowerCase();
-                        var rawMessage = v.message ?? '';
-                        var isAppointmentActivity = String(rawMessage).indexOf('appointment-activity-detail') !== -1;
-
-                        if (activityType === 'sms') {
-                            subjectIcon = crmI('fas fa-sms');
-                            iconClass = 'feed-icon-sms';
-                        } else if (activityType === 'note') {
-                            var noteIcon = 'fa-sticky-note';
-                            if (subjectLower.indexOf('call') !== -1) { noteIcon = 'fa-phone'; noteSubtypeClass = ' activity-type-note-call'; }
-                            else if (subjectLower.indexOf('email') !== -1) { noteIcon = 'fa-envelope'; noteSubtypeClass = ' activity-type-note-email'; }
-                            else if (subjectLower.indexOf('in-person') !== -1) { noteIcon = 'fa-user-friends'; noteSubtypeClass = ' activity-type-note-in-person'; }
-                            else if (subjectLower.indexOf('attention') !== -1) { noteIcon = 'fa-exclamation-triangle'; noteSubtypeClass = ' activity-type-note-attention'; }
-                            else if (subjectLower.indexOf('others') !== -1) { noteIcon = 'fa-ellipsis-h'; noteSubtypeClass = ' activity-type-note-others'; }
-                            subjectIcon = crmI('fas ' + noteIcon);
-                            iconClass = 'feed-icon-note';
-                        } else if (activityType === 'activity') {
-                            if (isAppointmentActivity) {
-                                subjectIcon = crmI('fas fa-calendar-check');
-                                iconClass = 'feed-icon-appointment';
-                            } else {
-                                subjectIcon = crmI('fas fa-bolt');
-                                iconClass = 'feed-icon-activity';
-                            }
-                        } else if (activityType === 'stage') {
-                            subjectIcon = crmI('fas fa-route');
-                            iconClass = 'feed-icon-stage';
-                        } else if (activityType === 'financial') {
-                            subjectIcon = crmI('fas fa-dollar-sign');
-                            iconClass = 'feed-icon-financial';
-                        } else if (activityType === 'email') {
-                            subjectIcon = crmI('fas fa-envelope');
-                            iconClass = 'feed-icon-email';
-                        } else if (activityType === 'signature') {
-                            subjectIcon = crmI('fas fa-file-signature');
-                            iconClass = 'feed-icon-signature';
-                        } else if (activityType === 'document') {
-                            subjectIcon = crmI('fas fa-file-alt');
-                            iconClass = '';
-                        } else if (/uploaded email:/i.test(subjectLower)) {
-                            subjectIcon = crmI('fas fa-envelope');
-                            iconClass = 'feed-icon-email';
-                        } else if (subjectLower.includes('invoice') || subjectLower.includes('receipt') || subjectLower.includes('ledger') || subjectLower.includes('payment') || subjectLower.includes('account')) {
-                            subjectIcon = crmI('fas fa-dollar-sign');
-                            iconClass = 'feed-icon-financial';
-                        } else if (subjectLower.includes('document') && !/(receipt document|journal receipt document|client receipt document|office receipt document)/i.test(subjectLower)) {
-                            subjectIcon = crmI('fas fa-file-alt');
-                            iconClass = '';
-                        } else if (subjectLower.includes('document')) {
-                            subjectIcon = crmI('fas fa-file-alt');
-                            iconClass = '';
-                        } else {
-                            subjectIcon = crmI('fas fa-sticky-note');
-                            iconClass = '';
-                        }
-
-                        var description = escapeTemplateLiteral(rawMessage);
-                        var taskGroup = escapeTemplateLiteral(v.task_group ?? '');
-                        var followupDate = escapeTemplateLiteral(v.followup_date ?? '');
-                        var date = escapeTemplateLiteral(v.date ?? '');
-                        var fullName = escapeTemplateLiteral(v.name ?? '');
-                        var activityTypeClass = activityType ? 'activity-type-' + activityType : '';
-                        if (!activityTypeClass) {
-                            if (/uploaded email:/i.test(subjectLower)) {
-                                activityTypeClass = 'activity-type-email';
-                            } else if (subjectLower.includes('invoice') || subjectLower.includes('receipt') || subjectLower.includes('ledger') || subjectLower.includes('payment') || subjectLower.includes('account')) {
-                                activityTypeClass = 'activity-type-financial';
-                            } else if (subjectLower.includes('document') && !/(receipt document|journal receipt document|client receipt document|office receipt document)/i.test(subjectLower)) {
-                                activityTypeClass = 'activity-type-document';
-                            }
-                        }
-
-                        var descriptionHtml = '';
-                        if (v.message_truncated) {
-                            descriptionHtml = '<p class="feed-item-message" data-activity-id="' + v.activity_id + '">' + description +
-                                ' <button type="button" class="feed-item-show-more">Show more</button></p>';
-                        } else if (description !== '') {
-                            descriptionHtml = '<p>' + description + '</p>';
-                        }
-                        var taskGroupHtml = taskGroup !== '' ? '<p>' + taskGroup + '</p>' : '';
-                        var followupDateHtml = followupDate !== '' ? '<p>' + followupDate + '</p>' : '';
-
-                        var feedItemClass = activityType === 'stage' ? 'feed-item--stage' : 'feed-item--email';
-                        var contentHtml;
-                        if (activityType === 'stage') {
-                            contentHtml = '<div class="feed-item-stage">' +
-                                '<div class="feed-item-stage-header">' +
-                                    '<span class="feed-item-staff">' + fullName + '</span>' +
-                                    '<span class="feed-timestamp">' + date + '</span>' +
-                                '</div>' +
-                                '<div class="feed-item-stage-body">' + (v.message ? v.message : '') + '</div>' +
-                            '</div>';
-                        } else {
-                            var subjectOnly = v.subject_without_staff_prefix === true;
-                            var headline = subjectOnly ? subject : (fullName + ' ' + subject);
-                            contentHtml = '<p><strong>' + headline + '</strong></p>' +
-                                descriptionHtml +
-                                taskGroupHtml +
-                                followupDateHtml +
-                                '<span class="feed-timestamp">' + date + '</span>';
-                        }
-
-                        var createdAtYmd = v.created_at_ymd || '';
-                        var appointmentFeedClass = isAppointmentActivity ? ' feed-item--appointment' : '';
-                        html += '<li class="feed-item ' + feedItemClass + ' activity ' + activityTypeClass + noteSubtypeClass + appointmentFeedClass + '" id="activity_' + v.activity_id + '" data-created-at="' + createdAtYmd + '">' +
-                            '<span class="feed-icon ' + iconClass + '">' +
-                                subjectIcon +
-                            '</span>' +
-                            '<div class="feed-content">' + contentHtml + '</div>' +
-                        '</li>';
-                    });
-
-                    if (append) {
-                        $('.feed-list .feed-item.activity').last().after(html);
-                    } else {
-                        $('.feed-list .feed-item.activity').remove();
-                        var $emptyItem = $('.feed-list .feed-item--empty');
-                        if ($emptyItem.length) {
-                            $emptyItem.before(html);
-                        } else if ($('.feed-list').length) {
-                            $('.feed-list').prepend(html);
-                        }
-                    }
-
-                    window.ActivityFeedState.fetched = true;
-                    window.ActivityFeedState.hasMore = !!response.has_more;
-                    $('#activity-feed-load-more-wrap').toggle(window.ActivityFeedState.hasMore);
-
-                    if (typeof adjustActivityFeedHeight === 'function') {
-                        adjustActivityFeedHeight();
-                    }
-                    if (window.ActivityFeed && typeof window.ActivityFeed.reapplyCurrentFilter === 'function') {
-                        window.ActivityFeed.reapplyCurrentFilter();
-                    }
-                    if (window.ActivityFeed && typeof window.ActivityFeed.enhanceAppointmentActivityRows === 'function') {
-                        window.ActivityFeed.enhanceAppointmentActivityRows();
-                    }
-                } else {
-                    console.error('Failed to load activities:', response.message);
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('Error loading activities:', error);
-            },
-            complete: function() {
-                window.ActivityFeedState.loading = false;
-                $('#activity-feed-loading').hide();
-                $('#activity-feed-load-more').prop('disabled', false);
-                if (window.ActivityFeed && typeof window.ActivityFeed.afterActivitiesLoaded === 'function') {
-                    window.ActivityFeed.afterActivitiesLoaded();
-                }
-                if (window.ActivityFeedState.pendingReset) {
-                    window.ActivityFeedState.pendingReset = false;
-                    window.loadActivities({ reset: true });
-                }
-            }
-        });
-    };
-
-    // First fetch is from sidebar-tabs when the feed is shown (Personal / Company / Activity).
 </script>
+<script src="{{ URL::asset('js/crm/clients/detail-feed-loader.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/detail-feed-loader.js') }}"></script>
 
 {{-- Newly added external JS placeholders for progressive migration --}}
 <script src="{{ URL::asset('js/crm/clients/shared.js') }}" defer></script>
@@ -1158,11 +709,14 @@ $(document).ready(function() {
 <script src="{{ URL::asset('js/crm/clients/tabs/client_portal.js') }}" defer></script>
 
 {{-- Client detail utilities (must load before detail-main.js) --}}
-<script src="{{ URL::asset('js/crm/clients/utils/flatpickr-helpers.js') }}?v={{ file_exists(public_path('js/crm/clients/utils/flatpickr-helpers.js')) ? filemtime(public_path('js/crm/clients/utils/flatpickr-helpers.js')) : time() }}"></script>
+@if(($activeTab ?? '') !== 'activityfeed')
+<script src="{{ URL::asset('js/crm/clients/utils/flatpickr-helpers.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/utils/flatpickr-helpers.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/utils/editor-helpers.js') }}"></script>
+@endif
 <script src="{{ URL::asset('js/crm/clients/utils/dom-helpers.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/lazy-modals.js') }}?v={{ file_exists(public_path('js/crm/clients/lazy-modals.js')) ? filemtime(public_path('js/crm/clients/lazy-modals.js')) : time() }}"></script>
-{{-- Phase 3 modules --}}
+{{-- Phase 3 modules. On Activity these load after /get-activities, or on the first click that needs them. --}}
+@if(($activeTab ?? '') !== 'activityfeed')
 <script src="{{ URL::asset('js/crm/clients/modules/references.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/send-to-client.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/notes.js') }}"></script>
@@ -1175,24 +729,42 @@ $(document).ready(function() {
 <script src="{{ URL::asset('js/crm/clients/modules/visa-expiry.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/subtabs.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/ledger-dragdrop.js') }}"></script>
-<script src="{{ URL::asset('js/crm/clients/workflow-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/workflow-tab.js') }}"></script>
-<script src="{{ URL::asset('js/crm/clients/account-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/account-tab.js') }}"></script>
+@endif
+@php
+    $clientDetailActiveTab = (string) ($activeTab ?? '');
+    $clientDetailBootScripts = [
+        'personaldetails' => 'js/crm/clients/personaldetails-tab.js',
+        'noteterm' => 'js/crm/clients/notes-tab.js',
+        'personaldocuments' => 'js/crm/clients/personaldocuments-tab.js',
+        'visadocuments' => 'js/crm/clients/visadocuments-tab.js',
+        'notuseddocuments' => 'js/crm/clients/notuseddocuments-tab.js',
+        'emails' => 'js/crm/clients/emails-tab.js',
+        'account' => 'js/crm/clients/account-tab.js',
+        'checklists' => 'js/crm/clients/checklists-tab.js',
+        'workflow' => 'js/crm/clients/workflow-tab.js',
+        'client_portal' => 'js/crm/clients/workflow-tab.js',
+    ];
+@endphp
+@foreach ($clientDetailBootScripts as $tabSlug => $tabScript)
+    @if ($clientDetailActiveTab === $tabSlug)
+<script src="{{ URL::asset($tabScript) }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion($tabScript) }}"></script>
+    @endif
+@endforeach
+@if ($clientDetailActiveTab === 'account')
 <script src="{{ URL::asset('js/crm/clients/dibp-receipts-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/dibp-receipts-tab.js') }}"></script>
-<script src="{{ URL::asset('js/crm/clients/checklists-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/checklists-tab.js') }}"></script>
-<script src="{{ URL::asset('js/crm/clients/emails-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/emails-tab.js') }}"></script>
-<script src="{{ URL::asset('js/crm/clients/personaldocuments-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/personaldocuments-tab.js') }}"></script>
-<script src="{{ URL::asset('js/crm/clients/visadocuments-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/visadocuments-tab.js') }}"></script>
-<script src="{{ URL::asset('js/crm/clients/notuseddocuments-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/notuseddocuments-tab.js') }}"></script>
-<script src="{{ URL::asset('js/crm/clients/notes-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/notes-tab.js') }}"></script>
-<script src="{{ URL::asset('js/crm/clients/personaldetails-tab.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/personaldetails-tab.js') }}"></script>
+@endif
 <script src="{{ URL::asset('js/crm/clients/verify-link.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/verify-link.js') }}"></script>
 @include('partials.my-day-session-script', [
     'myDayClientId' => $fetchedData->id ?? null,
     'myDayMatterId' => $latestClientMatterId ?? null,
     'myDayRef' => $id1 ?? ($matterNumber ?? 'file'),
 ])
-{{-- Main detail page JavaScript --}}
+{{-- Main detail page JavaScript. Activity loads this after the feed request. --}}
+@if(($activeTab ?? '') !== 'activityfeed')
 <script src="{{ URL::asset('js/crm/clients/detail-main.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/detail-main.js') }}"></script>
+@else
+<script src="{{ URL::asset('js/crm/clients/detail-actions-loader.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/detail-actions-loader.js') }}"></script>
+@endif
 
 {{-- Sidebar Toggle JavaScript --}}
 <script>

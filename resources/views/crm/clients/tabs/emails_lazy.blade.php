@@ -12,8 +12,6 @@
      data-emails-lazy="1"
      data-emails-url="{{ $emailsTabFragmentUrl }}">
     <div class="card full-width">
-        <div class="workflow-v2-empty" data-emails-lazy-placeholder style="padding: 24px; color: #6c757d;">
-            Loading emails&hellip;
-        </div>
+        <x-client-detail-tab-loading label="Loading emails…" data-emails-lazy-placeholder />
     </div>
 </div>

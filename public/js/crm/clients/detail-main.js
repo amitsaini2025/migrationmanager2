@@ -2859,10 +2859,14 @@ success: function(response) {
 
                 if( activeTab == 'noteterm' ) {
 
-                    (typeof window.ensureNotesTabLoaded === 'function'
-                        ? window.ensureNotesTabLoaded()
+                    (typeof window.ensureClientDetailTabScript === 'function'
+                        ? window.ensureClientDetailTabScript('noteterm')
                         : Promise.resolve()
                     ).then(function() {
+                        return (typeof window.ensureNotesTabLoaded === 'function'
+                            ? window.ensureNotesTabLoaded()
+                            : Promise.resolve());
+                    }).then(function() {
                         if (typeof window.filterNotes === 'function') {
                             window.filterNotes();
                         }
@@ -2874,10 +2878,14 @@ success: function(response) {
 
                 else if( activeTab == 'visadocuments') {
 
-                    (typeof window.ensureVisaDocumentsTabLoaded === 'function'
-                        ? window.ensureVisaDocumentsTabLoaded()
+                    (typeof window.ensureClientDetailTabScript === 'function'
+                        ? window.ensureClientDetailTabScript('visadocuments')
                         : Promise.resolve()
                     ).then(function() {
+                        return (typeof window.ensureVisaDocumentsTabLoaded === 'function'
+                            ? window.ensureVisaDocumentsTabLoaded()
+                            : Promise.resolve());
+                    }).then(function() {
                         if (typeof SidebarTabs !== 'undefined' && SidebarTabs.filterVisaDocumentsByMatter) {
                             SidebarTabs.filterVisaDocumentsByMatter(selectedMatter);
                         }
@@ -3036,10 +3044,14 @@ success: function(response) {
 
             if( activeTab == 'noteterm' ) {
 
-                (typeof window.ensureNotesTabLoaded === 'function'
-                    ? window.ensureNotesTabLoaded()
+                (typeof window.ensureClientDetailTabScript === 'function'
+                    ? window.ensureClientDetailTabScript('noteterm')
                     : Promise.resolve()
                 ).then(function() {
+                    return (typeof window.ensureNotesTabLoaded === 'function'
+                        ? window.ensureNotesTabLoaded()
+                        : Promise.resolve());
+                }).then(function() {
                     if (typeof window.filterNotes === 'function') {
                         window.filterNotes();
                     }
@@ -3077,10 +3089,14 @@ success: function(response) {
 
             else if (activeTab == 'visadocuments') {
 
-                (typeof window.ensureVisaDocumentsTabLoaded === 'function'
-                    ? window.ensureVisaDocumentsTabLoaded()
+                (typeof window.ensureClientDetailTabScript === 'function'
+                    ? window.ensureClientDetailTabScript('visadocuments')
                     : Promise.resolve()
                 ).then(function() {
+                    return (typeof window.ensureVisaDocumentsTabLoaded === 'function'
+                        ? window.ensureVisaDocumentsTabLoaded()
+                        : Promise.resolve());
+                }).then(function() {
                     if (typeof SidebarTabs !== 'undefined' && SidebarTabs.filterVisaDocumentsByMatter) {
                         SidebarTabs.filterVisaDocumentsByMatter(selectedMatter);
                     }

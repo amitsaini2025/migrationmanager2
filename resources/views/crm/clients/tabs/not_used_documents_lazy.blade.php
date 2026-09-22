@@ -12,8 +12,6 @@
      data-notuseddocuments-lazy="1"
      data-notuseddocuments-url="{{ $notUsedDocumentsTabFragmentUrl }}">
     <div class="card full-width documentalls-container">
-        <div class="workflow-v2-empty" data-notuseddocuments-lazy-placeholder style="padding: 24px; color: #6c757d;">
-            Loading not used documents&hellip;
-        </div>
+        <x-client-detail-tab-loading label="Loading not used documents…" data-notuseddocuments-lazy-placeholder />
     </div>
 </div>

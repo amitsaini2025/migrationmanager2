@@ -12,8 +12,6 @@
      data-personaldocuments-lazy="1"
      data-personaldocuments-url="{{ $personalDocumentsTabFragmentUrl }}">
     <div class="card full-width documentalls-container">
-        <div class="workflow-v2-empty" data-personaldocuments-lazy-placeholder style="padding: 24px; color: #6c757d;">
-            Loading personal documents&hellip;
-        </div>
+        <x-client-detail-tab-loading label="Loading personal documents…" data-personaldocuments-lazy-placeholder />
     </div>
 </div>

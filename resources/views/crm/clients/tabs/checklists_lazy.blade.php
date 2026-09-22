@@ -12,8 +12,6 @@
      data-checklists-lazy="1"
      data-checklists-url="{{ $checklistsTabFragmentUrl }}">
     <div class="card full-width checklists-container">
-        <div class="workflow-v2-empty" data-checklists-lazy-placeholder style="padding: 24px; color: #6c757d;">
-            Loading checklists&hellip;
-        </div>
+        <x-client-detail-tab-loading label="Loading checklists…" data-checklists-lazy-placeholder />
     </div>
 </div>

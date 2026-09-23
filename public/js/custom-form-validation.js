@@ -158,6 +158,72 @@ function mmAcquireInvoiceSubmitLock() {
 	return { acquired: true, $form: $form, $buttons: $buttons };
 }
 
+/**
+ * Matter id for account receipts: URL/account-tab context first, then sidebar dropdown.
+ */
+function mmResolveClientDetailMatterIdForAccount() {
+	var tab = document.getElementById('account-tab');
+	if (tab) {
+		var fromTab = tab.getAttribute('data-account-matter-id');
+		if (fromTab !== null && fromTab !== undefined && String(fromTab).trim() !== '') {
+			return String(fromTab).trim();
+		}
+	}
+	if ($('.general_matter_checkbox_client_detail').is(':checked')) {
+		return $('.general_matter_checkbox_client_detail').val();
+	}
+	var fromSelect = $('#sel_matter_id_client_detail').val();
+	return fromSelect !== null && fromSelect !== undefined ? String(fromSelect).trim() : '';
+}
+
+/** Sync Funds In/Out required flags with ledger type (readonly rows must not validate). */
+function mmSyncClientFundsLedgerAmountValidation($scope) {
+	var $root = $scope && $scope.length ? $scope : $('#client_receipt_form');
+	if (!$root.length) {
+		return;
+	}
+	$root.find('.productitem tr').each(function() {
+		var $row = $(this);
+		var ledgerType = ($row.find('.client_fund_ledger_type').val() || '').trim();
+		var $depositInput = $row.find('.deposit_amount_per_row');
+		var $withdrawInput = $row.find('.withdraw_amount_per_row');
+		if (!ledgerType) {
+			$depositInput.attr('readonly', 'readonly').removeAttr('data-valid').val('');
+			$withdrawInput.attr('readonly', 'readonly').removeAttr('data-valid').val('');
+			return;
+		}
+		if (ledgerType === 'Deposit') {
+			$depositInput.removeAttr('readonly').attr('data-valid', 'required');
+			$withdrawInput.attr('readonly', 'readonly').removeAttr('data-valid').val('');
+			return;
+		}
+		$withdrawInput.removeAttr('readonly').attr('data-valid', 'required');
+		$depositInput.attr('readonly', 'readonly').removeAttr('data-valid').val('');
+	});
+}
+
+function mmScrollClientReceiptModalToFirstError() {
+	var $modal = $('#createreceiptmodal');
+	if (!$modal.length) {
+		return;
+	}
+	var $firstErr = $modal.find('.custom-error').first();
+	if (!$firstErr.length) {
+		return;
+	}
+	var $body = $modal.find('.modal-body');
+	if (!$body.length) {
+		return;
+	}
+	var anchor = $firstErr.closest('td, .form-group')[0];
+	if (!anchor) {
+		return;
+	}
+	var bodyTop = $body[0].getBoundingClientRect().top;
+	var anchorTop = anchor.getBoundingClientRect().top;
+	$body.scrollTop($body.scrollTop() + (anchorTop - bodyTop) - 24);
+}
+
 /** Reset Client Funds Ledger create form after successful save (no page reload). */
 function mmResetClientReceiptForm() {
 	var $form = $('#client_receipt_form');
@@ -525,6 +591,14 @@ function customValidate(formName, savetype = '')
 		var i = 0;
 		$(".custom-error").remove(); //remove all errors when submit the button
 
+		if (formName === 'client_receipt_form') {
+			mmSyncClientFundsLedgerAmountValidation();
+			var ledgerMatterIdForValidate = mmResolveClientDetailMatterIdForAccount();
+			if (ledgerMatterIdForValidate) {
+				$('#client_matter_id_ledger').val(ledgerMatterIdForValidate);
+			}
+		}
+
 		var $inputsToValidate;
 		if (formName === 'convert_lead_to_client') {
 			$inputsToValidate = $("#convertLeadToClientModal form[name='convert_lead_to_client'] :input[data-valid]");
@@ -648,7 +722,15 @@ function customValidate(formName, savetype = '')
 				if (formName === 'change_matter_assignee') {
 					console.warn('[ChangeMatterAssignee] Validation FAILED, error count i=' + i + ', form will NOT submit. Check required fields (Migration Agent, Person Responsible, Person Assisting).');
 				}
-				if(formName == 'add-query'){
+				if (formName === 'client_receipt_form') {
+					mmScrollClientReceiptModalToFirstError();
+					var ledgerValidationMsg = 'Please complete all required fields (transaction date, type, amount, and description).';
+					if (typeof toastr !== 'undefined' && typeof toastr.error === 'function') {
+						toastr.error(ledgerValidationMsg);
+					} else if (typeof iziToast !== 'undefined' && typeof iziToast.error === 'function') {
+						iziToast.error({ message: ledgerValidationMsg, position: 'topRight', timeout: 5000 });
+					}
+				} else if(formName == 'add-query'){
 					$('html, body').animate({scrollTop:$("#row_scroll"). offset(). top}, 'slow');
 				}else if(formName != 'upload-answer')	{
 					$('html, body').animate({scrollTop:0}, 'slow');
@@ -1379,6 +1461,11 @@ function customValidate(formName, savetype = '')
                     }
 
 					else if(formName == 'client_receipt_form'){
+						mmSyncClientFundsLedgerAmountValidation();
+						var ledgerMatterId = mmResolveClientDetailMatterIdForAccount();
+						if (ledgerMatterId) {
+							$('#client_matter_id_ledger').val(ledgerMatterId);
+						}
 						var client_id = $('#client_receipt_form input[name="client_id"]').val();
 						var myform = document.getElementById('client_receipt_form');
 						var fd = new FormData(myform);

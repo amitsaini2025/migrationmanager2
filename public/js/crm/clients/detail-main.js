@@ -1192,12 +1192,19 @@
 
                 else if(selected == 'client_receipt'){
 
-                    if (!isQuickReceiptMode) {
-                        listOfInvoice();
-                        clientLedgerBalanceAmount(selectedMatter);
+                    var ledgerMatterId = (typeof window.mmResolveClientDetailMatterIdForAccount === 'function')
+                        ? window.mmResolveClientDetailMatterIdForAccount()
+                        : selectedMatter;
+                    if (!ledgerMatterId) {
+                        ledgerMatterId = selectedMatter;
                     }
 
-                    $('#client_matter_id_ledger').val(selectedMatter);
+                    if (!isQuickReceiptMode) {
+                        listOfInvoice();
+                        clientLedgerBalanceAmount(ledgerMatterId);
+                    }
+
+                    $('#client_matter_id_ledger').val(ledgerMatterId);
 
                 }
 
@@ -3336,6 +3343,10 @@ success: function(response) {
             $newRow.find('.ledger-invoice-placeholder').show();
 
             $('.productitem').append($newRow);
+
+            if (typeof window.mmSyncClientFundsLedgerAmountValidation === 'function') {
+                window.mmSyncClientFundsLedgerAmountValidation($newRow);
+            }
 
             // Initialize Flatpickr for new date fields
             initFlatpickrForClass('.report_date_fields,.report_entry_date_fields');

@@ -138,6 +138,9 @@
         '#createreceiptmodal, #createclientreceiptmodal, #createinvoicereceiptmodal, #createofficereceiptmodal, #createjournalreceiptmodal, #createadjustinvoicereceiptmodal',
         function() {
             initReceiptModalDatepickers();
+            if (typeof window.mmSyncClientFundsLedgerAmountValidation === 'function') {
+                window.mmSyncClientFundsLedgerAmountValidation();
+            }
         }
     );
 

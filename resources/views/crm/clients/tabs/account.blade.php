@@ -25,7 +25,8 @@
 
            <!-- Account Tab -->
            <div class="tab-pane" id="account-tab"
-     @if($accountTabFragmentUrl !== '') data-account-url="{{ $accountTabFragmentUrl }}" @endif>
+     @if($accountTabFragmentUrl !== '') data-account-url="{{ $accountTabFragmentUrl }}" @endif
+     @if($client_selected_matter_id !== null) data-account-matter-id="{{ $client_selected_matter_id }}" @endif>
 
 <div class="card full-width">
     <div style="margin-bottom: 10px;">
@@ -927,12 +928,16 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#client_receipt_form, #invoice_receipt_form, #office_receipt_form').hide();
         console.log('🧹 All forms hidden');
         
-        // Get the selected matter ID
-        let selectedMatter;
-        if ($('.general_matter_checkbox_client_detail').is(':checked')) {
-            selectedMatter = $('.general_matter_checkbox_client_detail').val();
-        } else {
-            selectedMatter = $('#sel_matter_id_client_detail').val();
+        // Matter for ledger/office/invoice: account URL context first, then sidebar dropdown
+        let selectedMatter = (typeof mmResolveClientDetailMatterIdForAccount === 'function')
+            ? mmResolveClientDetailMatterIdForAccount()
+            : '';
+        if (!selectedMatter) {
+            if ($('.general_matter_checkbox_client_detail').is(':checked')) {
+                selectedMatter = $('.general_matter_checkbox_client_detail').val();
+            } else {
+                selectedMatter = $('#sel_matter_id_client_detail').val();
+            }
         }
         console.log('📁 Selected Matter ID:', selectedMatter);
         

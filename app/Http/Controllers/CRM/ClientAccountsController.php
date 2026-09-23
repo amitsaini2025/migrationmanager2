@@ -325,6 +325,52 @@ class ClientAccountsController extends Controller
                 return round(max(0, floatval($requestData['eftpos_surcharge_amount'][$index] ?? 0)), 2);
             };
 
+            $rowCount = count($requestData['trans_date']);
+            for ($validateIndex = 0; $validateIndex < $rowCount; $validateIndex++) {
+                $ledgerType = trim((string) ($requestData['client_fund_ledger_type'][$validateIndex] ?? ''));
+                if ($ledgerType === '') {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Please select a ledger type for each line.',
+                        'requestData' => [],
+                        'awsUrl' => '',
+                        'invoices' => [],
+                    ], 200);
+                }
+
+                $transDate = trim((string) ($requestData['trans_date'][$validateIndex] ?? ''));
+                if ($transDate === '') {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Transaction date is required for each ledger line.',
+                        'requestData' => [],
+                        'awsUrl' => '',
+                        'invoices' => [],
+                    ], 200);
+                }
+
+                $principalAmount = floatval($requestData['deposit_amount'][$validateIndex] ?? 0);
+                $withdrawAmount = floatval($requestData['withdraw_amount'][$validateIndex] ?? 0);
+                if ($ledgerType === 'Deposit' && $principalAmount <= 0) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Please enter a Funds In (+) amount for deposit lines.',
+                        'requestData' => [],
+                        'awsUrl' => '',
+                        'invoices' => [],
+                    ], 200);
+                }
+                if ($ledgerType !== 'Deposit' && $withdrawAmount <= 0) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Please enter a Funds Out (-) amount for this ledger type.',
+                        'requestData' => [],
+                        'awsUrl' => '',
+                        'invoices' => [],
+                    ], 200);
+                }
+            }
+
             // Generate unique receipt id
             $receipt_id = $this->getNextReceiptId(1);
    

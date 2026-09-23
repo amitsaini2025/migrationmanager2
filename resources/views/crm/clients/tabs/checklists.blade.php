@@ -872,33 +872,85 @@
         var $dropdown = $('#checklist-create-dropdown');
         var $matterSelect = $('#checklist_matter_select');
 
+        function showChecklistCostAssignmentLoadError() {
+            if (typeof iziToast !== 'undefined' && iziToast.error) {
+                iziToast.error({
+                    title: 'Error',
+                    message: 'Could not load the cost assignment form. Please refresh the page.',
+                    position: 'topRight'
+                });
+            } else {
+                alert('Could not load the cost assignment form. Please refresh the page.');
+            }
+        }
+
+        /** Extra modals are lazy stubs until ensureClientDetailModal loads real HTML (see lazy-modals.js). */
+        function ensureChecklistClientDetailModal(modalId) {
+            if (typeof window.ensureClientDetailModal === 'function') {
+                return window.ensureClientDetailModal(modalId);
+            }
+            return Promise.resolve();
+        }
+
         function openExistingMatterCostAssignmentModal(clientId, clientMatterId) {
             if (!clientId || !clientMatterId) {
                 alert('Unable to open cost assignment: missing client or matter information.');
                 return;
             }
-            var $modal = $('#costAssignmentCreateFormModel');
-            if (!$modal.length) {
-                alert('Cost assignment form is not available. Please refresh the page.');
-                return;
-            }
-            $modal.find('#cost_assignment_client_id').val(clientId);
-            $modal.find('#cost_assignment_client_matter_id').val(clientMatterId);
-            $modal.find('#costAssignmentModalLabel').text('Create Cost Assignment');
-            var showModal = function() {
-                showChecklistModal($modal);
-            };
-            if (typeof window.getCostAssignmentMigrationAgentDetail === 'function') {
-                window.getCostAssignmentMigrationAgentDetail(clientId, clientMatterId, '#costAssignmentCreateFormModel', showModal);
-            } else if (typeof getCostAssignmentMigrationAgentDetail === 'function') {
-                getCostAssignmentMigrationAgentDetail(clientId, clientMatterId, '#costAssignmentCreateFormModel', showModal);
-            } else {
-                alert('Cost assignment function not available. Please refresh the page.');
-            }
+            ensureChecklistClientDetailModal('costAssignmentCreateFormModel')
+                .then(function() {
+                    var $modal = $('#costAssignmentCreateFormModel');
+                    if (!$modal.length || !$modal.find('#cost_assignment_client_id').length) {
+                        alert('Cost assignment form is not available. Please refresh the page.');
+                        return;
+                    }
+                    $modal.find('#cost_assignment_client_id').val(clientId);
+                    $modal.find('#cost_assignment_client_matter_id').val(clientMatterId);
+                    $modal.find('#costAssignmentModalLabel').text('Create Cost Assignment');
+                    var showModal = function() {
+                        showChecklistModal($modal);
+                    };
+                    if (typeof window.getCostAssignmentMigrationAgentDetail === 'function') {
+                        window.getCostAssignmentMigrationAgentDetail(clientId, clientMatterId, '#costAssignmentCreateFormModel', showModal);
+                    } else if (typeof getCostAssignmentMigrationAgentDetail === 'function') {
+                        getCostAssignmentMigrationAgentDetail(clientId, clientMatterId, '#costAssignmentCreateFormModel', showModal);
+                    } else {
+                        alert('Cost assignment function not available. Please refresh the page.');
+                    }
+                })
+                .catch(function() {
+                    showChecklistCostAssignmentLoadError();
+                });
         }
 
-        function openLeadCostAssignmentModal(clientId, matterId, migrationAgent, personResponsible, personAssisting, officeId) {
+        /** Read Tom Select or native value from checklist create fields. */
+        function checklistSelectValue(selector) {
+            var el = document.querySelector(selector);
+            if (!el) {
+                return '';
+            }
+            if (el.tomselect) {
+                var picked = el.tomselect.getValue();
+                if (Array.isArray(picked)) {
+                    return picked[0] ? String(picked[0]) : '';
+                }
+                return picked ? String(picked) : '';
+            }
+            var raw = $(el).val();
+            return raw === null || raw === undefined || raw === '' ? '' : String(raw);
+        }
+
+        function leadCostAssignmentSelectString(value) {
+            return value === null || value === undefined || value === '' ? '' : String(value);
+        }
+
+        function populateLeadCostAssignmentModalFields(clientId, matterId, migrationAgent, personResponsible, personAssisting, officeId) {
             destroyLeadCostAssignmentMmSelect();
+            var $modal = $('#costAssignmentCreateFormModelLead');
+            if (!$modal.length || !$modal.find('#sel_migration_agent_id_lead').length) {
+                return false;
+            }
+
             $('#cost_assignment_lead_id').val(clientId);
             $('#sel_matter_id_lead').val(matterId);
             $('#sel_migration_agent_id_lead').val(migrationAgent);
@@ -908,13 +960,46 @@
             // Same guard as initChecklistMmSelect / destroyLeadCostAssignmentMmSelect — never block modal open
             if (typeof $.fn.mmSelect === 'function') {
                 $('#sel_migration_agent_id_lead,#sel_person_responsible_id_lead,#sel_person_assisting_id_lead,#sel_office_id_lead,#sel_matter_id_lead').mmSelect({
-                    dropdownParent: $('#costAssignmentCreateFormModelLead'),
+                    dropdownParent: $modal,
                     minimumResultsForSearch: 0,
                     width: '100%'
                 });
+                // mmSelect init runs before Tom Select exists; re-apply so jQuery.val → tomselect.setValue (see mm-tomselect-jquery.js).
+                $('#sel_migration_agent_id_lead').val(migrationAgent);
+                $('#sel_person_responsible_id_lead').val(personResponsible);
+                $('#sel_person_assisting_id_lead').val(personAssisting);
+                $('#sel_office_id_lead').val(officeId);
+                $('#sel_matter_id_lead').val(matterId);
             }
             $('#sel_matter_id_lead').trigger('change');
-            showChecklistModal($('#costAssignmentCreateFormModelLead'));
+            return true;
+        }
+
+        function openLeadCostAssignmentModal(clientId, matterId, migrationAgent, personResponsible, personAssisting, officeId) {
+            matterId = leadCostAssignmentSelectString(matterId);
+            migrationAgent = leadCostAssignmentSelectString(migrationAgent);
+            personResponsible = leadCostAssignmentSelectString(personResponsible);
+            personAssisting = leadCostAssignmentSelectString(personAssisting);
+            officeId = leadCostAssignmentSelectString(officeId);
+
+            ensureChecklistClientDetailModal('costAssignmentCreateFormModelLead')
+                .then(function() {
+                    if (!populateLeadCostAssignmentModalFields(
+                        clientId,
+                        matterId,
+                        migrationAgent,
+                        personResponsible,
+                        personAssisting,
+                        officeId
+                    )) {
+                        alert('Cost assignment form is not available. Please refresh the page.');
+                        return;
+                    }
+                    showChecklistModal($('#costAssignmentCreateFormModelLead'));
+                })
+                .catch(function() {
+                    showChecklistCostAssignmentLoadError();
+                });
         }
 
         // Set up cost assignment for the matter already in the URL (does not create a new matter)
@@ -1003,7 +1088,7 @@
         // Continue / Save - uses Lead flow (matter type from admin list)
         $dropdown.on('click.checklistsTabUi', '.btn-continue-cost-assignment', function() {
             var generalMatterChecked = $('#checklist_general_matter_checkbox').is(':checked');
-            var matterId = generalMatterChecked ? '1' : $matterSelect.val();
+            var matterId = generalMatterChecked ? '1' : checklistSelectValue('#checklist_matter_select');
             var clientId = window.ClientDetailConfig ? window.ClientDetailConfig.clientId : $('.crm-container').data('client-id');
 
             if (!clientId) {
@@ -1016,10 +1101,10 @@
                 return;
             }
 
-            var migrationAgent = $('#checklist_migration_agent').val();
-            var personResponsible = $('#checklist_person_responsible').val();
-            var personAssisting = $('#checklist_person_assisting').val();
-            var officeId = $('#checklist_office').val();
+            var migrationAgent = checklistSelectValue('#checklist_migration_agent');
+            var personResponsible = checklistSelectValue('#checklist_person_responsible');
+            var personAssisting = checklistSelectValue('#checklist_person_assisting');
+            var officeId = checklistSelectValue('#checklist_office');
 
             if (!migrationAgent || !personResponsible || !personAssisting || !officeId) {
                 alert('Please fill Migration Agent, Person Responsible, Person Assisting, and Office.');
@@ -1356,30 +1441,36 @@
                 alert('Unable to open cost assignment: missing client or matter information.');
                 return;
             }
-            
-            // Set client/matter IDs in the modal form (scope to modal to avoid subtab form)
-            var $modal = $('#costAssignmentCreateFormModel');
-            if (!$modal.length) {
-                alert('Cost assignment form is not available. Please refresh the page.');
-                return;
-            }
-            $modal.find('#cost_assignment_client_id').val(clientId);
-            $modal.find('#cost_assignment_client_matter_id').val(clientMatterId);
-            
-            // Update modal title for edit mode
-            $modal.find('#costAssignmentModalLabel').text('Amend Cost Assignment');
-            
-            // Load existing cost assignment data into the modal, then show it when loaded
-            var showAmendModal = function() {
-                showChecklistModal($modal);
-            };
-            if (typeof window.getCostAssignmentMigrationAgentDetail === 'function') {
-                window.getCostAssignmentMigrationAgentDetail(clientId, clientMatterId, '#costAssignmentCreateFormModel', showAmendModal);
-            } else if (typeof getCostAssignmentMigrationAgentDetail === 'function') {
-                getCostAssignmentMigrationAgentDetail(clientId, clientMatterId, '#costAssignmentCreateFormModel', showAmendModal);
-            } else {
-                alert('Cost assignment function not available. Please refresh the page.');
-            }
+
+            ensureChecklistClientDetailModal('costAssignmentCreateFormModel')
+                .then(function() {
+                    // Set client/matter IDs in the modal form (scope to modal to avoid subtab form)
+                    var $modal = $('#costAssignmentCreateFormModel');
+                    if (!$modal.length || !$modal.find('#cost_assignment_client_id').length) {
+                        alert('Cost assignment form is not available. Please refresh the page.');
+                        return;
+                    }
+                    $modal.find('#cost_assignment_client_id').val(clientId);
+                    $modal.find('#cost_assignment_client_matter_id').val(clientMatterId);
+                    
+                    // Update modal title for edit mode
+                    $modal.find('#costAssignmentModalLabel').text('Amend Cost Assignment');
+                    
+                    // Load existing cost assignment data into the modal, then show it when loaded
+                    var showAmendModal = function() {
+                        showChecklistModal($modal);
+                    };
+                    if (typeof window.getCostAssignmentMigrationAgentDetail === 'function') {
+                        window.getCostAssignmentMigrationAgentDetail(clientId, clientMatterId, '#costAssignmentCreateFormModel', showAmendModal);
+                    } else if (typeof getCostAssignmentMigrationAgentDetail === 'function') {
+                        getCostAssignmentMigrationAgentDetail(clientId, clientMatterId, '#costAssignmentCreateFormModel', showAmendModal);
+                    } else {
+                        alert('Cost assignment function not available. Please refresh the page.');
+                    }
+                })
+                .catch(function() {
+                    showChecklistCostAssignmentLoadError();
+                });
         });
 
         // When finalize button is clicked and agreement is uploaded, handle signature flow

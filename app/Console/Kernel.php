@@ -79,6 +79,10 @@ class Kernel extends ConsoleKernel
         '\App\Console\Commands\CacheAccessGrantGlobalCounts',
         '\App\Console\Commands\SendFollowUpReminders',
 
+        // My day — auto file-time sessions and end-of-day summaries
+        '\App\Console\Commands\CloseStaleMatterSessions',
+        '\App\Console\Commands\SnapshotStaffDaySummaries',
+
         // MCP CRM
         IssueCrmMcpTokenCommand::class,
 

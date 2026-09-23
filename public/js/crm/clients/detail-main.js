@@ -6803,6 +6803,37 @@ success: function(response) {
 
         //Open Agreement model window
 
+        window.__pendingAgreementUploadMeta = window.__pendingAgreementUploadMeta || null;
+
+        function ensureAgreementModalReady() {
+            if (typeof window.ensureClientDetailModal === 'function') {
+                return window.ensureClientDetailModal('agreementModal');
+            }
+
+            return Promise.resolve();
+        }
+
+        function setAgreementUploadClientMatterId(matterId) {
+            var normalized = matterId === null || matterId === undefined || matterId === '' ? '' : String(matterId);
+            window.__pendingAgreementUploadMeta = { clientMatterId: normalized };
+            var $field = $('#agreemnt_clientmatterid');
+            if ($field.length) {
+                $field.val(normalized);
+            }
+        }
+
+        function showAgreementModalLoadError() {
+            if (typeof iziToast !== 'undefined' && iziToast.error) {
+                iziToast.error({
+                    title: 'Error',
+                    message: 'Could not load the upload form. Please refresh the page.',
+                    position: 'topRight'
+                });
+            } else {
+                alert('Could not load the upload form. Please refresh the page.');
+            }
+        }
+
         $(document).delegate('.finalizeAgreementConvertToPdf', 'click', function() {
 
             var $btn = $(this);
@@ -6817,9 +6848,18 @@ success: function(response) {
                 }
             }
 
-            $('#agreemnt_clientmatterid').val(hidden_client_matter_id_assignment);
-
-            $('#agreementModal').modal('show');
+            ensureAgreementModalReady()
+                .then(function() {
+                    if (!$('#agreementUploadForm').length) {
+                        alert('Upload form is not available. Please refresh the page.');
+                        return;
+                    }
+                    setAgreementUploadClientMatterId(hidden_client_matter_id_assignment);
+                    $('#agreementModal').modal('show');
+                })
+                .catch(function() {
+                    showAgreementModalLoadError();
+                });
 
         });
 
@@ -6835,6 +6875,9 @@ success: function(response) {
             var form = document.getElementById('agreementUploadForm');
             if (!form || !form.agreement_doc || !form.agreement_doc.files || !form.agreement_doc.files.length) return;
             var formData = new FormData(form);
+            if (window.__pendingAgreementUploadMeta && window.__pendingAgreementUploadMeta.clientMatterId) {
+                formData.set('clientmatterid', window.__pendingAgreementUploadMeta.clientMatterId);
+            }
             agreementUploadInFlight = true;
             $('.popuploader').show();
             $('#agreementUploadError').hide();
@@ -6848,9 +6891,15 @@ success: function(response) {
                 success: function(response) {
                     $('.popuploader').hide();
                     if (response.status) {
+                        var uploadMeta = window.__pendingAgreementUploadMeta;
+                        var placementSource = (uploadMeta && uploadMeta.clientMatterId) ? 'checklists' : null;
+                        window.__pendingAgreementUploadMeta = null;
                         $('#agreementModal').modal('hide');
                         if (response.document_id) {
-                            $(document).trigger('openSignaturePlacementModal', { documentId: response.document_id });
+                            $(document).trigger('openSignaturePlacementModal', {
+                                documentId: response.document_id,
+                                source: placementSource
+                            });
                         } else {
                             localStorage.setItem('activeTab', 'checklists');
                             setTimeout(function() { location.reload(); }, 1000);

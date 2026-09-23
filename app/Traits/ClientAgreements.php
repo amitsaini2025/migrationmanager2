@@ -2,134 +2,78 @@
 
 namespace App\Traits;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-
-use App\Models\Admin;
-use App\Models\Staff;
-use App\Models\Company;
-use App\Models\Lead;
 use App\Models\ActivitiesLog;
-// use App\Models\OnlineForm; // REMOVED: OnlineForm model has been deleted
-use Illuminate\Support\Facades\Auth;
-use App\Helpers\PhoneHelper;
-use App\Helpers\IconHelper;
-use App\Models\CheckinLog;
-use App\Models\Note;
-use App\Models\BookingAppointment;
-// clientServiceTaken model removed - table client_service_takens does not exist
-use App\Models\AccountClientReceipt;
-
-use App\Models\Matter;
+use App\Models\Admin;
+use App\Models\AppointmentConsultant;
+use App\Models\ClientAddress;
 use App\Models\ClientMatter;
-use App\Models\Branch;
-
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\Mail;
-use App\Services\ClientReferenceService;
-use App\Services\MergeClientRecordsService;
-use App\Support\ActionTaskGroup;
-use App\Support\AppointmentActivityDescription;
-use App\Support\NoteDescriptionHtml;
-use App\Support\StaffClientVisibility;
-use App\Support\WorkflowAssignment;
-use App\Services\LegalCrm\LegalCrmApiClient;
-
-use DateTime;
-use DateTimeZone;
-
-use App\Models\ClientAddress; // Import the ClientAddress model
-use App\Models\ClientContact; // Import the ClientAddress model
-use App\Models\ClientEmail; // Import the ClientAddress model
-use App\Models\ClientQualification; // Import the ClientAddress model
-use App\Models\ClientExperience; // Import the ClientAddress model
-use App\Models\ClientTestScore; // Import the ClientAddress model
-use App\Models\ClientVisaCountry; // Import the ClientAddress model
-use App\Models\ClientOccupation; // Import the ClientAddress model
-use App\Models\ClientSpouseDetail; // Import the ClientAddress model
-use App\Models\AppointmentConsultant; // Import the AppointmentConsultant model
-use App\Support\BansalSchedulingServiceType;
-
-use App\Models\ClientPoint;
-use Carbon\Carbon;
-use Illuminate\Validation\Rule;
-
-use Illuminate\Support\Facades\Validator;
-use GuzzleHttp\Client;
-
-use App\Models\ClientPassportInformation;
-use App\Models\ClientTravelInformation;
-use App\Models\ClientCharacter;
 use App\Models\ClientRelationship;
-use App\Models\EmailTemplate;
-use App\Models\SmsTemplate;
-
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Schema;
-
-use App\Models\Form956;
-use PhpOffice\PhpWord\Settings;
-use PhpOffice\PhpWord\TemplateProcessor;
+use App\Models\Company;
+// use App\Models\OnlineForm; // REMOVED: OnlineForm model has been deleted
 use App\Models\CostAssignmentForm;
-use App\Models\PersonalDocumentType;
-use App\Models\VisaDocumentType;
-use App\Models\ClientEoiReference;
-use PhpOffice\PhpWord\IOFactory;
-use PhpOffice\PhpWord\PhpWord;
-use App\Mail\HubdocInvoiceMail;
-use App\Services\MatterEmailBodyCleanupService;
-use App\Services\EmailLogListService;
-use App\Services\Sms\UnifiedSmsManager;
-use App\Services\BansalAppointmentSync\BansalApiClient;
-use App\Services\ClientExportService;
-use App\Services\ClientLeadListExportService;
-use App\Services\FCMService;
-use App\Services\ClientImportService;
-use App\Services\JobReadyAgreementFeeTablePatcher;
+// clientServiceTaken model removed - table client_service_takens does not exist
+
+use App\Models\Document;
+use App\Models\Matter;
+use App\Models\Staff;
+use App\Services\CompanyAgreementDocxPatcher;
+use App\Services\CompanyVisaAgreementMacroBuilder; // Import the ClientAddress model
+// Import the ClientAddress model
+// Import the ClientAddress model
+// Import the ClientAddress model
+// Import the ClientAddress model
+// Import the ClientAddress model
+// Import the ClientAddress model
+// Import the ClientAddress model
+// Import the ClientAddress model
+use App\Services\JobReadyAgreementFeeTablePatcher; // Import the AppointmentConsultant model
 use App\Services\PsaAgreementSection4SummaryTablePatcher;
 use App\Services\PsaAgreementServiceTypeRowPatcher;
 use App\Services\VisaAgreementAmountTablePatcher;
-use App\Services\VisaAgreementServiceTypeRowPatcher;
-use App\Services\CompanyAgreementDocxPatcher;
-use App\Services\CompanyVisaAgreementMacroBuilder;
 use App\Services\VisaAgreementApplicantAddressResolver;
+use App\Services\VisaAgreementServiceTypeRowPatcher;
 use App\Services\VisaAgreementTemplateResolver;
-use App\Traits\ClientAuthorization;
-use App\Traits\ClientHelpers;
-use App\Traits\ClientQueries;
-use App\Traits\LogsClientActivity;
+use Carbon\Carbon;
+use GuzzleHttp\Client;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Filesystem\FilesystemAdapter;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Validation\Rule;
+use PhpOffice\PhpWord\IOFactory;
+use PhpOffice\PhpWord\PhpWord;
+use PhpOffice\PhpWord\Settings;
+use PhpOffice\PhpWord\TemplateProcessor;
 
 trait ClientAgreements
 {
-    //Generate agreemnt
+    // Generate agreemnt
     public function generateagreement(Request $request)
     {
-        try { //dd($request->all());
+        try { // dd($request->all());
             $previousPhpWordOutputEscaping = Settings::isOutputEscapingEnabled();
             $id = $request->client_id;
             $client = Admin::findOrFail($request->client_id);
-            $responsiblePerson = \App\Models\Staff::findOrFail($request->agent_id); //dd($responsiblePerson);
-            if (!$responsiblePerson) {
+            $responsiblePerson = Staff::findOrFail($request->agent_id); // dd($responsiblePerson);
+            if (! $responsiblePerson) {
                 return response()->json([
                     'success' => false,
                     'error' => 'No responsible person found in the database.',
-                    'message' => 'No responsible person found in the database.'
+                    'message' => 'No responsible person found in the database.',
                 ], 400);
             }
 
             // Ensure templates directory exists
             $templatesDir = storage_path('app/templates');
-            if (!file_exists($templatesDir)) {
+            if (! file_exists($templatesDir)) {
                 mkdir($templatesDir, 0755, true);
-                Log::info('Created templates directory: ' . $templatesDir);
+                Log::info('Created templates directory: '.$templatesDir);
             }
-            
+
             // Determine template filename (company / skill / conflict / default paths + legacy fallbacks)
             $matterNickName = null;
             $templateResolution = app(VisaAgreementTemplateResolver::class)->resolve(
@@ -146,9 +90,9 @@ trait ClientAgreements
             ]);
 
             $templateFileName = config('visa_agreement_templates.default', 'Service_Agreement_general.docx');
-            $templatePath = storage_path('app/templates/' . $templateFileName);
+            $templatePath = storage_path('app/templates/'.$templateFileName);
             foreach ($templateCandidates as $candidateBasename) {
-                $candidatePath = storage_path('app/templates/' . $candidateBasename);
+                $candidatePath = storage_path('app/templates/'.$candidateBasename);
                 if (file_exists($candidatePath)) {
                     $templateFileName = $candidateBasename;
                     $templatePath = $candidatePath;
@@ -156,25 +100,25 @@ trait ClientAgreements
                 }
             }
 
-            if (!file_exists($templatePath)) {
-                Log::error('Agreement template file not found at: ' . $templatePath);
+            if (! file_exists($templatePath)) {
+                Log::error('Agreement template file not found at: '.$templatePath);
                 // Try fallback to default template if specific template doesn't exist
                 $defaultTemplatePath = storage_path('app/templates/agreement_template.docx');
                 if (file_exists($defaultTemplatePath)) {
                     $templatePath = $defaultTemplatePath;
                     $templateFileName = 'agreement_template.docx';
-                    Log::info('Using default template as fallback. Matter type: ' . ($matterNickName ?? 'unknown'));
+                    Log::info('Using default template as fallback. Matter type: '.($matterNickName ?? 'unknown'));
                 } else {
                     return response()->json([
                         'success' => false,
                         'error' => 'Template file not found.',
-                        'message' => 'The agreement template file (' . $templateFileName . ') is missing. Please ensure the template file is placed at: storage/app/templates/' . $templateFileName,
+                        'message' => 'The agreement template file ('.$templateFileName.') is missing. Please ensure the template file is placed at: storage/app/templates/'.$templateFileName,
                         'template_path' => $templatePath,
-                        'help' => 'Contact your system administrator to upload the agreement template file.'
+                        'help' => 'Contact your system administrator to upload the agreement template file.',
                     ], 404);
                 }
             } else {
-                Log::info('Using template: ' . $templateFileName . ' for matter type: ' . ($matterNickName ?? 'default') . ' (rule: ' . ($templateResolution['rule'] ?? '') . ')');
+                Log::info('Using template: '.$templateFileName.' for matter type: '.($matterNickName ?? 'default').' (rule: '.($templateResolution['rule'] ?? '').')');
             }
 
             // Option 2: Patch template so "Amount incl Surcharge" total cell uses TotalDoHAChargesInclSurcharge
@@ -184,12 +128,12 @@ trait ClientAgreements
             $scheduleATempPath = null; // working copy so Schedule A XML injection never mutates the stored template
             try {
                 $tempDir = storage_path('app/temp');
-                if (!is_dir($tempDir)) {
+                if (! is_dir($tempDir)) {
                     @mkdir($tempDir, 0755, true);
                 }
-                $patchedTempPath = $tempDir . '/agreement_patch_' . getmypid() . '_' . time() . '.docx';
+                $patchedTempPath = $tempDir.'/agreement_patch_'.getmypid().'_'.time().'.docx';
                 if (@copy($templatePath, $patchedTempPath)) {
-                    $zip = new \ZipArchive();
+                    $zip = new \ZipArchive;
                     if ($zip->open($patchedTempPath) === true) {
                         $xml = $zip->getFromName('word/document.xml');
                         if ($xml !== false) {
@@ -197,51 +141,51 @@ trait ClientAgreements
                             $isCompanyAgreementTemplate = CompanyAgreementDocxPatcher::isCompanyAgreementTemplate($templateFileName);
 
                             if (! $isCompanyAgreementTemplate) {
-                            $oldPlaceholder = '${TotalDoHASurcharges}';
-                            $newPlaceholder = '${TotalDoHAChargesInclSurcharge}';
-                            $countFullPlaceholder = substr_count($xml, $oldPlaceholder);
-                            $countBareName = substr_count($xml, 'TotalDoHASurcharges');
-                            // Try full placeholder first (PhpWord format)
-                            $lastPos = strrpos($xml, $oldPlaceholder);
-                            if ($lastPos !== false) {
-                                $xml = substr_replace($xml, $newPlaceholder, $lastPos, strlen($oldPlaceholder));
-                                $xmlPatchesApplied = true;
-                                Log::info('[AgreementMacro:TotalDoHASurcharges] DOCX patch REPLACED last exact placeholder with TotalDoHAChargesInclSurcharge', [
-                                    'client_id' => $request->client_id,
-                                    'client_matter_id' => $request->client_matter_id ?? null,
-                                    'occurrences_${TotalDoHASurcharges}' => $countFullPlaceholder,
-                                    'occurrences_substring_TotalDoHASurcharges' => $countBareName,
-                                    'last_match_byte_offset' => $lastPos,
-                                    'patch_mode' => 'full_placeholder',
-                                    'note' => 'Clause 4 cell will merge TotalDoHAChargesInclSurcharge (charges + surcharges), same as TotalDoHASurcharges.',
-                                ]);
-                            } else {
-                                // Word may split placeholder across XML runs; try name only (last occurrence)
-                                $oldName = 'TotalDoHASurcharges';
-                                $newName = 'TotalDoHAChargesInclSurcharge';
-                                $lastPos = strrpos($xml, $oldName);
+                                $oldPlaceholder = '${TotalDoHASurcharges}';
+                                $newPlaceholder = '${TotalDoHAChargesInclSurcharge}';
+                                $countFullPlaceholder = substr_count($xml, $oldPlaceholder);
+                                $countBareName = substr_count($xml, 'TotalDoHASurcharges');
+                                // Try full placeholder first (PhpWord format)
+                                $lastPos = strrpos($xml, $oldPlaceholder);
                                 if ($lastPos !== false) {
-                                    $xml = substr_replace($xml, $newName, $lastPos, strlen($oldName));
+                                    $xml = substr_replace($xml, $newPlaceholder, $lastPos, strlen($oldPlaceholder));
                                     $xmlPatchesApplied = true;
-                                    Log::info('[AgreementMacro:TotalDoHASurcharges] DOCX patch REPLACED last bare name with TotalDoHAChargesInclSurcharge', [
+                                    Log::info('[AgreementMacro:TotalDoHASurcharges] DOCX patch REPLACED last exact placeholder with TotalDoHAChargesInclSurcharge', [
                                         'client_id' => $request->client_id,
                                         'client_matter_id' => $request->client_matter_id ?? null,
                                         'occurrences_${TotalDoHASurcharges}' => $countFullPlaceholder,
                                         'occurrences_substring_TotalDoHASurcharges' => $countBareName,
                                         'last_match_byte_offset' => $lastPos,
-                                        'patch_mode' => 'bare_name_only',
+                                        'patch_mode' => 'full_placeholder',
                                         'note' => 'Clause 4 cell will merge TotalDoHAChargesInclSurcharge (charges + surcharges), same as TotalDoHASurcharges.',
                                     ]);
+                                } else {
+                                    // Word may split placeholder across XML runs; try name only (last occurrence)
+                                    $oldName = 'TotalDoHASurcharges';
+                                    $newName = 'TotalDoHAChargesInclSurcharge';
+                                    $lastPos = strrpos($xml, $oldName);
+                                    if ($lastPos !== false) {
+                                        $xml = substr_replace($xml, $newName, $lastPos, strlen($oldName));
+                                        $xmlPatchesApplied = true;
+                                        Log::info('[AgreementMacro:TotalDoHASurcharges] DOCX patch REPLACED last bare name with TotalDoHAChargesInclSurcharge', [
+                                            'client_id' => $request->client_id,
+                                            'client_matter_id' => $request->client_matter_id ?? null,
+                                            'occurrences_${TotalDoHASurcharges}' => $countFullPlaceholder,
+                                            'occurrences_substring_TotalDoHASurcharges' => $countBareName,
+                                            'last_match_byte_offset' => $lastPos,
+                                            'patch_mode' => 'bare_name_only',
+                                            'note' => 'Clause 4 cell will merge TotalDoHAChargesInclSurcharge (charges + surcharges), same as TotalDoHASurcharges.',
+                                        ]);
+                                    }
                                 }
-                            }
-                            if (! $xmlPatchesApplied) {
-                                Log::info('[AgreementMacro:TotalDoHASurcharges] DOCX patch skipped (no TotalDoHASurcharges found in document.xml)', [
-                                    'client_id' => $request->client_id,
-                                    'client_matter_id' => $request->client_matter_id ?? null,
-                                    'occurrences_${TotalDoHASurcharges}' => $countFullPlaceholder,
-                                    'occurrences_substring_TotalDoHASurcharges' => $countBareName,
-                                ]);
-                            }
+                                if (! $xmlPatchesApplied) {
+                                    Log::info('[AgreementMacro:TotalDoHASurcharges] DOCX patch skipped (no TotalDoHASurcharges found in document.xml)', [
+                                        'client_id' => $request->client_id,
+                                        'client_matter_id' => $request->client_matter_id ?? null,
+                                        'occurrences_${TotalDoHASurcharges}' => $countFullPlaceholder,
+                                        'occurrences_substring_TotalDoHASurcharges' => $countBareName,
+                                    ]);
+                                }
                             }
 
                             if ($isCompanyAgreementTemplate) {
@@ -341,7 +285,7 @@ trait ClientAgreements
                     }
                 }
             } catch (\Throwable $patchEx) {
-                Log::warning('Template patch skipped: ' . $patchEx->getMessage());
+                Log::warning('Template patch skipped: '.$patchEx->getMessage());
                 $pathToLoad = $templatePath;
                 if ($patchedTempPath && file_exists($patchedTempPath)) {
                     @unlink($patchedTempPath);
@@ -354,7 +298,7 @@ trait ClientAgreements
                 if (! is_dir($tempDir)) {
                     @mkdir($tempDir, 0755, true);
                 }
-                $scheduleATempPath = $tempDir . '/agreement_schedule_a_' . getmypid() . '_' . time() . '.docx';
+                $scheduleATempPath = $tempDir.'/agreement_schedule_a_'.getmypid().'_'.time().'.docx';
                 if (@copy($pathToLoad, $scheduleATempPath)) {
                     $pathToLoad = $scheduleATempPath;
                 } else {
@@ -384,19 +328,19 @@ trait ClientAgreements
                     'total_distinct_placeholders' => count($tplVars),
                 ]);
             } catch (\Throwable $e) {
-                Log::warning('[AgreementMacro:TotalDoHASurcharges] Could not read template variables: ' . $e->getMessage());
+                Log::warning('[AgreementMacro:TotalDoHASurcharges] Could not read template variables: '.$e->getMessage());
             }
 
             // Log the values we're trying to set
-            Log::info('Generating document for client: ' . $client->client_id);
-            Log::info('Template path: ' . $templatePath);
+            Log::info('Generating document for client: '.$client->client_id);
+            Log::info('Template path: '.$templatePath);
 
             $dobFormated = 'NA';
-            if($client->dob != ''){
-                $dobArr = explode('-',$client->dob);
-                if(!empty($dobArr)){
+            if ($client->dob != '') {
+                $dobArr = explode('-', $client->dob);
+                if (! empty($dobArr)) {
                     $dobFormated = $dobArr[2].'/'.$dobArr[1].'/'.$dobArr[0];
-                } else{
+                } else {
                     $dobFormated = 'NA';
                 }
             }
@@ -415,7 +359,7 @@ trait ClientAgreements
             $client_address = $addressMacros['street'];
             $client_zip = $addressMacros['postcode'];
 
-            //Get client matter info
+            // Get client matter info
             $visa_subclass = '';
             $visa_stream = '';
             $professional_fee = 0;
@@ -467,21 +411,19 @@ trait ClientAgreements
             $GrandTotalFeesAndCostsFormated = '0.00';
             $BlocktotalfeesincltaxFormated = '0.00';
 
-            if( isset($request->client_matter_id) && $request->client_matter_id != '' )
-            {  //dd($request->client_matter_id);
-                //First check cost is assigned for this matter wrt client or not
-                $cost_assignment_cnt = \App\Models\CostAssignmentForm::where('client_id',$request->client_id)->where('client_matter_id',$request->client_matter_id)->count();
-	            if($cost_assignment_cnt >0)
-                { //dd('iff');
+            if (isset($request->client_matter_id) && $request->client_matter_id != '') {  // dd($request->client_matter_id);
+                // First check cost is assigned for this matter wrt client or not
+                $cost_assignment_cnt = CostAssignmentForm::where('client_id', $request->client_id)->where('client_matter_id', $request->client_matter_id)->count();
+                if ($cost_assignment_cnt > 0) { // dd('iff');
                     // Get cost assignment form fee info
                     $matter_info = DB::table('cost_assignment_forms')->where('client_id', $request->client_id)->where('client_matter_id', $request->client_matter_id)->first();
 
                     $client_matter_info = DB::table('client_matters')->select('sel_matter_id')->where('id', $request->client_matter_id)->first();
                     // Get matter info
-                    if( $client_matter_info ){ //dd($client_matter_info);
-                        $matter_info_arr = DB::table('matters')->select('title','nick_name','Block_1_Description','Block_2_Description','Block_3_Description')->where('id', $client_matter_info->sel_matter_id )->first();
+                    if ($client_matter_info) { // dd($client_matter_info);
+                        $matter_info_arr = DB::table('matters')->select('title', 'nick_name', 'Block_1_Description', 'Block_2_Description', 'Block_3_Description')->where('id', $client_matter_info->sel_matter_id)->first();
                     }
-                    if( $matter_info_arr ) {
+                    if ($matter_info_arr) {
                         $matter_info->title = $matter_info_arr->title ?? '';
                         $matter_info->nick_name = $matter_info_arr->nick_name ?? '';
                         $matter_info->Block_1_Description = $matter_info_arr->Block_1_Description ?? '';
@@ -489,25 +431,22 @@ trait ClientAgreements
                         $matter_info->Block_3_Description = $matter_info_arr->Block_3_Description ?? '';
                     }
 
-                }
-                else
-                { //dd('elsee');
+                } else { // dd('elsee');
                     $client_matter_info = DB::table('client_matters')->select('sel_matter_id')->where('id', $request->client_matter_id)->first();
                     // Get matter info
-                    if( $client_matter_info ){ //dd($client_matter_info);
-                        $matter_info = DB::table('matters')->where('id', $client_matter_info->sel_matter_id )->first();
+                    if ($client_matter_info) { // dd($client_matter_info);
+                        $matter_info = DB::table('matters')->where('id', $client_matter_info->sel_matter_id)->first();
                     }
                 }
 
-                if ($matter_info)
-                { //dd($matter_info);
+                if ($matter_info) { // dd($matter_info);
 
                     $visa_subclass = $matter_info->title ?? '';
                     $visa_stream = $matter_info->nick_name ?? '';
 
-                    //$professional_fee = $matter_info->our_fee;
-                    //$gst_fee = 0;
-                    //$visa_application_charge = $matter_info->main_applicant_fee;
+                    // $professional_fee = $matter_info->our_fee;
+                    // $gst_fee = 0;
+                    // $visa_application_charge = $matter_info->main_applicant_fee;
 
                     $Block_1_Description = $matter_info->Block_1_Description ?? '';
                     $Block_1_Ex_Tax = $matter_info->Block_1_Ex_Tax ?? 0;
@@ -520,11 +459,11 @@ trait ClientAgreements
 
                     $Blocktotalfeesincltax = floatval($Block_1_Ex_Tax) + floatval($Block_2_Ex_Tax) + floatval($Block_3_Ex_Tax);
                     $BlocktotalfeesincltaxFormated = number_format($Blocktotalfeesincltax, 2, '.', '');
-                    //dd($BlocktotalfeesincltaxFormated);
+                    // dd($BlocktotalfeesincltaxFormated);
 
                     $surchargeApply = property_exists($matter_info, 'surcharge') ? $matter_info->surcharge : null;
 
-                    $DoHAMainApplicantChargePersonCount = ($matter_info->Dept_Base_Application_Charge_no_of_person ?? 0) ."Person" ;
+                    $DoHAMainApplicantChargePersonCount = ($matter_info->Dept_Base_Application_Charge_no_of_person ?? 0).'Person';
                     $DoHAMainApplicantCharge = $matter_info->Dept_Base_Application_Charge_after_person ?? 0;
                     $DoHAMainApplicantSurcharge = $this->resolveDoHaAmountInclSurcharge(
                         floatval($matter_info->Dept_Base_Application_Charge_after_person ?? 0),
@@ -532,7 +471,7 @@ trait ClientAgreements
                         $surchargeApply
                     );
 
-                    $DoHAAdditionalApplicantCharge18PlusPersonCount = ($matter_info->Dept_Additional_Applicant_Charge_18_Plus_no_of_person ?? 0) ."Person" ;
+                    $DoHAAdditionalApplicantCharge18PlusPersonCount = ($matter_info->Dept_Additional_Applicant_Charge_18_Plus_no_of_person ?? 0).'Person';
                     $DoHAAdditionalApplicantCharge18Plus = $matter_info->Dept_Additional_Applicant_Charge_18_Plus_after_person ?? 0;
                     $DoHAAdditional18PlusSurcharge = $this->resolveDoHaAmountInclSurcharge(
                         floatval($matter_info->Dept_Additional_Applicant_Charge_18_Plus_after_person ?? 0),
@@ -540,7 +479,7 @@ trait ClientAgreements
                         $surchargeApply
                     );
 
-                    $DoHAAdditionalApplicantChargeUnder18PersonCount = ($matter_info->Dept_Additional_Applicant_Charge_Under_18_no_of_person ?? 0) ."Person" ;
+                    $DoHAAdditionalApplicantChargeUnder18PersonCount = ($matter_info->Dept_Additional_Applicant_Charge_Under_18_no_of_person ?? 0).'Person';
                     $DoHAAdditionalApplicantChargeUnder18 = $matter_info->Dept_Additional_Applicant_Charge_Under_18_after_person ?? 0;
                     $DoHAAdditionalUnder18Surcharge = $this->resolveDoHaAmountInclSurcharge(
                         floatval($matter_info->Dept_Additional_Applicant_Charge_Under_18_after_person ?? 0),
@@ -548,7 +487,7 @@ trait ClientAgreements
                         $surchargeApply
                     );
 
-                    $DoHASecondInstalmentMainPersonCount = ($matter_info->Dept_Subsequent_Temp_Application_Charge_no_of_person ?? 0) ."Person" ;
+                    $DoHASecondInstalmentMainPersonCount = ($matter_info->Dept_Subsequent_Temp_Application_Charge_no_of_person ?? 0).'Person';
                     $DoHASecondInstalmentMain = $matter_info->Dept_Subsequent_Temp_Application_Charge_after_person ?? 0;
                     $DoHASecondInstalmentMainSurcharge = $this->resolveDoHaAmountInclSurcharge(
                         floatval($matter_info->Dept_Subsequent_Temp_Application_Charge_after_person ?? 0),
@@ -556,7 +495,7 @@ trait ClientAgreements
                         $surchargeApply
                     );
 
-                    $DoHASubsequentApplicantCharge18PlusPersonCount = ($matter_info->Dept_Second_VAC_Instalment_Charge_18_Plus_no_of_person ?? 0) ."Person" ;
+                    $DoHASubsequentApplicantCharge18PlusPersonCount = ($matter_info->Dept_Second_VAC_Instalment_Charge_18_Plus_no_of_person ?? 0).'Person';
                     $DoHASubsequentApplicantCharge18Plus = $matter_info->Dept_Second_VAC_Instalment_Charge_18_Plus_after_person ?? 0;
                     $DoHASubsequentApplicantCharge18PlusSurcharge = $this->resolveDoHaAmountInclSurcharge(
                         floatval($matter_info->Dept_Second_VAC_Instalment_Charge_18_Plus_after_person ?? 0),
@@ -564,7 +503,7 @@ trait ClientAgreements
                         $surchargeApply
                     );
 
-                    $DoHASubsequentApplicantChargeUnder18PersonCount = ($matter_info->Dept_Second_VAC_Instalment_Under_18_no_of_person ?? 0) ."Person" ;
+                    $DoHASubsequentApplicantChargeUnder18PersonCount = ($matter_info->Dept_Second_VAC_Instalment_Under_18_no_of_person ?? 0).'Person';
                     $DoHASubsequentTempAppCharge = $matter_info->Dept_Second_VAC_Instalment_Under_18_after_person ?? 0;
                     $DoHASubsequentTempAppSurcharge = $this->resolveDoHaAmountInclSurcharge(
                         floatval($matter_info->Dept_Second_VAC_Instalment_Under_18_after_person ?? 0),
@@ -572,7 +511,7 @@ trait ClientAgreements
                         $surchargeApply
                     );
 
-                    $DoHANonInternetChargePersonCount = ($matter_info->Dept_Non_Internet_Application_Charge_no_of_person ?? 0) ."Person" ;
+                    $DoHANonInternetChargePersonCount = ($matter_info->Dept_Non_Internet_Application_Charge_no_of_person ?? 0).'Person';
                     $DoHANonInternetCharge = $matter_info->Dept_Non_Internet_Application_Charge_after_person ?? 0;
                     $DoHANonInternetSurcharge = $this->resolveDoHaAmountInclSurcharge(
                         floatval($matter_info->Dept_Non_Internet_Application_Charge_after_person ?? 0),
@@ -648,9 +587,9 @@ trait ClientAgreements
                 'ApplicantDOB' => $dobFormated,
                 'ApplicantResidentialAddressStreet1and2' => $client_address,
                 'ApplicantResidentialAddressPostcode' => $client_zip,
-                //'ApplicantResidentialAddressSuburbAndTown' => '',
-                //'ApplicantResidentialAddressState' => '',
-                //'ApplicantResidentialAddressCountry' => '',
+                // 'ApplicantResidentialAddressSuburbAndTown' => '',
+                // 'ApplicantResidentialAddressState' => '',
+                // 'ApplicantResidentialAddressCountry' => '',
                 'Contact_ContactEmail' => $client->email,
                 'Contact_ContactMobile' => $client->phone ?? '',
                 'ApplicantHomePhone_Number' => $client->phone ?? '',
@@ -672,48 +611,48 @@ trait ClientAgreements
                 'Visa_apply' => $visa_subclass,
                 'visa_apply' => $visa_subclass,
 
-                'Block1description'=>$Block_1_Description,
-                'Block1feesincltax'=>$Block_1_Ex_Tax,
-                'Block2description'=>$Block_2_Description,
-                'Block2feesincltax'=>$Block_2_Ex_Tax,
-                'Block3description'=>$Block_3_Description,
-                'Block3feesincltax'=>$Block_3_Ex_Tax,
-                'Blocktotalfeesincltax'=>$BlocktotalfeesincltaxFormated,
+                'Block1description' => $Block_1_Description,
+                'Block1feesincltax' => $Block_1_Ex_Tax,
+                'Block2description' => $Block_2_Description,
+                'Block2feesincltax' => $Block_2_Ex_Tax,
+                'Block3description' => $Block_3_Description,
+                'Block3feesincltax' => $Block_3_Ex_Tax,
+                'Blocktotalfeesincltax' => $BlocktotalfeesincltaxFormated,
 
-                'DoHAMainApplicantChargePersonCount'=>$DoHAMainApplicantChargePersonCount,
-                'DoHAMainApplicantCharge'=>$DoHAMainApplicantCharge,
-                'DoHAMainApplicantSurcharge'=>$DoHAMainApplicantSurcharge,
+                'DoHAMainApplicantChargePersonCount' => $DoHAMainApplicantChargePersonCount,
+                'DoHAMainApplicantCharge' => $DoHAMainApplicantCharge,
+                'DoHAMainApplicantSurcharge' => $DoHAMainApplicantSurcharge,
 
-                'DoHAAdditionalApplicantCharge18PlusPersonCount'=>$DoHAAdditionalApplicantCharge18PlusPersonCount,
-                'DoHAAdditionalApplicantCharge18Plus'=>$DoHAAdditionalApplicantCharge18Plus,
-                'DoHAAdditional18PlusSurcharge'=>$DoHAAdditional18PlusSurcharge,
+                'DoHAAdditionalApplicantCharge18PlusPersonCount' => $DoHAAdditionalApplicantCharge18PlusPersonCount,
+                'DoHAAdditionalApplicantCharge18Plus' => $DoHAAdditionalApplicantCharge18Plus,
+                'DoHAAdditional18PlusSurcharge' => $DoHAAdditional18PlusSurcharge,
 
-                'DoHAAdditionalApplicantChargeUnder18PersonCount'=>$DoHAAdditionalApplicantChargeUnder18PersonCount,
-                'DoHAAdditionalApplicantChargeUnder18'=>$DoHAAdditionalApplicantChargeUnder18,
-                'DoHAAdditionalUnder18Surcharge'=>$DoHAAdditionalUnder18Surcharge,
+                'DoHAAdditionalApplicantChargeUnder18PersonCount' => $DoHAAdditionalApplicantChargeUnder18PersonCount,
+                'DoHAAdditionalApplicantChargeUnder18' => $DoHAAdditionalApplicantChargeUnder18,
+                'DoHAAdditionalUnder18Surcharge' => $DoHAAdditionalUnder18Surcharge,
 
-                'DoHASecondInstalmentMainPersonCount'=>$DoHASecondInstalmentMainPersonCount,
-                'DoHASecondInstalmentMain'=>$DoHASecondInstalmentMain,
-                'DoHASecondInstalmentMainSurcharge'=>$DoHASecondInstalmentMainSurcharge,
+                'DoHASecondInstalmentMainPersonCount' => $DoHASecondInstalmentMainPersonCount,
+                'DoHASecondInstalmentMain' => $DoHASecondInstalmentMain,
+                'DoHASecondInstalmentMainSurcharge' => $DoHASecondInstalmentMainSurcharge,
 
-                'DoHASubsequentApplicantCharge18PlusPersonCount'=>$DoHASubsequentApplicantCharge18PlusPersonCount,
-                'DoHASubsequentApplicantCharge18Plus'=>$DoHASubsequentApplicantCharge18Plus,
-                'DoHASubsequentApplicantCharge18PlusSurcharge'=>$DoHASubsequentApplicantCharge18PlusSurcharge,
+                'DoHASubsequentApplicantCharge18PlusPersonCount' => $DoHASubsequentApplicantCharge18PlusPersonCount,
+                'DoHASubsequentApplicantCharge18Plus' => $DoHASubsequentApplicantCharge18Plus,
+                'DoHASubsequentApplicantCharge18PlusSurcharge' => $DoHASubsequentApplicantCharge18PlusSurcharge,
 
-                'DoHASubsequentApplicantChargeUnder18PersonCount'=>$DoHASubsequentApplicantChargeUnder18PersonCount,
-                'DoHASubsequentTempAppCharge'=>$DoHASubsequentTempAppCharge,
-                'DoHASubsequentTempAppSurcharge'=>$DoHASubsequentTempAppSurcharge,
+                'DoHASubsequentApplicantChargeUnder18PersonCount' => $DoHASubsequentApplicantChargeUnder18PersonCount,
+                'DoHASubsequentTempAppCharge' => $DoHASubsequentTempAppCharge,
+                'DoHASubsequentTempAppSurcharge' => $DoHASubsequentTempAppSurcharge,
 
-                'DoHANonInternetChargePersonCount'=>$DoHANonInternetChargePersonCount,
-                'DoHANonInternetCharge'=>$DoHANonInternetCharge,
-                'DoHANonInternetSurcharge'=>$DoHANonInternetSurcharge,
+                'DoHANonInternetChargePersonCount' => $DoHANonInternetChargePersonCount,
+                'DoHANonInternetCharge' => $DoHANonInternetCharge,
+                'DoHANonInternetSurcharge' => $DoHANonInternetSurcharge,
 
-                'TotalDoHACharges'=>$TotalDoHACharges,
-                'TotalDoHASurcharges'=>$TotalDoHASurchargesMacroSum,
-                'TotalDoHAChargesInclSurcharge'=>$TotalDoHAChargesInclSurcharge,
+                'TotalDoHACharges' => $TotalDoHACharges,
+                'TotalDoHASurcharges' => $TotalDoHASurchargesMacroSum,
+                'TotalDoHAChargesInclSurcharge' => $TotalDoHAChargesInclSurcharge,
 
-                'TotalEstimatedOthCosts'=>$TotalEstimatedOtherCosts,
-                'GrandTotalFeesAndCosts'=>$GrandTotalFeesAndCostsFormated,
+                'TotalEstimatedOthCosts' => $TotalEstimatedOtherCosts,
+                'GrandTotalFeesAndCosts' => $GrandTotalFeesAndCostsFormated,
 
                 'ScheduleA_PartnerList' => $scheduleAFamily['partners'],
                 'ScheduleA_ChildList' => $scheduleAFamily['children'],
@@ -754,17 +693,17 @@ trait ClientAgreements
                 Log::info("Fixed {$fixedVarsCount} unreplaced template variables to prevent document corruption");
             } catch (\Exception $e) {
                 // Log error but don't fail - continue with document generation
-                Log::warning('Could not fix unreplaced variables: ' . $e->getMessage());
+                Log::warning('Could not fix unreplaced variables: '.$e->getMessage());
             }
 
             // Create the output directory if it doesn't exist - use public directory for web access
             $outputDir = storage_path('app/public/agreements');
             //  $outputDir = public_path('agreements');
-            if (!file_exists($outputDir)) {
+            if (! file_exists($outputDir)) {
                 mkdir($outputDir, 0755, true);
             }
 
-            $outputPath = $outputDir . '/agreement_' . $client->client_id . '.docx'; //dd($outputPath);
+            $outputPath = $outputDir.'/agreement_'.$client->client_id.'.docx'; // dd($outputPath);
             $templateProcessor->saveAs($outputPath);
             Settings::setOutputEscapingEnabled($previousPhpWordOutputEscaping);
 
@@ -776,48 +715,49 @@ trait ClientAgreements
                 @unlink($scheduleATempPath);
             }
 
-            Log::info('Document generated successfully at: ' . $outputPath);
-            
+            Log::info('Document generated successfully at: '.$outputPath);
+
             // FIX: Validate the generated document to ensure it's not corrupted
             // This catches document corruption issues before user tries to open it
             try {
-                $validationDoc = \PhpOffice\PhpWord\IOFactory::load($outputPath);
+                $validationDoc = IOFactory::load($outputPath);
                 Log::info('Document validation passed - file is valid');
                 unset($validationDoc); // Free memory
             } catch (\Exception $validationException) {
                 // Document is corrupted - delete it and return error
-                Log::error('Generated document failed validation: ' . $validationException->getMessage());
+                Log::error('Generated document failed validation: '.$validationException->getMessage());
                 if (file_exists($outputPath)) {
                     unlink($outputPath);
                 }
+
                 return response()->json([
                     'success' => false,
                     'error' => 'Document validation failed.',
                     'message' => 'The generated document appears to be corrupted. Please ensure all client matter and cost assignment data is complete before generating the agreement.',
-                    'technical_details' => $validationException->getMessage()
+                    'technical_details' => $validationException->getMessage(),
                 ], 500);
             }
 
             // Upload to S3 and get download URL
-            $fileName = 'agreement_' . $client->client_id . '_' . time() . '.docx';
-            $s3Path = $client->client_id . '/cost_assignment_form/' . $fileName;
+            $fileName = 'agreement_'.$client->client_id.'_'.time().'.docx';
+            $s3Path = $client->client_id.'/cost_assignment_form/'.$fileName;
             $downloadUrl = null;
             $s3UploadSuccess = false;
-            
+
             // Try to upload to S3
             try {
                 $uploadResult = Storage::disk('s3')->put($s3Path, file_get_contents($outputPath));
-                
+
                 if ($uploadResult) {
                     // Get the S3 URL
-                    /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+                    /** @var FilesystemAdapter $disk */
                     $disk = Storage::disk('s3');
                     $downloadUrl = $disk->url($s3Path);
-                    
+
                     // Verify the URL is not empty
-                    if (!empty($downloadUrl)) {
+                    if (! empty($downloadUrl)) {
                         $s3UploadSuccess = true;
-                        Log::info('Document uploaded to S3 successfully. URL: ' . $downloadUrl);
+                        Log::info('Document uploaded to S3 successfully. URL: '.$downloadUrl);
                     } else {
                         Log::warning('S3 upload succeeded but URL is empty');
                     }
@@ -825,25 +765,25 @@ trait ClientAgreements
                     Log::warning('S3 upload returned false');
                 }
             } catch (\Exception $s3Exception) {
-                Log::error('S3 upload failed: ' . $s3Exception->getMessage());
+                Log::error('S3 upload failed: '.$s3Exception->getMessage());
                 Log::error($s3Exception->getTraceAsString());
             }
-            
+
             // If S3 upload failed or URL is empty, use local file as fallback
-            if (!$s3UploadSuccess || empty($downloadUrl)) {
+            if (! $s3UploadSuccess || empty($downloadUrl)) {
                 // File is already in public storage (storage/app/public/agreements)
                 // Generate public URL using the storage path
                 // The file is saved as: agreement_{client_id}.docx
                 $localFileName = basename($outputPath);
-                $relativePath = 'agreements/' . $localFileName;
-                $downloadUrl = asset('storage/' . $relativePath);
-                
+                $relativePath = 'agreements/'.$localFileName;
+                $downloadUrl = asset('storage/'.$relativePath);
+
                 // Verify the file exists before returning the URL
-                if (!file_exists($outputPath)) {
-                    throw new \Exception('Document was generated but file not found at: ' . $outputPath);
+                if (! file_exists($outputPath)) {
+                    throw new \Exception('Document was generated but file not found at: '.$outputPath);
                 }
-                
-                Log::info('Using local file as fallback. URL: ' . $downloadUrl);
+
+                Log::info('Using local file as fallback. URL: '.$downloadUrl);
                 // Keep the local file for download (don't delete it)
             } else {
                 // Clean up local file only if S3 upload was successful
@@ -851,64 +791,66 @@ trait ClientAgreements
                     unlink($outputPath);
                 }
             }
-            
+
             // Verify download URL is set
             if (empty($downloadUrl)) {
-                Log::error('Download URL is empty after all attempts. Output path: ' . $outputPath);
+                Log::error('Download URL is empty after all attempts. Output path: '.$outputPath);
                 throw new \Exception('Failed to generate download URL. Document was created but could not be made available for download.');
             }
-            
+
             // Log the final response for debugging
-            Log::info('Returning success response with download_url: ' . $downloadUrl);
-            
+            Log::info('Returning success response with download_url: '.$downloadUrl);
+
             // Log activity
-            $matter = \App\Models\ClientMatter::find($request->client_matter_id);
+            $matter = ClientMatter::find($request->client_matter_id);
             $matterName = $matter ? $matter->title : 'N/A';
-            
-            $activity = new \App\Models\ActivitiesLog;
+
+            $activity = new ActivitiesLog;
             $activity->client_id = $request->client_id;
             $activity->created_by = Auth::user()->id;
             $activity->subject = 'created visa agreement';
-            $activity->description = '<p>Visa agreement has been created for matter: <strong>' . $matterName . '</strong></p>';
+            $activity->description = '<p>Visa agreement has been created for matter: <strong>'.$matterName.'</strong></p>';
             $activity->task_status = 0;
             $activity->pin = 0;
             $activity->save();
-            
+
             // Return the download URL as JSON
             $response = [
                 'success' => true,
                 'download_url' => $downloadUrl,
                 'filename' => $fileName,
-                'message' => 'Document generated successfully'
+                'message' => 'Document generated successfully',
             ];
-            
+
             // Double-check response structure before returning
-            if (!isset($response['success']) || !isset($response['download_url'])) {
-                Log::error('Response structure is invalid: ' . json_encode($response));
+            if (! isset($response['success']) || ! isset($response['download_url'])) {
+                Log::error('Response structure is invalid: '.json_encode($response));
                 throw new \Exception('Invalid response structure generated.');
             }
-            
+
             return response()->json($response);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             if (isset($previousPhpWordOutputEscaping)) {
                 Settings::setOutputEscapingEnabled($previousPhpWordOutputEscaping);
             }
-            Log::error('Model not found in generateagreement: ' . $e->getMessage());
+            Log::error('Model not found in generateagreement: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'error' => 'Client or agent not found.',
-                'message' => 'Client or agent not found.'
+                'message' => 'Client or agent not found.',
             ], 404);
         } catch (\Exception $e) {
             if (isset($previousPhpWordOutputEscaping)) {
                 Settings::setOutputEscapingEnabled($previousPhpWordOutputEscaping);
             }
-            Log::error('Error generating document: ' . $e->getMessage());
+            Log::error('Error generating document: '.$e->getMessage());
             Log::error($e->getTraceAsString());
+
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
-                'message' => 'Error generating document: ' . $e->getMessage()
+                'message' => 'Error generating document: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -923,7 +865,7 @@ trait ClientAgreements
             return;
         }
 
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         if ($zip->open($docxPath) !== true) {
             return;
         }
@@ -939,35 +881,35 @@ trait ClientAgreements
 
         if (! str_contains($xml, 'ScheduleA_PartnerList')) {
             $partnerRun = '<w:r><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr>'
-                . '<w:t>${ScheduleA_PartnerList}</w:t></w:r>';
+                .'<w:t>${ScheduleA_PartnerList}</w:t></w:r>';
             $partner = ' partner: </w:t></w:r></w:p>';
             if (substr_count($xml, $partner) === 1) {
-                $xml = str_replace($partner, ' partner: </w:t></w:r>' . $partnerRun . '</w:p>', $xml);
+                $xml = str_replace($partner, ' partner: </w:t></w:r>'.$partnerRun.'</w:p>', $xml);
             }
         }
 
         if (! str_contains($xml, 'ScheduleA_ChildList')) {
             $oldSampleChildren = '<w:p w14:paraId="76AE0EE9" w14:textId="19E35E7E" w:rsidR="002E3F6E" w:rsidRDefault="002E3F6E" w:rsidP="002E3F6E">'
-                . '<w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="1"/><w:numId w:val="39"/></w:numPr>'
-                . '<w:spacing w:before="480"/><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr></w:pPr>'
-                . '<w:proofErr w:type="spellStart"/><w:r><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr>'
-                . '<w:t>Gdsf</w:t></w:r><w:proofErr w:type="spellEnd"/><w:r><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr>'
-                . '<w:t xml:space="preserve"> (1/1/19xx)</w:t></w:r></w:p>'
-                . '<w:p w14:paraId="0E3F9316" w14:textId="76EFE0F1" w:rsidR="002E3F6E" w:rsidRDefault="002E3F6E" w:rsidP="002E3F6E">'
-                . '<w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="1"/><w:numId w:val="39"/></w:numPr>'
-                . '<w:spacing w:before="480"/><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr></w:pPr>'
-                . '<w:r><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr><w:t>Sf</w:t></w:r></w:p>'
-                . '<w:p w14:paraId="3BC3631A" w14:textId="0BAE766C" w:rsidR="00A81247" w:rsidRPr="002E3F6E" w:rsidRDefault="002E3F6E" w:rsidP="002E3F6E">'
-                . '<w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="1"/><w:numId w:val="39"/></w:numPr>'
-                . '<w:spacing w:before="480"/><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr></w:pPr>'
-                . '<w:r><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr><w:t>sf</w:t></w:r>'
-                . '<w:bookmarkStart w:id="3" w:name="_Hlk95643751"/></w:p>';
+                .'<w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="1"/><w:numId w:val="39"/></w:numPr>'
+                .'<w:spacing w:before="480"/><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr></w:pPr>'
+                .'<w:proofErr w:type="spellStart"/><w:r><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr>'
+                .'<w:t>Gdsf</w:t></w:r><w:proofErr w:type="spellEnd"/><w:r><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr>'
+                .'<w:t xml:space="preserve"> (1/1/19xx)</w:t></w:r></w:p>'
+                .'<w:p w14:paraId="0E3F9316" w14:textId="76EFE0F1" w:rsidR="002E3F6E" w:rsidRDefault="002E3F6E" w:rsidP="002E3F6E">'
+                .'<w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="1"/><w:numId w:val="39"/></w:numPr>'
+                .'<w:spacing w:before="480"/><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr></w:pPr>'
+                .'<w:r><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr><w:t>Sf</w:t></w:r></w:p>'
+                .'<w:p w14:paraId="3BC3631A" w14:textId="0BAE766C" w:rsidR="00A81247" w:rsidRPr="002E3F6E" w:rsidRDefault="002E3F6E" w:rsidP="002E3F6E">'
+                .'<w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="1"/><w:numId w:val="39"/></w:numPr>'
+                .'<w:spacing w:before="480"/><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr></w:pPr>'
+                .'<w:r><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr><w:t>sf</w:t></w:r>'
+                .'<w:bookmarkStart w:id="3" w:name="_Hlk95643751"/></w:p>';
 
             $newChildParagraph = '<w:p w14:paraId="76AE0EE9" w14:textId="19E35E7E" w:rsidR="002E3F6E" w:rsidRDefault="002E3F6E" w:rsidP="002E3F6E">'
-                . '<w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="1"/><w:numId w:val="39"/></w:numPr>'
-                . '<w:spacing w:before="480"/><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr></w:pPr>'
-                . '<w:r><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr>'
-                . '<w:t>${ScheduleA_ChildList}</w:t></w:r><w:bookmarkStart w:id="3" w:name="_Hlk95643751"/></w:p>';
+                .'<w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="1"/><w:numId w:val="39"/></w:numPr>'
+                .'<w:spacing w:before="480"/><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr></w:pPr>'
+                .'<w:r><w:rPr><w:rFonts w:cstheme="minorHAnsi"/><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr>'
+                .'<w:t>${ScheduleA_ChildList}</w:t></w:r><w:bookmarkStart w:id="3" w:name="_Hlk95643751"/></w:p>';
 
             if (str_contains($xml, $oldSampleChildren)) {
                 $xml = str_replace($oldSampleChildren, $newChildParagraph, $xml);
@@ -1011,11 +953,11 @@ trait ClientAgreements
         foreach ($rows as $r) {
             if (in_array($r->relationship_type, $childTypes, true)) {
                 if ($letterIndex < 26) {
-                    $prefix = chr(ord('a') + $letterIndex) . '. ';
+                    $prefix = chr(ord('a') + $letterIndex).'. ';
                 } else {
-                    $prefix = (string) ($letterIndex + 1) . '. ';
+                    $prefix = (string) ($letterIndex + 1).'. ';
                 }
-                $childLines[] = $prefix . $this->formatVisaAgreementFamilyLineForChild($r);
+                $childLines[] = $prefix.$this->formatVisaAgreementFamilyLineForChild($r);
                 $letterIndex++;
             }
         }
@@ -1030,11 +972,11 @@ trait ClientAgreements
     {
         $name = $this->agreementFamilyMemberDisplayName($relationship);
         $rel = trim((string) ($relationship->relationship_type ?? ''));
-        $line = $rel !== '' ? $name . ' — ' . $rel : $name;
+        $line = $rel !== '' ? $name.' — '.$rel : $name;
 
         $email = $this->agreementPartnerEmailForDisplay($relationship);
         if ($email !== '' && stripos($line, $email) === false) {
-            $line .= ' — ' . $email;
+            $line .= ' — '.$email;
         }
 
         return $line;
@@ -1044,10 +986,10 @@ trait ClientAgreements
     {
         $name = $this->agreementFamilyMemberDisplayName($relationship);
         $dob = $this->agreementFormatDobSuffixForRelationship($relationship);
-        $line = $dob !== '' ? $name . ' (' . $dob . ')' : $name;
+        $line = $dob !== '' ? $name.' ('.$dob.')' : $name;
         $rel = trim((string) ($relationship->relationship_type ?? ''));
 
-        return $rel !== '' ? $line . ' — ' . $rel : $line;
+        return $rel !== '' ? $line.' — '.$rel : $line;
     }
 
     protected function agreementFormatDobSuffixForRelationship(ClientRelationship $relationship): string
@@ -1079,16 +1021,16 @@ trait ClientAgreements
                 $clientLastName = trim((string) ($relatedClientInfo->last_name ?? ''));
 
                 if ($clientFirstName === '' && $clientLastName === '') {
-                    return 'Client ID: ' . $relatedClientId;
+                    return 'Client ID: '.$relatedClientId;
                 }
                 if ($clientFirstName === '') {
-                    return trim($clientLastName . ' — ' . $relatedClientId);
+                    return trim($clientLastName.' — '.$relatedClientId);
                 }
                 if ($clientLastName === '') {
-                    return trim($clientFirstName . ' — ' . $relatedClientId);
+                    return trim($clientFirstName.' — '.$relatedClientId);
                 }
 
-                return trim($clientFirstName . ' ' . $clientLastName . ' — ' . $relatedClientId);
+                return trim($clientFirstName.' '.$clientLastName.' — '.$relatedClientId);
             }
 
             return 'Client not found';
@@ -1108,7 +1050,7 @@ trait ClientAgreements
             return $firstName;
         }
 
-        return $firstName . ' ' . $lastName;
+        return $firstName.' '.$lastName;
     }
 
     /**
@@ -1179,11 +1121,10 @@ trait ClientAgreements
         return $base;
     }
 
-
-    //Upload agreement in PDF
+    // Upload agreement in PDF
     public function uploadAgreement(Request $request, Admin $admin)
     {
-        //1. Validate only PDF files (max 10MB)
+        // 1. Validate only PDF files (max 10MB)
         $request->validate([
             'agreement_doc' => 'required|mimes:pdf|max:10240', // 10MB max
         ]);
@@ -1191,24 +1132,24 @@ trait ClientAgreements
         $requestData = $request->all();
         $pdfFile = $request->file('agreement_doc');
 
-        //2. Get file details
+        // 2. Get file details
         $originalName = $pdfFile->getClientOriginalName();
         $size = $pdfFile->getSize();
-        $timestampedName = time() . '_' . $originalName;
+        $timestampedName = time().'_'.$originalName;
 
-        //3. Build S3 path using client ID (admin is the client record)
-        $clientUniqueId = $admin->client_id ?? "";
-        $s3Path = $clientUniqueId . '/agreement/' . $timestampedName;
+        // 3. Build S3 path using client ID (admin is the client record)
+        $clientUniqueId = $admin->client_id ?? '';
+        $s3Path = $clientUniqueId.'/agreement/'.$timestampedName;
 
-        //4. Upload directly to S3
+        // 4. Upload directly to S3
         Storage::disk('s3')->put($s3Path, file_get_contents($pdfFile));
 
-        //5. Save document details in DB
+        // 5. Save document details in DB
         $originalInfo = pathinfo($originalName);
-        $doc = new \App\Models\Document;
+        $doc = new Document;
         $doc->file_name = $originalInfo['filename']; // e.g., "passport" (without extension)
         $doc->filetype = 'pdf';
-        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        /** @var FilesystemAdapter $disk */
         $disk = Storage::disk('s3');
         $doc->myfile = $disk->url($s3Path);
         $doc->myfile_key = $timestampedName;
@@ -1217,14 +1158,15 @@ trait ClientAgreements
         $doc->type = 'client';
         $doc->file_size = $size;
         $doc->doc_type = 'agreement';
-        $doc->client_matter_id = $requestData['clientmatterid'];
+        $matterIdRaw = $requestData['clientmatterid'] ?? null;
+        $doc->client_matter_id = ($matterIdRaw === null || $matterIdRaw === '') ? null : (int) $matterIdRaw;
         $saved = $doc->save();
 
-        //6. Log activity if saved
+        // 6. Log activity if saved
         if ($saved) {
             $docName = htmlspecialchars($originalInfo['filename'] ?? pathinfo($originalName, PATHINFO_FILENAME));
-            $desc = '<ul><li><strong>Document:</strong> ' . $docName . '.pdf</li><li><strong>Next:</strong> Place signature fields in the modal</li></ul>';
-            \App\Models\ActivitiesLog::create([
+            $desc = '<ul><li><strong>Document:</strong> '.$docName.'.pdf</li><li><strong>Next:</strong> Place signature fields in the modal</li></ul>';
+            ActivitiesLog::create([
                 'client_id' => $admin->id,
                 'created_by' => Auth::user()->id,
                 'subject' => 'uploaded visa agreement PDF for signature',
@@ -1235,13 +1177,12 @@ trait ClientAgreements
             ]);
         }
 
-        //7. Return success response with document ID for signature placement
+        // 7. Return success response with document ID for signature placement
         return response()->json([
             'status' => true,
             'message' => 'PDF agreement uploaded successfully!',
             'document_id' => $doc->id,
-            'edit_url' => route('documents.edit', $doc->id)
+            'edit_url' => route('documents.edit', $doc->id),
         ]);
     }
-
 }

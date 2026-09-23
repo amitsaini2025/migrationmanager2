@@ -37,6 +37,19 @@ class DocumentController extends Controller
 {
     use EnsuresCrmRecordAccess;
 
+    private function checklistAgreementReloadUrl(int $clientDatabaseId, ?int $clientMatterId): string
+    {
+        $encodedClientId = base64_encode(convert_uuencode($clientDatabaseId));
+        if ($clientMatterId) {
+            $matterRef = ClientMatter::query()->where('id', $clientMatterId)->value('client_unique_matter_no');
+            if ($matterRef) {
+                return url("/clients/detail/{$encodedClientId}/{$matterRef}/checklists");
+            }
+        }
+
+        return url("/clients/detail/{$encodedClientId}/checklists");
+    }
+
     /**
      * Create a new controller instance.
      *
@@ -1246,10 +1259,7 @@ class DocumentController extends Controller
                         'signing_url' => $signingUrl,
                     ]);
 
-                    // Redirect back to client detail page with checklists tab
-                    // Encode client ID the same way the rest of the app does (using the database ID)
-                    $encodedClientId = base64_encode(convert_uuencode($clientDatabaseId));
-                    $redirectUrl = url("/clients/detail/{$encodedClientId}/checklists");
+                    $redirectUrl = $this->checklistAgreementReloadUrl($clientDatabaseId, (int) $document->client_matter_id);
 
                     ActivitiesLog::create([
                         'client_id' => $clientDatabaseId,
@@ -1264,7 +1274,6 @@ class DocumentController extends Controller
                     Log::info('Redirecting to client detail page', [
                         'document_id' => $document->id,
                         'client_database_id' => $clientDatabaseId,
-                        'encoded_client_id' => $encodedClientId,
                         'redirect_url' => $redirectUrl,
                     ]);
 
@@ -1272,6 +1281,8 @@ class DocumentController extends Controller
                         return response()->json([
                             'success' => true,
                             'message' => 'Signature fields placed successfully! The signing link is now available in the checklist.',
+                            'source' => 'checklists',
+                            'reload_url' => $redirectUrl,
                         ]);
                     }
 
@@ -1291,12 +1302,16 @@ class DocumentController extends Controller
                     // Try to get client ID for redirect
                     $clientForRedirect = $document->client;
                     if ($clientForRedirect) {
-                        $encodedClientId = base64_encode(convert_uuencode($clientForRedirect->id));
-                        $redirectUrl = url("/clients/detail/{$encodedClientId}/checklists");
+                        $redirectUrl = $this->checklistAgreementReloadUrl(
+                            (int) $clientForRedirect->id,
+                            $document->client_matter_id ? (int) $document->client_matter_id : null
+                        );
                         if ($request->expectsJson()) {
                             return response()->json([
                                 'success' => false,
                                 'message' => 'Signature fields saved, but failed to generate link automatically. Please try again from the checklist.',
+                                'source' => 'checklists',
+                                'reload_url' => $redirectUrl,
                             ], 422);
                         }
 

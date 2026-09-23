@@ -65,6 +65,39 @@
         return icon + 'Save Signature Locations';
     }
 
+    function resolveChecklistReloadUrl(resp) {
+        if (resp && resp.reload_url) {
+            return resp.reload_url;
+        }
+        var path = window.location.pathname || '';
+        if (path.indexOf('/checklists') !== -1) {
+            return path;
+        }
+
+        return null;
+    }
+
+    function navigateToChecklistsAfterSignatureSave(resp) {
+        var reloadUrl = resolveChecklistReloadUrl(resp);
+        if (reloadUrl) {
+            window.location.href = reloadUrl;
+            return;
+        }
+        localStorage.setItem('activeTab', 'checklists');
+        location.reload();
+    }
+
+    function resolvePlacementSource(resp) {
+        if (resp && resp.source) {
+            return resp.source;
+        }
+        var fromModal = $('#signaturePlacementModal').data('placementSource');
+        if (fromModal) {
+            return fromModal;
+        }
+        return $('#signaturePlacementModal').data('lastSaveSource') || null;
+    }
+
     var sigState = {
         documentId: null,
         pdfPages: 1,
@@ -382,6 +415,16 @@
                     $('#signaturePlacementModal').removeData('lastSaveSource');
                 }
 
+                var placementSource = resolvePlacementSource(resp);
+
+                if (resp && resp.success && placementSource === 'checklists') {
+                    $('#signaturePlacementModal').data('skipReloadOnHide', true);
+                    hideSignatureModal($('#signaturePlacementModal'));
+                    alert(resp.message || 'Signature fields saved. The signing link is now available in the checklist.');
+                    navigateToChecklistsAfterSignatureSave(resp);
+                    return;
+                }
+
                 if (resp && resp.success && resp.redirect_url) {
                     $('#signaturePlacementModal').data('skipReloadOnHide', true);
                     hideSignatureModal($('#signaturePlacementModal'));
@@ -435,6 +478,11 @@
         $(document).off('openSignaturePlacementModal.signaturePlacementUi')
             .on('openSignaturePlacementModal.signaturePlacementUi', function(e, data) {
                 if (data && data.documentId) {
+                    if (data.source) {
+                        $('#signaturePlacementModal').data('placementSource', data.source);
+                    } else {
+                        $('#signaturePlacementModal').removeData('placementSource');
+                    }
                     openSignaturePlacementModal(data.documentId);
                 }
             });
@@ -452,12 +500,18 @@
                     return;
                 }
 
-                var source = $('#signaturePlacementModal').data('lastSaveSource');
+                var source = $('#signaturePlacementModal').data('lastSaveSource')
+                    || $('#signaturePlacementModal').data('placementSource');
                 var tab = null;
                 if (source === 'visa_documents') {
                     tab = 'visadocuments';
                 } else if (source === 'nomination_documents') {
                     tab = 'nominationdocuments';
+                } else if (source === 'checklists') {
+                    navigateToChecklistsAfterSignatureSave(null);
+                    $('#signaturePlacementModal').removeData('lastSaveSource');
+                    $('#signaturePlacementModal').removeData('placementSource');
+                    return;
                 } else if (source) {
                     tab = 'checklists';
                 } else {
@@ -477,6 +531,7 @@
                 }
                 localStorage.setItem('activeTab', tab);
                 $('#signaturePlacementModal').removeData('lastSaveSource');
+                $('#signaturePlacementModal').removeData('placementSource');
                 location.reload();
             });
     }

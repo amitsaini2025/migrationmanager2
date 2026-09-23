@@ -48,6 +48,36 @@ class StaffMatterSessionServiceTest extends TestCase
     }
 
     #[Test]
+    public function heartbeat_reuses_preexisting_session_row_for_same_staff_record_and_day(): void
+    {
+        $now = Carbon::parse('2026-09-15 09:00:00', 'Australia/Melbourne');
+        Carbon::setTestNow($now);
+        $this->insertStaff(1);
+        $this->insertClient(10);
+        $this->insertMatter(5, 10, 'JARN2504926-485_1');
+
+        DB::table('staff_matter_sessions')->insert([
+            'staff_id' => 1,
+            'client_id' => 10,
+            'client_matter_id' => 5,
+            'matter_key' => 5,
+            'session_date' => '2026-09-15',
+            'status' => StaffMatterSession::STATUS_ACCESSED,
+            'focused_seconds' => 10,
+            'idle_cut_seconds' => 0,
+            'started_at' => $now,
+            'last_heartbeat_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $session = $this->service->heartbeat(1, 10, 5, 45);
+
+        $this->assertSame(1, DB::table('staff_matter_sessions')->count());
+        $this->assertSame(45, (int) $session->focused_seconds);
+    }
+
+    #[Test]
     public function stale_close_uses_last_heartbeat_not_now(): void
     {
         $beat = Carbon::parse('2026-09-15 10:00:00', 'Australia/Melbourne');

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ActivitiesLog;
 use App\Models\StaffMatterSession;
 use Carbon\Carbon;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -349,31 +350,44 @@ class StaffMatterSessionService
         $matterKey = (int) ($matterId ?? 0);
 
         return DB::transaction(function () use ($staffId, $clientId, $matterId, $sessionDate, $matterKey): StaffMatterSession {
-            $query = StaffMatterSession::query()
-                ->where('staff_id', $staffId)
-                ->where('client_id', $clientId)
-                ->whereDate('session_date', $sessionDate)
-                ->where('matter_key', $matterKey);
+            $locate = function (bool $forUpdate) use ($staffId, $clientId, $sessionDate, $matterKey): ?StaffMatterSession {
+                $query = StaffMatterSession::query()
+                    ->where('staff_id', $staffId)
+                    ->where('client_id', $clientId)
+                    ->whereDate('session_date', $sessionDate)
+                    ->where('matter_key', $matterKey);
 
-            $existing = $query->lockForUpdate()->first();
+                return $forUpdate ? $query->lockForUpdate()->first() : $query->first();
+            };
+
+            $existing = $locate(true);
             if ($existing) {
                 return $existing;
             }
 
             $now = now();
 
-            return StaffMatterSession::query()->create([
-                'staff_id' => $staffId,
-                'client_id' => $clientId,
-                'client_matter_id' => $matterId,
-                'matter_key' => $matterKey,
-                'session_date' => $sessionDate,
-                'status' => StaffMatterSession::STATUS_ACCESSED,
-                'focused_seconds' => 0,
-                'idle_cut_seconds' => 0,
-                'started_at' => $now,
-                'last_heartbeat_at' => $now,
-            ]);
+            try {
+                return StaffMatterSession::query()->create([
+                    'staff_id' => $staffId,
+                    'client_id' => $clientId,
+                    'client_matter_id' => $matterId,
+                    'matter_key' => $matterKey,
+                    'session_date' => $sessionDate,
+                    'status' => StaffMatterSession::STATUS_ACCESSED,
+                    'focused_seconds' => 0,
+                    'idle_cut_seconds' => 0,
+                    'started_at' => $now,
+                    'last_heartbeat_at' => $now,
+                ]);
+            } catch (UniqueConstraintViolationException $e) {
+                $existing = $locate(false);
+                if ($existing === null) {
+                    throw $e;
+                }
+
+                return $existing;
+            }
         });
     }
 

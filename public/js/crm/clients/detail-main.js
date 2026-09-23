@@ -5205,21 +5205,41 @@ success: function(response) {
 
 
 
-        // Populate agent details when the modal opens
+        // Populate agent details when the modal opens.
+        // Form 956 HTML is in the lazy extra modal pack on client detail — wait for injection before filling fields.
+
+        function ensureForm956ModalReady() {
+            if (typeof window.ensureClientDetailModal === 'function') {
+                return window.ensureClientDetailModal('form956CreateFormModel');
+            }
+
+            return Promise.resolve();
+        }
+
+        function applyForm956AgentDetailToModal(obj) {
+            if (!obj || !obj.agentInfo) {
+                return;
+            }
+
+            var $modal = $('#form956CreateFormModel');
+            var agentFullName = obj.agentInfo.last_name !== ''
+                ? obj.agentInfo.first_name + ' ' + obj.agentInfo.last_name
+                : obj.agentInfo.first_name;
+
+            $modal.find('#agent_id').val(obj.agentInfo.agentId);
+            $modal.find('#agent_name').val(agentFullName);
+            $modal.find('#agent_name_label').html(agentFullName);
+            $modal.find('#business_name').val(obj.agentInfo.company_name);
+            $modal.find('#business_name_label').html(obj.agentInfo.company_name);
+
+            if (obj.matterInfo && obj.matterInfo.title) {
+                $modal.find('#application_type').val(obj.matterInfo.title);
+                $modal.find('#application_type_label').html(obj.matterInfo.title);
+            }
+        }
 
         $(document).delegate('.form956CreateForm', 'click', function() {
-
-            $('#form956_client_id').val(window.ClientDetailConfig.clientId);
-
             var hidden_client_matter_id = $('#sel_matter_id_client_detail').val();
-
-            $('#form956_client_matter_id').val(hidden_client_matter_id);
-
-            // When clicked from File/Visa Documents, set folder + doc type for checklist placement
-            var folderId = $(this).data('form956-folder');
-            $('#form956_folder_name').val(folderId || '');
-            var docType = $(this).data('form956-doctype');
-            $('#form956_doc_type').val(docType === 'nomination' ? 'nomination' : 'visa');
 
             // Matter is required for agent details and for saving Form 956 to the document checklist
             if (!hidden_client_matter_id || hidden_client_matter_id === '' || hidden_client_matter_id === null) {
@@ -5227,61 +5247,53 @@ success: function(response) {
                 return;
             }
 
-            getMigrationAgentDetail(hidden_client_matter_id);
+            var folderId = $(this).data('form956-folder');
+            var docType = $(this).data('form956-doctype');
 
-            $('#form956CreateFormModel').modal('show');
+            ensureForm956ModalReady().then(function() {
+                var $modal = $('#form956CreateFormModel');
+                $modal.find('#form956_client_id').val(window.ClientDetailConfig.clientId);
+                $modal.find('#form956_client_matter_id').val(hidden_client_matter_id);
+                $modal.find('#form956_folder_name').val(folderId || '');
+                $modal.find('#form956_doc_type').val(docType === 'nomination' ? 'nomination' : 'visa');
+
+                getMigrationAgentDetail(hidden_client_matter_id, function(obj) {
+                    applyForm956AgentDetailToModal(obj);
+                    $modal.modal('show');
+                });
+            }).catch(function() {
+                // lazy-modals.js already toasts on pack load failure
+            });
 
         });
         //Get Migration Agent Detail
 
-        function getMigrationAgentDetail(client_matter_id) {
+        function getMigrationAgentDetail(client_matter_id, whenDone) {
 
             $.ajax({
 
-                type:'post',
+                type: 'post',
 
                 url: window.ClientDetailConfig.urls.getMigrationAgentDetail,
 
-                sync:true,
+                data: { client_matter_id: client_matter_id },
 
-                data: {client_matter_id:client_matter_id},
-
-                success: function(response){
+                success: function(response) {
 
                     var obj = safeParseJsonResponse(response);
-                    if (!obj) return;
-                    if(obj.agentInfo){
-
-                        $('#agent_id').val(obj.agentInfo.agentId);
-
-                        if(obj.agentInfo.last_name != ''){
-
-                            var agentFullName = obj.agentInfo.first_name+' '+obj.agentInfo.last_name;
-
-                        } else {
-
-                            var agentFullName =  obj.agentInfo.first_name;
-
-                        }
-
-                        $('#agent_name').val(agentFullName);
-
-                        $('#agent_name_label').html(agentFullName);
-
-
-
-                        $('#business_name').val(obj.agentInfo.company_name);
-
-                        $('#business_name_label').html(obj.agentInfo.company_name);
-
-
-
-                        $('#application_type').val(obj.matterInfo.title);
-
-                        $('#application_type_label').html(obj.matterInfo.title);
-
+                    if (typeof whenDone === 'function') {
+                        whenDone(obj);
+                        return;
                     }
 
+                    applyForm956AgentDetailToModal(obj);
+
+                },
+
+                error: function() {
+                    if (typeof whenDone === 'function') {
+                        whenDone(null);
+                    }
                 }
 
             });

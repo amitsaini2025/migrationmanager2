@@ -654,6 +654,9 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertStringContainsString("$('#nominationdocuments-tab')", $detailMain);
         Assert::assertStringContainsString("$(document).on('submit', '#createForm956'", $detailMain);
         Assert::assertStringNotContainsString("$('#createForm956').on('submit'", $detailMain);
+        Assert::assertStringContainsString("ensureClientDetailModal('form956CreateFormModel')", $detailMain);
+        Assert::assertStringContainsString('applyForm956AgentDetailToModal', $detailMain);
+        Assert::assertStringNotContainsString('getMigrationAgentDetail(hidden_client_matter_id);', $detailMain);
         Assert::assertStringContainsString("$(document).on('submit', '#visaagreementform11'", $detailMain);
         Assert::assertStringNotContainsString("$('#visaagreementform11').on('submit'", $detailMain);
 

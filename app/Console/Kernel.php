@@ -49,9 +49,6 @@ class Kernel extends ConsoleKernel
         // '\App\Console\Commands\FixMySqlDumpForPostgres', // Command file does not exist
         // '\App\Console\Commands\FixRemainingSqlIssues', // Command file does not exist
 
-        // Login Data Import
-        '\App\Console\Commands\ImportLoginDataFromMySQL',
-
         // Client Reference Management Commands
         '\App\Console\Commands\FixDuplicateClientReferences',
 
@@ -65,8 +62,6 @@ class Kernel extends ConsoleKernel
         '\App\Console\Commands\CleanupActivityDescriptions',
         '\App\Console\Commands\BackfillAppointmentActivityLogs',
 
-        // Database Comparison
-        '\App\Console\Commands\CompareDatabaseTables',
         '\App\Console\Commands\CheckMigrationTablesExist',
         '\App\Console\Commands\MarkMigrationsAsRunCommand',
 

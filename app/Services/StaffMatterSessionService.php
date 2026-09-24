@@ -349,46 +349,44 @@ class StaffMatterSessionService
         $sessionDate = $start->toDateString();
         $matterKey = (int) ($matterId ?? 0);
 
-        return DB::transaction(function () use ($staffId, $clientId, $matterId, $sessionDate, $matterKey): StaffMatterSession {
-            $locate = function (bool $forUpdate) use ($staffId, $clientId, $sessionDate, $matterKey): ?StaffMatterSession {
-                $query = StaffMatterSession::query()
-                    ->where('staff_id', $staffId)
-                    ->where('client_id', $clientId)
-                    ->whereDate('session_date', $sessionDate)
-                    ->where('matter_key', $matterKey);
+        $lastException = null;
 
-                return $forUpdate ? $query->lockForUpdate()->first() : $query->first();
-            };
-
-            $existing = $locate(true);
-            if ($existing) {
-                return $existing;
-            }
-
-            $now = now();
-
+        for ($attempt = 0; $attempt < 2; $attempt++) {
             try {
-                return StaffMatterSession::query()->create([
-                    'staff_id' => $staffId,
-                    'client_id' => $clientId,
-                    'client_matter_id' => $matterId,
-                    'matter_key' => $matterKey,
-                    'session_date' => $sessionDate,
-                    'status' => StaffMatterSession::STATUS_ACCESSED,
-                    'focused_seconds' => 0,
-                    'idle_cut_seconds' => 0,
-                    'started_at' => $now,
-                    'last_heartbeat_at' => $now,
-                ]);
-            } catch (UniqueConstraintViolationException $e) {
-                $existing = $locate(false);
-                if ($existing === null) {
-                    throw $e;
-                }
+                return DB::transaction(function () use ($staffId, $clientId, $matterId, $sessionDate, $matterKey): StaffMatterSession {
+                    $existing = StaffMatterSession::query()
+                        ->where('staff_id', $staffId)
+                        ->where('client_id', $clientId)
+                        ->whereDate('session_date', $sessionDate)
+                        ->where('matter_key', $matterKey)
+                        ->lockForUpdate()
+                        ->first();
 
-                return $existing;
+                    if ($existing) {
+                        return $existing;
+                    }
+
+                    $now = now();
+
+                    return StaffMatterSession::query()->create([
+                        'staff_id' => $staffId,
+                        'client_id' => $clientId,
+                        'client_matter_id' => $matterId,
+                        'matter_key' => $matterKey,
+                        'session_date' => $sessionDate,
+                        'status' => StaffMatterSession::STATUS_ACCESSED,
+                        'focused_seconds' => 0,
+                        'idle_cut_seconds' => 0,
+                        'started_at' => $now,
+                        'last_heartbeat_at' => $now,
+                    ]);
+                });
+            } catch (UniqueConstraintViolationException $e) {
+                $lastException = $e;
             }
-        });
+        }
+
+        throw $lastException ?? new \RuntimeException('Failed to find or create staff matter session.');
     }
 
     public function isCurrentlyOpen(StaffMatterSession $session, ?Carbon $now = null): bool

@@ -457,7 +457,7 @@ trait ClientCrmFollowups
 
         $excludeId = (int) $validated['exclude_id'];
         $term = '%'.$validated['q'].'%';
-        $likeOperator = DB::getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
+        $likeOperator = 'ILIKE';
 
         if (! StaffClientVisibility::canAccessClientOrLead($excludeId, Auth::user())) {
             return response()->json(StaffClientVisibility::unauthorizedPayload(), 403);
@@ -475,12 +475,8 @@ trait ClientCrmFollowups
                         ->orWhere('email', $likeOperator, $term)
                         ->orWhere('first_name', $likeOperator, $term)
                         ->orWhere('last_name', $likeOperator, $term)
-                        ->orWhere('client_id', $likeOperator, $term);
-                    if (DB::getDriverName() === 'pgsql') {
-                        $q->orWhereRaw("CONCAT(first_name, ' ', last_name) ILIKE ?", [$term]);
-                    } else {
-                        $q->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", [$term]);
-                    }
+                        ->orWhere('client_id', $likeOperator, $term)
+                        ->orWhereRaw("CONCAT(first_name, ' ', last_name) ILIKE ?", [$term]);
                 })
                 ->select('id', 'first_name', 'last_name', 'email', 'phone', 'client_id', 'type')
                 ->orderByDesc('id')
@@ -2777,8 +2773,7 @@ trait ClientCrmFollowups
             return response()->json(['results' => []]);
         }
 
-        // Use ILIKE for PostgreSQL, LIKE for MySQL
-        $likeOperator = DB::getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
+        $likeOperator = 'ILIKE';
 
         $results = Admin::where(function ($q) use ($query, $likeOperator) {
             // Primary search: Phone and Email (as per requirement)
@@ -2787,15 +2782,8 @@ trait ClientCrmFollowups
               // Secondary search: Name and Client ID
                 ->orWhere('first_name', $likeOperator, "%{$query}%")
                 ->orWhere('last_name', $likeOperator, "%{$query}%")
-                ->orWhere('client_id', $likeOperator, "%{$query}%");
-
-            // For PostgreSQL, use CONCAT with ILIKE
-            if (DB::getDriverName() === 'pgsql') {
-                $q->orWhereRaw("CONCAT(first_name, ' ', last_name) ILIKE ?", ["%{$query}%"]);
-            } else {
-                // For MySQL, use CONCAT with LIKE
-                $q->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$query}%"]);
-            }
+                ->orWhere('client_id', $likeOperator, "%{$query}%")
+                ->orWhereRaw("CONCAT(first_name, ' ', last_name) ILIKE ?", ["%{$query}%"]);
         })
             ->whereIn('type', ['client', 'lead'])
             ->where(function ($q) {
@@ -2975,14 +2963,6 @@ trait ClientCrmFollowups
         $isUniversalEmail = ($squery === 'demo@gmail.com');
         $isUniversalPhone = ($squery === '4444444444');
         $isClientReferenceSearch = $this->globalSearchQueryIsClientReference($squery);
-        $mysqlFtPhrase = $isClientReferenceSearch ? '' : $this->mysqlGlobalSearchBooleanFulltext($squery);
-        $useMatterFt = ! $isClientReferenceSearch
-            && $mysqlFtPhrase !== ''
-            && $this->globalSearchMysqlFulltextIndexExists('client_matters', 'client_matters_global_search_ft');
-        $useAdminFt = ! $isUniversalEmail
-            && ! $isClientReferenceSearch
-            && $mysqlFtPhrase !== ''
-            && $this->globalSearchMysqlFulltextIndexExists('admins', 'admins_global_search_ft');
 
         // 1. Composite references (client_id + matter_no)
         if (strpos($squery, '-') !== false) {
@@ -3051,22 +3031,10 @@ trait ClientCrmFollowups
                 ->tap(function ($q) {
                     StaffClientVisibility::applyExcludeSuperAdminOnlyLockedClientsOnAdminJoin($q, 'admins');
                 })
-                ->where(function ($query) use ($squery, $squeryLower, $useMatterFt, $mysqlFtPhrase) {
-                    if ($useMatterFt) {
-                        $query->where(function ($matterFtQuery) use ($mysqlFtPhrase, $squery, $squeryLower) {
-                            $matterFtQuery->whereRaw(
-                                'MATCH(client_matters.department_reference, client_matters.other_reference, client_matters.client_unique_matter_no) AGAINST (? IN BOOLEAN MODE)',
-                                [$mysqlFtPhrase]
-                            )
-                                ->orWhere('client_matters.department_reference', 'LIKE', "%{$squery}%")
-                                ->orWhere('client_matters.other_reference', 'LIKE', "%{$squery}%")
-                                ->orWhereRaw('LOWER(client_matters.client_unique_matter_no) LIKE ?', ["%{$squeryLower}%"]);
-                        });
-                    } else {
-                        $query->where('client_matters.department_reference', 'LIKE', "%{$squery}%")
-                            ->orWhere('client_matters.other_reference', 'LIKE', "%{$squery}%")
-                            ->orWhere('client_matters.client_unique_matter_no', 'LIKE', "%{$squery}%");
-                    }
+                ->where(function ($query) use ($squery) {
+                    $query->where('client_matters.department_reference', 'LIKE', "%{$squery}%")
+                        ->orWhere('client_matters.other_reference', 'LIKE', "%{$squery}%")
+                        ->orWhere('client_matters.client_unique_matter_no', 'LIKE', "%{$squery}%");
                 })
                 ->select(
                     'admins.id as client_id',
@@ -3139,20 +3107,11 @@ trait ClientCrmFollowups
                         $join->whereRaw('LOWER(client_emails.email) LIKE ?', ["%{$squeryLower}%"]);
                     }
                 })
-                ->where(function ($query) use ($squery, $squeryLower, $d, $isUniversalEmail, $isUniversalPhone, $useAdminFt, $mysqlFtPhrase) {
+                ->where(function ($query) use ($squery, $squeryLower, $d, $isUniversalEmail, $isUniversalPhone) {
                     if ($isUniversalEmail) {
                         $query->where(function ($emailSubQuery) use ($squeryLower) {
                             $emailSubQuery->whereRaw('LOWER(admins.email) LIKE ?', ["%{$squeryLower}%"])
                                 ->orWhereRaw('LOWER(admins.email) LIKE ?', ['demo_%@gmail.com']);
-                        });
-                    } elseif ($useAdminFt) {
-                        // FULLTEXT misses alphanumeric client refs (e.g. VIPL2400001); keep LIKE fallback.
-                        $query->where(function ($adminFtQuery) use ($mysqlFtPhrase, $squeryLower) {
-                            $adminFtQuery->whereRaw(
-                                'MATCH(admins.first_name, admins.last_name, admins.email, admins.client_id) AGAINST (? IN BOOLEAN MODE)',
-                                [$mysqlFtPhrase]
-                            )
-                                ->orWhereRaw('LOWER(admins.client_id) LIKE ?', ["%{$squeryLower}%"]);
                         });
                     } else {
                         $query->whereRaw('LOWER(admins.email) LIKE ?', ["%{$squeryLower}%"]);
@@ -3162,7 +3121,7 @@ trait ClientCrmFollowups
                         $query->orWhereRaw('LOWER(admins.first_name) LIKE ?', ["%{$squeryLower}%"])
                             ->orWhereRaw('LOWER(admins.last_name) LIKE ?', ["%{$squeryLower}%"])
                             ->orWhereRaw('LOWER(admins.client_id) LIKE ?', ["%{$squeryLower}%"]);
-                    } elseif (! $useAdminFt) {
+                    } else {
                         $query->orWhereRaw('LOWER(admins.first_name) LIKE ?', ["%{$squeryLower}%"])
                             ->orWhereRaw('LOWER(admins.last_name) LIKE ?', ["%{$squeryLower}%"])
                             ->orWhereRaw('LOWER(admins.client_id) LIKE ?', ["%{$squeryLower}%"]);
@@ -3344,28 +3303,6 @@ trait ClientCrmFollowups
         return response()->json(['items' => $results]);
     }
 
-    protected function globalSearchMysqlFulltextIndexExists(string $table, string $indexName): bool
-    {
-        static $cache = [];
-        $key = $table.'.'.$indexName;
-        if (array_key_exists($key, $cache)) {
-            return $cache[$key];
-        }
-        if (! in_array($table, ['admins', 'client_matters'], true)) {
-            return $cache[$key] = false;
-        }
-        if (Schema::getConnection()->getDriverName() !== 'mysql') {
-            return $cache[$key] = false;
-        }
-        try {
-            $rows = DB::select('SHOW INDEX FROM `'.$table.'` WHERE Key_name = ?', [$indexName]);
-
-            return $cache[$key] = (count($rows) > 0);
-        } catch (\Throwable) {
-            return $cache[$key] = false;
-        }
-    }
-
     /**
      * Reverse a dd/mm/yyyy search to yyyy/mm/dd for admins.dob. Incomplete slash queries stay empty.
      */
@@ -3385,7 +3322,7 @@ trait ClientCrmFollowups
 
     /**
      * Client file references (e.g. VIPL2400001, john2608773): letters + digits, no spaces.
-     * These must not use FULLTEXT/name search or "john" will match unrelated clients.
+     * These must not use broad name search or "john" will match unrelated clients.
      */
     protected function globalSearchQueryIsClientReference(string $squery): bool
     {
@@ -3395,28 +3332,6 @@ trait ClientCrmFollowups
         }
 
         return (bool) preg_match('/^[A-Za-z][A-Za-z0-9]*\d[A-Za-z0-9]*$/', $squery);
-    }
-
-    /**
-     * InnoDB FULLTEXT boolean mode string. Empty => use LIKE fallback (short tokens, non-MySQL, etc.).
-     */
-    protected function mysqlGlobalSearchBooleanFulltext(string $squery): string
-    {
-        $s = preg_replace('/[^\p{L}\p{N}@.]+/u', ' ', $squery);
-        $words = array_values(array_filter(explode(' ', strtolower(trim($s)))));
-        $parts = [];
-        foreach ($words as $w) {
-            $w = preg_replace('/[^a-z0-9@._-]+/i', '', $w);
-            if ($w === '') {
-                continue;
-            }
-            if (mb_strlen($w, 'UTF-8') < 3) {
-                return '';
-            }
-            $parts[] = '+'.$w.'*';
-        }
-
-        return $parts ? implode(' ', $parts) : '';
     }
 
     /**

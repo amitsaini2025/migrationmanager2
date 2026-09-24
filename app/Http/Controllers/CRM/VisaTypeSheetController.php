@@ -5,13 +5,16 @@ namespace App\Http\Controllers\CRM;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\ClientMatter;
+use App\Models\Staff;
 use App\Support\StaffClientVisibility;
 use App\Traits\ClientAuthorization;
+use Carbon\Carbon;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Carbon\Carbon;
 
 /**
  * Generic controller for visa-type sheets (TR, Visitor, Student, PR, etc.).
@@ -34,7 +37,7 @@ class VisaTypeSheetController extends Controller
     public function index(Request $request, string $visaType, $tab = null)
     {
         $config = $this->getVisaTypeConfig($visaType);
-        if (!$config) {
+        if (! $config) {
             abort(404, "Visa type sheet '{$visaType}' not configured.");
         }
 
@@ -43,7 +46,7 @@ class VisaTypeSheetController extends Controller
         }
 
         $tab = $tab ?? $request->input('tab', 'ongoing');
-        if (!in_array($tab, self::TABS, true)) {
+        if (! in_array($tab, self::TABS, true)) {
             $tab = 'ongoing';
         }
 
@@ -54,6 +57,7 @@ class VisaTypeSheetController extends Controller
 
         if ($request->has('clear_filters')) {
             session()->forget($sessionKey);
+
             return redirect()->route($config['route'], ['visaType' => $visaType, 'tab' => $tab]);
         }
 
@@ -61,20 +65,20 @@ class VisaTypeSheetController extends Controller
 
         // Default to 'all' so Ongoing and other tabs show all matters when no filter is set.
         // Previously defaulted to 'me' which hid records not assigned to the current staff member.
-        if (!$request->has('assignee') || $request->input('assignee') === '') {
+        if (! $request->has('assignee') || $request->input('assignee') === '') {
             $request->merge(['assignee' => 'all']);
         }
 
         $perPage = (int) $request->get('per_page', 50);
         $allowedPerPage = [10, 25, 50, 100, 200];
-        if (!in_array($perPage, $allowedPerPage, true)) {
+        if (! in_array($perPage, $allowedPerPage, true)) {
             $perPage = 50;
         }
 
         $this->persistFiltersToSession($request, $sessionKey);
 
         if ($setupRequired) {
-            $rows = new \Illuminate\Pagination\LengthAwarePaginator([], 0, $perPage, 1, [
+            $rows = new LengthAwarePaginator([], 0, $perPage, 1, [
                 'path' => route($config['route'], ['visaType' => $visaType]),
                 'pageName' => 'page',
             ]);
@@ -96,7 +100,7 @@ class VisaTypeSheetController extends Controller
                 $row->is_lead = $row->is_lead ?? false;
                 // Checklist tab shows cost-assignment Our Cost (Block Fees); skip ledger payment totals.
                 if ($tab !== 'checklist') {
-                    if (!$row->is_lead && isset($row->matter_internal_id)) {
+                    if (! $row->is_lead && isset($row->matter_internal_id)) {
                         $payments = $this->calculatePaymentsForMatter($row->client_id, $row->matter_internal_id);
                         $row->total_payment = $payments['total'];
                         $row->pending_payment = $payments['pending'];
@@ -106,7 +110,7 @@ class VisaTypeSheetController extends Controller
                     }
                 }
                 // Ongoing: Payment Receipt column shows same balance as Account tab → Current Funds Held.
-                if ($tab === 'ongoing' && !$row->is_lead && isset($row->matter_internal_id)) {
+                if ($tab === 'ongoing' && ! $row->is_lead && isset($row->matter_internal_id)) {
                     $held = $this->currentFundsHeldForClientMatter((int) $row->client_id, (int) $row->matter_internal_id);
                     $row->current_funds_held = $held;
                 }
@@ -148,6 +152,7 @@ class VisaTypeSheetController extends Controller
     protected function getVisaTypeConfig(string $visaType): ?array
     {
         $configs = config('sheets.visa_types', []);
+
         return $configs[$visaType] ?? null;
     }
 
@@ -199,15 +204,15 @@ class VisaTypeSheetController extends Controller
         $remindersTable = $config['reminders_table'] ?? '';
         $checklistCol = $config['checklist_status_column'] ?? '';
 
-        return !Schema::hasTable($refTable)
-            || !Schema::hasColumn('client_matters', $checklistCol)
-            || !Schema::hasTable($remindersTable);
+        return ! Schema::hasTable($refTable)
+            || ! Schema::hasColumn('client_matters', $checklistCol)
+            || ! Schema::hasTable($remindersTable);
     }
 
     protected function getTabConfig(string $visaType, string $tab): array
     {
         $config = $this->getVisaTypeConfig($visaType);
-        $prefix = $config['session_prefix'] ?? $visaType . '_sheet_';
+        $prefix = $config['session_prefix'] ?? $visaType.'_sheet_';
 
         $titles = [
             'ongoing' => 'Ongoing',
@@ -218,7 +223,7 @@ class VisaTypeSheetController extends Controller
 
         return [
             'title' => $titles[$tab] ?? 'Ongoing',
-            'session_key' => $prefix . $tab . '_filters',
+            'session_key' => $prefix.$tab.'_filters',
         ];
     }
 
@@ -227,10 +232,11 @@ class VisaTypeSheetController extends Controller
         $filterParams = ['branch', 'assignee', 'current_stage', 'visa_expiry_from', 'visa_expiry_to', 'deadline_from', 'deadline_to', 'matter_type', 'refused_visa_type', 'search', 'per_page'];
         foreach ($filterParams as $key) {
             $val = $request->input($key);
-            if ($request->has($key) && $val !== null && $val !== '' && (!is_array($val) || !empty($val))) {
+            if ($request->has($key) && $val !== null && $val !== '' && (! is_array($val) || ! empty($val))) {
                 return [];
             }
         }
+
         return session($sessionKey, []);
     }
 
@@ -250,8 +256,9 @@ class VisaTypeSheetController extends Controller
             'per_page' => $request->input('per_page'),
         ], function ($v) {
             if (is_array($v)) {
-                return !empty($v);
+                return ! empty($v);
             }
+
             return $v !== null && $v !== '';
         });
         session()->put($sessionKey, $payload);
@@ -273,15 +280,16 @@ class VisaTypeSheetController extends Controller
             ->unique()
             ->filter()
             ->values();
-        $assignees = \App\Models\Staff::where('status', 1)
+        $assignees = Staff::where('status', 1)
             ->whereIn('id', $allIds)
             ->orderBy('first_name')->orderBy('last_name')
             ->get(['id', 'first_name', 'last_name']);
         $currentUser = Auth::user();
         if ($currentUser && $assignees->pluck('id')->doesntContain($currentUser->id)) {
             $assignees->push($currentUser);
-            $assignees = $assignees->sortBy(fn ($a) => trim(($a->first_name ?? '') . ' ' . ($a->last_name ?? '')))->values();
+            $assignees = $assignees->sortBy(fn ($a) => trim(($a->first_name ?? '').' '.($a->last_name ?? '')))->values();
         }
+
         return $assignees;
     }
 
@@ -294,9 +302,10 @@ class VisaTypeSheetController extends Controller
             default => 'ongoing_stages',
         };
         $stages = $config[$key] ?? [];
-        if (!is_array($stages)) {
+        if (! is_array($stages)) {
             $stages = [];
         }
+
         return collect($stages)->filter(fn ($s) => $s !== null && trim((string) $s) !== '')
             ->values()->mapWithKeys(fn ($s) => [trim((string) $s) => trim((string) $s)]);
     }
@@ -319,13 +328,14 @@ class VisaTypeSheetController extends Controller
             ->unique()
             ->values()
             ->all();
+
         return array_combine($titles, $titles) ?: [];
     }
 
     /**
      * Build Checklist tab results including both client matters and leads.
      */
-    protected function buildChecklistTabWithLeads(Request $request, array $config, int $perPage, string $visaType = ''): \Illuminate\Pagination\LengthAwarePaginator
+    protected function buildChecklistTabWithLeads(Request $request, array $config, int $perPage, string $visaType = ''): LengthAwarePaginator
     {
         $refTable = $config['reference_table'];
         $refAlias = $config['reference_alias'];
@@ -337,9 +347,7 @@ class VisaTypeSheetController extends Controller
         $matterCondition = $this->getMatterCondition($config);
 
         // PostgreSQL lowercases unquoted identifiers; TotalBLOCKFEE requires quoting (same pattern as admins."visaExpiry").
-        $cafTotalBlockFee = DB::connection()->getDriverName() === 'pgsql'
-            ? 'caf."TotalBLOCKFEE"'
-            : 'caf.TotalBLOCKFEE';
+        $cafTotalBlockFee = 'caf."TotalBLOCKFEE"';
 
         $checklistBlockFeeSelect = Schema::hasTable('cost_assignment_forms')
             ? "(SELECT {$cafTotalBlockFee} FROM cost_assignment_forms AS caf WHERE caf.client_matter_id = cm.id ORDER BY caf.created_at DESC, caf.id DESC LIMIT 1) AS checklist_block_fee"
@@ -351,7 +359,7 @@ class VisaTypeSheetController extends Controller
             ->leftJoin("{$refTable} as {$refAlias}", function ($j) use ($refAlias, $refType, $refTable) {
                 $j->on("{$refAlias}.client_id", '=', 'cm.client_id')
                     ->on("{$refAlias}.client_matter_id", '=', 'cm.id');
-                if (!empty($refType) && $refTable === 'client_matter_references') {
+                if (! empty($refType) && $refTable === 'client_matter_references') {
                     $j->where("{$refAlias}.type", '=', $refType);
                 }
             })
@@ -394,37 +402,37 @@ class VisaTypeSheetController extends Controller
         }
 
         $clientQuery->select(
-                'cm.id as matter_internal_id',
-                'cm.client_id',
-                'cm.sel_matter_id',
-                'admins.type as admin_entity_type',
-                'admins.client_id as crm_ref',
-                'admins.first_name',
-                'admins.last_name',
-                'admins.dob',
-                DB::raw('admins."visaExpiry" as visa_expiry'),
-                'cm.client_unique_matter_no',
-                'm.title as matter_title',
-                'cm.deadline',
-                'cm.other_reference',
-                'cm.department_reference',
-                'cm.office_id',
-                'cm.sel_migration_agent as assignee_id',
-                DB::raw("CONCAT(COALESCE(agent.first_name, ''), ' ', COALESCE(agent.last_name, '')) as assignee_name"),
-                'branches.office_name as branch_name',
-                'ws.name as application_stage',
-                "{$refAlias}.current_status",
-                "{$refAlias}.payment_display_note",
-                "{$refAlias}.comments as sheet_comment_text",
-                "{$refAlias}.checklist_sent_at",
-                "{$refAlias}.is_pinned",
-                $this->refusedVisaTypeSelectColumn($config, $refAlias),
-                DB::raw("COALESCE(cm.{$checklistCol}, 'active') as tr_checklist_status"),
-                DB::raw($checklistBlockFeeSelect),
-                DB::raw('cm.created_at as sheet_row_created_at'),
-                DB::raw('NULL as lead_ref_row_id'),
-                DB::raw('0 as is_lead')
-            );
+            'cm.id as matter_internal_id',
+            'cm.client_id',
+            'cm.sel_matter_id',
+            'admins.type as admin_entity_type',
+            'admins.client_id as crm_ref',
+            'admins.first_name',
+            'admins.last_name',
+            'admins.dob',
+            DB::raw('admins."visaExpiry" as visa_expiry'),
+            'cm.client_unique_matter_no',
+            'm.title as matter_title',
+            'cm.deadline',
+            'cm.other_reference',
+            'cm.department_reference',
+            'cm.office_id',
+            'cm.sel_migration_agent as assignee_id',
+            DB::raw("CONCAT(COALESCE(agent.first_name, ''), ' ', COALESCE(agent.last_name, '')) as assignee_name"),
+            'branches.office_name as branch_name',
+            'ws.name as application_stage',
+            "{$refAlias}.current_status",
+            "{$refAlias}.payment_display_note",
+            "{$refAlias}.comments as sheet_comment_text",
+            "{$refAlias}.checklist_sent_at",
+            "{$refAlias}.is_pinned",
+            $this->refusedVisaTypeSelectColumn($config, $refAlias),
+            DB::raw("COALESCE(cm.{$checklistCol}, 'active') as tr_checklist_status"),
+            DB::raw($checklistBlockFeeSelect),
+            DB::raw('cm.created_at as sheet_row_created_at'),
+            DB::raw('NULL as lead_ref_row_id'),
+            DB::raw('0 as is_lead')
+        );
         $this->applyFilters($clientQuery, $request, $config, 'cm');
         $clientRows = $clientQuery->get();
 
@@ -437,7 +445,7 @@ class VisaTypeSheetController extends Controller
                 $leadBlockFeeSql = Schema::hasTable('cost_assignment_forms')
                     ? "(SELECT {$cafTotalBlockFee} FROM cost_assignment_forms AS caf INNER JOIN client_matters AS lcm ON caf.client_matter_id = lcm.id WHERE lcm.client_id = a.id AND lcm.sel_matter_id = lr.matter_id ORDER BY caf.created_at DESC, caf.id DESC LIMIT 1) AS checklist_block_fee"
                     : 'NULL AS checklist_block_fee';
-                $leadQuery = DB::table($leadRefTable . ' as lr')
+                $leadQuery = DB::table($leadRefTable.' as lr')
                     ->where('lr.type', $refType)
                     ->join('admins as a', 'lr.lead_id', '=', 'a.id')
                     ->join('matters as m', 'lr.matter_id', '=', 'm.id')
@@ -482,7 +490,7 @@ class VisaTypeSheetController extends Controller
                 }
 
                 if ($request->filled('search')) {
-                    $search = '%' . strtolower($request->input('search')) . '%';
+                    $search = '%'.strtolower($request->input('search')).'%';
                     $leadQuery->where(function ($q) use ($search) {
                         $q->whereRaw('LOWER(a.first_name) LIKE ?', [$search])
                             ->orWhereRaw('LOWER(a.last_name) LIKE ?', [$search])
@@ -491,7 +499,7 @@ class VisaTypeSheetController extends Controller
                 }
                 if ($request->filled('matter_type')) {
                     $val = $request->input('matter_type');
-                    $leadQuery->whereRaw('LOWER(m.title) LIKE ?', ['%' . strtolower($val) . '%']);
+                    $leadQuery->whereRaw('LOWER(m.title) LIKE ?', ['%'.strtolower($val).'%']);
                 }
                 $leadRows = $leadQuery->get();
             }
@@ -501,7 +509,7 @@ class VisaTypeSheetController extends Controller
         $clientLeadMatterKeys = [];
         foreach ($clientRows as $r) {
             if (isset($r->sel_matter_id)) {
-                $clientLeadMatterKeys[(int) $r->client_id . ':' . (int) $r->sel_matter_id] = true;
+                $clientLeadMatterKeys[(int) $r->client_id.':'.(int) $r->sel_matter_id] = true;
             }
         }
         $leadRows = $leadRows->filter(function ($r) use ($clientLeadMatterKeys) {
@@ -510,7 +518,7 @@ class VisaTypeSheetController extends Controller
                 return true;
             }
 
-            return ! isset($clientLeadMatterKeys[(int) $r->client_id . ':' . $mid]);
+            return ! isset($clientLeadMatterKeys[(int) $r->client_id.':'.$mid]);
         })->values();
 
         foreach ($clientRows as $r) {
@@ -534,7 +542,7 @@ class VisaTypeSheetController extends Controller
             }
         };
         $checklistSortTieBreaker = static function ($row): int {
-            return !empty($row->is_lead)
+            return ! empty($row->is_lead)
                 ? (int) ($row->lead_ref_row_id ?? 0)
                 : (int) ($row->matter_internal_id ?? 0);
         };
@@ -582,7 +590,8 @@ class VisaTypeSheetController extends Controller
         $slice = $all->slice(($page - 1) * $perPage, $perPage)->values();
         $visaTypeParam = $request->route('visaType');
         $path = route($config['route'], ['visaType' => $visaTypeParam]);
-        return new \Illuminate\Pagination\LengthAwarePaginator($slice, $total, $perPage, $page, ['path' => $path, 'pageName' => 'page']);
+
+        return new LengthAwarePaginator($slice, $total, $perPage, $page, ['path' => $path, 'pageName' => 'page']);
     }
 
     protected function getMatterCondition(array $config): string
@@ -591,12 +600,13 @@ class VisaTypeSheetController extends Controller
         $patterns = $config['matter_title_patterns'] ?? [];
         $cond = [];
         foreach ($nickNames as $n) {
-            $cond[] = "LOWER(COALESCE(m.nick_name, '')) = '" . addslashes(strtolower($n)) . "'";
+            $cond[] = "LOWER(COALESCE(m.nick_name, '')) = '".addslashes(strtolower($n))."'";
         }
         foreach ($patterns as $p) {
-            $cond[] = "LOWER(COALESCE(m.title, '')) LIKE '%" . addslashes(strtolower($p)) . "%'";
+            $cond[] = "LOWER(COALESCE(m.title, '')) LIKE '%".addslashes(strtolower($p))."%'";
         }
-        return $cond ? '(' . implode(' OR ', $cond) . ')' : '1 = 0';
+
+        return $cond ? '('.implode(' OR ', $cond).')' : '1 = 0';
     }
 
     protected function buildBaseQuery(Request $request, string $tab, array $config)
@@ -633,11 +643,11 @@ class VisaTypeSheetController extends Controller
             WHERE {$matterCondition}
         ";
 
-        $query = DB::table(DB::raw('(' . $baseMattersSql . ') AS latest_matter'))
+        $query = DB::table(DB::raw('('.$baseMattersSql.') AS latest_matter'))
             ->leftJoin("{$refTable} as {$refAlias}", function ($join) use ($refAlias, $refType, $refTable) {
                 $join->on("{$refAlias}.client_id", '=', 'latest_matter.client_id')
                     ->on("{$refAlias}.client_matter_id", '=', 'latest_matter.matter_id');
-                if (!empty($refType) && $refTable === 'client_matter_references') {
+                if (! empty($refType) && $refTable === 'client_matter_references') {
                     $join->where("{$refAlias}.type", '=', $refType);
                 }
             })
@@ -703,24 +713,24 @@ class VisaTypeSheetController extends Controller
         if ($tab === 'discontinue') {
             $query->where(function ($q) use ($discontinueStages) {
                 $q->whereRaw('latest_matter.matter_status = 0');
-                if (!empty($discontinueStages)) {
+                if (! empty($discontinueStages)) {
                     $ph = implode(',', array_fill(0, count($discontinueStages), '?'));
-                    $q->orWhereRaw('LOWER(TRIM(ws.name)) IN (' . $ph . ')', $discontinueStages);
+                    $q->orWhereRaw('LOWER(TRIM(ws.name)) IN ('.$ph.')', $discontinueStages);
                 }
             });
         } elseif ($tab === 'lodged') {
             $query->whereRaw('latest_matter.matter_status = 1');
-            if (!empty($lodgedStages)) {
+            if (! empty($lodgedStages)) {
                 $ph = implode(',', array_fill(0, count($lodgedStages), '?'));
-                $query->whereRaw('LOWER(TRIM(ws.name)) IN (' . $ph . ')', $lodgedStages);
+                $query->whereRaw('LOWER(TRIM(ws.name)) IN ('.$ph.')', $lodgedStages);
             } else {
                 $query->whereRaw('1 = 0');
             }
         } elseif ($tab === 'checklist') {
             $query->whereRaw('latest_matter.matter_status = 1');
-            if (!empty($checklistStages)) {
+            if (! empty($checklistStages)) {
                 $ph = implode(',', array_fill(0, count($checklistStages), '?'));
-                $query->whereRaw('LOWER(TRIM(ws.name)) IN (' . $ph . ')', $checklistStages);
+                $query->whereRaw('LOWER(TRIM(ws.name)) IN ('.$ph.')', $checklistStages);
             } else {
                 $query->whereRaw('1 = 0');
             }
@@ -730,9 +740,9 @@ class VisaTypeSheetController extends Controller
             });
         } else {
             $query->whereRaw('latest_matter.matter_status = 1');
-            if (!empty($excludedForOngoing)) {
+            if (! empty($excludedForOngoing)) {
                 $ph = implode(',', array_fill(0, count($excludedForOngoing), '?'));
-                $query->whereRaw('(LOWER(TRIM(ws.name)) NOT IN (' . $ph . ') OR ws.name IS NULL)', $excludedForOngoing);
+                $query->whereRaw('(LOWER(TRIM(ws.name)) NOT IN ('.$ph.') OR ws.name IS NULL)', $excludedForOngoing);
             }
         }
     }
@@ -740,7 +750,7 @@ class VisaTypeSheetController extends Controller
     /**
      * Apply filters to a visa sheet query.
      *
-     * @param string $matterAlias Table alias for the matter columns (e.g. 'latest_matter' for buildBaseQuery subquery, 'cm' for buildChecklistTabWithLeads client query)
+     * @param  string  $matterAlias  Table alias for the matter columns (e.g. 'latest_matter' for buildBaseQuery subquery, 'cm' for buildChecklistTabWithLeads client query)
      */
     protected function applyFilters($query, Request $request, array $config, string $matterAlias = 'latest_matter')
     {
@@ -767,30 +777,34 @@ class VisaTypeSheetController extends Controller
             try {
                 $from = Carbon::createFromFormat('d/m/Y', $request->input('visa_expiry_from'))->startOfDay();
                 $query->whereRaw('admins."visaExpiry" >= ?', [$from]);
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
         }
         if ($request->filled('visa_expiry_to')) {
             try {
                 $to = Carbon::createFromFormat('d/m/Y', $request->input('visa_expiry_to'))->endOfDay();
                 $query->whereRaw('admins."visaExpiry" <= ?', [$to]);
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
         }
         if ($request->filled('deadline_from')) {
             try {
                 $from = Carbon::createFromFormat('d/m/Y', $request->input('deadline_from'))->startOfDay();
                 $query->whereRaw("{$matterAlias}.deadline >= ?", [$from]);
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
         }
         if ($request->filled('deadline_to')) {
             try {
                 $to = Carbon::createFromFormat('d/m/Y', $request->input('deadline_to'))->endOfDay();
                 $query->whereRaw("{$matterAlias}.deadline <= ?", [$to]);
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
         }
         if ($request->filled('matter_type')) {
             $val = $request->input('matter_type');
             $matterTitleCol = $matterAlias === 'latest_matter' ? 'latest_matter.matter_title' : 'm.title';
-            $query->whereRaw("LOWER({$matterTitleCol}) LIKE ?", ['%' . strtolower($val) . '%']);
+            $query->whereRaw("LOWER({$matterTitleCol}) LIKE ?", ['%'.strtolower($val).'%']);
         }
         if ($this->hasRefusedVisaTypeFeature($config) && $request->filled('refused_visa_type')) {
             $refusedType = (string) $request->input('refused_visa_type');
@@ -799,7 +813,7 @@ class VisaTypeSheetController extends Controller
             }
         }
         if ($request->filled('search')) {
-            $search = '%' . strtolower($request->input('search')) . '%';
+            $search = '%'.strtolower($request->input('search')).'%';
             $query->where(function ($q) use ($search, $refAlias, $matterAlias) {
                 $q->whereRaw('LOWER(admins.first_name) LIKE ?', [$search])
                     ->orWhereRaw('LOWER(admins.last_name) LIKE ?', [$search])
@@ -811,13 +825,13 @@ class VisaTypeSheetController extends Controller
                     ->orWhereRaw("LOWER({$matterAlias}.client_unique_matter_no) LIKE ?", [$search]);
             });
         }
+
         return $query;
     }
 
     protected function applySorting($query, Request $request, string $tab, array $config)
     {
         $refAlias = $config['reference_alias'] ?? 'ref';
-        $driver = DB::connection()->getDriverName();
 
         // First priority: pinned items (is_pinned DESC) - pinned items on top
         $query->orderByRaw("CASE WHEN {$refAlias}.is_pinned = true THEN 1 ELSE 0 END DESC");
@@ -829,19 +843,15 @@ class VisaTypeSheetController extends Controller
 
         $sortField = $request->get('sort');
         $sortDirection = strtolower($request->get('direction', 'asc'));
-        if (!in_array($sortDirection, ['asc', 'desc'], true)) {
+        if (! in_array($sortDirection, ['asc', 'desc'], true)) {
             $sortDirection = 'asc';
         }
 
         if ($sortField) {
-            $this->applyExplicitSort($query, $sortField, $sortDirection, $driver);
+            $this->applyExplicitSort($query, $sortField, $sortDirection);
         } else {
             // Default: nearest deadline, then visa expiry
-            if ($driver === 'mysql') {
-                $query->orderByRaw('latest_matter.deadline IS NULL ASC, latest_matter.deadline ASC');
-            } else {
-                $query->orderByRaw('latest_matter.deadline ASC NULLS LAST');
-            }
+            $query->orderByRaw('latest_matter.deadline ASC NULLS LAST');
 
             $query->orderByRaw("CASE WHEN admins.\"visaExpiry\" IS NULL OR admins.\"visaExpiry\"::text = '0000-00-00' THEN 1 ELSE 0 END ASC");
             $query->orderByRaw('admins."visaExpiry" ASC');
@@ -852,7 +862,7 @@ class VisaTypeSheetController extends Controller
         return $query;
     }
 
-    protected function applyExplicitSort($query, string $sortField, string $sortDirection, string $driver): void
+    protected function applyExplicitSort($query, string $sortField, string $sortDirection): void
     {
         $nullsLast = $sortDirection === 'asc' ? 'LAST' : 'FIRST';
 
@@ -865,11 +875,7 @@ class VisaTypeSheetController extends Controller
                 $query->orderBy('admins.first_name', $sortDirection);
                 break;
             case 'dob':
-                if ($driver === 'mysql') {
-                    $query->orderByRaw('admins.dob IS NULL ASC, admins.dob ' . $sortDirection);
-                } else {
-                    $query->orderByRaw('admins.dob ' . $sortDirection . ' NULLS ' . $nullsLast);
-                }
+                $query->orderByRaw('admins.dob '.$sortDirection.' NULLS '.$nullsLast);
                 break;
             case 'stage':
                 $query->orderBy('ws.name', $sortDirection);
@@ -883,18 +889,10 @@ class VisaTypeSheetController extends Controller
                 break;
             case 'visa_expiry':
                 $query->orderByRaw("CASE WHEN admins.\"visaExpiry\" IS NULL OR admins.\"visaExpiry\"::text = '0000-00-00' THEN 1 ELSE 0 END ASC");
-                if ($driver === 'mysql') {
-                    $query->orderByRaw('admins."visaExpiry" ' . $sortDirection);
-                } else {
-                    $query->orderByRaw('admins."visaExpiry" ' . $sortDirection . ' NULLS ' . $nullsLast);
-                }
+                $query->orderByRaw('admins."visaExpiry" '.$sortDirection.' NULLS '.$nullsLast);
                 break;
             case 'deadline':
-                if ($driver === 'mysql') {
-                    $query->orderByRaw('latest_matter.deadline IS NULL ASC, latest_matter.deadline ' . $sortDirection);
-                } else {
-                    $query->orderByRaw('latest_matter.deadline ' . $sortDirection . ' NULLS ' . $nullsLast);
-                }
+                $query->orderByRaw('latest_matter.deadline '.$sortDirection.' NULLS '.$nullsLast);
                 break;
         }
     }
@@ -910,14 +908,16 @@ class VisaTypeSheetController extends Controller
                 case 'crm_ref':
                     return strtolower((string) ($row->crm_ref ?? ''));
                 case 'name':
-                    return strtolower(trim(($row->last_name ?? '') . ' ' . ($row->first_name ?? '')));
+                    return strtolower(trim(($row->last_name ?? '').' '.($row->first_name ?? '')));
                 case 'dob':
                     return (string) ($row->dob ?? '');
                 case 'visa_expiry':
                     $expiry = $row->visa_expiry ?? null;
+
                     return ($expiry && $expiry !== '0000-00-00') ? (string) $expiry : '9999-99-99';
                 case 'deadline':
                     $dl = $row->deadline ?? null;
+
                     return $dl ? (string) $dl : '9999-99-99';
                 case 'assignee':
                     return strtolower(trim((string) ($row->assignee_name ?? '')));
@@ -929,8 +929,8 @@ class VisaTypeSheetController extends Controller
         };
 
         return $collection->sort(function ($a, $b) use ($sortField, $multiplier, $valueFor) {
-            $aPin = !empty($a->is_pinned) ? 1 : 0;
-            $bPin = !empty($b->is_pinned) ? 1 : 0;
+            $aPin = ! empty($a->is_pinned) ? 1 : 0;
+            $bPin = ! empty($b->is_pinned) ? 1 : 0;
             if ($bPin !== $aPin) {
                 return $bPin <=> $aPin;
             }
@@ -954,23 +954,44 @@ class VisaTypeSheetController extends Controller
     protected function countActiveFilters(Request $request, array $config = []): int
     {
         $count = 0;
-        if ($request->filled('branch')) $count++;
-        if ($request->filled('assignee') && $request->input('assignee') !== 'all') $count++;
-        if ($request->filled('current_stage')) $count++;
-        if ($request->filled('visa_expiry_from')) $count++;
-        if ($request->filled('visa_expiry_to')) $count++;
-        if ($request->filled('deadline_from')) $count++;
-        if ($request->filled('deadline_to')) $count++;
-        if ($request->filled('matter_type')) $count++;
-        if ($this->hasRefusedVisaTypeFeature($config) && $request->filled('refused_visa_type')) $count++;
-        if ($request->filled('search')) $count++;
+        if ($request->filled('branch')) {
+            $count++;
+        }
+        if ($request->filled('assignee') && $request->input('assignee') !== 'all') {
+            $count++;
+        }
+        if ($request->filled('current_stage')) {
+            $count++;
+        }
+        if ($request->filled('visa_expiry_from')) {
+            $count++;
+        }
+        if ($request->filled('visa_expiry_to')) {
+            $count++;
+        }
+        if ($request->filled('deadline_from')) {
+            $count++;
+        }
+        if ($request->filled('deadline_to')) {
+            $count++;
+        }
+        if ($request->filled('matter_type')) {
+            $count++;
+        }
+        if ($this->hasRefusedVisaTypeFeature($config) && $request->filled('refused_visa_type')) {
+            $count++;
+        }
+        if ($request->filled('search')) {
+            $count++;
+        }
+
         return $count;
     }
 
     /**
      * SELECT fragment for refused_visa_type when sheet config enables the feature.
      */
-    protected function refusedVisaTypeSelectColumn(array $config, string $refAlias): \Illuminate\Database\Query\Expression|string
+    protected function refusedVisaTypeSelectColumn(array $config, string $refAlias): Expression|string
     {
         if ($this->hasRefusedVisaTypeFeature($config)) {
             return "{$refAlias}.refused_visa_type";
@@ -981,7 +1002,7 @@ class VisaTypeSheetController extends Controller
 
     protected function calculatePaymentsForMatter($clientId, $matterInternalId): array
     {
-        if (!$clientId || !$matterInternalId) {
+        if (! $clientId || ! $matterInternalId) {
             return ['total' => '0.00', 'pending' => '0.00'];
         }
         // Payment received = Client Fund Ledger (Deposits only) + Office Receipts
@@ -1014,6 +1035,7 @@ class VisaTypeSheetController extends Controller
                 $q->whereNull('void_fee_transfer')->orWhere('void_fee_transfer', '!=', 1);
             })
             ->sum(DB::raw('COALESCE(balance_amount, 0)'));
+
         return ['total' => number_format($total, 2), 'pending' => number_format($pending, 2)];
     }
 
@@ -1023,7 +1045,7 @@ class VisaTypeSheetController extends Controller
      */
     protected function currentFundsHeldForClientMatter(?int $clientId, ?int $matterInternalId): ?float
     {
-        if (!$clientId || !$matterInternalId || ! Schema::hasTable('account_client_receipts')) {
+        if (! $clientId || ! $matterInternalId || ! Schema::hasTable('account_client_receipts')) {
             return null;
         }
 
@@ -1055,21 +1077,21 @@ class VisaTypeSheetController extends Controller
         }
 
         $config = $this->getVisaTypeConfig($visaType);
-        if (!$config) {
+        if (! $config) {
             return response()->json(['success' => false, 'message' => 'Invalid visa type'], 404);
         }
 
         $clientId = $request->input('client_id');
         $matterInternalId = $request->input('matter_internal_id');
 
-        if (!$clientId || !$matterInternalId) {
+        if (! $clientId || ! $matterInternalId) {
             return response()->json(['success' => false, 'message' => 'Missing required parameters'], 400);
         }
 
         $refTable = $config['reference_table'];
         $refType = $config['reference_type'] ?? $visaType;
 
-        if (!Schema::hasTable($refTable)) {
+        if (! Schema::hasTable($refTable)) {
             return response()->json(['success' => false, 'message' => 'Reference table not found'], 404);
         }
 
@@ -1081,25 +1103,25 @@ class VisaTypeSheetController extends Controller
             $query = DB::table($refTable)
                 ->where('client_id', $clientId)
                 ->where('client_matter_id', $matterInternalId);
-            if (!empty($refType) && $refTable === 'client_matter_references') {
+            if (! empty($refType) && $refTable === 'client_matter_references') {
                 $query->where('type', $refType);
             }
             $reference = $query->first();
 
             if ($reference) {
                 // Toggle existing pin
-                $newPinStatus = !($reference->is_pinned ?? false);
+                $newPinStatus = ! ($reference->is_pinned ?? false);
                 $updateQuery = DB::table($refTable)
                     ->where('client_id', $clientId)
                     ->where('client_matter_id', $matterInternalId);
-                if (!empty($refType) && $refTable === 'client_matter_references') {
+                if (! empty($refType) && $refTable === 'client_matter_references') {
                     $updateQuery->where('type', $refType);
                 }
                 $updateQuery->update([
-                        'is_pinned' => $newPinStatus,
-                        'updated_by' => Auth::id(),
-                        'updated_at' => now(),
-                    ]);
+                    'is_pinned' => $newPinStatus,
+                    'updated_by' => Auth::id(),
+                    'updated_at' => now(),
+                ]);
             } else {
                 // Create new reference record with pin
                 $insertData = [
@@ -1121,10 +1143,10 @@ class VisaTypeSheetController extends Controller
             return response()->json([
                 'success' => true,
                 'is_pinned' => $newPinStatus,
-                'message' => $newPinStatus ? 'Item pinned to top' : 'Item unpinned'
+                'message' => $newPinStatus ? 'Item pinned to top' : 'Item unpinned',
             ]);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error updating pin status: ' . $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'Error updating pin status: '.$e->getMessage()], 500);
         }
     }
 
@@ -1394,8 +1416,8 @@ class VisaTypeSheetController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $valueToStore === null
-                    ? ($this->getRefusedVisaTypeLabel($config) . ' cleared')
-                    : ($this->getRefusedVisaTypeLabel($config) . ' saved'),
+                    ? ($this->getRefusedVisaTypeLabel($config).' cleared')
+                    : ($this->getRefusedVisaTypeLabel($config).' saved'),
                 'refused_visa_type' => $valueToStore,
                 'refused_visa_type_label' => $label,
             ]);
@@ -1451,7 +1473,7 @@ class VisaTypeSheetController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => ucfirst($type) . ' reminder recorded',
+            'message' => ucfirst($type).' reminder recorded',
             'reminded_at' => now()->format('d/m/Y'),
         ]);
     }

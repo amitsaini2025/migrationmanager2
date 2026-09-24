@@ -327,14 +327,6 @@ class DashboardService
                 FROM {$table}
                 WHERE client_id IN ({$placeholders})
                 ORDER BY client_id, created_at DESC NULLS LAST, id DESC";
-        } elseif (in_array($driver, ['mysql', 'mariadb'], true)) {
-            $sql = "SELECT client_id, subject, created_at FROM (
-                    SELECT client_id, subject, created_at,
-                        ROW_NUMBER() OVER (PARTITION BY client_id ORDER BY created_at DESC, id DESC) AS rn
-                    FROM {$table}
-                    WHERE client_id IN ({$placeholders})
-                ) AS ranked
-                WHERE rn = 1";
         } else {
             $sql = "SELECT client_id, subject, created_at FROM (
                     SELECT client_id, subject, created_at,

@@ -4,15 +4,13 @@ namespace App\Http\Controllers\CRM;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
-use App\Models\ClientArtReference;
-use App\Models\ActivitiesLog;
+use App\Models\Staff;
 use App\Support\StaffClientVisibility;
 use App\Traits\ClientAuthorization;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
 
 class ArtSheetController extends Controller
 {
@@ -34,11 +32,11 @@ class ArtSheetController extends Controller
 
         $perPage = (int) $request->get('per_page', 50);
         $allowedPerPage = [10, 25, 50, 100, 200];
-        if (!in_array($perPage, $allowedPerPage, true)) {
+        if (! in_array($perPage, $allowedPerPage, true)) {
             $perPage = 50;
         }
 
-        if (!$request->has('agent') || $request->input('agent') === '') {
+        if (! $request->has('agent') || $request->input('agent') === '') {
             $request->merge(['agent' => 'me']);
         }
 
@@ -52,6 +50,7 @@ class ArtSheetController extends Controller
             $payments = $this->calculatePaymentsForMatter($row->client_id, $row->matter_internal_id);
             $row->total_payment = $payments['total'];
             $row->pending_payment = $payments['pending'];
+
             return $row;
         });
 
@@ -68,7 +67,7 @@ class ArtSheetController extends Controller
     public function insights(Request $request)
     {
         // Restrict to admin and super admin only (roles 1, 12)
-        if (!in_array(Auth::user()->role ?? 0, [1, 12])) {
+        if (! in_array(Auth::user()->role ?? 0, [1, 12])) {
             return redirect()->back()->with('error', 'Only admin and super admin can view insights.');
         }
 
@@ -91,7 +90,6 @@ class ArtSheetController extends Controller
      */
     protected function buildBaseQuery(Request $request)
     {
-        $driver = DB::connection()->getDriverName();
         $latestArtMatterSql = "
             SELECT DISTINCT ON (cm.client_id)
                 cm.client_id,
@@ -116,33 +114,7 @@ class ArtSheetController extends Controller
             ORDER BY cm.client_id, cm.id DESC
         ";
 
-        if ($driver === 'mysql') {
-            $latestArtMatterSql = "
-                SELECT cm.client_id, cm.client_unique_matter_no, cm.id AS matter_id,
-                       cm.other_reference, cm.department_reference, cm.sel_migration_agent,
-                       cm.sel_person_responsible, cm.sel_person_assisting, cm.office_id,
-                       cm.deadline
-                FROM client_matters cm
-                INNER JOIN matters m ON m.id = cm.sel_matter_id
-                INNER JOIN (
-                    SELECT client_id, MAX(id) AS max_id FROM client_matters cm2
-                    INNER JOIN matters m2 ON m2.id = cm2.sel_matter_id
-                    WHERE cm2.matter_status = 1
-                      AND (LOWER(COALESCE(m2.nick_name, '')) = 'art'
-                           OR LOWER(COALESCE(m2.title, '')) LIKE '%art%'
-                           OR LOWER(COALESCE(m2.title, '')) LIKE '%administrative appeals%'
-                           OR LOWER(COALESCE(m2.title, '')) LIKE '%tribunal%')
-                    GROUP BY client_id
-                ) latest ON latest.client_id = cm.client_id AND latest.max_id = cm.id
-                WHERE cm.matter_status = 1
-                  AND (LOWER(COALESCE(m.nick_name, '')) = 'art'
-                       OR LOWER(COALESCE(m.title, '')) LIKE '%art%'
-                       OR LOWER(COALESCE(m.title, '')) LIKE '%administrative appeals%'
-                       OR LOWER(COALESCE(m.title, '')) LIKE '%tribunal%')
-            ";
-        }
-
-        $query = DB::table(DB::raw('(' . $latestArtMatterSql . ') AS latest_art_matter'))
+        $query = DB::table(DB::raw('('.$latestArtMatterSql.') AS latest_art_matter'))
             ->leftJoin('client_art_references as art', function ($join) {
                 $join->on('art.client_id', '=', 'latest_art_matter.client_id')
                     ->on('art.client_matter_id', '=', 'latest_art_matter.matter_id');
@@ -160,26 +132,26 @@ class ArtSheetController extends Controller
         }
 
         $query->select(
-                'art.id as art_id',
-                'art.is_pinned',
-                'art.submission_last_date',
-                'art.status_of_file',
-                'art.hearing_time',
-                'art.member_name',
-                'art.outcome',
-                'art.comments',
-                'latest_art_matter.client_id',
-                'admins.client_id as crm_ref',
-                'admins.first_name',
-                'admins.last_name',
-                'latest_art_matter.client_unique_matter_no as matter_id',
-                'latest_art_matter.matter_id as matter_internal_id',
-                'latest_art_matter.deadline',
-                'latest_art_matter.other_reference',
-                'latest_art_matter.department_reference',
-                'latest_art_matter.office_id',
-                DB::raw("CONCAT(COALESCE(agents.first_name, ''), ' ', COALESCE(agents.last_name, '')) as agent_name")
-            )
+            'art.id as art_id',
+            'art.is_pinned',
+            'art.submission_last_date',
+            'art.status_of_file',
+            'art.hearing_time',
+            'art.member_name',
+            'art.outcome',
+            'art.comments',
+            'latest_art_matter.client_id',
+            'admins.client_id as crm_ref',
+            'admins.first_name',
+            'admins.last_name',
+            'latest_art_matter.client_unique_matter_no as matter_id',
+            'latest_art_matter.matter_id as matter_internal_id',
+            'latest_art_matter.deadline',
+            'latest_art_matter.other_reference',
+            'latest_art_matter.department_reference',
+            'latest_art_matter.office_id',
+            DB::raw("CONCAT(COALESCE(agents.first_name, ''), ' ', COALESCE(agents.last_name, '')) as agent_name")
+        )
             ->where('admins.is_archived', 0)
             ->whereIn('admins.type', ['client', 'lead'])
             ->whereNull('admins.is_deleted');
@@ -192,7 +164,7 @@ class ArtSheetController extends Controller
      */
     protected function calculatePaymentsForMatter($clientId, $matterInternalId)
     {
-        if (!$clientId || !$matterInternalId) {
+        if (! $clientId || ! $matterInternalId) {
             return ['total' => '0.00', 'pending' => '0.00'];
         }
 
@@ -270,7 +242,7 @@ class ArtSheetController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = '%' . strtolower($request->input('search')) . '%';
+            $search = '%'.strtolower($request->input('search')).'%';
             $query->where(function ($q) use ($search) {
                 $q->whereRaw('LOWER(admins.first_name) LIKE ?', [$search])
                     ->orWhereRaw('LOWER(admins.last_name) LIKE ?', [$search])
@@ -291,17 +263,14 @@ class ArtSheetController extends Controller
 
     protected function applySorting($query, Request $request)
     {
-        $driver = DB::connection()->getDriverName();
         // First priority: pinned items (is_pinned DESC) - pinned items on top
-        $query->orderByRaw("CASE WHEN COALESCE(art.is_pinned, false) = true THEN 1 ELSE 0 END DESC");
+        $query->orderByRaw('CASE WHEN COALESCE(art.is_pinned, false) = true THEN 1 ELSE 0 END DESC');
         // Secondary: nearest deadline first, nulls last
-        $query->orderByRaw($driver === 'mysql'
-            ? 'latest_art_matter.deadline IS NULL ASC, latest_art_matter.deadline ASC'
-            : 'latest_art_matter.deadline ASC NULLS LAST');
+        $query->orderByRaw('latest_art_matter.deadline ASC NULLS LAST');
 
         $sortField = $request->get('sort', 'submission_date');
         $sortDirection = $request->get('direction', 'desc');
-        if (!in_array(strtolower($sortDirection), ['asc', 'desc'])) {
+        if (! in_array(strtolower($sortDirection), ['asc', 'desc'])) {
             $sortDirection = 'desc';
         }
         $dir = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
@@ -331,6 +300,7 @@ class ArtSheetController extends Controller
                 $count++;
             }
         }
+
         return $count;
     }
 
@@ -370,15 +340,16 @@ class ArtSheetController extends Controller
             ->unique()
             ->filter()
             ->values();
-        $agents = \App\Models\Staff::where('status', 1)
+        $agents = Staff::where('status', 1)
             ->whereIn('id', $allIds)
             ->orderBy('first_name')->orderBy('last_name')
             ->get(['id', 'first_name', 'last_name']);
         $currentUser = Auth::user();
         if ($currentUser && $agents->pluck('id')->doesntContain($currentUser->id)) {
             $agents->push($currentUser);
-            $agents = $agents->sortBy(fn ($a) => trim(($a->first_name ?? '') . ' ' . ($a->last_name ?? '')))->values();
+            $agents = $agents->sortBy(fn ($a) => trim(($a->first_name ?? '').' '.($a->last_name ?? '')))->values();
         }
+
         return $agents;
     }
 
@@ -448,7 +419,7 @@ class ArtSheetController extends Controller
         $clientId = $request->input('client_id');
         $matterInternalId = $request->input('matter_internal_id');
 
-        if (!$clientId || !$matterInternalId) {
+        if (! $clientId || ! $matterInternalId) {
             return response()->json(['success' => false, 'message' => 'Missing required parameters'], 400);
         }
 
@@ -459,7 +430,7 @@ class ArtSheetController extends Controller
                 ->first();
 
             if ($reference) {
-                $newPinStatus = !($reference->is_pinned ?? false);
+                $newPinStatus = ! ($reference->is_pinned ?? false);
                 DB::table('client_art_references')
                     ->where('client_id', $clientId)
                     ->where('client_matter_id', $matterInternalId)
@@ -485,10 +456,10 @@ class ArtSheetController extends Controller
             return response()->json([
                 'success' => true,
                 'is_pinned' => $newPinStatus,
-                'message' => $newPinStatus ? 'Item pinned to top' : 'Item unpinned'
+                'message' => $newPinStatus ? 'Item pinned to top' : 'Item unpinned',
             ]);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error updating pin status: ' . $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'Error updating pin status: '.$e->getMessage()], 500);
         }
     }
 

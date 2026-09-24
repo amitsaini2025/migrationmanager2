@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 class CheckMigrationTablesExist extends Command
 {
     protected $signature = 'db:check-migration-tables';
+
     protected $description = 'Check which migration-created tables exist in the default database';
 
     /** Tables that should exist (from Schema::create migrations) */
@@ -48,8 +49,8 @@ class CheckMigrationTablesExist extends Command
         $connection = DB::connection();
         $driver = $connection->getDriverName();
 
-        $this->info('Connection: ' . config('database.default'));
-        $this->info('Driver: ' . $driver);
+        $this->info('Connection: '.config('database.default'));
+        $this->info('Driver: '.$driver);
         $this->newLine();
 
         try {
@@ -58,20 +59,14 @@ class CheckMigrationTablesExist extends Command
                     "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name"
                 );
                 $existingTables = array_map(fn ($r) => $r->table_name, $rows);
-            } elseif ($driver === 'mysql') {
-                $rows = $connection->select('SHOW TABLES');
-                if (empty($rows)) {
-                    $existingTables = [];
-                } else {
-                    $key = array_keys((array) $rows[0])[0];
-                    $existingTables = array_map(fn ($r) => ((array) $r)[$key], $rows);
-                }
             } else {
-                $this->error('Unsupported driver: ' . $driver);
+                $this->error('Unsupported driver: '.$driver);
+
                 return 1;
             }
         } catch (\Throwable $e) {
-            $this->error('Database error: ' . $e->getMessage());
+            $this->error('Database error: '.$e->getMessage());
+
             return 1;
         }
 
@@ -88,24 +83,24 @@ class CheckMigrationTablesExist extends Command
             }
         }
 
-        $this->info('=== Tables that EXIST (' . count($exist) . '/' . count($this->expectedTables) . ') ===');
+        $this->info('=== Tables that EXIST ('.count($exist).'/'.count($this->expectedTables).') ===');
         foreach ($exist as $t) {
-            $this->line('  ✓ ' . $t);
+            $this->line('  ✓ '.$t);
         }
 
         $this->newLine();
-        $this->warn('=== Tables that are MISSING (' . count($missing) . ') ===');
+        $this->warn('=== Tables that are MISSING ('.count($missing).') ===');
         if (empty($missing)) {
             $this->line('  None – all expected tables exist.');
         } else {
             foreach ($missing as $t) {
-                $this->line('  ✗ ' . $t);
+                $this->line('  ✗ '.$t);
             }
         }
 
         $this->newLine();
-        $this->line('Total tables in database: ' . count($existingTables));
-        $this->line('Expected from migrations: ' . count($this->expectedTables));
+        $this->line('Total tables in database: '.count($existingTables));
+        $this->line('Expected from migrations: '.count($this->expectedTables));
 
         return 0;
     }

@@ -709,10 +709,13 @@ class SignatureDashboardController extends Controller
 
         $matches = [];
 
-        // Find all clients and leads with this email (both are in admins table with type = 'client' or 'lead')
+        // Find unarchived clients and leads with this email (archived records must not appear in Find Signer).
         $entities = Admin::where('email', $request->email)
             ->whereIn('type', ['client', 'lead'])
             ->whereNull('is_deleted')
+            ->where(function ($q) {
+                $q->where('is_archived', 0)->orWhereNull('is_archived');
+            })
             ->get();
 
         foreach ($entities as $entity) {

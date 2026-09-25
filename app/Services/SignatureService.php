@@ -663,10 +663,13 @@ class SignatureService
      */
     public function suggestAssociation(string $email): ?array
     {
-        // Try to find matching client or lead (both are in admins table with type = 'client' or 'lead')
+        // Try to find an unarchived client or lead (archived records must not be suggested).
         $entity = Admin::where('email', $email)
             ->whereIn('type', ['client', 'lead'])
             ->whereNull('is_deleted')
+            ->where(function ($q) {
+                $q->where('is_archived', 0)->orWhereNull('is_archived');
+            })
             ->first();
 
         if ($entity) {

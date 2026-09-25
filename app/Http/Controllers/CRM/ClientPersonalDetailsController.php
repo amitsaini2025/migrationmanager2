@@ -3006,6 +3006,42 @@ class ClientPersonalDetailsController extends Controller
         }
     }
 
+    /**
+     * Email uniqueness for the Email Addresses save: archived clients/leads do not count.
+     */
+    private function emailExistsOnAnotherUnarchivedClient(string $email, int $clientId, ?int $emailId = null): bool
+    {
+        $existsOnAdmin = Admin::where('email', $email)
+            ->where('id', '!=', $clientId)
+            ->where(function ($q) {
+                $q->where('is_archived', 0)->orWhereNull('is_archived');
+            })
+            ->exists();
+
+        if ($existsOnAdmin) {
+            return true;
+        }
+
+        $adminsTable = (new Admin)->getTable();
+        $emailsTable = (new ClientEmail)->getTable();
+
+        return ClientEmail::where('email', $email)
+            ->where('client_id', '!=', $clientId)
+            ->when($emailId, function ($q) use ($emailId) {
+                return $q->where('id', '!=', $emailId);
+            })
+            ->whereExists(function ($sub) use ($adminsTable, $emailsTable) {
+                $sub->selectRaw('1')
+                    ->from($adminsTable)
+                    ->whereColumn($adminsTable.'.id', $emailsTable.'.client_id')
+                    ->where(function ($q) use ($adminsTable) {
+                        $q->where($adminsTable.'.is_archived', 0)
+                            ->orWhereNull($adminsTable.'.is_archived');
+                    });
+            })
+            ->exists();
+    }
+
     private function saveEmailAddressesSection($request, $client)
     {
         try {
@@ -3045,28 +3081,21 @@ class ClientPersonalDetailsController extends Controller
                     $emailId = $emailData['id'] ?? null;
                     $emailId = !empty($emailId) ? (int)$emailId : null;
                     
-                    // Check for duplicates and handle universal number (demo@gmail.com)
-                    // Check in admins table (excluding current client)
-                    $existingEmailInAdmins = Admin::where('email', $email)
-                        ->where('id', '!=', $client->id)
-                        ->first();
-                    
-                    // Check in client_emails table (excluding current client and current email)
-                    $existingEmailInClientEmails = ClientEmail::where('email', $email)
-                        ->where('client_id', '!=', $client->id)
-                        ->when($emailId, function($q) use ($emailId) {
-                            return $q->where('id', '!=', $emailId);
-                        })
-                        ->first();
+                    // Check for duplicates among unarchived clients/leads only.
+                    $emailTakenByAnotherUnarchived = $this->emailExistsOnAnotherUnarchivedClient(
+                        $email,
+                        (int) $client->id,
+                        $emailId
+                    );
                     
                     // If duplicate exists and it's a universal number, add timestamp
-                    if (($existingEmailInAdmins || $existingEmailInClientEmails) && $email === 'demo@gmail.com') {
+                    if ($emailTakenByAnotherUnarchived && $email === 'demo@gmail.com') {
                         $emailParts = explode('@', $email);
                         $localPart = $emailParts[0];
                         $domainPart = $emailParts[1];
                         $email = $localPart . '_' . $timestamp . '@' . $domainPart;
                         Log::info('Email address modified to: ' . $email);
-                    } else if ($existingEmailInAdmins || $existingEmailInClientEmails) {
+                    } else if ($emailTakenByAnotherUnarchived) {
                         // Non-universal duplicate - check if it's within the same client (allowed)
                         $duplicateInSameClient = ClientEmail::where('email', $email)
                             ->where('client_id', $client->id)

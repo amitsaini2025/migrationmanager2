@@ -548,6 +548,23 @@
         const readerCountdown = document.getElementById('broadcast-reader-countdown');
         const readerMarkReadBtn = document.getElementById('broadcast-reader-mark-read');
 
+        function ensureBroadcastReaderModalAtBody() {
+            if (!readerModal.length || readerModal.parent().is('body')) {
+                return;
+            }
+
+            readerModal.appendTo('body');
+        }
+
+        function setBroadcastBannerBehindReaderModal(isBehind) {
+            const banner = document.querySelector('[data-broadcast-banner]');
+            if (banner) {
+                banner.classList.toggle('is-behind-modal', isBehind);
+            }
+        }
+
+        ensureBroadcastReaderModalAtBody();
+
         const activeStaffBody = document.getElementById('active-staff-body');
         const activeStaffCount = document.getElementById('active-staff-count');
         const activeStaffRefresh = document.getElementById('active-staff-refresh');
@@ -725,6 +742,7 @@
             readerMessage.innerHTML = '';
             readerMeta.textContent = '';
             updateReaderCountdown(BROADCAST_READ_DELAY_SECONDS);
+            ensureBroadcastReaderModalAtBody();
             readerModal.modal('show');
 
             fetch(`/notifications/broadcasts/${parsedId}/receiver-detail`, {
@@ -1590,7 +1608,12 @@
             });
         }
 
+        readerModal.on('shown.bs.modal', function() {
+            setBroadcastBannerBehindReaderModal(true);
+        });
+
         readerModal.on('hidden.bs.modal', function() {
+            setBroadcastBannerBehindReaderModal(false);
             clearReaderTimer();
             readerState.notificationId = null;
         });
@@ -1786,6 +1809,11 @@
 
 @push('styles')
 <style>
+    /* Keep toast banner below the reader modal while it is open (banner default z-index: 1100) */
+    [data-broadcast-banner].is-behind-modal {
+        z-index: 1040 !important;
+    }
+
     .broadcast-subtitle {
         color: #4a5568;
     }

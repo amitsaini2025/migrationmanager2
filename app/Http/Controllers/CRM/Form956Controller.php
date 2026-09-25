@@ -387,10 +387,15 @@ class Form956Controller extends Controller
             $familyName = $form->client->family_name ?? $form->client->last_name ?? 'client';
             $filename = 'form956_'.$familyName.'_'.date('Y-m-d').'.pdf';
 
-            return response()->streamDownload(
-                fn () => $pdf->saveAs('php://output'),
-                $filename
-            );
+            $pdfContent = $pdf->toString();
+            if ($pdfContent === false) {
+                return back()->with('error', 'Error generating PDF: '.$pdf->getError());
+            }
+
+            return response($pdfContent, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+            ]);
         } catch (Exception $e) {
             return back()->with('error', 'Error generating PDF: '.$e->getMessage());
         }
@@ -1090,14 +1095,15 @@ class Form956Controller extends Controller
             // dd($formData);
             $pdf->fillForm($formData)->needAppearances();
 
-            return response()->stream(
-                fn () => $pdf->saveAs('php://output'),
-                200,
-                [
-                    'Content-Type' => 'application/pdf',
-                    'Content-Disposition' => 'inline; filename="form956_preview.pdf"',
-                ]
-            );
+            $pdfContent = $pdf->toString();
+            if ($pdfContent === false) {
+                return back()->with('error', 'Error generating PDF: '.$pdf->getError());
+            }
+
+            return response($pdfContent, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="form956_preview.pdf"',
+            ]);
         } catch (Exception $e) {
             return back()->with('error', 'Error generating PDF: '.$e->getMessage());
         }

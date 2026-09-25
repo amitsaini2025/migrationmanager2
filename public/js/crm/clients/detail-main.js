@@ -4944,13 +4944,19 @@ success: function(response) {
                     return r.blob();
                 })
                 .then(function(blob) {
+                    if (!blob || blob.size === 0) {
+                        throw new Error('Empty PDF');
+                    }
+                    var objectUrl = URL.createObjectURL(blob);
                     var a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
+                    a.href = objectUrl;
                     a.download = 'Form956.pdf';
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
-                    URL.revokeObjectURL(a.href);
+                    setTimeout(function() {
+                        URL.revokeObjectURL(objectUrl);
+                    }, 2000);
                     if (typeof onDone === 'function') {
                         onDone();
                     }

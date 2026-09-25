@@ -6,7 +6,7 @@
     <main class="main-content">
         <header class="header">
             <div class="header-title-section">
-                <h1>Dashboard</h1>
+                <h1>Dashboard1</h1>
             </div>
             <div class="header-actions">
                 <button type="button" class="action-btn action-btn-secondary" id="refreshDashboard" title="Refresh Dashboard (Alt+R)">

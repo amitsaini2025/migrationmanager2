@@ -2,26 +2,23 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Kyslik\ColumnSortable\Sortable;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\Admin;
-use App\Models\Lead;
-use App\Models\Staff;
 use App\Support\StaffClientVisibility;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Kyslik\ColumnSortable\Sortable;
 use Symfony\Component\Mime\MimeTypes;
 
 class Document extends Model
 {
-    use Sortable, HasFactory;
+    use HasFactory, Sortable;
 
     protected $table = 'documents';
 
     protected $fillable = [
         'file_name',
-        'filetype', 
+        'filetype',
         'myfile',
         'myfile_key',
         'user_id',
@@ -173,13 +170,13 @@ class Document extends Model
      */
     public function scopeByOffice($query, $officeId)
     {
-        return $query->where(function($q) use ($officeId) {
+        return $query->where(function ($q) use ($officeId) {
             // Direct office assignment (ad-hoc docs)
             $q->where('documents.office_id', $officeId)
               // Or via client matter
-              ->orWhereHas('clientMatter', function($mq) use ($officeId) {
-                  $mq->where('office_id', $officeId);
-              });
+                ->orWhereHas('clientMatter', function ($mq) use ($officeId) {
+                    $mq->where('office_id', $officeId);
+                });
         });
     }
 
@@ -192,7 +189,7 @@ class Document extends Model
     }
 
     // Accessors
-    
+
     /**
      * Get resolved office (from matter or direct assignment)
      */
@@ -202,12 +199,12 @@ class Document extends Model
         if ($this->client_matter_id && $this->clientMatter) {
             return $this->clientMatter->office;
         }
-        
+
         // Priority 2: Direct assignment (ad-hoc docs)
         if ($this->office_id && $this->office) {
             return $this->office;
         }
-        
+
         return null;
     }
 
@@ -235,10 +232,10 @@ class Document extends Model
 
     public function getStatusBadgeAttribute()
     {
-        return match($this->status) {
+        return match ($this->status) {
             'draft' => 'secondary',
             'signature_placed' => 'info',
-            'sent' => 'warning', 
+            'sent' => 'warning',
             'signed' => 'success',
             default => 'secondary'
         };
@@ -282,14 +279,14 @@ class Document extends Model
     /**
      * Get visibility type for current authenticated user
      * Returns: 'owner', 'signer', 'associated', or null
-     * 
+     *
      * NOTE: Use eager loading for signers relationship to avoid N+1 queries
      * Example: Document::with('signers')->get()
      */
     public function getVisibilityTypeAttribute()
     {
         $user = auth('admin')->user();
-        if (!$user) {
+        if (! $user) {
             return null;
         }
 
@@ -304,7 +301,7 @@ class Document extends Model
         } else {
             $isSigner = $this->signers()->where('email', $user->email)->exists();
         }
-        
+
         if ($isSigner) {
             return 'signer';
         }
@@ -333,7 +330,7 @@ class Document extends Model
      */
     public function getVisibilityBadgeAttribute()
     {
-        return match($this->visibility_type) {
+        return match ($this->visibility_type) {
             'owner' => ['icon' => '🔒', 'label' => 'My Document', 'class' => 'badge-owner'],
             'signer' => ['icon' => '✍️', 'label' => 'Need to Sign', 'class' => 'badge-signer'],
             'associated' => ['icon' => '🔗', 'label' => 'Associated', 'class' => 'badge-associated'],
@@ -356,7 +353,7 @@ class Document extends Model
         if ($signedSigners->count() > 0 && $pendingSigners->count() === 0) {
             return [
                 'text' => 'Signed',
-                'class' => 'signed'
+                'class' => 'signed',
             ];
         }
 
@@ -364,7 +361,7 @@ class Document extends Model
         if ($this->status === 'sent' && $openedSigners->count() > 0) {
             return [
                 'text' => 'Opened - Not Signed',
-                'class' => 'opened-not-signed'
+                'class' => 'opened-not-signed',
             ];
         }
 
@@ -373,17 +370,17 @@ class Document extends Model
             if ($reminderCount === 1) {
                 return [
                     'text' => 'First Reminder Sent',
-                    'class' => 'first-reminder'
+                    'class' => 'first-reminder',
                 ];
             } elseif ($reminderCount === 2) {
                 return [
                     'text' => 'Second Reminder Sent',
-                    'class' => 'second-reminder'
+                    'class' => 'second-reminder',
                 ];
             } elseif ($reminderCount >= 3) {
                 return [
                     'text' => 'Final Reminder Sent',
-                    'class' => 'final-reminder'
+                    'class' => 'final-reminder',
                 ];
             }
         }
@@ -392,7 +389,7 @@ class Document extends Model
         if ($this->status === 'sent' && $openedSigners->count() === 0) {
             return [
                 'text' => 'Sent for Signature',
-                'class' => 'sent'
+                'class' => 'sent',
             ];
         }
 
@@ -400,15 +397,15 @@ class Document extends Model
         if ($this->status === 'signature_placed') {
             return [
                 'text' => 'Ready to Send',
-                'class' => 'ready-to-send'
+                'class' => 'ready-to-send',
             ];
         }
 
         // If document is in draft state
-        if ($this->status === 'draft' || !$this->status) {
+        if ($this->status === 'draft' || ! $this->status) {
             return [
                 'text' => 'Draft',
-                'class' => 'draft'
+                'class' => 'draft',
             ];
         }
 
@@ -416,7 +413,7 @@ class Document extends Model
         if ($this->status === 'void') {
             return [
                 'text' => 'Void',
-                'class' => 'void'
+                'class' => 'void',
             ];
         }
 
@@ -424,14 +421,14 @@ class Document extends Model
         if ($this->status === 'archived') {
             return [
                 'text' => 'Archived',
-                'class' => 'archived'
+                'class' => 'archived',
             ];
         }
 
         // Default fallback
         return [
             'text' => ucfirst($this->status ?? 'Draft'),
-            'class' => $this->status ?? 'draft'
+            'class' => $this->status ?? 'draft',
         ];
     }
 
@@ -443,7 +440,28 @@ class Document extends Model
         $name = str_replace(['"', "\r", "\n", '\\', '/'], '', $this->getFilenameWithExtensionForDisplay());
         $name = trim($name);
 
-        return $name !== '' ? mb_substr($name, 0, 220) : ((string) $this->id . '.pdf');
+        return $name !== '' ? mb_substr($name, 0, 220) : ((string) $this->id.'.pdf');
+    }
+
+    /**
+     * Authenticated inline preview URL for CRM viewers (iframe/img).
+     * Download links should keep using the raw S3 URL via download_document.
+     */
+    public function getInlinePreviewUrl(): ?string
+    {
+        if (! empty($this->form956_id) && empty($this->myfile)) {
+            return route('forms.preview', $this->form956_id);
+        }
+
+        if (str_ends_with((string) ($this->checklist ?? ''), '_signed')) {
+            return route('documents.preview.signed', $this->id);
+        }
+
+        if (trim((string) ($this->myfile ?? '')) === '' && trim((string) ($this->myfile_key ?? '')) === '') {
+            return null;
+        }
+
+        return route('documents.preview.original', $this->id);
     }
 
     /**
@@ -456,22 +474,22 @@ class Document extends Model
 
         $base = trim((string) ($this->file_name ?? ''));
         if ($base !== '') {
-            if (!preg_match('/_signed$/i', $base)) {
+            if (! preg_match('/_signed$/i', $base)) {
                 $base .= '_signed';
             }
 
-            return $this->sanitizeSignedDownloadFilename($base . '.' . $ext);
+            return $this->sanitizeSignedDownloadFilename($base.'.'.$ext);
         }
 
         $mk = (string) ($this->myfile_key ?? '');
-        if ($mk !== '' && !preg_match('/^\d+_signed\.pdf$/i', $mk)) {
+        if ($mk !== '' && ! preg_match('/^\d+_signed\.pdf$/i', $mk)) {
             $stem = pathinfo($mk, PATHINFO_FILENAME);
             if ($stem !== '') {
-                return $this->sanitizeSignedDownloadFilename($stem . '_signed.' . $ext);
+                return $this->sanitizeSignedDownloadFilename($stem.'_signed.'.$ext);
             }
         }
 
-        return (string) $this->id . '_signed.pdf';
+        return (string) $this->id.'_signed.pdf';
     }
 
     /**
@@ -481,7 +499,7 @@ class Document extends Model
     {
         $name = trim((string) ($this->file_name ?? ''));
         if ($name === '') {
-            return 'document.' . $this->resolveStoredFileExtension();
+            return 'document.'.$this->resolveStoredFileExtension();
         }
 
         $existing = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
@@ -489,7 +507,7 @@ class Document extends Model
             return $name;
         }
 
-        return $name . '.' . $this->resolveStoredFileExtension();
+        return $name.'.'.$this->resolveStoredFileExtension();
     }
 
     /**
@@ -535,6 +553,6 @@ class Document extends Model
         $name = str_replace(['"', "\r", "\n", '\\', '/'], '', $name);
         $name = trim($name);
 
-        return $name !== '' ? mb_substr($name, 0, 220) : ((string) $this->id . '_signed.pdf');
+        return $name !== '' ? mb_substr($name, 0, 220) : ((string) $this->id.'_signed.pdf');
     }
 }

@@ -538,7 +538,7 @@
                     var obj = (typeof result === 'object' && result !== null) ? result : (typeof result === 'string' && result.trim() ? (function(){ try { return JSON.parse(result); } catch(e) { return null; } })() : null);
                     if (!obj) return;
                     if (obj.status) {
-                        var previewUrl = obj.fileurl;
+                        var previewUrl = obj.previewurl || obj.fileurl;
                         var filetype = obj.filetype;
                         var folderName = obj.folder_name;
                         var fileName = obj.filename + '.' + obj.filetype;
@@ -563,8 +563,8 @@
                         dropdownMenu.find('.dropdown-item[href^="http"]').filter(function() {
                             return $(this).text().trim() === 'Preview';
                         }).attr('href', previewUrl);
-                        // Update all download links in the row (hidden + dropdown) so context menu and download use new URL after rename
-                        $row.find('.download-file').attr('data-filelink', previewUrl).attr('data-filename', fileName);
+                        // Update download links with S3 URL; preview uses authenticated app route when available.
+                        $row.find('.download-file').attr('data-filelink', obj.fileurl || previewUrl).attr('data-filename', fileName);
                         showRenameToast('success', obj.message || obj.data || 'Document saved successfully');
                     } else {
                         parent.find('.opentime').addClass('is-invalid').css({ 'background-image': 'none', 'padding-right': '0.75em' });

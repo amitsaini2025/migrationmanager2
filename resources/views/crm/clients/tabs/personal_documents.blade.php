@@ -1551,6 +1551,9 @@
                     var fileName = docPayload.file_name || '';
                     var fileType = docPayload.filetype || 'pdf';
                     var fileUrl = docPayload.myfile || '';
+                    var previewUrl = (typeof window.resolveVisaDocPreviewUrl === 'function')
+                        ? window.resolveVisaDocPreviewUrl(docPayload)
+                        : fileUrl;
                     var status = docPayload.status || 'draft';
                     var iconHtml = (typeof crmI === 'function') ? crmI('fa-file-image') : '';
                     var displayName = fileName ? (fileName + (fileType ? ('.' + fileType) : '')) : '';
@@ -1559,8 +1562,8 @@
                     if (fileName && fileUrl) {
                         fileCellHtml =
                             '<div data-id="' + docId + '" data-name="' + escapeHtmlText(fileName) + '" class="doc-row" ' +
-                            'oncontextmenu="showVisaFileContextMenu(event, ' + docId + ', \'' + escapeJsAttr(fileType) + '\', \'' + escapeJsAttr(fileUrl) + '\', \'' + escapeJsAttr(categoryId) + '\', \'' + escapeJsAttr(status) + '\'); return false;">' +
-                            '<a href="javascript:void(0);" onclick="previewFile(\'' + escapeJsAttr(fileType) + '\',\'' + escapeJsAttr(fileUrl) + '\',\'preview-container-migdocumnetlist\')">' +
+                            'oncontextmenu="showVisaFileContextMenu(event, ' + docId + ', \'' + escapeJsAttr(fileType) + '\', \'' + escapeJsAttr(previewUrl) + '\', \'' + escapeJsAttr(categoryId) + '\', \'' + escapeJsAttr(status) + '\'); return false;">' +
+                            '<a href="javascript:void(0);" onclick="previewFile(\'' + escapeJsAttr(fileType) + '\',\'' + escapeJsAttr(previewUrl) + '\',\'preview-container-migdocumnetlist\')">' +
                             iconHtml + ' <span>' + escapeHtmlText(displayName) + '</span></a></div>';
                     } else {
                         fileCellHtml = '<span style="color:#6b7280;">N/A</span>';

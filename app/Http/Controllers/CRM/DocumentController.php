@@ -2563,6 +2563,74 @@ class DocumentController extends Controller
     }
 
     /**
+     * Inline preview of the original (unsigned) upload. Streams through the app so private S3 files load in CRM viewers.
+     */
+    public function previewOriginal($id)
+    {
+        try {
+            $document = Document::findOrFail($id);
+            $this->authorizeDocumentAssociatedAccess($document);
+
+            if (! empty($document->form956_id) && empty($document->myfile)) {
+                return redirect()->route('forms.preview', $document->form956_id);
+            }
+
+            if (trim((string) ($document->myfile ?? '')) === '' && trim((string) ($document->myfile_key ?? '')) === '') {
+                abort(404, 'Document not available for preview.');
+            }
+
+            $filename = str_replace('"', "'", $document->getOriginalDownloadFilename());
+            $location = OriginalDocumentPathResolver::locateOriginalPdfFile($document);
+
+            if ($location === null) {
+                abort(404, 'Document file not found.');
+            }
+
+            $contentType = $this->previewContentType($document);
+
+            if ($location['disk'] === 'local') {
+                return response()->file($location['path'], [
+                    'Content-Type' => $contentType,
+                    'Content-Disposition' => 'inline; filename="'.$filename.'"',
+                ]);
+            }
+
+            /** @var FilesystemAdapter $disk */
+            $disk = Storage::disk('s3');
+
+            return response($disk->get($location['key']), 200, [
+                'Content-Type' => $contentType,
+                'Content-Disposition' => 'inline; filename="'.$filename.'"',
+                'Content-Length' => $disk->size($location['key']),
+                'Cache-Control' => 'private, max-age=300',
+            ]);
+        } catch (ModelNotFoundException $e) {
+            throw $e;
+        } catch (HttpException $e) {
+            throw $e;
+        } catch (HttpResponseException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error('previewOriginal failed', ['id' => $id, 'error' => $e->getMessage()]);
+
+            abort(500, 'Unable to preview document.');
+        }
+    }
+
+    private function previewContentType(Document $document): string
+    {
+        return match ($document->getPreviewFileExtension()) {
+            'pdf' => 'application/pdf',
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            default => 'application/octet-stream',
+        };
+    }
+
+    /**
      * Inline preview of signed PDF with descriptive filename (same as download). Streams through app so URL and viewer show correct name.
      */
     public function previewSigned($id)

@@ -262,6 +262,24 @@
         return '';
     }
 
+    function resolveVisaDocPreviewUrl(doc) {
+        if (!doc) {
+            return '';
+        }
+        if (doc.previewurl) {
+            return doc.previewurl;
+        }
+        if (doc.preview_url) {
+            return doc.preview_url;
+        }
+        if (doc.id && window.ClientDetailConfig?.urls?.previewOriginalDocument) {
+            return window.ClientDetailConfig.urls.previewOriginalDocument.replace('__ID__', doc.id);
+        }
+        return resolveClientDocFileUrl(doc);
+    }
+
+    window.resolveVisaDocPreviewUrl = resolveVisaDocPreviewUrl;
+
     function activateClientDocumentsTabAndCategory(tabId, categoryId, subtabAttr) {
         if (!tabId) {
             return;
@@ -377,6 +395,7 @@
         var fileName = doc.file_name || '';
         var fileType = doc.filetype || 'pdf';
         var fileUrl = resolveClientDocFileUrl(doc);
+        var previewUrl = resolveVisaDocPreviewUrl(doc);
         var status = doc.status || 'draft';
         var matterId = doc.client_matter_id || '';
         var catTitle = $tab.find('.subtab6-button[data-subtab6="' + categoryId + '"]').first().text().trim() || '';
@@ -387,8 +406,8 @@
         if (fileName && fileUrl) {
             fileCellHtml =
                 '<div data-id="' + doc.id + '" data-name="' + escapeClientDocUiHtml(fileName) + '" class="doc-row" ' +
-                'oncontextmenu="showVisaFileContextMenu(event, ' + doc.id + ', \'' + escapeClientDocUiAttr(fileType) + '\', \'' + escapeClientDocUiAttr(fileUrl) + '\', \'' + escapeClientDocUiAttr(categoryId) + '\', \'' + escapeClientDocUiAttr(status) + '\'); return false;">' +
-                '<a href="javascript:void(0);" onclick="previewFile(\'' + escapeClientDocUiAttr(fileType) + '\',\'' + escapeClientDocUiAttr(fileUrl) + '\',\'preview-container-migdocumnetlist\')">' +
+                'oncontextmenu="showVisaFileContextMenu(event, ' + doc.id + ', \'' + escapeClientDocUiAttr(fileType) + '\', \'' + escapeClientDocUiAttr(previewUrl) + '\', \'' + escapeClientDocUiAttr(categoryId) + '\', \'' + escapeClientDocUiAttr(status) + '\'); return false;">' +
+                '<a href="javascript:void(0);" onclick="previewFile(\'' + escapeClientDocUiAttr(fileType) + '\',\'' + escapeClientDocUiAttr(previewUrl) + '\',\'preview-container-migdocumnetlist\')">' +
                 iconHtml + ' <span>' + escapeClientDocUiHtml(displayName) + '</span></a></div>';
         } else {
             fileCellHtml = '<span style="color:#6b7280;">N/A</span>';
@@ -419,7 +438,7 @@
             event.preventDefault();
             event.stopPropagation();
             if (typeof window.showVisaFileContextMenu === 'function') {
-                window.showVisaFileContextMenu(event, doc.id, fileType, fileUrl, categoryId, status);
+                window.showVisaFileContextMenu(event, doc.id, fileType, previewUrl, categoryId, status);
             }
             return false;
         });
@@ -9768,12 +9787,13 @@ success: function(response) {
                         
                         var row = $('#id_' + fileid);
                         var docNameWithoutExt = ress.filename.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_").toLowerCase();
+                        var visaPreviewUrl = (laneDocType === 'visa' && ress.previewurl) ? ress.previewurl : ress.fileurl;
                         
                         // Replace upload TD content (Column 1 = File Name)
                         var uploadTd = row.find('td').eq(1);
                         uploadTd.html(
-                            '<div data-id="' + fileid + '" data-name="' + docNameWithoutExt + '" class="doc-row" title="Uploaded by: ' + (ress.uploaded_by || 'Staff') + (ress.uploaded_at ? ' on ' + formatClientDocDateTime(ress.uploaded_at) : '') + '" oncontextmenu="' + contextMenuFn + '(event, ' + fileid + ', \'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'' + visa_doc_cat + '\', \'' + (ress.status_value || 'draft') + '\'); return false;">' +
-                                '<a href="javascript:void(0);" onclick="previewFile(\'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'' + previewPane + '\')">' +
+                            '<div data-id="' + fileid + '" data-name="' + docNameWithoutExt + '" class="doc-row" title="Uploaded by: ' + (ress.uploaded_by || 'Staff') + (ress.uploaded_at ? ' on ' + formatClientDocDateTime(ress.uploaded_at) : '') + '" oncontextmenu="' + contextMenuFn + '(event, ' + fileid + ', \'' + ress.filetype + '\', \'' + visaPreviewUrl + '\', \'' + visa_doc_cat + '\', \'' + (ress.status_value || 'draft') + '\'); return false;">' +
+                                '<a href="javascript:void(0);" onclick="previewFile(\'' + ress.filetype + '\', \'' + visaPreviewUrl + '\', \'' + previewPane + '\')">' +
                                     crmI('fas fa-file-image') + ' <span>' + ress.filename + '</span>' +
                                 '</a>' +
                             '</div>'
@@ -9782,7 +9802,7 @@ success: function(response) {
                             event.preventDefault();
                             event.stopPropagation();
                             if (typeof window[contextMenuFn] === 'function') {
-                                window[contextMenuFn](event, fileid, ress.filetype, ress.fileurl, visa_doc_cat, ress.status_value || 'draft');
+                                window[contextMenuFn](event, fileid, ress.filetype, visaPreviewUrl, visa_doc_cat, ress.status_value || 'draft');
                             }
                             return false;
                         });
@@ -10018,6 +10038,7 @@ success: function(response) {
                         var row = $('#id_' + fileidL1);
 
                         var docNameWithoutExt = ress.filename.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_").toLowerCase();
+                        var visaPreviewUrl = (laneDocType === 'visa' && ress.previewurl) ? ress.previewurl : ress.fileurl;
 
 
 
@@ -10027,9 +10048,9 @@ success: function(response) {
 
                         uploadTd.html(
 
-                            '<div data-id="' + fileidL1 + '" data-name="' + docNameWithoutExt + '" class="doc-row" title="Uploaded by: ' + (ress.uploaded_by || 'Staff') + (ress.uploaded_at ? ' on ' + formatClientDocDateTime(ress.uploaded_at) : '') + '" oncontextmenu="' + contextMenuFn + '(event, ' + fileidL1 + ', \'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'' + visa_doc_cat + '\', \'' + (ress.status_value || 'draft') + '\'); return false;">' +
+                            '<div data-id="' + fileidL1 + '" data-name="' + docNameWithoutExt + '" class="doc-row" title="Uploaded by: ' + (ress.uploaded_by || 'Staff') + (ress.uploaded_at ? ' on ' + formatClientDocDateTime(ress.uploaded_at) : '') + '" oncontextmenu="' + contextMenuFn + '(event, ' + fileidL1 + ', \'' + ress.filetype + '\', \'' + visaPreviewUrl + '\', \'' + visa_doc_cat + '\', \'' + (ress.status_value || 'draft') + '\'); return false;">' +
 
-                                '<a href="javascript:void(0);" onclick="previewFile(\'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'' + previewPane + '\')">' +
+                                '<a href="javascript:void(0);" onclick="previewFile(\'' + ress.filetype + '\', \'' + visaPreviewUrl + '\', \'' + previewPane + '\')">' +
 
                                     crmI('fas fa-file-image') + ' <span>' + ress.filename + '</span>' +
 
@@ -10043,7 +10064,7 @@ success: function(response) {
                             event.preventDefault();
                             event.stopPropagation();
                             if (typeof window[contextMenuFn] === 'function') {
-                                window[contextMenuFn](event, fileidL1, ress.filetype, ress.fileurl, visa_doc_cat, ress.status_value || 'draft');
+                                window[contextMenuFn](event, fileidL1, ress.filetype, visaPreviewUrl, visa_doc_cat, ress.status_value || 'draft');
                             }
                             return false;
                         });

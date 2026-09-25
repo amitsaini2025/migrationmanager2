@@ -209,6 +209,7 @@
                                                         $fileUrl = 'https://' . env('AWS_BUCKET') . '.s3.' . env('AWS_DEFAULT_REGION') . '.amazonaws.com/' . $fetchedData->id . '/visa/' . ($fetch->myfile ?? '');
                                                         $downloadUrl = $fileUrl;
                                                     }
+                                                    $previewUrl = $fetch->getInlinePreviewUrl() ?? $fileUrl;
                                                     ?>
                                                     <tr class="drow" data-matterid="<?= $fetch->client_matter_id ?>" data-catid="<?= $fetch->folder_name ?>" id="id_<?= $fetch->id ?>">
                                                         <td style="white-space: initial;">
@@ -221,11 +222,11 @@
                                                                 <?php
                                                                 $displayFileName = $fetch->getFilenameWithExtensionForDisplay();
                                                                 $previewExtension = $fetch->getPreviewFileExtension();
-                                                                $fileUrlJs = addslashes($fileUrl);
+                                                                $previewUrlJs = addslashes($previewUrl);
                                                                 $downloadUrlJs = addslashes($downloadUrl ?? $fileUrl);
                                                                 ?>
-                                                                <div data-id="<?= $fetch->id ?>" data-name="<?= htmlspecialchars($fetch->file_name) ?>" class="doc-row" title="Uploaded by: <?= htmlspecialchars($admin->first_name ?? 'NA') ?> on <?= date('d/m/Y H:i', strtotime($fetch->created_at)) ?>" oncontextmenu="showVisaFileContextMenu(event, <?= $fetch->id ?>, '<?= htmlspecialchars($previewExtension) ?>', '<?= $fileUrlJs ?>', '<?= $id ?>', '<?= $fetch->status ?? 'draft' ?>'); return false;">
-                                                                    <a href="javascript:void(0);" onclick="previewFile('<?= $previewExtension ?>','<?= $fileUrlJs ?>','preview-container-migdocumnetlist')">
+                                                                <div data-id="<?= $fetch->id ?>" data-name="<?= htmlspecialchars($fetch->file_name) ?>" class="doc-row" title="Uploaded by: <?= htmlspecialchars($admin->first_name ?? 'NA') ?> on <?= date('d/m/Y H:i', strtotime($fetch->created_at)) ?>" oncontextmenu="showVisaFileContextMenu(event, <?= $fetch->id ?>, '<?= htmlspecialchars($previewExtension) ?>', '<?= $previewUrlJs ?>', '<?= $id ?>', '<?= $fetch->status ?? 'draft' ?>'); return false;">
+                                                                    <a href="javascript:void(0);" onclick="previewFile('<?= $previewExtension ?>','<?= $previewUrlJs ?>','preview-container-migdocumnetlist')">
                                                                         @icon('fa-file-image') <span><?= htmlspecialchars($displayFileName) ?></span>
                                                                     </a>
                                                                 </div>

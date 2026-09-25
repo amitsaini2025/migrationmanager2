@@ -855,6 +855,7 @@ class ClientDocumentsController extends Controller
                             $admin = $fetch->staff;
                             $VisaDocumentType = VisaDocumentType::query()->where('id', $fetch->folder_name)->first();
                             $fileUrl = $fetch->myfile_key ? $fetch->myfile : 'https://'.env('AWS_BUCKET').'.s3.'.env('AWS_DEFAULT_REGION').'.amazonaws.com/'.$fetch->client_id.'/visa/'.$fetch->myfile;
+                            $previewUrl = $fetch->getInlinePreviewUrl() ?? $fileUrl;
 
                             // Hide non-matching documents with CSS (original behavior)
                             if (
@@ -875,8 +876,8 @@ class ClientDocumentsController extends Controller
                             <td style="white-space: initial;">
                                 <?php
                                     if (isset($fetch->file_name) && $fetch->file_name != '') { ?>
-                                    <div data-id="<?php echo $fetch->id; ?>" data-name="<?php echo htmlspecialchars($fetch->file_name); ?>" class="doc-row" title="Uploaded by: <?php echo htmlspecialchars($admin->first_name ?? 'NA'); ?> on <?php echo date('d/m/Y H:i', strtotime($fetch->created_at)); ?>" oncontextmenu="showVisaFileContextMenu(event, <?php echo $fetch->id; ?>, '<?php echo htmlspecialchars($fetch->getPreviewFileExtension()); ?>', '<?php echo $fileUrl; ?>', '<?php echo $fetch->folder_name; ?>', '<?php echo $fetch->status ?? 'draft'; ?>'); return false;">
-                                        <a href="javascript:void(0);" onclick="previewFile('<?php echo $fetch->getPreviewFileExtension(); ?>','<?php echo $fetch->myfile; ?>','preview-container-migdocumnetlist')">
+                                    <div data-id="<?php echo $fetch->id; ?>" data-name="<?php echo htmlspecialchars($fetch->file_name); ?>" class="doc-row" title="Uploaded by: <?php echo htmlspecialchars($admin->first_name ?? 'NA'); ?> on <?php echo date('d/m/Y H:i', strtotime($fetch->created_at)); ?>" oncontextmenu="showVisaFileContextMenu(event, <?php echo $fetch->id; ?>, '<?php echo htmlspecialchars($fetch->getPreviewFileExtension()); ?>', '<?php echo addslashes($previewUrl); ?>', '<?php echo $fetch->folder_name; ?>', '<?php echo $fetch->status ?? 'draft'; ?>'); return false;">
+                                        <a href="javascript:void(0);" onclick="previewFile('<?php echo $fetch->getPreviewFileExtension(); ?>','<?php echo addslashes($previewUrl); ?>','preview-container-migdocumnetlist')">
                                             <?php echo IconHelper::fromLegacy('fas fa-file-image'); ?> <span><?php echo htmlspecialchars($fetch->getFilenameWithExtensionForDisplay()); ?></span>
                                         </a>
                                     </div>
@@ -1189,6 +1190,7 @@ class ClientDocumentsController extends Controller
             $admin = $fetch->staff;
             $visaDocumentType = VisaDocumentType::query()->where('id', $fetch->folder_name)->first();
             $fileUrl = $fetch->myfile_key ? $fetch->myfile : 'https://'.env('AWS_BUCKET').'.s3.'.env('AWS_DEFAULT_REGION').'.amazonaws.com/'.$fetch->client_id.'/visa/'.$fetch->myfile;
+            $previewUrl = $fetch->getInlinePreviewUrl() ?? $fileUrl;
 
             if ($clientMatterId != $fetch->client_matter_id || $folderName != $fetch->folder_name) {
                 $showCls = "style='display: none;'";
@@ -1204,8 +1206,8 @@ class ClientDocumentsController extends Controller
                 </td>
                 <td style="white-space: initial;">
                     <?php if (isset($fetch->file_name) && $fetch->file_name != '') { ?>
-                        <div data-id="<?php echo $fetch->id; ?>" data-name="<?php echo htmlspecialchars($fetch->file_name); ?>" class="doc-row" title="Uploaded by: <?php echo htmlspecialchars($admin->first_name ?? 'NA'); ?> on <?php echo date('d/m/Y H:i', strtotime($fetch->created_at)); ?>" oncontextmenu="showVisaFileContextMenu(event, <?php echo $fetch->id; ?>, '<?php echo htmlspecialchars($fetch->getPreviewFileExtension()); ?>', '<?php echo $fileUrl; ?>', '<?php echo $fetch->folder_name; ?>', '<?php echo $fetch->status ?? 'draft'; ?>'); return false;">
-                            <a href="javascript:void(0);" onclick="previewFile('<?php echo $fetch->getPreviewFileExtension(); ?>','<?php echo $fetch->myfile; ?>','preview-container-migdocumnetlist')">
+                        <div data-id="<?php echo $fetch->id; ?>" data-name="<?php echo htmlspecialchars($fetch->file_name); ?>" class="doc-row" title="Uploaded by: <?php echo htmlspecialchars($admin->first_name ?? 'NA'); ?> on <?php echo date('d/m/Y H:i', strtotime($fetch->created_at)); ?>" oncontextmenu="showVisaFileContextMenu(event, <?php echo $fetch->id; ?>, '<?php echo htmlspecialchars($fetch->getPreviewFileExtension()); ?>', '<?php echo addslashes($previewUrl); ?>', '<?php echo $fetch->folder_name; ?>', '<?php echo $fetch->status ?? 'draft'; ?>'); return false;">
+                            <a href="javascript:void(0);" onclick="previewFile('<?php echo $fetch->getPreviewFileExtension(); ?>','<?php echo addslashes($previewUrl); ?>','preview-container-migdocumnetlist')">
                                 <?php echo IconHelper::fromLegacy('fas fa-file-image'); ?> <span><?php echo htmlspecialchars($fetch->getFilenameWithExtensionForDisplay()); ?></span>
                             </a>
                         </div>
@@ -1696,6 +1698,9 @@ class ClientDocumentsController extends Controller
                         $response['filename'] = $name;
                         $response['filetype'] = $extension;
                         $response['fileurl'] = $fileUrl;
+                        if ($doctype === 'visa') {
+                            $response['previewurl'] = $obj->getInlinePreviewUrl();
+                        }
                         $response['uploaded_by'] = Auth::user()->first_name ?? 'Staff';
                         $response['uploaded_at'] = $obj->created_at?->toIso8601String() ?? now()->toIso8601String();
                         $response['filekey'] = $name;
@@ -2063,6 +2068,11 @@ class ClientDocumentsController extends Controller
                     $response['fileurl'] = $doc->myfile;
                 }
 
+                if ($doc->doc_type === 'visa') {
+                    $renamedDoc = Document::query()->find($id);
+                    $response['previewurl'] = $renamedDoc?->getInlinePreviewUrl();
+                }
+
                 // Add warning if file wasn't renamed on S3
                 if ($updateDbOnly) {
                     $response['warning'] = 'Document name updated. Note: Original file not found on server.';
@@ -2387,6 +2397,7 @@ class ClientDocumentsController extends Controller
                     'file_name' => $document->file_name,
                     'filetype' => $document->filetype,
                     'myfile' => $document->myfile,
+                    'previewurl' => $document->getInlinePreviewUrl(),
                     'status' => $document->status ?? 'draft',
                     'client_matter_id' => $document->client_matter_id,
                     'folder_name' => $document->folder_name,

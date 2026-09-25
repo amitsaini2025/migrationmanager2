@@ -549,6 +549,7 @@ use App\Http\Controllers\Controller;
             admin: '{{ URL::to("/") }}',
             fetchVisaExpiryMessages: '{{ URL::to("/fetch-visa_expiry_messages") }}',
             downloadDocument: '{{ url("/documents/download") }}',
+            previewOriginalDocument: '{{ url("/documents/__ID__/preview-original") }}',
             getTopInvoiceNo: '{{ URL::to("/clients/getTopInvoiceNoFromDB") }}',
             getTopReceiptVal: '{{ URL::to("/clients/getTopReceiptValInDB") }}',
             listOfInvoice: '{{ URL::to("/clients/listOfInvoice") }}',

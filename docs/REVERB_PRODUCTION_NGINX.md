@@ -97,6 +97,33 @@ sudo systemctl reload nginx
 | 4 | DNS: `revapi.bansalcrm.com` A/AAAA points to this server. |
 | 5 | Firewall: allow inbound 443. |
 | 6 | Production `.env`: `REVERB_HOST=revapi.bansalcrm.com`, `REVERB_PORT=443`, `REVERB_SCHEME=https`, and `VITE_REVERB_*` set; frontend built and deployed. |
+| 7 | **Rebuild frontend** after any `VITE_REVERB_*` change (values are baked into `public/build/` at compile time). |
+
+### 4.1 Rebuild frontend on the server
+
+`VITE_*` variables are read by Vite at **build time**, not by PHP at runtime. If the browser still connects to `wss://migrationmanager.bansalcrm.com:8080`, the deployed bundle is stale or was built without `VITE_REVERB_*`.
+
+On the production server (project root):
+
+```bash
+# Use literal values in .env — do not rely on ${REVERB_APP_KEY} for VITE_* at build time
+# VITE_REVERB_APP_KEY=your-key-here
+# VITE_REVERB_HOST=revapi.bansalcrm.com
+# VITE_REVERB_PORT=443
+# VITE_REVERB_SCHEME=https
+
+npm run build
+php artisan config:clear
+php artisan cache:clear
+```
+
+Verify the built file contains the correct host (not `:8080` on the CRM domain):
+
+```bash
+grep -o 'revapi.bansalcrm.com' public/build/assets/app-*.js | head -1
+```
+
+Staff must hard-refresh (Ctrl+Shift+R) after deploy.
 
 ---
 

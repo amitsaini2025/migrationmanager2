@@ -210,6 +210,25 @@ function isCrmEchoConnected() {
     return window.Echo?.connector?.pusher?.connection?.state === 'connected';
 }
 
+function bindCrmEchoDisconnectCallback(callback) {
+    const echoConnector = window.Echo?.connector;
+    if (echoConnector && typeof echoConnector.onConnectionChange === 'function') {
+        echoConnector.onConnectionChange(function (status) {
+            if (status === 'disconnected' || status === 'failed') {
+                callback();
+            }
+        });
+        return;
+    }
+
+    const connection = echoConnector?.pusher?.connection;
+    if (connection) {
+        connection.bind('disconnected', callback);
+        connection.bind('unavailable', callback);
+        connection.bind('failed', callback);
+    }
+}
+
 if (import.meta.env.VITE_REVERB_APP_KEY) {
     try {
         if (!window.Echo) {
@@ -266,6 +285,7 @@ if (import.meta.env.VITE_REVERB_APP_KEY) {
     function poll() {
         if (document.visibilityState === 'hidden') return;
         if (typeof window.showTeamsNotification !== 'function') return;
+        if (isCrmEchoConnected()) return;
         fetch('/fetch-office-visit-notifications', {
             method: 'GET',
             headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -300,6 +320,8 @@ if (import.meta.env.VITE_REVERB_APP_KEY) {
             poll();
         }
     });
+
+    bindCrmEchoDisconnectCallback(poll);
 })();
 
 // Polling fallback for notification badge (HTML already has the count; Echo updates live).
@@ -334,21 +356,7 @@ if (import.meta.env.VITE_REVERB_APP_KEY) {
         if (document.visibilityState === 'visible') fetchCount();
     });
 
-    const echoConnector = window.Echo?.connector;
-    if (echoConnector && typeof echoConnector.onConnectionChange === 'function') {
-        echoConnector.onConnectionChange(function (status) {
-            if (status === 'disconnected' || status === 'failed') {
-                fetchCount();
-            }
-        });
-    } else {
-        const connection = echoConnector?.pusher?.connection;
-        if (connection) {
-            connection.bind('disconnected', fetchCount);
-            connection.bind('unavailable', fetchCount);
-            connection.bind('failed', fetchCount);
-        }
-    }
+    bindCrmEchoDisconnectCallback(fetchCount);
 })();
 
 /*

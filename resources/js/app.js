@@ -276,9 +276,11 @@ if (import.meta.env.VITE_REVERB_APP_KEY) {
     window.EchoDisabled = true;
 }
 
-// Poll office-visit notifications as a safety net (Echo can still deliver instantly).
+// Poll office-visit notifications when Echo is down (Echo delivers instantly when connected).
 // showTeamsNotification dedupes by id so this does not double-render when both fire.
 (function pollOfficeVisitNotificationsAll() {
+    const OFFICE_VISIT_POLL_MS_WHEN_ECHO_DOWN = 60000;
+
     const userId = document.querySelector('meta[name="current-user-id"]')?.content;
     if (!userId) return;
 
@@ -310,7 +312,7 @@ if (import.meta.env.VITE_REVERB_APP_KEY) {
                 window.drainOfficeVisitNotificationQueue();
             }
             setTimeout(poll, 3000);
-            setInterval(poll, 10000);
+            setInterval(poll, OFFICE_VISIT_POLL_MS_WHEN_ECHO_DOWN);
         }
         if (attempts >= 300) clearInterval(waitForHandler);
     }, 200);

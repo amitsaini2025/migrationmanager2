@@ -328,6 +328,7 @@ if (import.meta.env.VITE_REVERB_APP_KEY) {
 
 // Polling fallback for notification badge (HTML already has the count; Echo updates live).
 (function pollNotificationCount() {
+    const NOTIFICATION_BELL_POLL_MS_WHEN_ECHO_DOWN = 5 * 60 * 1000;
     const badgeEl = document.getElementById('countbell_notification');
     const userId = document.querySelector('meta[name="current-user-id"]')?.content;
     if (!badgeEl || !userId) return;
@@ -353,7 +354,7 @@ if (import.meta.env.VITE_REVERB_APP_KEY) {
             .catch(() => {});
     }
 
-    setInterval(fetchCount, 30000);
+    setInterval(fetchCount, NOTIFICATION_BELL_POLL_MS_WHEN_ECHO_DOWN);
     document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible') fetchCount();
     });

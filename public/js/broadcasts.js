@@ -235,8 +235,10 @@
             clearInterval(state.pollingTimer);
         }
 
+        const BROADCAST_POLL_MS_WHEN_ECHO_DOWN = 3 * 60 * 1000;
+
         fetchUnreadBroadcasts();
-        state.pollingTimer = setInterval(fetchUnreadBroadcasts, 60000);
+        state.pollingTimer = setInterval(fetchUnreadBroadcasts, BROADCAST_POLL_MS_WHEN_ECHO_DOWN);
     }
 
     function scheduleExistingUnreadFetch() {

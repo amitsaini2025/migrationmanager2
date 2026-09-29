@@ -14,6 +14,7 @@
 				<form method="post" action="{{URL::to('/documents/add-personal-category')}}" name="add_pers_doc_cat_form" id="add_pers_doc_cat_form" autocomplete="off"  enctype="multipart/form-data">
                     @csrf
                     <input type="hidden" name="clientid" value="{{$fetchedData->id}}">
+                    <input type="hidden" name="category_type" id="personal_doc_category_type" value="personal">
 
 					<div class="row">
 						<div class="col-6 col-md-6 col-lg-6">

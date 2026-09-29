@@ -2923,12 +2923,17 @@ class ClientDocumentsController extends Controller
     {
         $categoryTitle = trim($request->input('personal_doc_category'));
         $clientId = $request->input('clientid');
+        $categoryType = $request->input('category_type', 'personal');
+        if (! in_array($categoryType, ['personal', 'company'], true)) {
+            $categoryType = 'personal';
+        }
 
         $request->merge(['personal_doc_category' => $categoryTitle]);
 
         // Basic validation
         $validator = Validator::make($request->all(), [
             'personal_doc_category' => 'required|string|max:255',
+            'category_type' => 'nullable|string|in:personal,company',
         ]);
 
         if ($validator->fails()) {
@@ -2957,10 +2962,11 @@ class ClientDocumentsController extends Controller
             ]);
         }
 
-        // RULE 2: Same title with status=1 for same client_id is not allowed
+        // RULE 2: Same title with status=1 for same client_id is not allowed within the category scope
         $existsForSameClient = PersonalDocumentType::query()->where('title', $categoryTitle)
             ->where('status', 1)
             ->where('client_id', $clientId)
+            ->whereIn('type', $this->personalDocumentTypeScopeForCategory($categoryType))
             ->exists();
 
         if ($existsForSameClient) {
@@ -2974,7 +2980,7 @@ class ClientDocumentsController extends Controller
             $category = new PersonalDocumentType;
             $category->title = $categoryTitle;
             $category->status = 1;
-            $category->type = 'personal';
+            $category->type = $categoryType;
             $category->client_id = $clientId ?? null;
             $category->save();
 
@@ -2985,9 +2991,11 @@ class ClientDocumentsController extends Controller
                     true
                 );
 
+            $categoryLabel = $categoryType === 'company' ? 'Company Document' : 'Personal Document';
+
             return response()->json([
                 'status' => true,
-                'message' => 'Personal Document Category added successfully.',
+                'message' => $categoryLabel.' Category added successfully.',
                 'id' => $category->id,
                 'title' => $category->title,
                 'can_delete' => $canDelete,
@@ -2998,6 +3006,14 @@ class ClientDocumentsController extends Controller
                 'message' => 'Error adding category: '.$e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function personalDocumentTypeScopeForCategory(string $categoryType): array
+    {
+        return $categoryType === 'company' ? ['company', 'both'] : ['personal', 'both'];
     }
 
     /**

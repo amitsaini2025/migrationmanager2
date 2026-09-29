@@ -32,20 +32,20 @@
                     if ($companyDocumentsOnlyGeneral) {
                         $companyDocTitlesOrder = ['General', 'Financial'];
                         $companyDocOrdered = collect();
+                        $remainingCompanyCategories = $persDocCatList;
                         foreach ($companyDocTitlesOrder as $title) {
-                            $match = $persDocCatList->first(function ($cat) use ($title) {
+                            $match = $remainingCompanyCategories->first(function ($cat) use ($title) {
                                 return strcasecmp(trim($cat->title ?? ''), $title) === 0;
                             });
                             if ($match) {
                                 $companyDocOrdered->push($match);
+                                $remainingCompanyCategories = $remainingCompanyCategories
+                                    ->reject(fn ($cat) => (int) $cat->id === (int) $match->id);
                             }
                         }
-                        if ($companyDocOrdered->isEmpty()) {
-                            $fallback = $persDocCatList->firstWhere('id', 1) ?? $persDocCatList->first();
-                            $persDocCatList = $fallback ? collect([$fallback]) : collect();
-                        } else {
-                            $persDocCatList = $companyDocOrdered->values();
-                        }
+                        $persDocCatList = $companyDocOrdered
+                            ->merge($remainingCompanyCategories->sortBy('id')->values())
+                            ->values();
                     }
                     $firstPersDocCatId = optional($persDocCatList->first())->id;
                     // One Document query for the whole tab; group by category in memory.
@@ -81,11 +81,9 @@
                                 <?php endforeach; ?>
                             </nav>
                             <div style="display: flex; gap: 10px; align-items: center;">
-                                @if (!$companyDocumentsOnlyGeneral)
-                                <button type="button" class="btn add_personal_doc_cat-btn add_personal_doc_cat" data-type="personal" data-categoryid="">
+                                <button type="button" class="btn add_personal_doc_cat-btn add_personal_doc_cat" data-type="{{ $companyDocumentsOnlyGeneral ? 'company' : 'personal' }}" data-categoryid="">
                                     @icon('fa-plus') Add Category
                                 </button>
-                                @endif
                                 <!-- Add link to Not Used Documents -->
                                 <button type="button" class="btn btn-secondary client-nav-button client-nav-button--inline" data-tab="notuseddocuments">
                                     @icon('fa-folder-minus') Not Used Documents

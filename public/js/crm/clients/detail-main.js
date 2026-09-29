@@ -9861,6 +9861,19 @@ success: function(response) {
 
             e.preventDefault(); // Prevent default button behavior and page refresh
 
+            var categoryType = $(this).data('type') || 'personal';
+            var $form = $('#add_pers_doc_cat_form');
+            var $typeInput = $form.find('input[name="category_type"]');
+            if ($typeInput.length) {
+                $typeInput.val(categoryType);
+            }
+            var $modalTitle = $('#addPersDocCatModalLabel');
+            if ($modalTitle.length) {
+                $modalTitle.text(categoryType === 'company'
+                    ? 'Add Company Document Category'
+                    : 'Add Personal Document Category');
+            }
+
             $('.addpersonaldoccatmodel').modal('show');
 
         });

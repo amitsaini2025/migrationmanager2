@@ -227,6 +227,82 @@
             }
         });
 
+        // ---- Delete Nomination (File) Document Category ----
+        $(document).on('click', '.delete-nomination-cat-title', function(e) {
+            e.preventDefault();
+            var $deleteBtn = $(this);
+            if ($deleteBtn.data('deleting')) {
+                return;
+            }
+            var url = (window.ClientDetailConfig && window.ClientDetailConfig.urls && window.ClientDetailConfig.urls.deleteNominationCategory)
+                ? window.ClientDetailConfig.urls.deleteNominationCategory
+                : '';
+            if (!url) {
+                alert('File document category delete is not configured.');
+                return;
+            }
+            var id = $deleteBtn.data('id');
+            var title = $deleteBtn.data('title') || 'this category';
+            var warningMessage = '⚠️ WARNING: You are about to delete the file document category "' + title + '"\n\n' +
+                'This action will permanently remove the category from the system.\n\n' +
+                'Requirements:\n' +
+                '• Category must have no active documents\n' +
+                '• Any documents in Not Used Documents for this category will also be permanently removed\n' +
+                '• Default categories cannot be deleted\n' +
+                '• Only authorized staff can perform this action\n\n' +
+                'This action CANNOT be undone!\n\n' +
+                'Do you want to proceed?';
+            if (confirm(warningMessage)) {
+                var confirmMessage = '⚠️ FINAL CONFIRMATION\n\n' +
+                    'Are you absolutely sure you want to delete "' + title + '"?\n\n' +
+                    'This will permanently delete the category and any not-used documents linked to it.\n\n' +
+                    'Click OK to delete or Cancel to abort.';
+                if (confirm(confirmMessage)) {
+                    $deleteBtn.data('deleting', true).prop('disabled', true);
+                    $('.popuploader').show();
+                    $.ajax({
+                        url: url,
+                        method: 'POST',
+                        data: {
+                            _token: $('meta[name="csrf-token"]').attr('content'),
+                            id: id
+                        },
+                        success: function(response) {
+                            if (response.status) {
+                                alert('✓ Success: ' + response.message);
+                                var removed = false;
+                                try {
+                                    if (typeof window.removeNominationDocCategoryUi === 'function') {
+                                        removed = !!window.removeNominationDocCategoryUi(id);
+                                    }
+                                } catch (removeErr) {
+                                    console.warn('[DeleteNomDocCat] UI remove failed, falling back to reload', removeErr);
+                                    removed = false;
+                                }
+                                if (!removed) {
+                                    location.reload();
+                                    return;
+                                }
+                            } else {
+                                alert('✗ Error: ' + (response.message || 'Failed to delete category.'));
+                            }
+                        },
+                        error: function(xhr) {
+                            var errorMsg = 'An error occurred while deleting the category.';
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                errorMsg = xhr.responseJSON.message;
+                            }
+                            alert('✗ Error: ' + errorMsg);
+                        },
+                        complete: function() {
+                            $('.popuploader').hide();
+                            $deleteBtn.data('deleting', false).prop('disabled', false);
+                        }
+                    });
+                }
+            }
+        });
+
         // ---- Delete Visa Document Category ----
         $(document).on('click', '.delete-visa-cat-title', function(e) {
             e.preventDefault();
@@ -1115,7 +1191,6 @@
 
     /**
      * Append a newly created nomination document category tab + empty pane without page reload.
-     * No delete action for nomination categories.
      */
     window.appendNominationDocCategoryUi = function(category) {
         var id = category && category.id;
@@ -1145,14 +1220,19 @@
             || $('#nominationclientmatterid').val()
             || '';
         var editIcon = personalDocIcon('fa-edit');
+        var trashIcon = personalDocIcon('fa-trash');
         var fileIcon = personalDocIcon('fa-file-alt');
         var plusIcon = personalDocIcon('fa-plus');
         var uploadIcon = personalDocIcon('fa-upload');
         var cloudIcon = personalDocIcon('fa-cloud-upload-alt', { style: 'font-size: 48px; color: #2563eb; margin-bottom: 15px;' });
+        var canDelete = !!category.can_delete;
 
         var actionsHtml = '<div class="action-buttons" style="display: none; position: absolute;">' +
-            '<button type="button" class="btn btn-sm btn-warning update-nomination-cat-title" data-id="' + id + '" data-title="' + safeTitle + '">' + editIcon + '</button>' +
-            '</div>';
+            '<button type="button" class="btn btn-sm btn-warning update-nomination-cat-title" data-id="' + id + '" data-title="' + safeTitle + '">' + editIcon + '</button>';
+        if (canDelete) {
+            actionsHtml += '<button type="button" class="btn btn-sm btn-danger delete-nomination-cat-title" data-id="' + id + '" data-title="' + safeTitle + '">' + trashIcon + '</button>';
+        }
+        actionsHtml += '</div>';
 
         var $btnWrap = $(
             '<div style="display: inline-block; position: relative;" class="button-container">' +
@@ -1265,6 +1345,7 @@
         var $btnWrap = $btn.closest('.button-container');
         $btn.text(title);
         $btnWrap.find('.update-nomination-cat-title').attr('data-title', title);
+        $btnWrap.find('.delete-nomination-cat-title').attr('data-title', title);
 
         var $h3 = $pane.find('.subtab6-header h3').first();
         if ($h3.length) {
@@ -1282,6 +1363,51 @@
             $(this).attr('data-doccategory', title);
         });
         $pane.find('input[name="doccategory"]').val(title);
+
+        return true;
+    };
+
+    window.removeNominationDocCategoryUi = function(categoryId) {
+        var id = categoryId;
+        if (id == null || id === '') {
+            return false;
+        }
+
+        var $tab = $('#nominationdocuments-tab');
+        var $nav = $tab.find('nav.subtabs6').first();
+        var $content = $tab.find('.subtab6-content').first();
+        if (!$tab.length || !$nav.length || !$content.length) {
+            return false;
+        }
+
+        var $btn = $nav.find('.subtab6-button[data-subtab6="' + id + '"]');
+        var $pane = $content.find('[id="' + id + '-subtab6"]');
+        if (!$btn.length && !$pane.length) {
+            return true;
+        }
+
+        var wasActive = $btn.hasClass('active') || $pane.hasClass('active');
+        var $btnWrap = $btn.closest('.button-container');
+
+        if ($btnWrap.length) {
+            $btnWrap.remove();
+        } else if ($btn.length) {
+            $btn.remove();
+        }
+        if ($pane.length) {
+            $pane.remove();
+        }
+
+        if (wasActive) {
+            var $fallbackBtn = $nav.find('.subtab6-button').first();
+            if ($fallbackBtn.length) {
+                $nav.find('.subtab6-button').removeClass('active');
+                $content.find('.subtab6-pane').removeClass('active');
+                $fallbackBtn.addClass('active');
+                var fallbackId = $fallbackBtn.data('subtab6');
+                $content.find('[id="' + fallbackId + '-subtab6"]').addClass('active');
+            }
+        }
 
         return true;
     };

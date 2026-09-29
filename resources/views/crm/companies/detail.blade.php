@@ -1437,6 +1437,7 @@ $(document).ready(function() {
             updatePersonalCategory: '{{ route("clients.documents.updatePersonalDocCategory") }}',
             updateVisaCategory: '{{ route("clients.documents.updateVisaDocCategory") }}',
             updateNominationCategory: '{{ route("clients.documents.updateNominationDocCategory") }}',
+            deleteNominationCategory: '{{ route("clients.documents.deleteNominationDocCategory") }}',
             deletePersonalCategory: '{{ route("clients.documents.deletePersonalDocCategory") }}',
             deleteVisaCategory: '{{ route("clients.documents.deleteVisaDocCategory") }}',
             sendInvoiceToClient: '{{ url("/clients/send-invoice-to-client") }}',

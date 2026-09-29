@@ -54,6 +54,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | File document (nomination) category defaults & delete (company File Documents tab)
+    |--------------------------------------------------------------------------
+    |
+    | Default category titles never show edit/delete on hover. Custom matter-scoped
+    | categories may be edited; delete is limited to nomination_document_category_delete_role_ids.
+    |
+    */
+    'nomination_document_category_default_titles' => ['General', 'LMT'],
+
+    'nomination_document_category_delete_role_ids' => (($__nominationDocCatDeleteRoles = array_values(array_filter(array_map(
+        'intval',
+        explode(',', (string) env('CRM_NOMINATION_DOC_CATEGORY_DELETE_ROLE_IDS', '1,16'))
+    ), static fn (int $id) => $id > 0))) !== [])
+        ? $__nominationDocCatDeleteRoles
+        : [1, 16],
+
+    /*
+    |--------------------------------------------------------------------------
     | Matter discontinue / reopen: allowed staff roles (staff.role → user_roles.id)
     |--------------------------------------------------------------------------
     |

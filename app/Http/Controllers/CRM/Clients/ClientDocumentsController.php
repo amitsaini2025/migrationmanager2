@@ -234,6 +234,111 @@ class ClientDocumentsController extends Controller
         return $query;
     }
 
+    private function nominationCategoryDocumentQuery(string $folderName, int $clientId, ?int $clientMatterId)
+    {
+        $query = Document::query()
+            ->where('folder_name', $folderName)
+            ->where('doc_type', 'nomination')
+            ->where('client_id', $clientId)
+            ->where('type', 'client');
+
+        if ($clientMatterId !== null) {
+            $query->where('client_matter_id', $clientMatterId);
+        }
+
+        return $query;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function nominationDocumentCategoryDefaultTitles(): array
+    {
+        return config('crm.nomination_document_category_default_titles', ['General', 'LMT']);
+    }
+
+    private function nominationCategoryIsDefaultTitle(?string $title): bool
+    {
+        $normalized = strtolower(trim((string) $title));
+
+        foreach ($this->nominationDocumentCategoryDefaultTitles() as $defaultTitle) {
+            if (strtolower(trim((string) $defaultTitle)) === $normalized) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function nominationCategoryIsUserManaged(NominationDocumentType $category): bool
+    {
+        return $category->client_matter_id !== null
+            && ! $this->nominationCategoryIsDefaultTitle($category->title);
+    }
+
+    /**
+     * @return array{removed_count: int, s3_cleanup: list<Document>}
+     */
+    private function collectNotUsedNominationDocumentsForCategory(string $folderName, int $clientId, ?int $clientMatterId): array
+    {
+        $query = Document::query()
+            ->where('folder_name', $folderName)
+            ->where('doc_type', 'nomination')
+            ->where('client_id', $clientId)
+            ->where('not_used_doc', 1)
+            ->where('type', 'client');
+
+        if ($clientMatterId !== null) {
+            $query->where('client_matter_id', $clientMatterId);
+        }
+
+        $documents = $query->get();
+
+        return [
+            'removed_count' => $documents->count(),
+            's3_cleanup' => $documents->all(),
+        ];
+    }
+
+    /**
+     * @param  list<Document>  $documents
+     */
+    private function finalizeDeletedNominationDocuments(int $clientId, array $documents): void
+    {
+        if ($documents === []) {
+            return;
+        }
+
+        $admin = Admin::query()->select('client_id')->where('id', $clientId)->first();
+
+        foreach ($documents as $document) {
+            if (! empty($document->myfile_key) && $admin && ! empty($admin->client_id)) {
+                try {
+                    $this->s3Disk()->delete($admin->client_id.'/'.$document->doc_type.'/'.$document->myfile_key);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to delete S3 file for not-used nomination document during category deletion', [
+                        'document_id' => $document->id,
+                        'client_id' => $clientId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            $documentName = $document->file_name ?? 'unknown';
+            $matterRef = $this->getMatterReference($clientId);
+            $subject = ! empty($matterRef)
+                ? "deleted File Document: {$documentName} - {$matterRef}"
+                : "deleted File Document: {$documentName}";
+
+            $this->logClientActivity(
+                $clientId,
+                $subject,
+                '<p>Deleted file document (category deleted)</p>',
+                'document'
+            );
+        }
+    }
+
     /**
      * Category label for Not Used documents: folder/category title; visa/nomination append matter in brackets.
      */
@@ -3385,12 +3490,20 @@ class ClientDocumentsController extends Controller
             $category->client_matter_id = $clientMatterId ?? null;
             $category->save();
 
+            $canDelete = Auth::check()
+                && in_array(
+                    (int) (Auth::user()->role ?? 0),
+                    config('crm.nomination_document_category_delete_role_ids', [1, 16]),
+                    true
+                );
+
             return response()->json([
                 'status' => true,
                 'message' => 'Nomination document category added successfully.',
                 'id' => $category->id,
                 'title' => $category->title,
                 'client_matter_id' => $category->client_matter_id,
+                'can_delete' => $canDelete,
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -3411,7 +3524,14 @@ class ClientDocumentsController extends Controller
         $clientMatterId = $category->client_matter_id;
 
         if ($category->client_matter_id === null) {
-            return response()->json(['success' => false, 'message' => 'Only client-matter-generated categories can be updated.']);
+            return response()->json(['status' => false, 'message' => 'Only client-matter-generated categories can be updated.']);
+        }
+
+        if (! $this->nominationCategoryIsUserManaged($category)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Default categories cannot be updated.',
+            ]);
         }
 
         if ($category->client_id !== null && $category->client_id !== '' && is_numeric($category->client_id)) {
@@ -3421,6 +3541,13 @@ class ClientDocumentsController extends Controller
         }
 
         $categoryTitle = trim($request->input('title'));
+
+        if ($this->nominationCategoryIsDefaultTitle($categoryTitle)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This title is reserved for a default category.',
+            ]);
+        }
 
         $existsForNullClient = NominationDocumentType::query()->where('title', $categoryTitle)
             ->where('status', 1)
@@ -3460,6 +3587,104 @@ class ClientDocumentsController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Error updating category: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Delete File Document (nomination) category (allowed roles: config crm.nomination_document_category_delete_role_ids;
+     * empty categories only; custom matter-scoped rows only — default titles and global rows cannot be deleted)
+     */
+    public function deleteNominationDocCategory(Request $request)
+    {
+        try {
+            $allowedRoles = config('crm.nomination_document_category_delete_role_ids', [1, 16]);
+            if (! in_array((int) (Auth::user()->role ?? 0), $allowedRoles, true)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You are not allowed to delete file document categories.',
+                ]);
+            }
+
+            $request->validate([
+                'id' => 'required|exists:nomination_document_types,id',
+            ]);
+
+            $category = NominationDocumentType::findOrFail($request->id);
+
+            if ($category->client_matter_id === null) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Default categories cannot be deleted.',
+                ]);
+            }
+
+            if (! $this->nominationCategoryIsUserManaged($category)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Default categories cannot be deleted.',
+                ]);
+            }
+
+            if ($category->client_id !== null && $category->client_id !== '' && is_numeric($category->client_id)) {
+                if ($deny = $this->denyJsonUnlessStaffClientAccess((int) $category->client_id)) {
+                    return $deny;
+                }
+            }
+
+            $folderName = (string) $category->id;
+            $clientId = (int) $category->client_id;
+            $clientMatterId = $category->client_matter_id !== null ? (int) $category->client_matter_id : null;
+
+            $activeDocumentCount = $this->nominationCategoryDocumentQuery($folderName, $clientId, $clientMatterId)
+                ->whereNull('not_used_doc')
+                ->count();
+
+            if ($activeDocumentCount > 0) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Cannot delete category. It contains '.$activeDocumentCount.' document(s). Please remove all documents first.',
+                ]);
+            }
+
+            $notUsedPayload = $this->collectNotUsedNominationDocumentsForCategory($folderName, $clientId, $clientMatterId);
+            $notUsedDocuments = $notUsedPayload['s3_cleanup'];
+            $notUsedRemovedCount = $notUsedPayload['removed_count'];
+
+            $categoryTitle = $category->title;
+
+            DB::transaction(function () use ($notUsedDocuments, $category, $folderName, $clientId, $clientMatterId) {
+                if ($notUsedDocuments !== []) {
+                    $this->nominationCategoryDocumentQuery($folderName, $clientId, $clientMatterId)
+                        ->where('not_used_doc', 1)
+                        ->delete();
+                }
+
+                $category->delete();
+            });
+
+            $this->finalizeDeletedNominationDocuments($clientId, $notUsedDocuments);
+
+            $message = 'Category "'.$categoryTitle.'" deleted successfully.';
+            if ($notUsedRemovedCount > 0) {
+                $message .= ' '.$notUsedRemovedCount.' not-used document(s) were also removed.';
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => $message,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error deleting nomination document category', [
+                'category_id' => $request->id ?? null,
+                'user_id' => Auth::user()->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Error deleting category: '.$e->getMessage(),
             ]);
         }
     }

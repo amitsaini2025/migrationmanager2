@@ -113,6 +113,19 @@
                             ->values();
                     }
                     $firstNominationDocCatId = optional($generalNominationDocCat ?? $nominationDocCatList->first())->id;
+                    $nominationDefaultCategoryTitles = config('crm.nomination_document_category_default_titles', ['General', 'LMT']);
+                    $canDeleteNominationDocCategory = \Illuminate\Support\Facades\Auth::check()
+                        && in_array((int) (\Illuminate\Support\Facades\Auth::user()->role ?? 0), config('crm.nomination_document_category_delete_role_ids', [1, 16]), true);
+                    $isDefaultNominationDocCategory = static function ($title) use ($nominationDefaultCategoryTitles): bool {
+                        $normalized = strtolower(trim((string) $title));
+                        foreach ($nominationDefaultCategoryTitles as $defaultTitle) {
+                            if (strtolower(trim((string) $defaultTitle)) === $normalized) {
+                                return true;
+                            }
+                        }
+
+                        return false;
+                    };
 
                     $nominationMatterLmtRow = null;
                     $nominationMatterHasLmt = false;
@@ -165,15 +178,19 @@
                                     $id = $catVal->id;
                                     $isActive = ($firstNominationDocCatId && $id == $firstNominationDocCatId) ? 'active' : '';
                                     $folderName = $id;
-                                    $isClientGenerated = $catVal->client_matter_id !== null;
+                                    $isUserManagedNominationCategory = $catVal->client_matter_id !== null
+                                        && ! $isDefaultNominationDocCategory($catVal->title);
                                     ?>
                                     <div style="display: inline-block; position: relative;" class="button-container">
                                         <button class="subtab6-button <?= $isActive ?>" data-subtab6="<?= $id ?>">
                                             <?= htmlspecialchars($catVal->title) ?>
                                         </button>
-                                        <?php if ($isClientGenerated): ?>
+                                        <?php if ($isUserManagedNominationCategory): ?>
                                             <div class="action-buttons" style="display: none; position: absolute;">
                                                 <button type="button" class="btn btn-sm btn-warning update-nomination-cat-title" data-id="<?= $id ?>" data-title="<?= htmlspecialchars($catVal->title) ?>">@icon('fa-edit', ['aria-hidden' => 'true'])</button>
+                                                <?php if ($canDeleteNominationDocCategory): ?>
+                                                    <button type="button" class="btn btn-sm btn-danger delete-nomination-cat-title" data-id="<?= $id ?>" data-title="<?= htmlspecialchars($catVal->title) ?>">@icon('fa-trash', ['aria-hidden' => 'true'])</button>
+                                                <?php endif; ?>
                                             </div>
                                         <?php endif; ?>
                                     </div>

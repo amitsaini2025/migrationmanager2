@@ -147,7 +147,7 @@
 <div class="email-upload-loading-overlay" id="emailUploadLoadingOverlay" aria-hidden="true" aria-live="polite" aria-busy="false">
     <div class="email-upload-loading-card" role="status">
         <div class="email-upload-loading-icon" aria-hidden="true">
-            @icon('envelope')
+            @icon('fa-envelope')
             <span class="email-upload-loading-spinner"></span>
         </div>
         <h3 class="email-upload-loading-title" id="emailUploadLoadingTitle">Uploading email</h3>
@@ -216,7 +216,7 @@
 <div class="duplicate-email-modal-overlay" id="duplicateEmailModal" aria-hidden="true">
     <div class="duplicate-email-modal" role="dialog" aria-labelledby="duplicateEmailModalTitle" aria-modal="true">
         <div class="duplicate-email-modal__icon" aria-hidden="true">
-            @icon('envelope')
+            @icon('fa-envelope')
         </div>
         <h3 class="duplicate-email-modal__title" id="duplicateEmailModalTitle">Duplicate Email</h3>
         <p class="duplicate-email-modal__message">This email already exists.</p>

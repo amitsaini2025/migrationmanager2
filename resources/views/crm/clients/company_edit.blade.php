@@ -10,6 +10,7 @@
     $isTrusteeBusinessType = $company && $company->isTrusteeBusiness();
     $companyTypeForForm = old('company_type', $company ? $company->company_type : '');
     $showTrusteeFieldsInitial = \App\Models\Company::isTrusteeBusinessType($companyTypeForForm);
+    $activeClientMattersForNomination = $activeClientMattersForNomination ?? collect();
 @endphp
 
 @push('styles')
@@ -132,6 +133,7 @@
                 window.currentClientId = '{{ $fetchedData->id }}';
                 window.currentClientType = @json($fetchedData->type);
                 window.latestClientMatterRef = @json($latestMatterRefNo ?? null);
+                window.companyActiveClientMatters = @json($activeClientMattersForNomination->map(fn ($cm) => ['id' => $cm->id, 'label' => $cm->dropdownLabel()])->values());
             </script>
 
             <!-- Main Content Area -->
@@ -838,7 +840,19 @@
                             @if($company && $company->nominations->isNotEmpty())
                             <div class="summary-grid">
                                 @foreach($company->nominations as $nom)
-                                <div class="summary-item"><span class="summary-label">{{ $nom->position_title ?? 'Position' }}:</span><span class="summary-value">{{ $nom->nominatedClient ? $nom->nominatedClient->first_name.' '.$nom->nominatedClient->last_name : ($nom->nominated_person_name ?? 'N/A') }}@if($nom->trn) (TRN: {{ $nom->trn }})@endif</span></div>
+                                @php
+                                    $nomMatterLabel = $nom->clientMatter ? $nom->clientMatter->dropdownLabel() : null;
+                                    $nomineeDisplay = $nom->nominatedClient
+                                        ? trim($nom->nominatedClient->first_name.' '.$nom->nominatedClient->last_name)
+                                        : ($nom->nominated_person_name ?? 'N/A');
+                                    if ($nom->trn) {
+                                        $nomineeDisplay .= ' (TRN: '.$nom->trn.')';
+                                    }
+                                    if ($nomMatterLabel) {
+                                        $nomineeDisplay .= ' — '.$nomMatterLabel;
+                                    }
+                                @endphp
+                                <div class="summary-item"><span class="summary-label">{{ $nom->position_title ?? 'Position' }}:</span><span class="summary-value">{{ $nomineeDisplay }}</span></div>
                                 @endforeach
                             </div>
                             @else
@@ -848,7 +862,7 @@
                         <div id="nominationsEdit" class="edit-view hidden">
                             <div id="nominationsContainer">
                                 @php
-                                    $nominationsData = (optional($company)->nominations?->isNotEmpty()) ? $company->nominations : collect([(object)['id'=>null,'position_title'=>'','anzsco_code'=>'','position_description'=>'','salary'=>null,'duration'=>'','nominated_client_id'=>null,'nominated_person_name'=>'','trn'=>'','status'=>'','nomination_date'=>null,'expiry_date'=>null]]);
+                                    $nominationsData = (optional($company)->nominations?->isNotEmpty()) ? $company->nominations : collect([(object)['id'=>null,'position_title'=>'','anzsco_code'=>'','position_description'=>'','salary'=>null,'duration'=>'','nominated_client_id'=>null,'nominated_person_name'=>'','client_matter_id'=>null,'trn'=>'','status'=>'','nomination_date'=>null,'expiry_date'=>null]]);
                                 @endphp
                                 @foreach($nominationsData as $idx => $nom)
                                 <div class="nomination-row repeatable-section" style="border:1px solid #dee2e6;padding:15px;margin-bottom:15px;border-radius:6px;">
@@ -862,7 +876,7 @@
                                     </div>
                                     <div class="form-group" style="margin-bottom:10px;">
                                         <label>Nominated Person (Visa Applicant)</label>
-                                        <div style="display:flex;gap:15px;align-items:center;flex-wrap:wrap;">
+                                        <div style="display:flex;gap:15px;align-items:flex-end;flex-wrap:wrap;">
                                             <div style="flex:1;min-width:200px;">
                                                 <select name="nomination_nominated_client_ids[]" class="nomination-person-select form-control" data-placeholder="Search client/lead..." style="width:100%;">
                                                     @if($nom->nominated_client_id && $nom->nominatedClient)
@@ -870,9 +884,31 @@
                                                     @endif
                                                 </select>
                                             </div>
-                                            <span>OR</span>
+                                            <span style="align-self:center;padding-bottom:8px;">OR</span>
                                             <div style="flex:1;min-width:200px;">
+                                                <label class="sr-only">Name (not in system)</label>
                                                 <input type="text" name="nomination_person_names[]" value="{{ $nom->nominated_person_name ?? '' }}" placeholder="Not in system - enter name only">
+                                            </div>
+                                            <div style="flex:1;min-width:200px;">
+                                                <label>Matter</label>
+                                                <select name="nomination_client_matter_ids[]" class="form-control nomination-matter-select" style="width:100%;">
+                                                    <option value="">Select matter (optional)</option>
+                                                    @php
+                                                        $selectedMatterId = $nom->client_matter_id ?? null;
+                                                        $matterOptions = $activeClientMattersForNomination;
+                                                        if ($selectedMatterId && ! $matterOptions->contains('id', (int) $selectedMatterId)) {
+                                                            $savedMatter = ($nom instanceof \App\Models\CompanyNomination && $nom->relationLoaded('clientMatter') && $nom->clientMatter)
+                                                                ? $nom->clientMatter
+                                                                : null;
+                                                            if ($savedMatter) {
+                                                                $matterOptions = $matterOptions->push($savedMatter);
+                                                            }
+                                                        }
+                                                    @endphp
+                                                    @foreach($matterOptions as $clientMatterOption)
+                                                        <option value="{{ $clientMatterOption->id }}" {{ (int) ($selectedMatterId ?? 0) === (int) $clientMatterOption->id ? 'selected' : '' }}>{{ $clientMatterOption->dropdownLabel() }}</option>
+                                                    @endforeach
+                                                </select>
                                             </div>
                                         </div>
                                     </div>
@@ -1227,6 +1263,18 @@
         $('#directorsContainer .director-row').each(function(i) { $(this).find('input[name="director_primary"]').val(i); });
     }
 
+    function buildNominationMatterSelectHtml(selectedId) {
+        selectedId = selectedId || '';
+        var matters = window.companyActiveClientMatters || [];
+        var html = '<div style="flex:1;min-width:200px;"><label>Matter</label><select name="nomination_client_matter_ids[]" class="form-control nomination-matter-select" style="width:100%;"><option value="">Select matter (optional)</option>';
+        matters.forEach(function(m) {
+            var sel = String(m.id) === String(selectedId) ? ' selected' : '';
+            html += '<option value="' + m.id + '"' + sel + '>' + (m.label || '') + '</option>';
+        });
+        html += '</select></div>';
+        return html;
+    }
+
     function addNominationRow() {
         const container = $('#nominationsContainer');
         const row = '<div class="nomination-row repeatable-section" style="border:1px solid #dee2e6;padding:15px;margin-bottom:15px;border-radius:6px;">' +
@@ -1238,9 +1286,11 @@
             '<div class="form-group"><label>Salary</label><input type="number" name="nomination_salaries[]" step="0.01" placeholder="0"></div>' +
             '<div class="form-group"><label>Duration</label><input type="text" name="nomination_durations[]" placeholder="e.g. 2 years"></div></div>' +
             '<div class="form-group" style="margin-bottom:10px;"><label>Nominated Person (Visa Applicant)</label>' +
-            '<div style="display:flex;gap:15px;align-items:center;flex-wrap:wrap;">' +
+            '<div style="display:flex;gap:15px;align-items:flex-end;flex-wrap:wrap;">' +
             '<div style="flex:1;min-width:200px;"><select name="nomination_nominated_client_ids[]" class="nomination-person-select form-control" data-placeholder="Search client/lead..." style="width:100%;"></select></div>' +
-            '<span>OR</span><div style="flex:1;min-width:200px;"><input type="text" name="nomination_person_names[]" placeholder="Not in system - enter name only"></div></div></div>' +
+            '<span style="align-self:center;padding-bottom:8px;">OR</span><div style="flex:1;min-width:200px;"><label class="sr-only">Name (not in system)</label><input type="text" name="nomination_person_names[]" placeholder="Not in system - enter name only"></div>' +
+            buildNominationMatterSelectHtml('') +
+            '</div></div>' +
             '<div class="content-grid"><div class="form-group"><label>TRN</label><input type="text" name="nomination_trns[]" placeholder="TRN"></div>' +
             '<div class="form-group"><label>Status</label><input type="text" name="nomination_statuses[]" placeholder="Status"></div>' +
             '<div class="form-group"><label>Nomination Date</label><input type="date" name="nomination_dates[]"></div>' +

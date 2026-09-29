@@ -21,6 +21,7 @@ use App\Models\ClientVisaCountry;
 use App\Models\Country;
 use App\Models\Matter;
 use App\Models\Staff;
+use Illuminate\Support\Collection;
 
 /**
  * ClientEditService
@@ -71,6 +72,7 @@ class ClientEditService
             'visaTypes' => $this->getVisaTypes(),
             'countries' => $this->getCountries(),
             'latestMatterRefNo' => $this->getLatestMatterRefNo($clientId, (string) $clientData->type),
+            'activeClientMattersForNomination' => $this->getActiveClientMattersForNomination($clientId, (bool) $clientData->is_company),
             'detailsVerifiedByName' => $this->resolveDetailsVerifiedByName($clientData),
         ];
     }
@@ -95,6 +97,7 @@ class ClientEditService
                 'company.tradingNames',
                 'company.directors.directorClient',
                 'company.nominations.nominatedClient',
+                'company.nominations.clientMatter.matter',
                 'company.sponsorships',
                 'company.financials',
             ]);
@@ -316,6 +319,26 @@ class ClientEditService
             ->where('matter_status', 1)
             ->orderByDesc('id')
             ->value('client_unique_matter_no');
+    }
+
+    /**
+     * Active client matters for company nomination dropdown (matches company detail sidebar).
+     *
+     * @return Collection<int, ClientMatter>
+     */
+    protected function getActiveClientMattersForNomination(int $clientId, bool $isCompany): Collection
+    {
+        if (! $isCompany) {
+            return collect();
+        }
+
+        return ClientMatter::query()
+            ->active()
+            ->where('client_id', $clientId)
+            ->whereNotNull('sel_matter_id')
+            ->with('matter:id,title')
+            ->orderByDesc('created_at')
+            ->get();
     }
 
     protected function resolveDetailsVerifiedByName(Admin $client): ?string

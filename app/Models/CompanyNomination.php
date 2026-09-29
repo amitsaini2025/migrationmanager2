@@ -18,6 +18,7 @@ class CompanyNomination extends Model
         'duration',
         'nominated_client_id',
         'nominated_person_name',
+        'client_matter_id',
         'trn',
         'status',
         'nomination_date',
@@ -44,5 +45,10 @@ class CompanyNomination extends Model
     public function nominatedClient(): BelongsTo
     {
         return $this->belongsTo(Admin::class, 'nominated_client_id', 'id');
+    }
+
+    public function clientMatter(): BelongsTo
+    {
+        return $this->belongsTo(ClientMatter::class, 'client_matter_id');
     }
 }

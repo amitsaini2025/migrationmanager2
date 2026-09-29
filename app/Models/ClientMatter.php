@@ -145,6 +145,23 @@ class ClientMatter extends Model
     }
 
     /**
+     * Label for matter dropdowns, e.g. "Skill in Demand...(SIDCoreSkills_1)".
+     */
+    public function dropdownLabel(): string
+    {
+        $matterName = 'General Matter';
+        $selMatterId = (int) ($this->sel_matter_id ?? 0);
+        $title = $this->matter?->title;
+        if ($selMatterId !== 1 && filled($title)) {
+            $matterName = $title;
+        }
+
+        $ref = trim((string) ($this->client_unique_matter_no ?? ''));
+
+        return $ref !== '' ? "{$matterName}({$ref})" : $matterName;
+    }
+
+    /**
      * @param  Builder  $query
      */
     public function newEloquentBuilder($query): ClientMatterBuilder

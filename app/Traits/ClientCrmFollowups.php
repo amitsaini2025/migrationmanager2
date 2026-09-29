@@ -4675,6 +4675,7 @@ trait ClientCrmFollowups
                     'company.tradingNames',
                     'company.directors.directorClient',
                     'company.nominations.nominatedClient',
+                    'company.nominations.clientMatter.matter',
                     'company.sponsorships',
                     'company.financials',
                     'companyNominationsAsNominee.company',

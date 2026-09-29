@@ -250,6 +250,12 @@
                                 @endif
                             </span>
                         </div>
+                        @if($nom->clientMatter)
+                        <div class="field-group">
+                            <span class="field-label">Matter:</span>
+                            <span class="field-value">{{ $nom->clientMatter->dropdownLabel() }}</span>
+                        </div>
+                        @endif
                     </div>
                 </div>
                 @endforeach

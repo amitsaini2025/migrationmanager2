@@ -9,7 +9,7 @@
 
 <section class="my-day-card my-day-auto" id="myDayAutoSection">
     <h3>Time on files (auto) <span class="my-day-opened-badge" id="myDayAutoCount">{{ $deferred ? '…' : count($auto) }}</span></h3>
-    <p class="my-day-lead">Focused tab time on open files. With multiple activities the box shows the average; click activities for each share. Edit posts the session total.</p>
+    <p class="my-day-lead">Focused tab time on open files. With multiple activities the box shows the average; click activities for each share. Editing updates the total here only.</p>
     <div id="myDayAutoList">
         @if($deferred)
             <div class="dashboard-widget-loading">

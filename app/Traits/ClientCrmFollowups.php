@@ -129,6 +129,17 @@ trait ClientCrmFollowups
                 $query = ActivitiesLog::where('client_id', $request->id)
                     ->with('staff');
 
+                // Auto file-time sessions stay on the dashboard. Manual file-time logs still appear here.
+                $query->where(function ($feed): void {
+                    $feed->where('activity_type', '!=', 'file_time')
+                        ->orWhereNull('activity_type')
+                        ->orWhere(function ($fileTime): void {
+                            $fileTime->where('activity_type', 'file_time')
+                                ->where('subject', 'not like', '% · % activities')
+                                ->where('subject', 'not like', '% · reviewed file');
+                        });
+                });
+
                 if ($staffSearch !== '') {
                     $query->whereHas('staff', function ($staffQuery) use ($staffSearch) {
                         $staffSearchLower = strtolower($staffSearch);

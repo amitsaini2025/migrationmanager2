@@ -165,7 +165,7 @@ class StaffMatterSessionServiceTest extends TestCase
     }
 
     #[Test]
-    public function close_recorded_writes_file_time_feed_row(): void
+    public function close_recorded_stays_on_the_board_and_does_not_write_a_feed_row(): void
     {
         $start = Carbon::parse('2026-09-15 13:00:00', 'Australia/Melbourne');
         Carbon::setTestNow($start);
@@ -180,10 +180,13 @@ class StaffMatterSessionServiceTest extends TestCase
         $this->service->closeStale(now());
 
         $closed = StaffMatterSession::query()->find($session->id);
-        $this->assertNotNull($closed->activities_log_id);
-        $log = DB::table('activities_logs')->where('id', $closed->activities_log_id)->first();
-        $this->assertSame('file_time', $log->activity_type);
-        $this->assertStringContainsString('logged 5m', (string) $log->subject);
+        $this->assertNull($closed->activities_log_id);
+        $this->assertSame(0, DB::table('activities_logs')->count());
+
+        $board = $this->service->sessionsForBoard(1);
+        $this->assertCount(1, $board['auto']);
+        $this->assertFalse($board['auto'][0]['posted']);
+        $this->assertSame(5, $board['auto'][0]['confirmed_minutes']);
     }
 
     #[Test]

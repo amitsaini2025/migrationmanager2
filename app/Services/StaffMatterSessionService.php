@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\ActivitiesLog;
 use App\Models\StaffMatterSession;
 use Carbon\Carbon;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -123,10 +122,6 @@ class StaffMatterSessionService
         $session->confirmed_minutes = $minutes;
         $session->save();
 
-        if ($session->activities_log_id && $session->isRecordedForBoard()) {
-            $this->postToFeed($session->fresh());
-        }
-
         return $session->fresh();
     }
 
@@ -241,52 +236,6 @@ class StaffMatterSessionService
         ];
     }
 
-    public function postToFeed(StaffMatterSession $session): ActivitiesLog
-    {
-        $ref = $this->recordRef($session);
-        $minutes = $this->resolvedMinutes($session);
-        $events = $this->eventsForSession($session);
-        $eventCount = (int) ($session->event_count ?? $events->count());
-
-        if ($session->is_reviewed_only && $eventCount < 1) {
-            $subject = "logged {$minutes}m on {$ref} · reviewed file";
-        } else {
-            $subject = "logged {$minutes}m on {$ref} · {$eventCount} activities";
-        }
-
-        $useFor = $session->client_matter_id ? 'matter' : null;
-
-        $payload = [
-            'client_id' => $session->client_id,
-            'created_by' => $session->staff_id,
-            'subject' => $subject,
-            'description' => $subject,
-            'activity_type' => StaffMatterSession::ACTIVITY_TYPE,
-            'task_status' => 0,
-            'pin' => 0,
-        ];
-
-        if ($useFor !== null && Schema::hasColumn('activities_logs', 'use_for')) {
-            $payload['use_for'] = $useFor;
-        }
-
-        if ($session->activities_log_id) {
-            $existing = ActivitiesLog::query()->find($session->activities_log_id);
-            if ($existing) {
-                $existing->fill($payload);
-                $existing->save();
-
-                return $existing;
-            }
-        }
-
-        $log = ActivitiesLog::query()->create($payload);
-        $session->activities_log_id = $log->id;
-        $session->save();
-
-        return $log;
-    }
-
     /**
      * @return Collection<int, array<string, mixed>>
      */
@@ -337,10 +286,6 @@ class StaffMatterSessionService
         }
 
         $session->save();
-
-        if ($wasRecorded && (int) $session->confirmed_minutes >= 1) {
-            $this->postToFeed($session->fresh());
-        }
     }
 
     protected function findOrCreateToday(int $staffId, int $clientId, ?int $matterId): StaffMatterSession

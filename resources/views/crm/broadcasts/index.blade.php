@@ -378,9 +378,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="broadcastDetailModalLabel">Broadcast Details</h5>
-                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-broadcast-dismiss="detail" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
@@ -406,7 +404,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-broadcast-dismiss="detail">Close</button>
             </div>
         </div>
     </div>
@@ -418,9 +416,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="broadcastReaderModalLabel">Broadcast Message</h5>
-                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-broadcast-dismiss="reader" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-2">
@@ -433,7 +429,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-broadcast-dismiss="reader">Close</button>
                 <button type="button" class="btn btn-primary d-none" id="broadcast-reader-mark-read">Read</button>
             </div>
         </div>
@@ -561,6 +557,39 @@
             if (banner) {
                 banner.classList.toggle('is-behind-modal', isBehind);
             }
+        }
+
+        function hideBootstrapModal(modalElement) {
+            if (!modalElement) {
+                return;
+            }
+
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const instance = bootstrap.Modal.getInstance(modalElement) || bootstrap.Modal.getOrCreateInstance(modalElement);
+                instance.hide();
+                return;
+            }
+
+            if (typeof $ !== 'undefined') {
+                $(modalElement).modal('hide');
+            }
+        }
+
+        function closeReaderModal() {
+            clearReaderTimer();
+            readerState.notificationId = null;
+            setBroadcastBannerBehindReaderModal(false);
+            hideBootstrapModal(document.getElementById('broadcastReaderModal'));
+        }
+
+        function closeDetailModal() {
+            setBroadcastBannerBehindReaderModal(false);
+            hideBootstrapModal(document.getElementById('broadcastDetailModal'));
+        }
+
+        function showDetailModal() {
+            setBroadcastBannerBehindReaderModal(true);
+            detailModal.modal('show');
         }
 
         ensureBroadcastReaderModalAtBody();
@@ -743,6 +772,7 @@
             readerMeta.textContent = '';
             updateReaderCountdown(BROADCAST_READ_DELAY_SECONDS);
             ensureBroadcastReaderModalAtBody();
+            setBroadcastBannerBehindReaderModal(true);
             readerModal.modal('show');
 
             fetch(`/notifications/broadcasts/${parsedId}/receiver-detail`, {
@@ -1512,7 +1542,7 @@
                 const batchUuid = viewButton.getAttribute('data-batch');
                 if (batchUuid) {
                     loadBroadcastDetails(batchUuid);
-                    detailModal.modal('show');
+                        showDetailModal();
                 }
             }
             
@@ -1535,7 +1565,7 @@
                     const batchUuid = viewButton.getAttribute('data-batch');
                     if (batchUuid) {
                         loadBroadcastDetails(batchUuid);
-                        detailModal.modal('show');
+                        showDetailModal();
                     }
                 }
                 
@@ -1597,7 +1627,7 @@
                     })
                     .then(() => {
                         showFeedback('success', 'Broadcast marked as read.');
-                        readerModal.modal('hide');
+                        closeReaderModal();
                         loadHistory();
                         loadMyRead();
                     })
@@ -1608,6 +1638,16 @@
             });
         }
 
+        readerModal.on('click', '[data-broadcast-dismiss="reader"]', function (event) {
+            event.preventDefault();
+            closeReaderModal();
+        });
+
+        detailModal.on('click', '[data-broadcast-dismiss="detail"]', function (event) {
+            event.preventDefault();
+            closeDetailModal();
+        });
+
         readerModal.on('shown.bs.modal', function() {
             setBroadcastBannerBehindReaderModal(true);
         });
@@ -1616,6 +1656,14 @@
             setBroadcastBannerBehindReaderModal(false);
             clearReaderTimer();
             readerState.notificationId = null;
+        });
+
+        detailModal.on('shown.bs.modal', function() {
+            setBroadcastBannerBehindReaderModal(true);
+        });
+
+        detailModal.on('hidden.bs.modal', function() {
+            setBroadcastBannerBehindReaderModal(false);
         });
 
         // Active Staff Event Listeners
@@ -1795,7 +1843,7 @@
             window.history.replaceState({}, '', url);
         } else if (batchParam) {
             loadBroadcastDetails(batchParam, () => {
-                detailModal.modal('show');
+                showDetailModal();
                 // Clear ?batch= from URL to avoid re-opening on refresh
                 const url = new URL(window.location);
                 url.searchParams.delete('batch');
@@ -1809,9 +1857,22 @@
 
 @push('styles')
 <style>
+    /* Keep broadcast modals above the sticky banner (banner default z-index: 1100) */
+    #broadcastReaderModal,
+    #broadcastDetailModal {
+        z-index: 1200 !important;
+    }
+
     /* Keep toast banner below the reader modal while it is open (banner default z-index: 1100) */
     [data-broadcast-banner].is-behind-modal {
         z-index: 1040 !important;
+    }
+
+    #broadcastReaderModal .modal-header .btn-close,
+    #broadcastDetailModal .modal-header .btn-close {
+        position: static;
+        float: none;
+        margin: 0 0 0 auto;
     }
 
     .broadcast-subtitle {

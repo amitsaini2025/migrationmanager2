@@ -24,6 +24,42 @@
         };
     }
 
+    /** Extra modals are lazy stubs until ensureClientDetailModal loads real HTML (see lazy-modals.js). */
+    function ensureWorkflowClientDetailModal(modalId) {
+        if (typeof window.ensureClientDetailModal === 'function') {
+            return window.ensureClientDetailModal(modalId);
+        }
+
+        return Promise.resolve();
+    }
+
+    function workflowModalLoadErrorMessage(err) {
+        return (err && err.message) ? err.message : 'Could not load the dialog. Please refresh the page.';
+    }
+
+    function openDecisionReceivedModal(matterId) {
+        var matterEl = document.getElementById('decision-received-matter-id');
+        var outcomeEl = document.getElementById('decision-outcome');
+        var noteEl = document.getElementById('decision-note');
+        if (!matterEl || !outcomeEl || !noteEl) {
+            alert('Decision Received form is not available. Please refresh the page.');
+            return;
+        }
+
+        matterEl.value = matterId;
+        outcomeEl.value = '';
+        noteEl.value = '';
+        var outcomeErr = document.querySelector('.decision-outcome-error strong');
+        var noteErr = document.querySelector('.decision-note-error strong');
+        if (outcomeErr) {
+            outcomeErr.textContent = '';
+        }
+        if (noteErr) {
+            noteErr.textContent = '';
+        }
+        $('#decision-received-modal').modal('show');
+    }
+
     function getActiveTabId() {
         return document.querySelector('.client-nav-button.active')?.getAttribute('data-tab') || '';
     }
@@ -1381,15 +1417,13 @@
         savePendingWorkflowFileNote(scope)
             .then(function() {
                 if (nextStageName && nextStageName.toLowerCase() === 'decision received') {
-                    document.getElementById('decision-received-matter-id').value = matterId;
-                    document.getElementById('decision-outcome').value = '';
-                    document.getElementById('decision-note').value = '';
-                    var outcomeErr = document.querySelector('.decision-outcome-error strong');
-                    var noteErr = document.querySelector('.decision-note-error strong');
-                    if (outcomeErr) outcomeErr.textContent = '';
-                    if (noteErr) noteErr.textContent = '';
-                    $('#decision-received-modal').modal('show');
-                    return;
+                    return ensureWorkflowClientDetailModal('decision-received-modal')
+                        .then(function() {
+                            openDecisionReceivedModal(matterId);
+                        })
+                        .catch(function(err) {
+                            alert(workflowModalLoadErrorMessage(err));
+                        });
                 }
                 doProceedToNextStage(matterId, null, null, nextBtn);
             })
@@ -1845,12 +1879,23 @@
                     alert('Error: Matter ID not found');
                     return;
                 }
-                document.getElementById('change-workflow-matter-id').value = matterIdCw;
-                var select = document.getElementById('change-workflow-select');
-                if (select && currentWorkflowId) {
-                    select.value = currentWorkflowId;
-                }
-                $('#change-workflow-modal').modal('show');
+                ensureWorkflowClientDetailModal('change-workflow-modal')
+                    .then(function() {
+                        var matterInput = document.getElementById('change-workflow-matter-id');
+                        if (!matterInput) {
+                            alert('Change workflow form is not available. Please refresh the page.');
+                            return;
+                        }
+                        matterInput.value = matterIdCw;
+                        var select = document.getElementById('change-workflow-select');
+                        if (select && currentWorkflowId) {
+                            select.value = currentWorkflowId;
+                        }
+                        $('#change-workflow-modal').modal('show');
+                    })
+                    .catch(function(err) {
+                        alert(workflowModalLoadErrorMessage(err));
+                    });
                 return;
             }
 
@@ -1862,12 +1907,27 @@
                     alert('Error: Matter ID not found');
                     return;
                 }
-                document.getElementById('discontinue-matter-id').value = matterIdDisc;
-                document.getElementById('discontinue-reason').value = '';
-                document.getElementById('discontinue-notes').value = '';
-                var discErr = document.querySelector('.discontinue-reason-error strong');
-                if (discErr) discErr.textContent = '';
-                $('#discontinue-matter-modal').modal('show');
+                ensureWorkflowClientDetailModal('discontinue-matter-modal')
+                    .then(function() {
+                        var matterInput = document.getElementById('discontinue-matter-id');
+                        var reasonInput = document.getElementById('discontinue-reason');
+                        var notesInput = document.getElementById('discontinue-notes');
+                        if (!matterInput || !reasonInput || !notesInput) {
+                            alert('Discontinue form is not available. Please refresh the page.');
+                            return;
+                        }
+                        matterInput.value = matterIdDisc;
+                        reasonInput.value = '';
+                        notesInput.value = '';
+                        var discErr = document.querySelector('.discontinue-reason-error strong');
+                        if (discErr) {
+                            discErr.textContent = '';
+                        }
+                        $('#discontinue-matter-modal').modal('show');
+                    })
+                    .catch(function(err) {
+                        alert(workflowModalLoadErrorMessage(err));
+                    });
                 return;
             }
 
@@ -1880,22 +1940,31 @@
                     return;
                 }
 
-                var matterIdInput = document.getElementById('workflow-set-deadline-matter-id');
-                var dateInput = document.getElementById('workflow-set-deadline-date');
-                var clearBtn = document.getElementById('workflow-set-deadline-clear');
-                var errEl = document.querySelector('.workflow-set-deadline-error strong');
-                if (!matterIdInput || !dateInput) {
-                    return;
-                }
+                ensureWorkflowClientDetailModal('workflow-set-deadline-modal')
+                    .then(function() {
+                        var matterIdInput = document.getElementById('workflow-set-deadline-matter-id');
+                        var dateInput = document.getElementById('workflow-set-deadline-date');
+                        var clearBtn = document.getElementById('workflow-set-deadline-clear');
+                        var errEl = document.querySelector('.workflow-set-deadline-error strong');
+                        if (!matterIdInput || !dateInput) {
+                            alert('Set deadline form is not available. Please refresh the page.');
+                            return;
+                        }
 
-                var currentDeadline = setDeadlineBtn.getAttribute('data-current-deadline') || '';
-                matterIdInput.value = matterIdDl;
-                dateInput.value = currentDeadline;
-                if (errEl) errEl.textContent = '';
-                if (clearBtn) {
-                    clearBtn.style.display = currentDeadline ? '' : 'none';
-                }
-                $('#workflow-set-deadline-modal').modal('show');
+                        var currentDeadline = setDeadlineBtn.getAttribute('data-current-deadline') || '';
+                        matterIdInput.value = matterIdDl;
+                        dateInput.value = currentDeadline;
+                        if (errEl) {
+                            errEl.textContent = '';
+                        }
+                        if (clearBtn) {
+                            clearBtn.style.display = currentDeadline ? '' : 'none';
+                        }
+                        $('#workflow-set-deadline-modal').modal('show');
+                    })
+                    .catch(function(err) {
+                        alert(workflowModalLoadErrorMessage(err));
+                    });
                 return;
             }
 

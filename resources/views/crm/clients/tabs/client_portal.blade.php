@@ -1453,12 +1453,26 @@ document.addEventListener('DOMContentLoaded', function() {
     $(document).on('click', '.client-portal-discontinue-btn', function() {
         const matterId = this.getAttribute('data-matter-id');
         if (!matterId) { alert('Error: Matter ID not found'); return; }
-        document.getElementById('discontinue-matter-id').value = matterId;
-        document.getElementById('discontinue-reason').value = '';
-        document.getElementById('discontinue-notes').value = '';
-        const errEl = document.querySelector('.discontinue-reason-error strong');
-        if (errEl) errEl.textContent = '';
-        $('#discontinue-matter-modal').modal('show');
+        const ensureModal = (typeof window.ensureClientDetailModal === 'function')
+            ? window.ensureClientDetailModal('discontinue-matter-modal')
+            : Promise.resolve();
+        ensureModal.then(function() {
+            const matterInput = document.getElementById('discontinue-matter-id');
+            const reasonInput = document.getElementById('discontinue-reason');
+            const notesInput = document.getElementById('discontinue-notes');
+            if (!matterInput || !reasonInput || !notesInput) {
+                alert('Discontinue form is not available. Please refresh the page.');
+                return;
+            }
+            matterInput.value = matterId;
+            reasonInput.value = '';
+            notesInput.value = '';
+            const errEl = document.querySelector('.discontinue-reason-error strong');
+            if (errEl) errEl.textContent = '';
+            $('#discontinue-matter-modal').modal('show');
+        }).catch(function(err) {
+            alert((err && err.message) ? err.message : 'Could not load the dialog. Please refresh the page.');
+        });
     });
     
     // Client Portal Tabs Switching Functionality

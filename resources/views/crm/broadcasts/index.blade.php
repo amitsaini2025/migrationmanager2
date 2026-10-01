@@ -552,15 +552,44 @@
             readerModal.appendTo('body');
         }
 
-        function setBroadcastBannerBehindReaderModal(isBehind) {
+        function isBroadcastManageModalOpen() {
+            return document.querySelector('#broadcastReaderModal.show, #broadcastDetailModal.show') !== null;
+        }
+
+        function syncBroadcastModalLayering(options) {
+            const opts = options || {};
+            const isOpen = typeof opts.forceState === 'boolean'
+                ? opts.forceState
+                : isBroadcastManageModalOpen();
+            const adjustBackdrop = opts.adjustBackdrop !== false;
+
             const banner = document.querySelector('[data-broadcast-banner]');
-            if (!banner) {
+            if (banner) {
+                banner.classList.toggle('is-behind-modal', isOpen);
+                banner.style.zIndex = isOpen ? '1040' : '';
+                banner.style.pointerEvents = isOpen ? 'none' : '';
+            }
+
+            if (!adjustBackdrop && isOpen) {
                 return;
             }
 
-            banner.classList.toggle('is-behind-modal', isBehind);
-            // Fallback when pushed page styles are cached/missing: keep banner below open modals.
-            banner.style.zIndex = isBehind ? '1040' : '';
+            document.querySelectorAll('.modal-backdrop.show').forEach((backdrop) => {
+                if (isOpen) {
+                    if (backdrop.dataset.broadcastStackManaged !== '1') {
+                        backdrop.dataset.broadcastPrevZIndex = backdrop.style.zIndex || '';
+                        backdrop.dataset.broadcastStackManaged = '1';
+                    }
+                    backdrop.style.zIndex = '1190';
+                    return;
+                }
+
+                if (backdrop.dataset.broadcastStackManaged === '1') {
+                    backdrop.style.zIndex = backdrop.dataset.broadcastPrevZIndex || '';
+                    delete backdrop.dataset.broadcastPrevZIndex;
+                    delete backdrop.dataset.broadcastStackManaged;
+                }
+            });
         }
 
         function closeReaderModal() {
@@ -572,7 +601,7 @@
         }
 
         function showDetailModal() {
-            setBroadcastBannerBehindReaderModal(true);
+            syncBroadcastModalLayering({ forceState: true, adjustBackdrop: false });
             detailModal.modal('show');
         }
 
@@ -756,7 +785,7 @@
             readerMeta.textContent = '';
             updateReaderCountdown(BROADCAST_READ_DELAY_SECONDS);
             ensureBroadcastReaderModalAtBody();
-            setBroadcastBannerBehindReaderModal(true);
+            syncBroadcastModalLayering({ forceState: true, adjustBackdrop: false });
             readerModal.modal('show');
 
             fetch(`/notifications/broadcasts/${parsedId}/receiver-detail`, {
@@ -1631,21 +1660,21 @@
         });
 
         readerModal.on('shown.bs.modal', function() {
-            setBroadcastBannerBehindReaderModal(true);
+            syncBroadcastModalLayering({ forceState: true });
         });
 
         readerModal.on('hidden.bs.modal', function() {
-            setBroadcastBannerBehindReaderModal(false);
+            syncBroadcastModalLayering();
             clearReaderTimer();
             readerState.notificationId = null;
         });
 
         detailModal.on('shown.bs.modal', function() {
-            setBroadcastBannerBehindReaderModal(true);
+            syncBroadcastModalLayering({ forceState: true });
         });
 
         detailModal.on('hidden.bs.modal', function() {
-            setBroadcastBannerBehindReaderModal(false);
+            syncBroadcastModalLayering();
         });
 
         // Active Staff Event Listeners
@@ -1845,20 +1874,36 @@
         z-index: 1200 !important;
     }
 
-    /* Keep toast banner below the reader modal while it is open (banner default z-index: 1100) */
+    body.modal-open:has(#broadcastReaderModal.show) .modal-backdrop.show,
+    body.modal-open:has(#broadcastDetailModal.show) .modal-backdrop.show {
+        z-index: 1190 !important;
+    }
+
+    /* Keep toast banner below modals and stop it intercepting clicks while they are open */
     [data-broadcast-banner].is-behind-modal {
         z-index: 1040 !important;
+        pointer-events: none !important;
+    }
+
+    #broadcastReaderModal .modal-content,
+    #broadcastDetailModal .modal-content {
+        position: relative;
+        z-index: 1;
     }
 
     #broadcastReaderModal .modal-header .btn-close,
     #broadcastDetailModal .modal-header .btn-close {
-        position: static;
+        position: relative;
+        z-index: 2;
         float: none;
         margin: 0 0 0 auto;
         box-sizing: content-box;
-        width: 1em;
-        height: 1em;
-        padding: 0.25em 0.25em;
+        min-width: 32px;
+        min-height: 32px;
+        width: 32px;
+        height: 32px;
+        padding: 0.5rem;
+        cursor: pointer;
         background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23000'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414'/%3e%3c/svg%3e") center/1em auto no-repeat;
         border: 0;
         border-radius: 0.375rem;
@@ -1868,6 +1913,12 @@
     #broadcastReaderModal .modal-header .btn-close:hover,
     #broadcastDetailModal .modal-header .btn-close:hover {
         opacity: 0.75;
+    }
+
+    #broadcastReaderModal .modal-footer,
+    #broadcastDetailModal .modal-footer {
+        position: relative;
+        z-index: 2;
     }
 
     .broadcast-subtitle {

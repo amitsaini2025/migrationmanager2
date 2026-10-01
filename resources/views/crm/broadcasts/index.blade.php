@@ -416,7 +416,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="broadcastReaderModalLabel">Broadcast Message</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" data-broadcast-dismiss="reader" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-broadcast-dismiss="reader" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-2">
@@ -429,7 +429,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-broadcast-dismiss="reader">Close</button>
+                <button type="button" class="btn btn-secondary" data-broadcast-dismiss="reader">Close</button>
                 <button type="button" class="btn btn-primary d-none" id="broadcast-reader-mark-read">Read</button>
             </div>
         </div>
@@ -568,6 +568,12 @@
                 banner.classList.toggle('is-behind-modal', isOpen);
                 banner.style.zIndex = isOpen ? '1040' : '';
                 banner.style.pointerEvents = isOpen ? 'none' : '';
+                banner.style.visibility = isOpen ? 'hidden' : '';
+            }
+
+            const readerModalEl = document.getElementById('broadcastReaderModal');
+            if (readerModalEl) {
+                readerModalEl.style.zIndex = isOpen ? '1300' : '';
             }
 
             if (!adjustBackdrop && isOpen) {
@@ -592,8 +598,42 @@
             });
         }
 
-        function closeReaderModal() {
+        function cleanupReaderModalState() {
+            syncBroadcastModalLayering();
+            clearReaderTimer();
+            readerState.notificationId = null;
+        }
+
+        function forceCloseReaderModal() {
+            const modalEl = document.getElementById('broadcastReaderModal');
+            if (!modalEl) {
+                return;
+            }
+
+            syncBroadcastModalLayering({ forceState: true, adjustBackdrop: true });
             readerModal.modal('hide');
+
+            window.setTimeout(function () {
+                if (!modalEl.classList.contains('show')) {
+                    return;
+                }
+
+                modalEl.classList.remove('show');
+                modalEl.setAttribute('aria-hidden', 'true');
+                modalEl.removeAttribute('aria-modal');
+                modalEl.style.display = 'none';
+
+                if (!document.querySelector('.modal.show')) {
+                    document.body.classList.remove('modal-open');
+                    document.body.style.removeProperty('overflow');
+                    document.body.style.removeProperty('padding-right');
+                    document.querySelectorAll('.modal-backdrop.show').forEach(function (backdrop) {
+                        backdrop.remove();
+                    });
+                }
+
+                cleanupReaderModalState();
+            }, 400);
         }
 
         function closeDetailModal() {
@@ -1640,7 +1680,7 @@
                     })
                     .then(() => {
                         showFeedback('success', 'Broadcast marked as read.');
-                        closeReaderModal();
+                        forceCloseReaderModal();
                         loadHistory();
                         loadMyRead();
                     })
@@ -1651,8 +1691,10 @@
             });
         }
 
-        readerModal.on('click', '[data-broadcast-dismiss="reader"]', function () {
-            closeReaderModal();
+        readerModal.on('click', '[data-broadcast-dismiss="reader"]', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            forceCloseReaderModal();
         });
 
         detailModal.on('click', '[data-broadcast-dismiss="detail"]', function () {
@@ -1664,9 +1706,7 @@
         });
 
         readerModal.on('hidden.bs.modal', function() {
-            syncBroadcastModalLayering();
-            clearReaderTimer();
-            readerState.notificationId = null;
+            cleanupReaderModalState();
         });
 
         detailModal.on('shown.bs.modal', function() {
@@ -1868,8 +1908,11 @@
 
 @push('styles')
 <style>
-    /* Keep broadcast modals above the sticky banner (banner default z-index: 1100) */
-    #broadcastReaderModal,
+    /* Reader modal above toast/backdrop; detail modal keeps existing stack */
+    #broadcastReaderModal {
+        z-index: 1300 !important;
+    }
+
     #broadcastDetailModal {
         z-index: 1200 !important;
     }
@@ -1877,12 +1920,18 @@
     body.modal-open:has(#broadcastReaderModal.show) .modal-backdrop.show,
     body.modal-open:has(#broadcastDetailModal.show) .modal-backdrop.show {
         z-index: 1190 !important;
+        position: fixed !important;
     }
 
-    /* Keep toast banner below modals and stop it intercepting clicks while they are open */
+    /* Hide toast while modals are open so it cannot steal clicks */
     [data-broadcast-banner].is-behind-modal {
         z-index: 1040 !important;
         pointer-events: none !important;
+        visibility: hidden !important;
+    }
+
+    #broadcastReaderModal.show .modal-dialog {
+        pointer-events: auto;
     }
 
     #broadcastReaderModal .modal-content,
@@ -1913,6 +1962,12 @@
     #broadcastReaderModal .modal-header .btn-close:hover,
     #broadcastDetailModal .modal-header .btn-close:hover {
         opacity: 0.75;
+    }
+
+    #broadcastReaderModal .modal-footer .btn[data-broadcast-dismiss="reader"] {
+        position: relative;
+        z-index: 3;
+        cursor: pointer;
     }
 
     #broadcastReaderModal .modal-footer,

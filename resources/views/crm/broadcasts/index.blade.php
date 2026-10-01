@@ -554,37 +554,21 @@
 
         function setBroadcastBannerBehindReaderModal(isBehind) {
             const banner = document.querySelector('[data-broadcast-banner]');
-            if (banner) {
-                banner.classList.toggle('is-behind-modal', isBehind);
-            }
-        }
-
-        function hideBootstrapModal(modalElement) {
-            if (!modalElement) {
+            if (!banner) {
                 return;
             }
 
-            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-                const instance = bootstrap.Modal.getInstance(modalElement) || bootstrap.Modal.getOrCreateInstance(modalElement);
-                instance.hide();
-                return;
-            }
-
-            if (typeof $ !== 'undefined') {
-                $(modalElement).modal('hide');
-            }
+            banner.classList.toggle('is-behind-modal', isBehind);
+            // Fallback when pushed page styles are cached/missing: keep banner below open modals.
+            banner.style.zIndex = isBehind ? '1040' : '';
         }
 
         function closeReaderModal() {
-            clearReaderTimer();
-            readerState.notificationId = null;
-            setBroadcastBannerBehindReaderModal(false);
-            hideBootstrapModal(document.getElementById('broadcastReaderModal'));
+            readerModal.modal('hide');
         }
 
         function closeDetailModal() {
-            setBroadcastBannerBehindReaderModal(false);
-            hideBootstrapModal(document.getElementById('broadcastDetailModal'));
+            detailModal.modal('hide');
         }
 
         function showDetailModal() {
@@ -1638,13 +1622,11 @@
             });
         }
 
-        readerModal.on('click', '[data-broadcast-dismiss="reader"]', function (event) {
-            event.preventDefault();
+        readerModal.on('click', '[data-broadcast-dismiss="reader"]', function () {
             closeReaderModal();
         });
 
-        detailModal.on('click', '[data-broadcast-dismiss="detail"]', function (event) {
-            event.preventDefault();
+        detailModal.on('click', '[data-broadcast-dismiss="detail"]', function () {
             closeDetailModal();
         });
 
@@ -1873,6 +1855,19 @@
         position: static;
         float: none;
         margin: 0 0 0 auto;
+        box-sizing: content-box;
+        width: 1em;
+        height: 1em;
+        padding: 0.25em 0.25em;
+        background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23000'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414'/%3e%3c/svg%3e") center/1em auto no-repeat;
+        border: 0;
+        border-radius: 0.375rem;
+        opacity: 0.5;
+    }
+
+    #broadcastReaderModal .modal-header .btn-close:hover,
+    #broadcastDetailModal .modal-header .btn-close:hover {
+        opacity: 0.75;
     }
 
     .broadcast-subtitle {

@@ -1679,6 +1679,7 @@
         }
     </style>
     @yield('styles')
+    @stack('styles')
 </head>
 <body class="sidebar-mini" data-crm-layout="detail">
     <div class="broadcast-banner" data-broadcast-banner>

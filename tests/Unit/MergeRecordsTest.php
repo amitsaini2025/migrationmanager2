@@ -267,6 +267,75 @@ class MergeRecordsTest extends TestCase
     }
 
     #[Test]
+    public function merge_skips_conflicting_staff_matter_sessions_and_completes(): void
+    {
+        $source = Admin::factory()->create([
+            'type' => 'lead',
+            'email' => 'source.sessions.merge@test.com',
+        ]);
+        $target = Admin::factory()->create([
+            'type' => 'lead',
+            'email' => 'target.sessions.merge@test.com',
+        ]);
+
+        $this->staff->refresh();
+
+        $sessionDate = '2026-10-02';
+        $conflictingSessionId = DB::table('staff_matter_sessions')->insertGetId([
+            'staff_id' => $this->staff->id,
+            'client_id' => $source->id,
+            'matter_key' => 0,
+            'session_date' => $sessionDate,
+            'status' => 'accessed',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('staff_matter_sessions')->insert([
+            'staff_id' => $this->staff->id,
+            'client_id' => $target->id,
+            'matter_key' => 0,
+            'session_date' => $sessionDate,
+            'status' => 'accessed',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $noteId = DB::table('notes')->insertGetId([
+            'user_id' => $this->staff->id,
+            'client_id' => $source->id,
+            'title' => 'Session merge note',
+            'description' => 'Should move to survivor',
+            'type' => 'client',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($this->staff, 'admin')
+            ->post('/merge_records', [
+                'merge_from' => $source->id,
+                'merge_into' => $target->id,
+            ]);
+
+        $response->assertOk();
+        $payload = $response->json();
+        $this->assertTrue($payload['status'] ?? false, $payload['message'] ?? 'Merge failed');
+
+        $this->assertDatabaseHas('admins', [
+            'id' => $source->id,
+            'is_deleted' => 1,
+        ]);
+        $this->assertDatabaseHas('notes', [
+            'id' => $noteId,
+            'client_id' => $target->id,
+        ]);
+        $this->assertDatabaseHas('staff_matter_sessions', [
+            'id' => $conflictingSessionId,
+            'client_id' => $source->id,
+        ]);
+        $this->assertSame(1, DB::table('staff_matter_sessions')->where('client_id', $target->id)->count());
+    }
+
+    #[Test]
     public function merge_rejects_the_same_record_twice(): void
     {
         $lead = Admin::factory()->create([
@@ -466,6 +535,23 @@ class MergeRecordsTest extends TestCase
                 $table->unsignedBigInteger('client_id')->nullable();
                 $table->unsignedBigInteger('sel_matter_id')->nullable();
                 $table->timestamps();
+            });
+        }
+
+        if (! Schema::hasTable('staff_matter_sessions')) {
+            Schema::create('staff_matter_sessions', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('staff_id');
+                $table->unsignedInteger('client_matter_id')->nullable();
+                $table->unsignedInteger('client_id');
+                $table->unsignedInteger('matter_key')->default(0);
+                $table->date('session_date');
+                $table->string('status', 16)->default('accessed');
+                $table->timestamps();
+                $table->unique(
+                    ['staff_id', 'client_id', 'matter_key', 'session_date'],
+                    'staff_matter_sessions_staff_record_day'
+                );
             });
         }
 

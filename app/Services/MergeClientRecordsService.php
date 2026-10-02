@@ -8,6 +8,8 @@ use Throwable;
 
 class MergeClientRecordsService
 {
+    private int $savepointCounter = 0;
+
     /**
      * Re-point related rows from the source CRM record onto the survivor, then leave
      * the caller to soft-delete the source. Duplicate unique rows stay on the source.
@@ -18,6 +20,17 @@ class MergeClientRecordsService
             return;
         }
 
+        if (DB::transactionLevel() === 0) {
+            DB::transaction(fn () => $this->performMove($fromId, $intoId));
+
+            return;
+        }
+
+        $this->performMove($fromId, $intoId);
+    }
+
+    private function performMove(int $fromId, int $intoId): void
+    {
         foreach (['client_id', 'lead_id', 'nominated_client_id'] as $column) {
             foreach ($this->tablesHavingColumn($column) as $table) {
                 $this->reassign($table, $column, $fromId, $intoId);
@@ -119,11 +132,10 @@ class MergeClientRecordsService
             return;
         }
 
-        try {
-            DB::table($table)->where($column, $fromId)->update([$column => $intoId]);
-        } catch (Throwable) {
-            $this->reassignRowByRow($table, $column, $fromId, $intoId);
-        }
+        $this->attemptWithSavepoint(
+            fn () => DB::table($table)->where($column, $fromId)->update([$column => $intoId]),
+            fn () => $this->reassignRowByRow($table, $column, $fromId, $intoId),
+        );
     }
 
     private function reassignRowByRow(string $table, string $column, int $fromId, int $intoId): void
@@ -134,11 +146,9 @@ class MergeClientRecordsService
 
         $ids = DB::table($table)->where($column, $fromId)->pluck('id');
         foreach ($ids as $id) {
-            try {
-                DB::table($table)->where('id', $id)->update([$column => $intoId]);
-            } catch (Throwable) {
-                // Unique conflict: keep the survivor's row and leave this one on the source.
-            }
+            $this->attemptWithSavepoint(
+                fn () => DB::table($table)->where('id', $id)->update([$column => $intoId]),
+            );
         }
     }
 
@@ -169,10 +179,14 @@ class MergeClientRecordsService
             ));
         }
 
-        DB::table('admins')->where('id', $intoId)->update([
-            $column => $merged === [] ? null : implode(',', $merged),
-        ]);
-        DB::table('admins')->where('id', $fromId)->update([$column => null]);
+        $this->attemptWithSavepoint(
+            fn () => DB::table('admins')->where('id', $intoId)->update([
+                $column => $merged === [] ? null : implode(',', $merged),
+            ]),
+        );
+        $this->attemptWithSavepoint(
+            fn () => DB::table('admins')->where('id', $fromId)->update([$column => null]),
+        );
     }
 
     private function retargetRelatedFileLinks(int $fromId, int $intoId): void
@@ -202,10 +216,54 @@ class MergeClientRecordsService
                 static fn ($id) => (int) $id !== $fromId && (int) $id !== (int) $row->id
             )));
 
-            DB::table('admins')->where('id', $row->id)->update([
-                'related_files' => $ids === [] ? null : implode(',', $ids),
-            ]);
+            $this->attemptWithSavepoint(
+                fn () => DB::table('admins')->where('id', $row->id)->update([
+                    'related_files' => $ids === [] ? null : implode(',', $ids),
+                ]),
+            );
         }
+    }
+
+    /**
+     * @param  callable(): void  $attempt
+     * @param  (callable(): void)|null  $onFailure
+     */
+    private function attemptWithSavepoint(callable $attempt, ?callable $onFailure = null): void
+    {
+        if (DB::transactionLevel() === 0) {
+            try {
+                $attempt();
+            } catch (Throwable) {
+                if ($onFailure !== null) {
+                    $onFailure();
+                }
+            }
+
+            return;
+        }
+
+        $savepoint = $this->nextSavepointName();
+
+        DB::statement('SAVEPOINT '.$savepoint);
+
+        try {
+            $attempt();
+            DB::statement('RELEASE SAVEPOINT '.$savepoint);
+        } catch (Throwable) {
+            DB::statement('ROLLBACK TO SAVEPOINT '.$savepoint);
+            DB::statement('RELEASE SAVEPOINT '.$savepoint);
+
+            if ($onFailure !== null) {
+                $onFailure();
+            }
+        }
+    }
+
+    private function nextSavepointName(): string
+    {
+        $this->savepointCounter++;
+
+        return 'merge_sp_'.$this->savepointCounter;
     }
 
     /**

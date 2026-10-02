@@ -18,6 +18,7 @@ use App\Services\BookingAppointmentConfirmationReminderService;
 use App\Services\BookingAppointmentManualPaymentService;
 use App\Services\BookingAppointmentRequestPaymentService;
 use App\Services\StaffPersonalCalendarFeedService;
+use App\Support\AppointmentActivityDescription;
 use App\Support\BansalSchedulingServiceType;
 use App\Support\BookingAppointmentStatus;
 use App\Support\StaffClientVisibility;
@@ -307,7 +308,7 @@ class BookingAppointmentsController extends Controller
     /**
      * Show appointment detail
      */
-    public function show($id)
+    public function show(int $id)
     {
         $appointment = BookingAppointment::with(['client', 'consultant', 'assignedBy'])->findOrFail($id);
         $this->assertBookingAppointmentAccess($appointment);
@@ -326,7 +327,7 @@ class BookingAppointmentsController extends Controller
     /**
      * Show edit appointment form (date & time only).
      */
-    public function edit($id)
+    public function edit(int $id)
     {
         $appointment = BookingAppointment::with(['client', 'consultant'])->findOrFail($id);
         $this->assertBookingAppointmentAccess($appointment);
@@ -337,7 +338,7 @@ class BookingAppointmentsController extends Controller
     /**
      * Calendar view by type
      */
-    public function calendar($type)
+    public function calendar(string $type)
     {
         $validTypes = ['paid', 'jrp', 'education', 'tourist', 'adelaide', 'adelaide_education', 'ajay', 'arun'];
 
@@ -403,7 +404,7 @@ class BookingAppointmentsController extends Controller
     /**
      * Update appointment status
      */
-    public function updateStatus(Request $request, $id)
+    public function updateStatus(Request $request, int $id)
     {
         $appointment = BookingAppointment::findOrFail($id);
         $this->assertBookingAppointmentAccess($appointment);
@@ -523,7 +524,7 @@ class BookingAppointmentsController extends Controller
     /**
      * Mark a Free booking as Paid after offline payment.
      */
-    public function markManualPayment(BookingAppointmentManualPaymentService $manualPaymentService, $id)
+    public function markManualPayment(BookingAppointmentManualPaymentService $manualPaymentService, int $id)
     {
         $appointment = BookingAppointment::findOrFail($id);
         $this->assertBookingAppointmentAccess($appointment);
@@ -564,7 +565,7 @@ class BookingAppointmentsController extends Controller
     /**
      * Email a $150 Stripe payment link for a Free booking. Does not mark it Paid.
      */
-    public function requestPayment(BookingAppointmentRequestPaymentService $requestPaymentService, $id)
+    public function requestPayment(BookingAppointmentRequestPaymentService $requestPaymentService, int $id)
     {
         $appointment = BookingAppointment::findOrFail($id);
         $this->assertBookingAppointmentAccess($appointment);
@@ -602,7 +603,7 @@ class BookingAppointmentsController extends Controller
     /**
      * Email a confirmation reminder for a Free booking awaiting confirmation.
      */
-    public function sendConfirmationReminder(BookingAppointmentConfirmationReminderService $reminderService, $id)
+    public function sendConfirmationReminder(BookingAppointmentConfirmationReminderService $reminderService, int $id)
     {
         $appointment = BookingAppointment::findOrFail($id);
         $this->assertBookingAppointmentAccess($appointment);
@@ -640,7 +641,7 @@ class BookingAppointmentsController extends Controller
     /**
      * Update consultant assignment
      */
-    public function updateConsultant(Request $request, $id)
+    public function updateConsultant(Request $request, int $id)
     {
         try {
             $appointment = BookingAppointment::findOrFail($id);
@@ -789,7 +790,7 @@ class BookingAppointmentsController extends Controller
     /**
      * Update meeting type
      */
-    public function updateMeetingType(Request $request, $id)
+    public function updateMeetingType(Request $request, int $id)
     {
         try {
             $appointment = BookingAppointment::findOrFail($id);
@@ -862,7 +863,7 @@ class BookingAppointmentsController extends Controller
     /**
      * Update appointment date and time.
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, int $id)
     {
         $appointment = BookingAppointment::findOrFail($id);
         $this->assertBookingAppointmentAccess($appointment);
@@ -997,48 +998,37 @@ class BookingAppointmentsController extends Controller
         $appointment->save();
 
         // Log activity if client exists
-        if ($appointment->client_id) {
-            $activityLog = new ActivitiesLog;
-            $activityLog->client_id = $appointment->client_id;
-            $activityLog->created_by = Auth::id();
-            $activityLog->task_status = 0;
-            $activityLog->pin = 0;
-
-            $descriptionParts = [];
+        if ($appointment->client_id && ($datetimeChanged || $meetingTypeChanged || $preferredLanguageChanged)) {
+            $changes = [];
 
             if ($datetimeChanged) {
-                $from = $oldDatetime ? $oldDatetime->format('d M Y, h:i A') : 'N/A';
-                $to = $newDatetime->format('d M Y, h:i A');
-                $descriptionParts[] = sprintf(
-                    '<p><strong>Appointment rescheduled:</strong> %s → %s</p>',
-                    e($from),
-                    e($to)
-                );
+                $changes['datetime'] = [
+                    'from' => $oldDatetime ? $oldDatetime->format('d M Y, h:i A') : 'N/A',
+                    'to' => $newDatetime->format('d M Y, h:i A'),
+                ];
             }
 
             if ($meetingTypeChanged) {
-                $oldDisplay = ucfirst(str_replace('_', ' ', $oldMeetingType));
-                $newDisplay = ucfirst(str_replace('_', ' ', $request->meeting_type));
-                $descriptionParts[] = sprintf(
-                    '<p><strong>Meeting type changed:</strong> %s → %s</p>',
-                    e($oldDisplay),
-                    e($newDisplay)
-                );
+                $changes['meeting_type'] = [
+                    'from' => AppointmentActivityDescription::meetingTypeDisplay($oldMeetingType),
+                    'to' => AppointmentActivityDescription::meetingTypeDisplay($request->meeting_type),
+                ];
             }
 
             if ($preferredLanguageChanged) {
-                $descriptionParts[] = sprintf(
-                    '<p><strong>Preferred language changed:</strong> %s → %s</p>',
-                    e($oldPreferredLanguage),
-                    e($request->preferred_language)
-                );
+                $changes['preferred_language'] = [
+                    'from' => $oldPreferredLanguage,
+                    'to' => $request->preferred_language,
+                ];
             }
 
-            if (! empty($descriptionParts)) {
-                $activityLog->subject = 'Booking appointment updated';
-                $activityLog->description = implode('', $descriptionParts);
-                $activityLog->save();
-            }
+            ActivitiesLog::create(
+                AppointmentActivityDescription::buildUpdateActivityLogPayload(
+                    $appointment,
+                    (int) Auth::id(),
+                    $changes
+                )
+            );
         }
 
         // Send reschedule confirmation email to client when datetime changed
@@ -1256,7 +1246,7 @@ class BookingAppointmentsController extends Controller
     /**
      * Add admin note
      */
-    public function addNote(Request $request, $id)
+    public function addNote(Request $request, int $id)
     {
         $appointment = BookingAppointment::findOrFail($id);
         $this->assertBookingAppointmentAccess($appointment);
@@ -1385,7 +1375,7 @@ class BookingAppointmentsController extends Controller
     /**
      * Get appointment details as JSON (for modal/AJAX)
      */
-    public function getAppointmentJson($id)
+    public function getAppointmentJson(int $id)
     {
         $appointment = BookingAppointment::with(['client', 'consultant', 'assignedBy'])->findOrFail($id);
         $this->assertBookingAppointmentAccess($appointment);
@@ -1434,7 +1424,7 @@ class BookingAppointmentsController extends Controller
     /**
      * Send reminder manually
      */
-    public function sendReminder(Request $request, $id)
+    public function sendReminder(Request $request, int $id)
     {
         $appointment = BookingAppointment::findOrFail($id);
         $this->assertBookingAppointmentAccess($appointment);

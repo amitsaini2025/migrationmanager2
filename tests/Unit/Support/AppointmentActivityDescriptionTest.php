@@ -49,6 +49,70 @@ class AppointmentActivityDescriptionTest extends TestCase
         $this->assertSame('scheduled an appointment', AppointmentActivityDescription::activitySubject(null));
     }
 
+    public function test_update_activity_subject_uses_correct_grammar(): void
+    {
+        $this->assertSame('updated a free appointment', AppointmentActivityDescription::updateActivitySubject(2));
+        $this->assertSame('updated a paid appointment', AppointmentActivityDescription::updateActivitySubject(1));
+        $this->assertSame('updated an appointment', AppointmentActivityDescription::updateActivitySubject(null));
+    }
+
+    public function test_build_update_description_uses_appointment_card_with_change_rows(): void
+    {
+        $appointment = new BookingAppointment([
+            'service_id' => 2,
+            'noe_id' => 4,
+            'service_type' => 'Tourist Visa',
+            'meeting_type' => 'in_person',
+            'preferred_language' => 'English',
+            'enquiry_details' => 'test .Pls ignore',
+            'location' => 'melbourne',
+            'appointment_datetime' => Carbon::parse('2026-10-22 10:00:00'),
+            'timeslot_full' => '10:00 AM-10:20 AM',
+        ]);
+
+        $html = AppointmentActivityDescription::buildUpdateDescription($appointment, [
+            'datetime' => [
+                'from' => '23 Oct 2026, 10:00 AM',
+                'to' => '22 Oct 2026, 10:00 AM',
+            ],
+        ]);
+
+        $this->assertStringContainsString('appointment-activity-detail', $html);
+        $this->assertStringContainsString('Appointment Updated', $html);
+        $this->assertStringContainsString('Rescheduled:', $html);
+        $this->assertStringContainsString('23 Oct 2026, 10:00 AM → 22 Oct 2026, 10:00 AM', $html);
+        $this->assertStringContainsString('Tourist Visa', $html);
+        $this->assertStringContainsString('22 Oct 2026 · 10:00 AM-10:20 AM', $html);
+        $this->assertStringContainsString('Melbourne Free PR', $html);
+    }
+
+    public function test_build_update_activity_log_payload_matches_create_structure(): void
+    {
+        $appointment = new BookingAppointment([
+            'client_id' => 99,
+            'service_id' => 2,
+            'appointment_datetime' => Carbon::parse('2026-10-22 10:00:00'),
+        ]);
+
+        $payload = AppointmentActivityDescription::buildUpdateActivityLogPayload(
+            $appointment,
+            7,
+            [
+                'preferred_language' => [
+                    'from' => 'English',
+                    'to' => 'Hindi',
+                ],
+            ]
+        );
+
+        $this->assertSame(99, $payload['client_id']);
+        $this->assertSame(7, $payload['created_by']);
+        $this->assertSame('updated a free appointment', $payload['subject']);
+        $this->assertSame('activity', $payload['activity_type']);
+        $this->assertStringContainsString('appointment-activity-detail', $payload['description']);
+        $this->assertStringContainsString('Preferred language:', $payload['description']);
+    }
+
     public function test_category_falls_back_to_noe_id_when_service_type_missing(): void
     {
         $appointment = new BookingAppointment([

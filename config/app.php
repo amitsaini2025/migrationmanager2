@@ -1,5 +1,72 @@
 <?php
 
+use App\Helpers\Helper;
+use App\Helpers\Settings;
+use App\Providers\AppointmentSyncServiceProvider;
+use App\Providers\AppServiceProvider;
+use App\Providers\EventServiceProvider;
+use App\Providers\RouteServiceProvider;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\DomPDF\ServiceProvider;
+use Illuminate\Auth\AuthServiceProvider;
+use Illuminate\Auth\Passwords\PasswordResetServiceProvider;
+use Illuminate\Broadcasting\BroadcastServiceProvider;
+use Illuminate\Bus\BusServiceProvider;
+use Illuminate\Cache\CacheServiceProvider;
+use Illuminate\Cookie\CookieServiceProvider;
+use Illuminate\Database\DatabaseServiceProvider;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Encryption\EncryptionServiceProvider;
+use Illuminate\Filesystem\FilesystemServiceProvider;
+use Illuminate\Foundation\Providers\ConsoleSupportServiceProvider;
+use Illuminate\Foundation\Providers\FoundationServiceProvider;
+use Illuminate\Hashing\HashServiceProvider;
+use Illuminate\Mail\MailServiceProvider;
+use Illuminate\Notifications\NotificationServiceProvider;
+use Illuminate\Pagination\PaginationServiceProvider;
+use Illuminate\Pipeline\PipelineServiceProvider;
+use Illuminate\Queue\QueueServiceProvider;
+use Illuminate\Redis\RedisServiceProvider;
+use Illuminate\Session\SessionServiceProvider;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Request;
+use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\Str;
+use Illuminate\Translation\TranslationServiceProvider;
+use Illuminate\Validation\ValidationServiceProvider;
+use Illuminate\View\ViewServiceProvider;
+use Yajra\DataTables\DataTablesServiceProvider;
+use Yajra\DataTables\Facades\DataTables;
+
 return [
 
     /*
@@ -124,6 +191,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | System User ID
+    |--------------------------------------------------------------------------
+    |
+    | Admin user ID used as created_by for automated activity logs when no
+    | authenticated staff member is available (e.g. client portal actions).
+    |
+    */
+
+    'system_user_id' => (int) env('SYSTEM_USER_ID', 1),
+
+    /*
+    |--------------------------------------------------------------------------
     | Autoloaded Service Providers
     |--------------------------------------------------------------------------
     |
@@ -138,37 +217,37 @@ return [
         /*
          * Laravel Framework Service Providers...
          */
-        App\Providers\RouteServiceProvider::class,
-        Illuminate\Auth\AuthServiceProvider::class,
-        Illuminate\Broadcasting\BroadcastServiceProvider::class,
-        Illuminate\Bus\BusServiceProvider::class,
-        Illuminate\Cache\CacheServiceProvider::class,
-        Illuminate\Foundation\Providers\ConsoleSupportServiceProvider::class,
-        Illuminate\Cookie\CookieServiceProvider::class,
-        Illuminate\Database\DatabaseServiceProvider::class,
-        Illuminate\Encryption\EncryptionServiceProvider::class,
-        Illuminate\Filesystem\FilesystemServiceProvider::class,
-        Illuminate\Foundation\Providers\FoundationServiceProvider::class,
-        Illuminate\Hashing\HashServiceProvider::class,
-        Illuminate\Mail\MailServiceProvider::class,
-        Illuminate\Notifications\NotificationServiceProvider::class,
-        Illuminate\Pagination\PaginationServiceProvider::class,
-        Illuminate\Pipeline\PipelineServiceProvider::class,
-        Illuminate\Queue\QueueServiceProvider::class,
-        Illuminate\Redis\RedisServiceProvider::class,
-        Illuminate\Auth\Passwords\PasswordResetServiceProvider::class,
-        Illuminate\Session\SessionServiceProvider::class,
-        Illuminate\Translation\TranslationServiceProvider::class,
-        Illuminate\Validation\ValidationServiceProvider::class,
-        Illuminate\View\ViewServiceProvider::class,
-		Barryvdh\DomPDF\ServiceProvider::class,
+        RouteServiceProvider::class,
+        AuthServiceProvider::class,
+        BroadcastServiceProvider::class,
+        BusServiceProvider::class,
+        CacheServiceProvider::class,
+        ConsoleSupportServiceProvider::class,
+        CookieServiceProvider::class,
+        DatabaseServiceProvider::class,
+        EncryptionServiceProvider::class,
+        FilesystemServiceProvider::class,
+        FoundationServiceProvider::class,
+        HashServiceProvider::class,
+        MailServiceProvider::class,
+        NotificationServiceProvider::class,
+        PaginationServiceProvider::class,
+        PipelineServiceProvider::class,
+        QueueServiceProvider::class,
+        RedisServiceProvider::class,
+        PasswordResetServiceProvider::class,
+        SessionServiceProvider::class,
+        TranslationServiceProvider::class,
+        ValidationServiceProvider::class,
+        ViewServiceProvider::class,
+        ServiceProvider::class,
 
-        App\Providers\AppServiceProvider::class,
+        AppServiceProvider::class,
         App\Providers\AuthServiceProvider::class,
         App\Providers\BroadcastServiceProvider::class,
-        App\Providers\EventServiceProvider::class,
-        App\Providers\AppointmentSyncServiceProvider::class,
-        Yajra\DataTables\DataTablesServiceProvider::class,
+        EventServiceProvider::class,
+        AppointmentSyncServiceProvider::class,
+        DataTablesServiceProvider::class,
 
     ],
 
@@ -186,88 +265,88 @@ return [
     'aliases' => [
 
         'App' => Illuminate\Support\Facades\App::class,
-        'Artisan' => Illuminate\Support\Facades\Artisan::class,
-        'Auth' => Illuminate\Support\Facades\Auth::class,
-        'Blade' => Illuminate\Support\Facades\Blade::class,
-        'Broadcast' => Illuminate\Support\Facades\Broadcast::class,
-        'Bus' => Illuminate\Support\Facades\Bus::class,
-        'Cache' => Illuminate\Support\Facades\Cache::class,
-        'Config' => Illuminate\Support\Facades\Config::class,
-        'Cookie' => Illuminate\Support\Facades\Cookie::class,
-        'Crypt' => Illuminate\Support\Facades\Crypt::class,
-        'DB' => Illuminate\Support\Facades\DB::class,
-        'Eloquent' => Illuminate\Database\Eloquent\Model::class,
-        'Event' => Illuminate\Support\Facades\Event::class,
-        'File' => Illuminate\Support\Facades\File::class,
-        'Gate' => Illuminate\Support\Facades\Gate::class,
-        'Hash' => Illuminate\Support\Facades\Hash::class,
-        'Lang' => Illuminate\Support\Facades\Lang::class,
-        'Log' => Illuminate\Support\Facades\Log::class,
-        'Mail' => Illuminate\Support\Facades\Mail::class,
-        'Notification' => Illuminate\Support\Facades\Notification::class,
-        'Password' => Illuminate\Support\Facades\Password::class,
-        'Queue' => Illuminate\Support\Facades\Queue::class,
-        'Redirect' => Illuminate\Support\Facades\Redirect::class,
-        'Redis' => Illuminate\Support\Facades\Redis::class,
-        'Request' => Illuminate\Support\Facades\Request::class,
-        'Response' => Illuminate\Support\Facades\Response::class,
-        'Route' => Illuminate\Support\Facades\Route::class,
-        'Schema' => Illuminate\Support\Facades\Schema::class,
-        'Session' => Illuminate\Support\Facades\Session::class,
-        'Storage' => Illuminate\Support\Facades\Storage::class,
-        'URL' => Illuminate\Support\Facades\URL::class,
-        'Validator' => Illuminate\Support\Facades\Validator::class,
-        'View' => Illuminate\Support\Facades\View::class,
-        'Str' => Illuminate\Support\Str::class,
-        'Arr' => Illuminate\Support\Arr::class,
+        'Artisan' => Artisan::class,
+        'Auth' => Auth::class,
+        'Blade' => Blade::class,
+        'Broadcast' => Broadcast::class,
+        'Bus' => Bus::class,
+        'Cache' => Cache::class,
+        'Config' => Config::class,
+        'Cookie' => Cookie::class,
+        'Crypt' => Crypt::class,
+        'DB' => DB::class,
+        'Eloquent' => Model::class,
+        'Event' => Event::class,
+        'File' => File::class,
+        'Gate' => Gate::class,
+        'Hash' => Hash::class,
+        'Lang' => Lang::class,
+        'Log' => Log::class,
+        'Mail' => Mail::class,
+        'Notification' => Notification::class,
+        'Password' => Password::class,
+        'Queue' => Queue::class,
+        'Redirect' => Redirect::class,
+        'Redis' => Redis::class,
+        'Request' => Request::class,
+        'Response' => Response::class,
+        'Route' => Route::class,
+        'Schema' => Schema::class,
+        'Session' => Session::class,
+        'Storage' => Storage::class,
+        'URL' => URL::class,
+        'Validator' => Validator::class,
+        'View' => View::class,
+        'Str' => Str::class,
+        'Arr' => Arr::class,
         'Carbon' => Carbon\Carbon::class,
-		'PDF' => Barryvdh\DomPDF\Facade\Pdf::class,
-		'Settings' => App\Helpers\Settings::class,
-        'Helper' => App\Helpers\Helper::class,
-         'DataTables' => Yajra\DataTables\Facades\DataTables::class,
+        'PDF' => Pdf::class,
+        'Settings' => Settings::class,
+        'Helper' => Helper::class,
+        'DataTables' => DataTables::class,
 
     ],
     'debug_blacklist' => [
-		'_ENV' => [
-			'APP_KEY',
-			'DB_USERNAME',
-			'DB_DATABASE',
-			'DB_PASSWORD',
-			'TRAVEL_CLIENT_ID',
-			'TRAVEL_API_URL',
-			'SENDGRID_API_KEY',
-			'DOMAIN1_URL',
-			'DOMAIN2_URL',
-		],
-		'_SERVER' => [
-			'HOME',
-			'APP_KEY',
-			'SCRIPT_NAME',
-			'SCRIPT_FILENAME',
-			'CONTEXT_DOCUMENT_ROOT',
-			'REDIRECT_URL',
-			'REMOTE_PORT',
-			'DOCUMENT_ROOT',
-			'SERVER_ADMIN',
-			'REMOTE_ADDR',
-			'SERVER_PORT',
-			'SERVER_ADDR',
-			'SERVER_NAME',
-			'PATH',
-			'SCRIPT_URI',
-			'SCRIPT_URL',
-			'REDIRECT_SCRIPT_URI',
-			'REDIRECT_SCRIPT_URL',
-			'PHP_SELF',
-			'DB_USERNAME',
-			'DB_DATABASE',
-			'DB_PASSWORD',
-			'TRAVEL_CLIENT_ID',
-			'TRAVEL_API_URL',
-			'SENDGRID_API_KEY',
-			'DOMAIN1_URL',
-			'DOMAIN2_URL',
-		],
-	],
+        '_ENV' => [
+            'APP_KEY',
+            'DB_USERNAME',
+            'DB_DATABASE',
+            'DB_PASSWORD',
+            'TRAVEL_CLIENT_ID',
+            'TRAVEL_API_URL',
+            'SENDGRID_API_KEY',
+            'DOMAIN1_URL',
+            'DOMAIN2_URL',
+        ],
+        '_SERVER' => [
+            'HOME',
+            'APP_KEY',
+            'SCRIPT_NAME',
+            'SCRIPT_FILENAME',
+            'CONTEXT_DOCUMENT_ROOT',
+            'REDIRECT_URL',
+            'REMOTE_PORT',
+            'DOCUMENT_ROOT',
+            'SERVER_ADMIN',
+            'REMOTE_ADDR',
+            'SERVER_PORT',
+            'SERVER_ADDR',
+            'SERVER_NAME',
+            'PATH',
+            'SCRIPT_URI',
+            'SCRIPT_URL',
+            'REDIRECT_SCRIPT_URI',
+            'REDIRECT_SCRIPT_URL',
+            'PHP_SELF',
+            'DB_USERNAME',
+            'DB_DATABASE',
+            'DB_PASSWORD',
+            'TRAVEL_CLIENT_ID',
+            'TRAVEL_API_URL',
+            'SENDGRID_API_KEY',
+            'DOMAIN1_URL',
+            'DOMAIN2_URL',
+        ],
+    ],
 
 ];

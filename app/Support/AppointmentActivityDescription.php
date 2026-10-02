@@ -39,6 +39,15 @@ class AppointmentActivityDescription
         };
     }
 
+    public static function updateActivitySubject(?int $serviceId): string
+    {
+        return match ((int) $serviceId) {
+            2 => 'updated a free appointment',
+            1, 3 => 'updated a paid appointment',
+            default => 'updated an appointment',
+        };
+    }
+
     public static function serviceTitle(?int $serviceId): string
     {
         return match ((int) $serviceId) {
@@ -92,39 +101,36 @@ class AppointmentActivityDescription
 
     public static function buildDescription(BookingAppointment $appointment, ?int $noeId = null): string
     {
-        $serviceId = $appointment->service_id;
         $badgeDate = self::badgeDateString($appointment);
-        $category = self::categoryLabel($appointment, $noeId);
-        $apptTypeParts = array_filter([
-            self::serviceTitle($serviceId),
-            self::meetingTypeLabel($appointment->meeting_type),
-        ]);
-        $apptType = implode(' · ', $apptTypeParts);
-        $query = trim((string) ($appointment->enquiry_details ?? ''));
-        $dateTime = self::dateTimeDisplay($appointment);
-        $language = trim((string) ($appointment->preferred_language ?? ''));
-        $location = self::locationLabel($appointment);
-
         $rows = '<div class="appointment-activity-detail__chip">Appointment</div>';
-        $rows .= self::detailRow('Category:', $category);
-        $rows .= self::detailRow('Appt. Type:', $apptType);
-        if ($query !== '') {
-            $rows .= self::detailRow('Query:', $query);
-        }
-        if ($dateTime !== null && $dateTime !== '') {
-            $rows .= self::detailRow('Date & Time:', $dateTime, 'datetime');
-        }
-        if ($language !== '') {
-            $rows .= self::detailRow('Language:', $language);
-        }
-        if ($location !== null && $location !== '') {
-            $rows .= self::detailRow('Location:', $location);
+        $rows .= self::standardDetailRows($appointment, $noeId);
+
+        return self::wrapDescriptionHtml($badgeDate, $rows);
+    }
+
+    /**
+     * @param  array<string, array{from: string, to: string}>  $changes
+     */
+    public static function buildUpdateDescription(BookingAppointment $appointment, array $changes = [], ?int $noeId = null): string
+    {
+        $badgeDate = self::badgeDateString($appointment);
+        $rows = '<div class="appointment-activity-detail__chip">Appointment Updated</div>';
+
+        if (isset($changes['datetime'])) {
+            $rows .= self::changeRow('Rescheduled:', $changes['datetime']['from'], $changes['datetime']['to']);
         }
 
-        return '<div class="appointment-activity-detail">'
-            .self::dateBadgeHtml($badgeDate)
-            .'<div class="appointment-activity-detail__body">'.$rows.'</div>'
-            .'</div>';
+        if (isset($changes['meeting_type'])) {
+            $rows .= self::changeRow('Meeting type:', $changes['meeting_type']['from'], $changes['meeting_type']['to']);
+        }
+
+        if (isset($changes['preferred_language'])) {
+            $rows .= self::changeRow('Preferred language:', $changes['preferred_language']['from'], $changes['preferred_language']['to']);
+        }
+
+        $rows .= self::standardDetailRows($appointment, $noeId);
+
+        return self::wrapDescriptionHtml($badgeDate, $rows);
     }
 
     /**
@@ -147,6 +153,81 @@ class AppointmentActivityDescription
             'task_status' => 0,
             'pin' => 0,
         ];
+    }
+
+    /**
+     * @param  array<string, array{from: string, to: string}>  $changes
+     * @return array<string, mixed>
+     */
+    public static function buildUpdateActivityLogPayload(
+        BookingAppointment $appointment,
+        int $createdBy,
+        array $changes = [],
+        ?int $noeId = null
+    ): array {
+        return [
+            'client_id' => $appointment->client_id,
+            'created_by' => $createdBy,
+            'subject' => self::updateActivitySubject($appointment->service_id),
+            'description' => self::buildUpdateDescription($appointment, $changes, $noeId),
+            'activity_type' => 'activity',
+            'task_status' => 0,
+            'pin' => 0,
+        ];
+    }
+
+    public static function meetingTypeDisplay(?string $meetingType): string
+    {
+        return self::meetingTypeLabel($meetingType)
+            ?? ucfirst(str_replace('_', ' ', (string) $meetingType));
+    }
+
+    private static function standardDetailRows(BookingAppointment $appointment, ?int $noeId = null): string
+    {
+        $serviceId = $appointment->service_id;
+        $category = self::categoryLabel($appointment, $noeId);
+        $apptTypeParts = array_filter([
+            self::serviceTitle($serviceId),
+            self::meetingTypeLabel($appointment->meeting_type),
+        ]);
+        $apptType = implode(' · ', $apptTypeParts);
+        $query = trim((string) ($appointment->enquiry_details ?? ''));
+        $dateTime = self::dateTimeDisplay($appointment);
+        $language = trim((string) ($appointment->preferred_language ?? ''));
+        $location = self::locationLabel($appointment);
+
+        $rows = self::detailRow('Category:', $category);
+        $rows .= self::detailRow('Appt. Type:', $apptType);
+        if ($query !== '') {
+            $rows .= self::detailRow('Query:', $query);
+        }
+        if ($dateTime !== null && $dateTime !== '') {
+            $rows .= self::detailRow('Date & Time:', $dateTime, 'datetime');
+        }
+        if ($language !== '') {
+            $rows .= self::detailRow('Language:', $language);
+        }
+        if ($location !== null && $location !== '') {
+            $rows .= self::detailRow('Location:', $location);
+        }
+
+        return $rows;
+    }
+
+    private static function wrapDescriptionHtml(string $badgeDate, string $rows): string
+    {
+        return '<div class="appointment-activity-detail">'
+            .self::dateBadgeHtml($badgeDate)
+            .'<div class="appointment-activity-detail__body">'.$rows.'</div>'
+            .'</div>';
+    }
+
+    private static function changeRow(string $label, string $from, string $to): string
+    {
+        return '<div class="appointment-activity-detail__row appointment-activity-detail__row--change">'
+            .'<span class="appointment-activity-detail__label">'.e($label).'</span> '
+            .'<span class="appointment-activity-detail__value">'.e($from).' → '.e($to).'</span>'
+            .'</div>';
     }
 
     private static function detailRow(string $label, string $value, ?string $field = null): string

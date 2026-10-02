@@ -6,6 +6,7 @@ use App\Models\ActivitiesLog;
 use App\Models\BookingAppointment;
 use App\Services\BansalAppointmentSync\BansalAppointmentRecoveryService;
 use App\Services\BansalAppointmentSync\NotificationService;
+use App\Support\AppointmentActivityDescription;
 use App\Support\AppointmentBookingWindow;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -220,8 +221,13 @@ class ClientAppointmentActionService
         $to = $newDatetime->format('d M Y, h:i A');
         $this->logActivity(
             $appointment,
-            'Appointment rescheduled by client',
-            '<p><strong>Rescheduled from email link:</strong> '.e($from).' → '.e($to).'</p>'
+            AppointmentActivityDescription::updateActivitySubject($appointment->service_id),
+            AppointmentActivityDescription::buildUpdateDescription($appointment->fresh(), [
+                'datetime' => [
+                    'from' => $from,
+                    'to' => $to,
+                ],
+            ])
         );
 
         if (! empty($appointment->client_email)) {

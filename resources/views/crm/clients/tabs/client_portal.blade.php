@@ -2764,7 +2764,7 @@ $(document).ready(function () {
         e.stopPropagation();
 
         var checklistId = $(this).data('checklist-id');
-        var checklistName = $(this).data('checklist-name');
+        var checklistName = $(this).attr('data-checklist-name');
         var matterId = $(this).data('matter-id');
 
         $('#rename_checklist_client_matter_id').val(matterId);
@@ -2829,9 +2829,11 @@ $(document).ready(function () {
                     var $row = $('.cp-doc-checklist-row[data-checklist-id="' + checklistId + '"]');
 
                     $row.attr('data-checklist-name', updatedName);
+                    $row.data('checklist-name', updatedName);
                     $row.find('.checklist-name-text').text(updatedName);
                     $row.find('.cp-rename-checklist-btn')
-                        .attr('data-checklist-name', updatedName);
+                        .attr('data-checklist-name', updatedName)
+                        .data('checklist-name', updatedName);
 
                     if ($row.hasClass('table-active')) {
                         $('#cp-checklist-selected-name').text(updatedName);
@@ -3676,7 +3678,7 @@ function cpBuildChecklistDocumentFileNameCell(doc) {
 
 $(document).on('click', '.cp-doc-checklist-row', function () {
     var checklistId   = $(this).data('checklist-id');
-    var checklistName = $(this).data('checklist-name');
+    var checklistName = $(this).attr('data-checklist-name');
     var matterId      = $(this).data('matter-id');
 
     // Highlight selected row

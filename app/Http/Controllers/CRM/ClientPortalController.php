@@ -95,6 +95,8 @@ class ClientPortalController extends Controller
 
             $client->cp_status = $status;
             
+            $randomPassword = null;
+
             // Handle password based on status
             if ($status == 1) {
                 // Generate and save password when activating client portal
@@ -111,7 +113,7 @@ class ClientPortalController extends Controller
             // Send appropriate email based on status change
             if ($status == 1) {
                 // Status is being turned ON - send activation email with password
-                $this->sendClientPortalActivationEmail($client, $randomPassword);
+                $this->sendClientPortalActivationEmail($client, (string) $randomPassword);
             } else {
                 // Status is being turned OFF - send deactivation email
                 $this->sendClientPortalDeactivationEmail($client);
@@ -134,7 +136,7 @@ class ClientPortalController extends Controller
     /**
      * Send Client Portal activation email
      */
-    private function sendClientPortalActivationEmail($client, $password)
+    private function sendClientPortalActivationEmail(Admin $client, string $password): void
     {
         try {
             // Get client's email directly from admins table
@@ -180,7 +182,7 @@ class ClientPortalController extends Controller
     /**
      * Send Client Portal deactivation email
      */
-    private function sendClientPortalDeactivationEmail($client)
+    private function sendClientPortalDeactivationEmail(Admin $client): void
     {
         try {
             // Get client's email directly from admins table
@@ -1506,7 +1508,7 @@ class ClientPortalController extends Controller
     /**
      * Parse visa date from audit (d/m/Y or Y-m-d) to Y-m-d for DB.
      */
-    private function parseVisaDate($value)
+    private function parseVisaDate(mixed $value): ?string
     {
         if (empty($value)) {
             return null;
@@ -3370,7 +3372,7 @@ class ClientPortalController extends Controller
     /**
      * Send approval message and notification (shared for address/travel to avoid duplication).
      */
-    private function sendApprovalMessageAndNotify($client, $clientMatterId, $sectionName, $clientId)
+    private function sendApprovalMessageAndNotify(Admin $client, int $clientMatterId, string $sectionName, int $clientId): void
     {
         $sender = Auth::guard('admin')->user();
         $senderId = $sender ? $sender->id : null;
@@ -3446,7 +3448,7 @@ class ClientPortalController extends Controller
     /**
      * Send rejection message and notification (shared for address/travel).
      */
-    private function sendRejectionMessageAndNotify($client, $clientMatterId, $sectionName, $clientId)
+    private function sendRejectionMessageAndNotify(Admin $client, int $clientMatterId, string $sectionName, int $clientId): void
     {
         $sender = Auth::guard('admin')->user();
         $senderId = $sender ? $sender->id : null;
@@ -5114,6 +5116,101 @@ class ClientPortalController extends Controller
 	}
 
 	/**
+	 * POST /rename-portal-checklist
+	 * Rename a portal checklist item for a specific client matter.
+	 */
+	public function renamePortalChecklist(Request $request)
+	{
+		$request->validate([
+			'client_matter_id' => 'required|integer',
+			'checklist_id' => 'required|integer',
+			'cp_checklist_name' => 'required|string|max:255',
+		]);
+
+		$clientMatterId = (int) $request->client_matter_id;
+		$checklistId = (int) $request->checklist_id;
+		$newName = trim($request->cp_checklist_name);
+
+		if ($newName === '') {
+			return response()->json([
+				'success' => false,
+				'message' => 'Please enter a checklist name.',
+			], 422);
+		}
+
+		$matter = ClientMatter::find($clientMatterId);
+		if (! $matter) {
+			return response()->json([
+				'success' => false,
+				'message' => 'Matter not found.',
+			], 404);
+		}
+
+		if ($discontinued = $this->rejectIfClientMatterDiscontinued($matter)) {
+			return response()->json([
+				'success' => false,
+				'message' => data_get($discontinued->getData(true), 'message', 'This matter is discontinued.'),
+			], 422);
+		}
+
+		$checklistItem = DB::table('cp_doc_checklists')
+			->where('id', $checklistId)
+			->where('client_matter_id', $clientMatterId)
+			->first();
+
+		if (! $checklistItem) {
+			return response()->json([
+				'success' => false,
+				'message' => 'Checklist item not found for this matter.',
+			], 404);
+		}
+
+		$normalizedNewName = strtolower($newName);
+		$duplicateExists = DB::table('cp_doc_checklists')
+			->where('client_matter_id', $clientMatterId)
+			->where('wf_stage', $checklistItem->wf_stage)
+			->where('id', '!=', $checklistId)
+			->whereRaw('LOWER(TRIM(cp_checklist_name)) = ?', [$normalizedNewName])
+			->exists();
+
+		if ($duplicateExists) {
+			return response()->json([
+				'success' => false,
+				'message' => 'A checklist with this name already exists in this stage.',
+			], 422);
+		}
+
+		$oldName = trim((string) ($checklistItem->cp_checklist_name ?? ''));
+		$now = now();
+		$update = [
+			'cp_checklist_name' => $newName,
+			'updated_at' => $now,
+		];
+
+		if (
+			Schema::hasColumn('cp_doc_checklists', 'portal_template_name')
+			&& empty($checklistItem->portal_template_name)
+			&& empty($checklistItem->user_id)
+			&& $oldName !== ''
+		) {
+			$update['portal_template_name'] = $oldName;
+		}
+
+		DB::table('cp_doc_checklists')
+			->where('id', $checklistId)
+			->where('client_matter_id', $clientMatterId)
+			->update($update);
+
+		$updated = DB::table('cp_doc_checklists')->where('id', $checklistId)->first();
+
+		return response()->json([
+			'success' => true,
+			'message' => 'Checklist renamed successfully.',
+			'data' => $updated,
+		]);
+	}
+
+	/**
 	 * POST /clients/matter/complete-workflow-checklist
 	 * Complete a workflow stage checklist item on the current stage (any order).
 	 */
@@ -6104,7 +6201,7 @@ $docType = $docList ? $docList->cp_checklist_name : ($doc->file_name ?? 'Documen
 	 * Marks a message as read for the current user (staff) when they view it in the Client Portal Messages tab.
 	 * Uses session-based auth. Broadcasts MessageUpdated/MessageReceived so the sender (client on mobile) sees "Read".
 	 */
-	public function markMessageAsRead(Request $request, $id)
+	public function markMessageAsRead(Request $request, int $id)
 	{
 		try {
 			$currentUserId = Auth::guard('admin')->id();
@@ -6532,7 +6629,7 @@ $docType = $docList ? $docList->cp_checklist_name : ($doc->file_name ?? 'Documen
 	 * GET /clients/message-attachment/{id}/download
 	 * Serves the file from storage (works without storage:link symlink)
 	 */
-	public function downloadMessageAttachment(Request $request, $id)
+	public function downloadMessageAttachment(Request $request, int $id)
 	{
 		$admin = Auth::guard('admin')->user();
 		if (!$admin) {

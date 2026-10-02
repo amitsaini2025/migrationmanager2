@@ -17,19 +17,13 @@ use Illuminate\Support\Facades\Schema;
  */
 class WorkflowStageChecklistSync
 {
-    public static function ensureSeededForMatter($matter): void
+    public static function ensureSeededForMatter(int|object $matter): void
     {
         if (! Schema::hasTable('cp_doc_checklists')) {
             return;
         }
 
-        if ($matter instanceof ClientMatter) {
-            $clientMatter = $matter;
-        } elseif (is_numeric($matter)) {
-            $clientMatter = ClientMatter::find((int) $matter);
-        } else {
-            return;
-        }
+        $clientMatter = self::resolveClientMatter($matter);
 
         if (! $clientMatter || empty($clientMatter->workflow_id) || empty($clientMatter->id)) {
             return;
@@ -109,19 +103,13 @@ class WorkflowStageChecklistSync
     /**
      * Copy client-portal tasklist templates onto a matter (idempotent).
      */
-    public static function seedPortalTasklistsForMatter($matter): void
+    public static function seedPortalTasklistsForMatter(int|object $matter): void
     {
         if (! Schema::hasTable('workflow_stage_portal_tasklists') || ! Schema::hasTable('cp_doc_checklists')) {
             return;
         }
 
-        if ($matter instanceof ClientMatter) {
-            $clientMatter = $matter;
-        } elseif (is_numeric($matter)) {
-            $clientMatter = ClientMatter::find((int) $matter);
-        } else {
-            return;
-        }
+        $clientMatter = self::resolveClientMatter($matter);
 
         if (! $clientMatter || empty($clientMatter->workflow_id) || empty($clientMatter->id)) {
             return;
@@ -155,11 +143,11 @@ class WorkflowStageChecklistSync
                 continue;
             }
 
-            $exists = DB::table('cp_doc_checklists')
+            $existsQuery = DB::table('cp_doc_checklists')
                 ->where('client_matter_id', $clientMatter->id)
-                ->where('wf_stage', $stage->name)
-                ->whereRaw('LOWER(TRIM(cp_checklist_name)) = ?', [$normalizedName])
-                ->exists();
+                ->where('wf_stage', $stage->name);
+
+            $exists = self::applyPortalTemplateNameMatch($existsQuery, $normalizedName)->exists();
 
             if ($exists) {
                 $update = ['updated_at' => $now];
@@ -172,15 +160,18 @@ class WorkflowStageChecklistSync
                 if ($hasSource) {
                     $update['source'] = ChecklistSource::Portal->value;
                 }
-                DB::table('cp_doc_checklists')
+
+                $updateQuery = DB::table('cp_doc_checklists')
                     ->where('client_matter_id', $clientMatter->id)
                     ->where('wf_stage', $stage->name)
-                    ->whereRaw('LOWER(TRIM(cp_checklist_name)) = ?', [$normalizedName])
-                    ->whereNull('user_id')
-                    ->update($update);
+                    ->whereNull('user_id');
+
+                self::applyPortalTemplateNameMatch($updateQuery, $normalizedName)->update($update);
 
                 continue;
             }
+
+            $templateName = trim((string) $template->name);
 
             $payload = [
                 'user_id' => null,
@@ -188,12 +179,16 @@ class WorkflowStageChecklistSync
                 'client_id' => $clientMatter->client_id,
                 'wf_stage' => $stage->name,
                 'wf_stage_id' => $stage->id,
-                'cp_checklist_name' => trim($template->name),
+                'cp_checklist_name' => $templateName,
                 'description' => $template->description,
                 'allow_client' => (int) ($template->allow_client ?? 1),
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
+
+            if (self::hasPortalTemplateNameColumn()) {
+                $payload['portal_template_name'] = $templateName;
+            }
 
             if ($hasRequired) {
                 $payload['is_required'] = (int) (bool) $template->is_required;
@@ -382,19 +377,21 @@ class WorkflowStageChecklistSync
                 continue;
             }
 
-            $ids = DB::table('cp_doc_checklists as c')
+            $matchQuery = DB::table('cp_doc_checklists as c')
                 ->join('client_matters as m', 'm.id', '=', 'c.client_matter_id')
                 ->where('m.workflow_id', $template->workflow_id)
                 ->where('c.wf_stage', $template->stage_name)
-                ->whereRaw('LOWER(TRIM(c.cp_checklist_name)) = ?', [$normalizedName])
                 ->when($clientMatterId, function ($query) use ($clientMatterId) {
                     $query->where('c.client_matter_id', $clientMatterId);
                 })
                 ->where(function ($query) use ($portal) {
                     $query->whereNull('c.source')
                         ->orWhere('c.source', '!=', $portal);
-                })
-                ->pluck('c.id');
+                });
+
+            self::applyPortalTemplateNameMatch($matchQuery, $normalizedName, 'c');
+
+            $ids = $matchQuery->pluck('c.id');
 
             if ($ids->isEmpty()) {
                 continue;
@@ -460,6 +457,50 @@ class WorkflowStageChecklistSync
         }
 
         return $query;
+    }
+
+    public static function hasPortalTemplateNameColumn(): bool
+    {
+        return Schema::hasColumn('cp_doc_checklists', 'portal_template_name');
+    }
+
+    /**
+     * Match a workflow portal template against matter rows, including renamed copies.
+     *
+     * @param  Builder  $query
+     */
+    public static function applyPortalTemplateNameMatch($query, string $normalizedTemplateName, ?string $tableAlias = null): Builder
+    {
+        $normalizedTemplateName = strtolower(trim($normalizedTemplateName));
+        $nameColumn = $tableAlias ? "{$tableAlias}.cp_checklist_name" : 'cp_checklist_name';
+
+        if (self::hasPortalTemplateNameColumn()) {
+            $templateColumn = $tableAlias ? "{$tableAlias}.portal_template_name" : 'portal_template_name';
+
+            return $query->where(function ($match) use ($nameColumn, $templateColumn, $normalizedTemplateName) {
+                $match->whereRaw("LOWER(TRIM({$nameColumn})) = ?", [$normalizedTemplateName])
+                    ->orWhereRaw("LOWER(TRIM({$templateColumn})) = ?", [$normalizedTemplateName]);
+            });
+        }
+
+        return $query->whereRaw("LOWER(TRIM({$nameColumn})) = ?", [$normalizedTemplateName]);
+    }
+
+    private static function resolveClientMatter(int|object $matter): ?ClientMatter
+    {
+        if ($matter instanceof ClientMatter) {
+            return $matter;
+        }
+
+        if (is_int($matter)) {
+            return ClientMatter::find($matter);
+        }
+
+        if (is_object($matter) && isset($matter->id) && is_numeric($matter->id)) {
+            return ClientMatter::find((int) $matter->id);
+        }
+
+        return null;
     }
 
     /**

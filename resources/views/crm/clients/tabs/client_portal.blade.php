@@ -203,7 +203,15 @@
                                                                                                         @endif
                                                                                                     </td>
                                                                                                     <td class="checklist-name">
-                                                                                                        {{ $checklist->cp_checklist_name ?? 'N/A' }}
+                                                                                                        <button type="button"
+                                                                                                                class="btn btn-link btn-sm p-0 mr-1 cp-rename-checklist-btn"
+                                                                                                                title="Rename checklist"
+                                                                                                                aria-label="Rename checklist"
+                                                                                                                data-checklist-id="{{ $checklist->id }}"
+                                                                                                                data-checklist-name="{{ $checklist->cp_checklist_name ?? 'N/A' }}"
+                                                                                                                data-matter-id="{{ $selectedMatter->id }}"
+                                                                                                                data-stage-name="{{ $stage->name }}">@icon('fa-edit')</button>
+                                                                                                        <span class="checklist-name-text">{{ $checklist->cp_checklist_name ?? 'N/A' }}</span>
                                                                                                         <span class="checklist-task-type is-{{ $taskType->value }}">{{ $taskType->label() }}</span>
                                                                                                     </td>
                                                                                                     <td class="checklist-count">
@@ -1499,7 +1507,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // Use Reverb configuration (compatible with Pusher protocol)
     const pusherAppKey = '{{ config("broadcasting.connections.reverb.key") ?: config("broadcasting.connections.pusher.key") }}';
-    const pusherCluster = '{{ config("broadcasting.connections.reverb.options.cluster") ?: config("broadcasting.connections.pusher.options.cluster", "ap2") }}';
+    const pusherCluster = '{{ config("broadcasting.connections.pusher.options.cluster", "ap2") }}';
     const reverbHost = '{{ config("broadcasting.connections.reverb.options.host", "127.0.0.1") }}';
     const reverbPort = {{ config("broadcasting.connections.reverb.options.port", 8080) }};
     const reverbScheme = '{{ config("broadcasting.connections.reverb.options.scheme", "http") }}';
@@ -2525,8 +2533,78 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+<!-- Rename Portal Checklist Modal -->
+<div class="modal fade custom_modal" id="rename_checklist" tabindex="-1" role="dialog" aria-labelledby="renameChecklistModalLabel" aria-hidden="true" data-bs-focus="false">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="renameChecklistModalLabel">Rename Portal Checklist</h5>
+                <button type="button" class="close" id="rename_checklist_close_btn" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form method="post" action="{{ URL::to('/rename-portal-checklist') }}" name="rename_checklist_form" id="rename_checklist_form" autocomplete="off">
+                    @csrf
+                    <input type="hidden" name="client_matter_id" id="rename_checklist_client_matter_id" value="">
+                    <input type="hidden" name="checklist_id" id="rename_checklist_id" value="">
+                    <div class="form-group mb-0">
+                        <label for="rename_cp_checklist_name">Checklist Name <span class="span_req">*</span></label>
+                        <input type="text" name="cp_checklist_name" id="rename_cp_checklist_name" class="form-control" maxlength="255" placeholder="Enter checklist name" autocomplete="off">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="rename_checklist_submit_btn" class="btn btn-primary">Save</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+function cpDocIcon(name, options) {
+    return (typeof window.crmI === 'function') ? window.crmI(name, options || {}) : '';
+}
+
 $(document).ready(function () {
+
+    function cpPortalTaskTypeLabel(taskType) {
+        var labels = {
+            upload: 'Upload',
+            sign: 'Review and sign',
+            pay: 'Pay'
+        };
+
+        return labels[taskType] || 'Upload';
+    }
+
+    function cpBuildPortalChecklistRowHtml(item, wfStage, matterId) {
+        var name = item.cp_checklist_name || 'N/A';
+        var taskType = item.task_type || 'upload';
+        var taskLabel = cpPortalTaskTypeLabel(taskType);
+        var escName = $('<div>').text(name).html();
+        var escStage = $('<div>').text(wfStage).html();
+
+        return '<tr class="checklist-row cursor-pointer cp-doc-checklist-row"'
+            + ' data-checklist-id="' + item.id + '"'
+            + ' data-checklist-name="' + escName + '"'
+            + ' data-stage-name="' + escStage + '"'
+            + ' data-matter-id="' + matterId + '"'
+            + ' data-task-type="' + taskType + '">'
+            + '<td class="checklist-status"><span class="round"></span></td>'
+            + '<td class="checklist-name">'
+            + '<button type="button" class="btn btn-link btn-sm p-0 mr-1 cp-rename-checklist-btn" title="Rename checklist" aria-label="Rename checklist"'
+            + ' data-checklist-id="' + item.id + '"'
+            + ' data-checklist-name="' + escName + '"'
+            + ' data-matter-id="' + matterId + '"'
+            + ' data-stage-name="' + escStage + '">' + cpDocIcon('fa-edit') + '</button>'
+            + '<span class="checklist-name-text">' + escName + '</span>'
+            + '<span class="checklist-task-type is-' + taskType + '">' + taskLabel + '</span>'
+            + '</td>'
+            + '<td class="checklist-count"><div class="circular-box"><span>0</span></div></td>'
+            + '</tr>';
+    }
 
     // Open "Add Portal Checklist" modal when clicking any .openchecklist link
     $(document).on('click', '.openchecklist', function (e) {
@@ -2613,15 +2691,7 @@ $(document).ready(function () {
 
                         $.each(response.data, function (i, item) {
                             addedCount++;
-                            newRows += '<tr class="checklist-row cursor-pointer cp-doc-checklist-row"'
-                                + ' data-checklist-id="' + item.id + '"'
-                                + ' data-checklist-name="' + $('<div>').text(item.cp_checklist_name).html() + '"'
-                                + ' data-stage-name="' + $('<div>').text(wfStage).html() + '"'
-                                + ' data-matter-id="' + matterId + '">'
-                                + '<td class="checklist-status"><span class="round"></span></td>'
-                                + '<td class="checklist-name">' + $('<div>').text(item.cp_checklist_name).html() + '</td>'
-                                + '<td class="checklist-count"><div class="circular-box"><span>0</span></div></td>'
-                                + '</tr>';
+                            newRows += cpBuildPortalChecklistRowHtml(item, wfStage, matterId);
                         });
 
                         if ($stageChecklists.length) {
@@ -2649,6 +2719,107 @@ $(document).ready(function () {
             error: function (xhr) {
                 $btn.prop('disabled', false).text('Add Portal Checklist');
                 var msg = 'Failed to add checklist.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                } else if (xhr.responseJSON && xhr.responseJSON.errors) {
+                    var errors = xhr.responseJSON.errors;
+                    msg = errors[Object.keys(errors)[0]][0];
+                }
+                alert(msg);
+            }
+        });
+    });
+
+    $(document).on('click', '.cp-rename-checklist-btn', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        var checklistId = $(this).data('checklist-id');
+        var checklistName = $(this).data('checklist-name');
+        var matterId = $(this).data('matter-id');
+
+        $('#rename_checklist_client_matter_id').val(matterId);
+        $('#rename_checklist_id').val(checklistId);
+        $('#rename_cp_checklist_name').val(checklistName || '');
+        $('#rename_cp_checklist_name').closest('.form-group').find('.custom-error').remove();
+        $('#rename_checklist_submit_btn').prop('disabled', false).text('Save');
+        $('#rename_checklist').modal('show');
+    });
+
+    $('#rename_checklist').on('shown.bs.modal', function () {
+        $('#rename_cp_checklist_name').trigger('focus').select();
+    });
+
+    $('#rename_checklist').on('hidden.bs.modal', function () {
+        $('#rename_cp_checklist_name').val('');
+        $('#rename_cp_checklist_name').closest('.form-group').find('.custom-error').remove();
+        $('#rename_checklist_submit_btn').prop('disabled', false).text('Save');
+    });
+
+    $(document).on('click', '#rename_checklist_submit_btn', function (e) {
+        e.preventDefault();
+
+        var checklistName = ($('#rename_cp_checklist_name').val() || '').trim();
+        $('#rename_cp_checklist_name').closest('.form-group').find('.custom-error').remove();
+
+        if (!checklistName) {
+            $('#rename_cp_checklist_name').closest('.form-group')
+                .append('<span class="custom-error" style="color:red;display:block;margin-top:4px;"><strong>Please enter a checklist name.</strong></span>');
+            return;
+        }
+
+        var matterId = $('#rename_checklist_client_matter_id').val();
+        var checklistId = $('#rename_checklist_id').val();
+
+        if (!matterId || !checklistId) {
+            alert('Missing matter or checklist information. Please try again.');
+            return;
+        }
+
+        var $btn = $(this);
+        $btn.prop('disabled', true).text('Saving...');
+
+        $.ajax({
+            url: '{{ URL::to('/rename-portal-checklist') }}',
+            method: 'POST',
+            data: {
+                _token: $('meta[name="csrf-token"]').attr('content'),
+                client_matter_id: matterId,
+                checklist_id: checklistId,
+                cp_checklist_name: checklistName
+            },
+            success: function (response) {
+                $btn.prop('disabled', false).text('Save');
+
+                if (response.success) {
+                    $('#rename_checklist').modal('hide');
+
+                    var updatedName = response.data && response.data.cp_checklist_name
+                        ? response.data.cp_checklist_name
+                        : checklistName;
+                    var $row = $('.cp-doc-checklist-row[data-checklist-id="' + checklistId + '"]');
+
+                    $row.attr('data-checklist-name', updatedName);
+                    $row.find('.checklist-name-text').text(updatedName);
+                    $row.find('.cp-rename-checklist-btn')
+                        .attr('data-checklist-name', updatedName);
+
+                    if ($row.hasClass('table-active')) {
+                        $('#cp-checklist-selected-name').text(updatedName);
+                    }
+
+                    if (typeof toastr !== 'undefined') {
+                        toastr.success(response.message || 'Checklist renamed successfully');
+                    } else {
+                        alert(response.message || 'Checklist renamed successfully');
+                    }
+                } else {
+                    alert(response.message || 'Failed to rename checklist.');
+                }
+            },
+            error: function (xhr) {
+                $btn.prop('disabled', false).text('Save');
+                var msg = 'Failed to rename checklist.';
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     msg = xhr.responseJSON.message;
                 } else if (xhr.responseJSON && xhr.responseJSON.errors) {

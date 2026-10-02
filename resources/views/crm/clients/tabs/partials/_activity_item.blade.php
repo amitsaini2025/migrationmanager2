@@ -124,11 +124,18 @@
                        data-activity-created-at="{{ $activity->created_at }}"
                        data-client-id="{{ $clientId }}">@icon('fa-ellipsis-v')</span>
                 @endif
+                @if(! $isAppointmentActivity)
                 -
                 @if($activity->description != '')
                     {!! \App\Support\NoteDescriptionHtml::forDisplay($activity->description) !!}
                 @endif
+                @endif
             </p>
+            @if($isAppointmentActivity && $activity->description != '')
+                <div class="feed-item-appointment-detail">
+                    {!! \App\Support\NoteDescriptionHtml::forDisplay($activity->description) !!}
+                </div>
+            @endif
             <span class="feed-timestamp">{{ date('d M Y, H:i A', strtotime($activity->created_at)) }}</span>
         @endif
     </div>

@@ -7643,7 +7643,11 @@ success: function(response) {
                             descriptionHtml = '<p class="feed-item-message" data-activity-id="' + v.activity_id + '">' + description +
                                 ' <button type="button" class="feed-item-show-more">Show more</button></p>';
                         } else if (description !== '') {
-                            descriptionHtml = '<p>' + description + '</p>';
+                            if (isAppointmentActivity) {
+                                descriptionHtml = '<div class="feed-item-appointment-detail">' + description + '</div>';
+                            } else {
+                                descriptionHtml = '<p>' + description + '</p>';
+                            }
                         }
                         var taskGroup = v.task_group ?? '';
                         var followupDate = v.followup_date ?? '';

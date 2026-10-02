@@ -1340,9 +1340,11 @@ input:checked + .toggle-slider:before { transform: translateX(18px); }
     color: #dc3545 !important;
 }
 
-/* Hidden by default - shown via filter */
+/* Activity rows use the same icon + content flex layout as other feed items */
 .feed-item.activity {
-    display: block;
+    display: flex;
+    gap: 15px;
+    align-items: flex-start;
 }
 
 .feed-item-show-more {
@@ -1783,6 +1785,25 @@ input:checked + .toggle-slider:before { transform: translateX(18px); }
 .feed-item.feed-item--appointment .feed-content {
     background: #f0fdf4;
     border-radius: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.feed-item.feed-item--appointment .feed-item-appointment-detail {
+    width: 100%;
+    margin-top: 4px;
+}
+
+/* Personal Details / narrow sidebar: stack date badge above details */
+.activity-feed:not(.wide-mode) .feed-item.feed-item--appointment .appointment-activity-detail {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.activity-feed:not(.wide-mode) .feed-item.feed-item--appointment .appointment-activity-detail__body {
+    width: 100%;
 }
 
 .appointment-activity-detail {

@@ -292,6 +292,23 @@ class ClientDetailTabsTest extends TestCase
     }
 
     #[Test]
+    public function crm_layouts_share_global_search_dropdown_styles(): void
+    {
+        $partial = file_get_contents($this->projectPath('resources/views/components/crm/global-search-dropdown-styles.blade.php'));
+        Assert::assertNotFalse($partial);
+        Assert::assertStringContainsString('.mm-result-repository__title', $partial);
+        Assert::assertStringContainsString('.ui.label.yellow.mm-result-repository__statistics', $partial);
+
+        $layout = file_get_contents($this->projectPath('resources/views/layouts/crm_client_detail.blade.php'));
+        Assert::assertNotFalse($layout);
+        Assert::assertStringContainsString("@include('components.crm.global-search-dropdown-styles')", $layout);
+
+        $dashboard = file_get_contents($this->projectPath('resources/views/layouts/crm_client_detail_dashboard.blade.php'));
+        Assert::assertNotFalse($dashboard);
+        Assert::assertStringContainsString("@include('components.crm.global-search-dropdown-styles')", $dashboard);
+    }
+
+    #[Test]
     public function crm_layouts_load_tinymce_on_demand_instead_of_every_page(): void
     {
         $layout = file_get_contents($this->projectPath('resources/views/layouts/crm_client_detail.blade.php'));

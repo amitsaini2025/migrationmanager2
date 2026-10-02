@@ -1588,6 +1588,7 @@
         .topbar-center .topbar-search svg.lucide,
         .topbar-center .topbar-search i { color: #868e96 !important; }
         .topbar-center .topbar-search .form-control { border: 0 !important; background: transparent !important; width: 100% !important; }
+        @include('components.crm.global-search-dropdown-styles')
         .topbar-right { display: flex !important; align-items: center !important; gap: 10px !important; }
         /* Dropdowns */
         .icon-dropdown { position: relative !important; }

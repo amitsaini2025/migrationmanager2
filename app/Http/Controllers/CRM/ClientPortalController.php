@@ -6683,7 +6683,7 @@ $docType = $docList ? $docList->cp_checklist_name : ($doc->file_name ?? 'Documen
 			->where('cp_list_id', $checklistId)
 			->where('type', 'workflow_checklist')
 			->when($clientMatterId, fn($q) => $q->where('client_matter_id', $clientMatterId))
-			->select('id', 'file_name', 'myfile', 'cp_doc_status', 'cp_rejection_reason', 'created_at')
+			->select('id', 'file_name', 'filetype', 'myfile', 'cp_doc_status', 'cp_rejection_reason', 'created_at')
 			->orderBy('id', 'asc')
 			->get();
 

@@ -1627,24 +1627,20 @@
 }
 
 .checklist-details-table thead th:nth-child(1) {
-    width: 28%;
+    width: 44%;
 }
 
 .checklist-details-table thead th:nth-child(2) {
-    width: 15%;
+    width: 16%;
 }
 
 .checklist-details-table thead th:nth-child(3) {
-    width: 100px;
+    width: 72px;
     white-space: nowrap;
 }
 
 .checklist-details-table thead th:nth-child(4) {
     width: 22%;
-}
-
-.checklist-details-table thead th:nth-child(5) {
-    width: 15%;
 }
 
 .checklist-details-table tbody td {
@@ -1654,24 +1650,30 @@
     font-size: 0.9rem;
 }
 
-.checklist-details-table tbody td:nth-child(3) {
-    width: 100px;
-    white-space: nowrap;
-}
-
-.checklist-details-table tbody td:nth-child(4) {
-    white-space: normal;
+.checklist-details-table tbody td:nth-child(1) {
     word-break: break-word;
 }
 
-.checklist-details-table tbody td:nth-child(4) .badge {
-    white-space: normal;
+.checklist-details-table tbody td:nth-child(3) {
+    width: 72px;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.checklist-details-table tbody td:nth-child(3) .badge {
+    white-space: nowrap;
     display: inline-block;
     max-width: 100%;
-    word-wrap: break-word;
     text-align: center;
     font-size: 0.85rem;
     padding: 4px 8px;
+}
+
+.checklist-details-table tbody td:nth-child(4) {
+    white-space: nowrap;
+    text-align: center;
+    position: relative;
+    overflow: visible !important;
 }
 
 /* Tooltip styling for rejected status */
@@ -1697,13 +1699,6 @@
     padding: 8px 12px;
     font-size: 0.875rem;
     line-height: 1.4;
-}
-
-.checklist-details-table tbody td:nth-child(5) {
-    white-space: nowrap;
-    text-align: center;
-    position: relative;
-    overflow: visible !important;
 }
 
 /* Action buttons container — Actions is column 4 (File, Uploaded, Status, Actions) */
@@ -1757,7 +1752,7 @@
 }
 
 /* Action dropdown menu styling */
-.checklist-details-table tbody td:nth-child(5) .dropdown-menu,
+.checklist-details-table tbody td:nth-child(4) .dropdown-menu,
 .checklist-details-table .action-dropdown-menu {
     position: absolute !important;
     right: 0 !important;
@@ -1784,9 +1779,9 @@
 }
 
 /* When dropdown is shown - Bootstrap adds .show class */
-.checklist-details-table tbody td:nth-child(5) .dropdown.show .dropdown-menu,
+.checklist-details-table tbody td:nth-child(4) .dropdown.show .dropdown-menu,
 .checklist-details-table .dropdown.show .action-dropdown-menu,
-.checklist-details-table tbody td:nth-child(5) .dropdown-menu.show,
+.checklist-details-table tbody td:nth-child(4) .dropdown-menu.show,
 .checklist-details-table .action-dropdown-menu.show {
     display: block !important;
     visibility: visible !important;
@@ -1801,7 +1796,7 @@
 }
 
 /* Ensure all dropdown items are visible */
-.checklist-details-table tbody td:nth-child(5) .dropdown-menu .dropdown-item,
+.checklist-details-table tbody td:nth-child(4) .dropdown-menu .dropdown-item,
 .checklist-details-table .action-dropdown-menu .dropdown-item {
     display: block !important;
     visibility: visible !important;
@@ -1815,7 +1810,7 @@
     width: 100% !important;
 }
 
-.checklist-details-table tbody td:nth-child(5) .dropdown-menu .dropdown-divider,
+.checklist-details-table tbody td:nth-child(4) .dropdown-menu .dropdown-divider,
 .checklist-details-table .action-dropdown-menu .dropdown-divider {
     margin: 0.5rem 0 !important;
     height: 1px !important;
@@ -1824,7 +1819,7 @@
 }
 
 /* Ensure dropdown items are always visible */
-.checklist-details-table tbody td:nth-child(5) .dropdown.show .dropdown-menu .dropdown-item {
+.checklist-details-table tbody td:nth-child(4) .dropdown.show .dropdown-menu .dropdown-item {
     display: block !important;
     opacity: 1 !important;
     visibility: visible !important;
@@ -1857,7 +1852,7 @@
 }
 
 /* Ensure dropdown menu doesn't trigger scrollbar */
-.checklist-details-table tbody td:nth-child(5) .dropdown.show .dropdown-menu {
+.checklist-details-table tbody td:nth-child(4) .dropdown.show .dropdown-menu {
     position: absolute;
 }
 
@@ -1866,19 +1861,13 @@
     position: absolute;
 }
 
-/* Ensure dropdown doesn't trigger scrollbar */
-.checklist-details-table tbody td:nth-child(5) {
+.checklist-details-table tbody td:nth-child(4) .dropdown {
     overflow: visible !important;
 }
 
-.checklist-details-table tbody td:nth-child(5) .dropdown {
-    overflow: visible !important;
-}
-
-/* Ensure text wraps properly in all columns */
+/* Ensure text wraps properly in file name and uploaded columns */
 .checklist-details-table tbody td:nth-child(1),
-.checklist-details-table tbody td:nth-child(2),
-.checklist-details-table tbody td:nth-child(3) {
+.checklist-details-table tbody td:nth-child(2) {
     white-space: normal;
     word-wrap: break-word;
     overflow-wrap: break-word;
@@ -1903,7 +1892,7 @@
         font-size: 0.85rem;
     }
     
-    .checklist-details-table tbody td:nth-child(4) .badge {
+    .checklist-details-table tbody td:nth-child(3) .badge {
         font-size: 0.75rem;
         padding: 3px 6px;
     }

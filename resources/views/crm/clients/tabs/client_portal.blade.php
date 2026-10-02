@@ -2562,6 +2562,35 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+<!-- Rename Portal Document Modal -->
+<div class="modal fade custom_modal" id="rename_cp_document" tabindex="-1" role="dialog" aria-labelledby="renameCpDocumentModalLabel" aria-hidden="true" data-bs-focus="false">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="renameCpDocumentModalLabel">Rename File</h5>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form method="post" action="{{ URL::to('/documents/rename') }}" name="rename_cp_document_form" id="rename_cp_document_form" autocomplete="off">
+                    @csrf
+                    <input type="hidden" name="id" id="rename_cp_document_id" value="">
+                    <div class="form-group mb-0">
+                        <label for="rename_cp_document_filename">File Name <span class="span_req">*</span></label>
+                        <input type="text" name="filename" id="rename_cp_document_filename" class="form-control" maxlength="255" placeholder="Enter file name (without extension)" autocomplete="off">
+                        <small class="text-muted">Extension is kept automatically.</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="rename_cp_document_submit_btn" class="btn btn-primary">Save</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function cpDocIcon(name, options) {
     return (typeof window.crmI === 'function') ? window.crmI(name, options || {}) : '';
@@ -3606,6 +3635,45 @@ function cpDocIcon(name, options) {
     return (typeof window.crmI === 'function') ? window.crmI(name, options || {}) : '';
 }
 
+function cpDocumentBaseName(fileName, filetype) {
+    var name = fileName || '';
+    var ext = (filetype || '').replace(/^\./, '');
+    if (ext && name.toLowerCase().endsWith('.' + ext.toLowerCase())) {
+        return name.slice(0, -(ext.length + 1));
+    }
+
+    return name;
+}
+
+function cpDocumentDisplayName(fileName, filetype) {
+    var base = cpDocumentBaseName(fileName, filetype);
+    var ext = (filetype || '').replace(/^\./, '');
+    if (!base) {
+        return 'N/A';
+    }
+
+    return ext ? base + '.' + ext : base;
+}
+
+function cpBuildChecklistDocumentFileNameCell(doc) {
+    var fileUrl = doc.myfile || '';
+    var filetype = doc.filetype || '';
+    var baseName = cpDocumentBaseName(doc.file_name, filetype);
+    var fileNameDisplay = cpDocumentDisplayName(doc.file_name, filetype);
+    var escBase = $('<div>').text(baseName).html();
+    var escDisplay = $('<div>').text(fileNameDisplay).html();
+    var renameBtn = '<button type="button" class="btn btn-link btn-sm p-0 mr-1 cp-rename-doc-btn" title="Rename file" aria-label="Rename file"'
+        + ' data-document-id="' + doc.id + '"'
+        + ' data-file-name="' + escBase + '"'
+        + ' data-filetype="' + $('<div>').text(filetype).html() + '">'
+        + cpDocIcon('fa-edit') + '</button>';
+    var nameContent = fileUrl
+        ? '<a href="' + fileUrl + '" class="cp-doc-file-name-link" target="_blank" title="Click to preview" style="color:inherit;text-decoration:underline;cursor:pointer;">' + escDisplay + '</a>'
+        : '<span class="cp-doc-file-name-text">' + escDisplay + '</span>';
+
+    return renameBtn + nameContent;
+}
+
 $(document).on('click', '.cp-doc-checklist-row', function () {
     var checklistId   = $(this).data('checklist-id');
     var checklistName = $(this).data('checklist-name');
@@ -3651,19 +3719,16 @@ $(document).on('click', '.cp-doc-checklist-row', function () {
                         ? '<a href="javascript:void(0);" class="btn btn-sm btn-warning cp-reject-doc-btn" data-document-id="' + doc.id + '" title="Reject">' + cpDocIcon('fa-times-circle') + '</a>'
                         : '';
 
-                    var fileUrl     = doc.myfile || '';
-                    var fileNameDisplay = doc.file_name || 'N/A';
-                    var fileNameCell = fileUrl
-                        ? '<a href="' + fileUrl + '" target="_blank" title="Click to preview" style="color:inherit;text-decoration:underline;cursor:pointer;">' + fileNameDisplay + '</a>'
-                        : fileNameDisplay;
+                    var fileNameCell = cpBuildChecklistDocumentFileNameCell(doc);
+                    var downloadDisplayName = cpDocumentDisplayName(doc.file_name, doc.filetype);
 
-                    var downloadBtn = '<a href="javascript:void(0);" class="btn btn-sm btn-primary cp-download-doc-btn" data-document-id="' + doc.id + '" data-file-name="' + (doc.file_name || 'document') + '" title="Download">' + cpDocIcon('fa-download') + '</a>';
+                    var downloadBtn = '<a href="javascript:void(0);" class="btn btn-sm btn-primary cp-download-doc-btn" data-document-id="' + doc.id + '" data-file-name="' + $('<div>').text(downloadDisplayName).html() + '" title="Download">' + cpDocIcon('fa-download') + '</a>';
                     var deleteBtn   = '<a href="javascript:void(0);" class="btn btn-sm btn-danger cp-delete-doc-btn" data-document-id="' + doc.id + '" data-list-id="' + checklistId + '" title="Delete">' + cpDocIcon('fa-trash') + '</a>';
                     var moveBtn     = (doc.cp_doc_status == 1)
                         ? '<a href="javascript:void(0);" class="btn btn-sm btn-info cp-move-doc-btn" data-document-id="' + doc.id + '" data-matter-id="' + (matterId || '') + '" data-list-id="' + checklistId + '" title="Move Document">' + cpDocIcon('fa-arrows-alt') + '</a>'
                         : '';
 
-                    html += '<tr data-matter-id="' + (matterId || '') + '">'
+                    html += '<tr data-matter-id="' + (matterId || '') + '" data-document-id="' + doc.id + '">'
                         + '<td>' + fileNameCell + '</td>'
                         + '<td>' + (doc.created_at ? (typeof formatDisplayDateTime === 'function' ? (formatDisplayDateTime(doc.created_at) || String(doc.created_at)) : String(doc.created_at)) : '') + '</td>'
                         + '<td>' + statusBadge + '</td>'
@@ -3675,6 +3740,105 @@ $(document).on('click', '.cp-doc-checklist-row', function () {
         },
         error: function () {
             $('#cp-checklist-documents-tbody').html('<tr><td colspan="4" class="text-center text-danger">Failed to load documents.</td></tr>');
+        }
+    });
+});
+
+$(document).on('click', '.cp-rename-doc-btn', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    $('#rename_cp_document_id').val($(this).data('document-id'));
+    $('#rename_cp_document_filename').val($(this).data('file-name') || '');
+    $('#rename_cp_document_filename').closest('.form-group').find('.custom-error').remove();
+    $('#rename_cp_document_submit_btn').prop('disabled', false).text('Save');
+    $('#rename_cp_document').modal('show');
+});
+
+$('#rename_cp_document').on('shown.bs.modal', function () {
+    $('#rename_cp_document_filename').trigger('focus').select();
+});
+
+$('#rename_cp_document').on('hidden.bs.modal', function () {
+    $('#rename_cp_document_id').val('');
+    $('#rename_cp_document_filename').val('');
+    $('#rename_cp_document_filename').closest('.form-group').find('.custom-error').remove();
+    $('#rename_cp_document_submit_btn').prop('disabled', false).text('Save');
+});
+
+$(document).on('click', '#rename_cp_document_submit_btn', function (e) {
+    e.preventDefault();
+
+    var filename = ($('#rename_cp_document_filename').val() || '').trim();
+    $('#rename_cp_document_filename').closest('.form-group').find('.custom-error').remove();
+
+    if (!filename) {
+        $('#rename_cp_document_filename').closest('.form-group')
+            .append('<span class="custom-error" style="color:red;display:block;margin-top:4px;"><strong>Please enter a file name.</strong></span>');
+        return;
+    }
+
+    var documentId = $('#rename_cp_document_id').val();
+    if (!documentId) {
+        alert('Missing document information. Please try again.');
+        return;
+    }
+
+    var $btn = $(this);
+    $btn.prop('disabled', true).text('Saving...');
+
+    $.ajax({
+        url: '{{ URL::to('/documents/rename') }}',
+        method: 'POST',
+        dataType: 'json',
+        data: {
+            _token: $('meta[name="csrf-token"]').attr('content'),
+            id: documentId,
+            filename: filename
+        },
+        success: function (result) {
+            $btn.prop('disabled', false).text('Save');
+
+            if (result && result.status) {
+                $('#rename_cp_document').modal('hide');
+
+                var displayName = result.filetype
+                    ? result.filename + '.' + result.filetype
+                    : (result.filename || filename);
+                var $row = $('#cp-checklist-documents-tbody tr[data-document-id="' + documentId + '"]');
+                var $link = $row.find('.cp-doc-file-name-link');
+
+                if ($link.length) {
+                    $link.text(displayName);
+                    if (result.fileurl) {
+                        $link.attr('href', result.fileurl);
+                    }
+                } else {
+                    $row.find('.cp-doc-file-name-text').text(displayName);
+                }
+
+                $row.find('.cp-rename-doc-btn')
+                    .attr('data-file-name', result.filename || filename)
+                    .attr('data-filetype', result.filetype || '');
+                $row.find('.cp-download-doc-btn').attr('data-file-name', displayName);
+
+                var toastMessage = result.message || result.data || 'Document renamed successfully';
+                if (typeof toastr !== 'undefined') {
+                    toastr.success(toastMessage);
+                } else {
+                    alert(toastMessage);
+                }
+            } else {
+                alert((result && result.message) ? result.message : 'Failed to rename document.');
+            }
+        },
+        error: function (xhr) {
+            $btn.prop('disabled', false).text('Save');
+            var msg = 'Failed to rename document.';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                msg = xhr.responseJSON.message;
+            }
+            alert(msg);
         }
     });
 });

@@ -37,6 +37,26 @@ class PortalChecklistRenameTest extends TestCase
     }
 
     #[Test]
+    public function client_portal_tab_exposes_rename_document_ui(): void
+    {
+        $portal = file_get_contents($this->projectPath('resources/views/crm/clients/tabs/client_portal.blade.php'));
+        Assert::assertNotFalse($portal);
+        Assert::assertStringContainsString('cp-rename-doc-btn', $portal);
+        Assert::assertStringContainsString('id="rename_cp_document"', $portal);
+        Assert::assertStringContainsString('Rename File', $portal);
+        Assert::assertStringContainsString('/documents/rename', $portal);
+        Assert::assertStringContainsString('cpBuildChecklistDocumentFileNameCell', $portal);
+    }
+
+    #[Test]
+    public function checklist_documents_api_includes_filetype_for_rename(): void
+    {
+        $controller = file_get_contents($this->projectPath('app/Http/Controllers/CRM/ClientPortalController.php'));
+        Assert::assertNotFalse($controller);
+        Assert::assertStringContainsString("->select('id', 'file_name', 'filetype', 'myfile'", $controller);
+    }
+
+    #[Test]
     public function rename_controller_preserves_template_name_for_sync(): void
     {
         $controller = file_get_contents($this->projectPath('app/Http/Controllers/CRM/ClientPortalController.php'));

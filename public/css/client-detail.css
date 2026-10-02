@@ -1794,18 +1794,6 @@ input:checked + .toggle-slider:before { transform: translateX(18px); }
     margin-top: 4px;
 }
 
-/* Personal Details / narrow sidebar: stack date badge above details */
-.activity-feed:not(.wide-mode) .feed-item.feed-item--appointment .appointment-activity-detail {
-    flex-direction: column;
-    align-items: flex-start;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.activity-feed:not(.wide-mode) .feed-item.feed-item--appointment .appointment-activity-detail__body {
-    width: 100%;
-}
-
 .appointment-activity-detail {
     display: flex;
     gap: 12px;
@@ -1909,5 +1897,49 @@ input:checked + .toggle-slider:before { transform: translateX(18px); }
     border: 1px solid #86efac;
     border-radius: 4px;
     padding: 1px 8px;
+}
+
+/* Stack date badge above details so narrow sidebars use full width (Personal Details + Activity) */
+.feed-item.feed-item--appointment .appointment-activity-detail {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.feed-item.feed-item--appointment .appointment-activity-detail__badge {
+    align-self: flex-start;
+}
+
+.feed-item.feed-item--appointment .appointment-activity-detail__body {
+    width: 100%;
+    max-width: 100%;
+}
+
+.feed-item.feed-item--appointment .appointment-activity-detail__row {
+    width: 100%;
+}
+
+/* Card already has a date badge — hide the extra feed icon in the narrow sidebar */
+.activity-feed:not(.wide-mode) .feed-item.feed-item--appointment > .feed-icon {
+    display: none;
+}
+
+.activity-feed:not(.wide-mode) .feed-item.feed-item--appointment {
+    gap: 0;
+}
+
+/* Expanded sidebar only: restore side-by-side badge + details */
+.activity-feed.wide-mode .feed-item.feed-item--appointment .appointment-activity-detail {
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.activity-feed.wide-mode .feed-item.feed-item--appointment > .feed-icon {
+    display: inline-flex;
+}
+
+.activity-feed.wide-mode .feed-item.feed-item--appointment {
+    gap: 15px;
 }
 

@@ -479,17 +479,17 @@ class BookingAppointmentsController extends Controller
             }
         }
 
-        // Log activity using existing codebase pattern (only if client exists)
+        // Log activity if client exists
         if ($appointment->client_id) {
-            $activityLog = new ActivitiesLog;
-            $activityLog->client_id = $appointment->client_id;
-            $activityLog->created_by = Auth::id();
-            $activityLog->subject = 'Booking appointment status updated';
-            $activityLog->description = '<p><strong>Status changed:</strong> '.e(BookingAppointmentStatus::label((string) $oldStatus)).' → '.e(BookingAppointmentStatus::label((string) $request->status)).'</p>'.
-                                       ($request->cancellation_reason ? '<p><strong>Reason:</strong> '.e($request->cancellation_reason).'</p>' : '');
-            $activityLog->task_status = 0;
-            $activityLog->pin = 0;
-            $activityLog->save();
+            ActivitiesLog::create(
+                AppointmentActivityDescription::buildStatusChangeActivityLogPayload(
+                    $appointment->fresh() ?? $appointment,
+                    (int) Auth::id(),
+                    (string) $oldStatus,
+                    (string) $request->status,
+                    $request->cancellation_reason
+                )
+            );
         }
 
         // Send cancellation confirmation email to client if requested

@@ -48,6 +48,24 @@ class AppointmentActivityDescription
         };
     }
 
+    public static function statusActivitySubject(?int $serviceId, string $newStatus): string
+    {
+        $qualifier = match ((int) $serviceId) {
+            2 => 'a free appointment',
+            1, 3 => 'a paid appointment',
+            default => 'an appointment',
+        };
+
+        return match ($newStatus) {
+            BookingAppointmentStatus::CONFIRMED => "confirmed {$qualifier}",
+            BookingAppointmentStatus::COMPLETED => "completed {$qualifier}",
+            BookingAppointmentStatus::CANCELLED => "cancelled {$qualifier}",
+            BookingAppointmentStatus::NO_SHOW => "marked {$qualifier} as no show",
+            BookingAppointmentStatus::PAID => "marked {$qualifier} as paid",
+            default => "updated {$qualifier} status",
+        };
+    }
+
     public static function serviceTitle(?int $serviceId): string
     {
         return match ((int) $serviceId) {
@@ -133,6 +151,31 @@ class AppointmentActivityDescription
         return self::wrapDescriptionHtml($badgeDate, $rows);
     }
 
+    public static function buildStatusChangeDescription(
+        BookingAppointment $appointment,
+        string $oldStatus,
+        string $newStatus,
+        ?string $reason = null,
+        ?int $noeId = null
+    ): string {
+        $badgeDate = self::badgeDateString($appointment);
+        $rows = '<div class="appointment-activity-detail__chip">'.e(self::statusChangeChipLabel($newStatus)).'</div>';
+        $rows .= self::changeRow(
+            'Status:',
+            BookingAppointmentStatus::label($oldStatus),
+            BookingAppointmentStatus::label($newStatus)
+        );
+
+        $reasonText = trim((string) $reason);
+        if ($reasonText !== '') {
+            $rows .= self::detailRow('Reason:', $reasonText);
+        }
+
+        $rows .= self::standardDetailRows($appointment, $noeId);
+
+        return self::wrapDescriptionHtml($badgeDate, $rows);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -174,6 +217,30 @@ class AppointmentActivityDescription
             'task_status' => 0,
             'pin' => 0,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    public static function buildStatusChangeActivityLogPayload(
+        BookingAppointment $appointment,
+        int $createdBy,
+        string $oldStatus,
+        string $newStatus,
+        ?string $reason = null,
+        ?int $noeId = null,
+        array $extra = []
+    ): array {
+        return array_merge([
+            'client_id' => $appointment->client_id,
+            'created_by' => $createdBy,
+            'subject' => self::statusActivitySubject($appointment->service_id, $newStatus),
+            'description' => self::buildStatusChangeDescription($appointment, $oldStatus, $newStatus, $reason, $noeId),
+            'activity_type' => 'activity',
+            'task_status' => 0,
+            'pin' => 0,
+        ], $extra);
     }
 
     public static function meetingTypeDisplay(?string $meetingType): string
@@ -220,6 +287,18 @@ class AppointmentActivityDescription
             .self::dateBadgeHtml($badgeDate)
             .'<div class="appointment-activity-detail__body">'.$rows.'</div>'
             .'</div>';
+    }
+
+    private static function statusChangeChipLabel(string $newStatus): string
+    {
+        return match ($newStatus) {
+            BookingAppointmentStatus::CONFIRMED => 'Appointment Confirmed',
+            BookingAppointmentStatus::COMPLETED => 'Appointment Completed',
+            BookingAppointmentStatus::CANCELLED => 'Appointment Cancelled',
+            BookingAppointmentStatus::NO_SHOW => 'Appointment No Show',
+            BookingAppointmentStatus::PAID => 'Appointment Paid',
+            default => 'Status Updated',
+        };
     }
 
     private static function changeRow(string $label, string $from, string $to): string

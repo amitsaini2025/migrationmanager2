@@ -4,6 +4,7 @@ namespace Tests\Unit\Support;
 
 use App\Models\BookingAppointment;
 use App\Support\AppointmentActivityDescription;
+use App\Support\BookingAppointmentStatus;
 use Carbon\Carbon;
 use Tests\TestCase;
 
@@ -111,6 +112,69 @@ class AppointmentActivityDescriptionTest extends TestCase
         $this->assertSame('activity', $payload['activity_type']);
         $this->assertStringContainsString('appointment-activity-detail', $payload['description']);
         $this->assertStringContainsString('Preferred language:', $payload['description']);
+    }
+
+    public function test_status_activity_subject_uses_correct_grammar(): void
+    {
+        $this->assertSame('cancelled a free appointment', AppointmentActivityDescription::statusActivitySubject(2, BookingAppointmentStatus::CANCELLED));
+        $this->assertSame('confirmed a paid appointment', AppointmentActivityDescription::statusActivitySubject(1, BookingAppointmentStatus::CONFIRMED));
+        $this->assertSame('completed an appointment', AppointmentActivityDescription::statusActivitySubject(null, BookingAppointmentStatus::COMPLETED));
+    }
+
+    public function test_build_status_change_description_uses_appointment_card_with_status_and_reason(): void
+    {
+        $appointment = new BookingAppointment([
+            'service_id' => 2,
+            'noe_id' => 4,
+            'service_type' => 'Tourist Visa',
+            'meeting_type' => 'in_person',
+            'preferred_language' => 'English',
+            'enquiry_details' => 'test .Pls ignore',
+            'location' => 'melbourne',
+            'appointment_datetime' => Carbon::parse('2026-10-21 10:00:00'),
+            'timeslot_full' => '10:00 AM-10:20 AM',
+            'status' => BookingAppointmentStatus::CANCELLED,
+        ]);
+
+        $html = AppointmentActivityDescription::buildStatusChangeDescription(
+            $appointment,
+            BookingAppointmentStatus::AWAITING_CONFIRMATION,
+            BookingAppointmentStatus::CANCELLED,
+            'Test.Pls ignore'
+        );
+
+        $this->assertStringContainsString('appointment-activity-detail', $html);
+        $this->assertStringContainsString('Appointment Cancelled', $html);
+        $this->assertStringContainsString('Status:', $html);
+        $this->assertStringContainsString('Pending → Cancelled', $html);
+        $this->assertStringContainsString('Reason:', $html);
+        $this->assertStringContainsString('Test.Pls ignore', $html);
+        $this->assertStringContainsString('Tourist Visa', $html);
+        $this->assertStringContainsString('21 Oct 2026 · 10:00 AM-10:20 AM', $html);
+    }
+
+    public function test_build_status_change_activity_log_payload_matches_create_structure(): void
+    {
+        $appointment = new BookingAppointment([
+            'client_id' => 42,
+            'service_id' => 2,
+            'appointment_datetime' => Carbon::parse('2026-10-21 10:00:00'),
+            'status' => BookingAppointmentStatus::CONFIRMED,
+        ]);
+
+        $payload = AppointmentActivityDescription::buildStatusChangeActivityLogPayload(
+            $appointment,
+            3,
+            BookingAppointmentStatus::AWAITING_CONFIRMATION,
+            BookingAppointmentStatus::CONFIRMED
+        );
+
+        $this->assertSame(42, $payload['client_id']);
+        $this->assertSame(3, $payload['created_by']);
+        $this->assertSame('confirmed a free appointment', $payload['subject']);
+        $this->assertSame('activity', $payload['activity_type']);
+        $this->assertStringContainsString('appointment-activity-detail', $payload['description']);
+        $this->assertStringContainsString('Appointment Confirmed', $payload['description']);
     }
 
     public function test_category_falls_back_to_noe_id_when_service_type_missing(): void

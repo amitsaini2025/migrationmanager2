@@ -14,6 +14,7 @@ use App\Services\BansalAppointmentSync\BansalAppointmentRecoveryService;
 use App\Services\BansalAppointmentSync\ConsultantAssignmentService;
 use App\Services\ClientReferenceService;
 use App\Services\Payment\StripePaymentService;
+use App\Support\AppointmentActivityDescription;
 use App\Support\BansalSchedulingServiceType;
 use App\Support\BookingAppointmentStatus;
 use Carbon\Carbon;
@@ -1816,16 +1817,16 @@ class ClientPortalAppointmentController extends BaseController
 
             // Log activity
             if ($appointment->client_id) {
-                $activityLog = new ActivitiesLog;
-                $activityLog->client_id = $appointment->client_id;
-                $activityLog->created_by = $user->id;
-                $activityLog->subject = 'Appointment status updated via mobile app';
-                $activityLog->description = '<p><strong>Status changed:</strong> '.ucfirst($oldStatus).' → '.ucfirst($newStatus).'</p>'.
-                                           ($request->cancel_reason ? '<p><strong>Cancellation Reason:</strong> '.e($request->cancel_reason).'</p>' : '');
-                $activityLog->task_status = 0;
-                $activityLog->pin = 0;
-                $activityLog->source = 'client_portal';
-                $activityLog->save();
+                ActivitiesLog::create(
+                    AppointmentActivityDescription::buildStatusChangeActivityLogPayload(
+                        $appointment->fresh() ?? $appointment,
+                        (int) $user->id,
+                        (string) $oldStatus,
+                        $newStatus,
+                        $request->cancel_reason,
+                        extra: ['source' => 'client_portal']
+                    )
+                );
             }
 
             $message = 'Appointment status updated successfully';

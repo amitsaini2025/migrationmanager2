@@ -899,36 +899,28 @@ document.addEventListener('DOMContentLoaded', function() {
         prefillReceiptDescriptionForAccount('#office_receipt_form .productitem_office', 'tr.clonedrow_office');
     }
 
-    // Improved Create Receipt Button Click Handler
-    // Automatically selects the correct form based on which button was clicked
-    // SOLUTION 4: Use namespaced event with higher priority to prevent conflicts
-    $(document).off('click.accountTab', '.createreceipt[data-account-entry="true"]').on('click.accountTab', '.createreceipt[data-account-entry="true"]', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation(); // Prevent other handlers from firing
-        
-        const receiptType = $(this).data('receipt-type');
-        const $modal = $('#createreceiptmodal');
-        
-        console.log('🎯 Account tab receipt button clicked - type:', receiptType);
-        
-        // Hide the radio button selection section (not needed since button already indicates type)
-        $modal.find('.form-group:has(input[name="receipt_type"])').hide();
-        
-        // Update modal title based on receipt type
-        const modalTitles = {
-            '1': crmI('fas fa-wallet') + ' Create Client Funds Ledger Entry',
-            '2': crmI('fas fa-hand-holding-usd') + ' Create Direct Office Receipt',
-            '3': crmI('fas fa-file-invoice-dollar') + ' Create Invoice'
-        };
-        
-        $modal.find('.modal-title').html(modalTitles[receiptType] || 'Create Receipt');
-        
-        // First, explicitly hide ALL forms to prevent double display
-        $('#client_receipt_form, #invoice_receipt_form, #office_receipt_form').hide();
-        console.log('🧹 All forms hidden');
-        
-        // Matter for ledger/office/invoice: account URL context first, then sidebar dropdown
+    /** #createreceiptmodal is a lazy stub until ensureClientDetailModal loads real HTML (see lazy-modals.js). */
+    function ensureAccountCreatereceiptModal() {
+        if (typeof window.ensureClientDetailModal === 'function') {
+            return window.ensureClientDetailModal('createreceiptmodal');
+        }
+
+        return Promise.resolve();
+    }
+
+    function accountCreatereceiptModalLoadError() {
+        if (typeof iziToast !== 'undefined') {
+            iziToast.error({
+                title: 'Error',
+                message: 'Could not load the form. Please refresh the page.',
+                position: 'topRight'
+            });
+        } else {
+            alert('Could not load the form. Please refresh the page.');
+        }
+    }
+
+    function resolveAccountSelectedMatter() {
         let selectedMatter = (typeof mmResolveClientDetailMatterIdForAccount === 'function')
             ? mmResolveClientDetailMatterIdForAccount()
             : '';
@@ -939,96 +931,123 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectedMatter = $('#sel_matter_id_client_detail').val();
             }
         }
-        console.log('📁 Selected Matter ID:', selectedMatter);
-        
+
+        return selectedMatter;
+    }
+
+    function configureCreatereceiptModalForAccountEntry(receiptType, selectedMatter) {
+        const $modal = $('#createreceiptmodal');
+
+        if (!$modal.length || !$modal.find('#client_receipt_form').length) {
+            throw new Error('Create receipt form is not available after modal load');
+        }
+
+        // Hide the radio button selection section (not needed since button already indicates type)
+        $modal.find('.form-group:has(input[name="receipt_type"])').hide();
+
+        // Update modal title based on receipt type
+        const modalTitles = {
+            '1': crmI('fas fa-wallet') + ' Create Client Funds Ledger Entry',
+            '2': crmI('fas fa-hand-holding-usd') + ' Create Direct Office Receipt',
+            '3': crmI('fas fa-file-invoice-dollar') + ' Create Invoice'
+        };
+
+        $modal.find('.modal-title').html(modalTitles[receiptType] || 'Create Receipt');
+
+        // First, explicitly hide ALL forms to prevent double display
+        $('#client_receipt_form, #invoice_receipt_form, #office_receipt_form').hide();
+        console.log('🧹 All forms hidden');
+
         // Select the appropriate radio button and trigger change event
         // The change handler in detail-main.js will hide all forms and show the correct one
         if (receiptType == '1') {
-            // Client Funds Ledger
             console.log('📝 Selecting Client Funds Ledger Form');
-            
-            // Set the matter ID for client ledger
             $('#client_matter_id_ledger').val(selectedMatter);
-            console.log('📁 Set client_matter_id_ledger to:', selectedMatter);
-            
             $('input[name="receipt_type"][value="client_receipt"]').prop('checked', true).trigger('change');
         } else if (receiptType == '2') {
-            // Direct Office Receipt
             console.log('📝 Selecting Direct Office Receipt Form');
-            
-            // Set the matter ID for office receipt
             $('#client_matter_id_office').val(selectedMatter);
-            console.log('📁 Set client_matter_id_office to:', selectedMatter);
-            
             $('input[name="receipt_type"][value="office_receipt"]').prop('checked', true).trigger('change');
-            
-            // Load invoices for the invoice dropdown
             loadInvoicesForOfficeReceipt(selectedMatter);
         } else if (receiptType == '3') {
-            // Invoice
             console.log('📝 Selecting Invoice Form');
-            
-            // CRITICAL: Set function_type to "add" for new invoices
             $('#invoice_receipt_form input[name="function_type"]').val('add');
             if (typeof window.mmRefreshInvoiceSubmissionToken === 'function') {
                 window.mmRefreshInvoiceSubmissionToken();
             }
-            console.log('✏️ Set function_type to: add');
-            
-            // Set the matter ID
             $('#client_matter_id_invoice').val(selectedMatter);
-            console.log('📁 Set client_matter_id_invoice to:', selectedMatter);
-            
             $('input[name="receipt_type"][value="invoice_receipt"]').prop('checked', true).trigger('change');
         }
-        
+
         // Ensure only the correct form is visible after a brief delay
         setTimeout(function() {
-            // Hide all forms again
             $('#client_receipt_form, #invoice_receipt_form, #office_receipt_form').hide();
-            
-            // Show only the selected form
+
             const formIdMap = { '1': 'client_receipt_form', '2': 'office_receipt_form', '3': 'invoice_receipt_form' };
             const formId = formIdMap[receiptType];
             if (formId) {
                 $('#' + formId).show();
                 console.log('✅ Showing only:', formId);
             }
-            
-            // Re-ensure critical fields are set (in case change event cleared them)
+
             if (receiptType == '3') {
                 $('#invoice_receipt_form input[name="function_type"]').val('add');
                 $('#client_matter_id_invoice').val(selectedMatter);
-                console.log('🔄 Re-verified invoice form settings');
             } else if (receiptType == '1') {
                 $('#client_matter_id_ledger').val(selectedMatter);
                 prefillClientFundsLedgerDescription();
-                console.log('🔄 Re-verified ledger form settings');
             } else if (receiptType == '2') {
                 $('#client_matter_id_office').val(selectedMatter);
                 prefillDirectOfficeReceiptDescription();
-                console.log('🔄 Re-verified office receipt form settings');
             }
         }, 100);
-        
-        // FIX 1: Ensure modal element exists and Bootstrap modal is available
+    }
+
+    function showAccountCreatereceiptModal() {
+        const $modal = $('#createreceiptmodal');
+
         if ($modal.length === 0) {
             console.error('❌ Modal element #createreceiptmodal not found in DOM');
             alert('Error: Receipt modal not found. Please refresh the page.');
-            return;
+            return false;
         }
-        
+
         if (typeof $modal.modal !== 'function') {
             console.error('❌ Bootstrap modal plugin not loaded');
             alert('Error: Modal plugin not available. Please refresh the page.');
-            return;
+            return false;
         }
-        
-        // Open the modal
+
         $modal.modal('show');
-        
-        // Log for debugging
-        console.log('✅ Modal opened successfully');
+
+        return true;
+    }
+
+    // Improved Create Receipt Button Click Handler
+    // Automatically selects the correct form based on which button was clicked
+    // SOLUTION 4: Use namespaced event with higher priority to prevent conflicts
+    $(document).off('click.accountTab', '.createreceipt[data-account-entry="true"]').on('click.accountTab', '.createreceipt[data-account-entry="true"]', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation(); // Prevent other handlers from firing
+
+        const receiptType = $(this).attr('data-receipt-type');
+        const selectedMatter = resolveAccountSelectedMatter();
+
+        console.log('🎯 Account tab receipt button clicked - type:', receiptType);
+        console.log('📁 Selected Matter ID:', selectedMatter);
+
+        ensureAccountCreatereceiptModal()
+            .then(function() {
+                configureCreatereceiptModalForAccountEntry(receiptType, selectedMatter);
+                if (showAccountCreatereceiptModal()) {
+                    console.log('✅ Modal opened successfully');
+                }
+            })
+            .catch(function(err) {
+                console.error('Failed to load create receipt modal', err);
+                accountCreatereceiptModalLoadError();
+            });
     });
     
     // Reset modal when closed (cleanup for next use)
@@ -1238,46 +1257,50 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         
         console.log('💵 Quick Receipt clicked for:', invoiceData);
-        
-        // Open the create receipt modal
-        const $modal = $('#createreceiptmodal');
-        
-        // Enable Quick Receipt mode to prevent form clearing
-        $modal.data('quick-receipt-mode', true);
-        $modal.data('quick-receipt-invoice-data', invoiceData);
-        
-        // FIX: Hide invoice option - Quick Receipt is only for payments, not creating invoices
-        $modal.find('input[name="receipt_type"][value="invoice_receipt"]').closest('label').hide();
-        
-        // Select "Direct Office Receipt" radio button
-        $('input[name="receipt_type"][value="office_receipt"]').prop('checked', true).trigger('change');
-        
-        // Update modal title
-        $modal.find('.modal-title').html(crmI('fas fa-money-bill-wave') + ' Quick Receipt for ' + invoiceData.invoiceNo);
-        
-        // Wait briefly for the form to render, then populate fields
-        if (typeof window.populateQuickReceiptOfficeForm === 'function') {
-            setTimeout(function() {
-                window.populateQuickReceiptOfficeForm(invoiceData);
-            }, 100);
-        } else {
-            console.error('populateQuickReceiptOfficeForm is not available');
-        }
-        
-        // Add a badge to indicate this is from Quick Receipt
-        // FIX: Remove ALL existing badges first to prevent duplication
-        $modal.find('.modal-header .badge').remove();
-        $modal.find('.modal-header').prepend('<span class="badge badge-success" style="margin-right: 10px;">' + crmI('fas fa-bolt') + ' QUICK RECEIPT</span>');
-        
-        // SOLUTION 5: Validate modal is available before opening
-        if (typeof $modal.modal !== 'function') {
-            console.error('❌ Bootstrap modal not available');
-            alert('Error: Modal plugin not loaded. Please refresh the page.');
-            return;
-        }
-        
-        // Open the modal
-        $modal.modal('show');
+
+        ensureAccountCreatereceiptModal()
+            .then(function() {
+                const $modal = $('#createreceiptmodal');
+
+                if (!$modal.length || !$modal.find('#office_receipt_form').length) {
+                    throw new Error('Quick receipt form is not available after modal load');
+                }
+
+                // Enable Quick Receipt mode to prevent form clearing
+                $modal.data('quick-receipt-mode', true);
+                $modal.data('quick-receipt-invoice-data', invoiceData);
+
+                // FIX: Hide invoice option - Quick Receipt is only for payments, not creating invoices
+                $modal.find('input[name="receipt_type"][value="invoice_receipt"]').closest('label').hide();
+
+                // Select "Direct Office Receipt" radio button
+                $('input[name="receipt_type"][value="office_receipt"]').prop('checked', true).trigger('change');
+
+                // Update modal title
+                $modal.find('.modal-title').html(crmI('fas fa-money-bill-wave') + ' Quick Receipt for ' + invoiceData.invoiceNo);
+
+                // Wait briefly for the form to render, then populate fields
+                if (typeof window.populateQuickReceiptOfficeForm === 'function') {
+                    setTimeout(function() {
+                        window.populateQuickReceiptOfficeForm(invoiceData);
+                    }, 100);
+                } else {
+                    console.error('populateQuickReceiptOfficeForm is not available');
+                }
+
+                // Add a badge to indicate this is from Quick Receipt
+                $modal.find('.modal-header .badge').remove();
+                $modal.find('.modal-header').prepend('<span class="badge badge-success" style="margin-right: 10px;">' + crmI('fas fa-bolt') + ' QUICK RECEIPT</span>');
+
+                if (!showAccountCreatereceiptModal()) {
+                    $modal.removeData('quick-receipt-mode');
+                    $modal.removeData('quick-receipt-invoice-data');
+                }
+            })
+            .catch(function(err) {
+                console.error('Failed to load quick receipt modal', err);
+                accountCreatereceiptModalLoadError();
+            });
     });
     
     // Remove Quick Receipt badge when modal closes

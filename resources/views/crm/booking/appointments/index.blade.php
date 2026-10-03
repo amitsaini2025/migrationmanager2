@@ -301,8 +301,8 @@ html, body {
                                         <small>@icon('fa-map-marker-alt') {{ ucfirst($appointment->location) }}</small>
                                     </td>
                                     <td>
-                                        {{ $appointment->service_type ?? 'N/A' }}<br>
-                                        <small>{{ $appointment->enquiry_type ?? '' }}</small>
+                                        {{ $appointment->display_service_type ?? 'N/A' }}<br>
+                                        <small>{{ $appointment->display_enquiry_type ?? '' }}</small>
                                     </td>
                                     <td>
                                         @if($appointment->consultant)

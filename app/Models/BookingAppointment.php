@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\AdelaideAppointmentLabels;
 use App\Support\BookingAppointmentStatus;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -251,6 +252,26 @@ class BookingAppointment extends Model
                 'adelaide' => 'Adelaide Office',
                 default => ucfirst($this->location)
             }
+        );
+    }
+
+    /**
+     * Adelaide-friendly service label for CRM display (raw value kept for API sync).
+     */
+    protected function displayServiceType(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => AdelaideAppointmentLabels::displayServiceType($this),
+        );
+    }
+
+    /**
+     * Adelaide-friendly enquiry label for CRM display (raw value kept for API sync).
+     */
+    protected function displayEnquiryType(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => AdelaideAppointmentLabels::displayEnquiryType($this),
         );
     }
 

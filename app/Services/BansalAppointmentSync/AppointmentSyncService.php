@@ -5,6 +5,7 @@ namespace App\Services\BansalAppointmentSync;
 use App\Models\ActivitiesLog;
 use App\Models\AppointmentSyncLog;
 use App\Models\BookingAppointment;
+use App\Support\AdelaideAppointmentLabels;
 use App\Support\AppointmentActivityDescription;
 use App\Support\BansalAppointmentDatetimeSync;
 use App\Support\BookingAppointmentStatus;
@@ -251,6 +252,14 @@ class AppointmentSyncService
             || $status === BookingAppointmentStatus::PAID;
         $status = BookingAppointmentStatus::forNewWebsiteBooking($status, $isPaidBooking);
 
+        $syncedLabels = AdelaideAppointmentLabels::normalizeSyncedFields(
+            $location,
+            $noeId,
+            $appointmentData['service_type'] ?? null,
+            $appointmentData['enquiry_type'] ?? null,
+            $inpersonAddress
+        );
+
         // Create appointment record
         $appointment = BookingAppointment::create([
             'bansal_appointment_id' => $bansalId,
@@ -274,8 +283,8 @@ class AppointmentSyncService
 
             'service_id' => $serviceId,
             'noe_id' => $noeId,
-            'enquiry_type' => $appointmentData['enquiry_type'] ?? null,
-            'service_type' => $appointmentData['service_type'] ?? null,
+            'enquiry_type' => $syncedLabels['enquiry_type'],
+            'service_type' => $syncedLabels['service_type'],
             'enquiry_details' => $appointmentData['enquiry_details'] ?? null,
 
             'status' => $status,

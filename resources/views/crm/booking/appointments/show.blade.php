@@ -197,13 +197,13 @@ html, body {
                                     <div class="info-row">
                                         <div class="row">
                                             <div class="col-4 info-label">Service Type:</div>
-                                            <div class="col-8 info-value">{{ $appointment->service_type ?? 'N/A' }}</div>
+                                            <div class="col-8 info-value">{{ $appointment->display_service_type ?? 'N/A' }}</div>
                                         </div>
                                     </div>
                                     <div class="info-row">
                                         <div class="row">
                                             <div class="col-4 info-label">Enquiry Type:</div>
-                                            <div class="col-8 info-value">{{ $appointment->enquiry_type ?? 'N/A' }}</div>
+                                            <div class="col-8 info-value">{{ $appointment->display_enquiry_type ?? 'N/A' }}</div>
                                         </div>
                                     </div>
                                     <div class="info-row">

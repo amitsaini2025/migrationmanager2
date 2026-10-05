@@ -27,9 +27,6 @@
                         @endif
                     </a>
                     <div class="dropdown-divider"></div>
-                    <a class="dropdown-item" href="{{ route('booking.appointments.calendar', ['type' => 'paid']) }}">
-                        @icon('fa-calendar-check', ['class' => 'mr-2']) Employer Sponsored Calendar
-                    </a>
                     <a class="dropdown-item" href="{{ route('booking.appointments.calendar', ['type' => 'jrp']) }}">
                         @icon('fa-calendar', ['class' => 'mr-2']) JRP Calendar
                     </a>

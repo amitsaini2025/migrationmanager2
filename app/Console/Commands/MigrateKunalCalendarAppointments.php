@@ -15,7 +15,7 @@ class MigrateKunalCalendarAppointments extends Command
                             {--dry-run : Preview changes without updating the database}
                             {--force : Skip confirmation prompt when applying changes}';
 
-    protected $description = 'Move future Kunal calendar appointments to JRP (free) or Employer Sponsored (paid)';
+    protected $description = 'Move future Kunal calendar appointments to JRP (free) or Ajay (paid)';
 
     public function handle(): int
     {
@@ -37,14 +37,14 @@ class MigrateKunalCalendarAppointments extends Command
             ->where('location', 'melbourne')
             ->first();
 
-        $paidConsultant = AppointmentConsultant::query()
-            ->where('calendar_type', 'paid')
+        $ajayConsultant = AppointmentConsultant::query()
+            ->where('calendar_type', 'ajay')
             ->where('is_active', true)
             ->where('location', 'melbourne')
             ->first();
 
-        if (! $jrpConsultant || ! $paidConsultant) {
-            $this->error('Active Melbourne JRP or Employer Sponsored consultant not found. Aborting.');
+        if (! $jrpConsultant || ! $ajayConsultant) {
+            $this->error('Active Melbourne JRP or Ajay consultant not found. Aborting.');
 
             return self::FAILURE;
         }
@@ -85,8 +85,8 @@ class MigrateKunalCalendarAppointments extends Command
                 continue;
             }
 
-            $targetConsultant = $bucket === 'free' ? $jrpConsultant : $paidConsultant;
-            $targetLabel = $bucket === 'free' ? 'JRP (free)' : 'Employer Sponsored (paid)';
+            $targetConsultant = $bucket === 'free' ? $jrpConsultant : $ajayConsultant;
+            $targetLabel = $bucket === 'free' ? 'JRP (free)' : 'Ajay (paid)';
 
             if ((int) $appointment->consultant_id === (int) $targetConsultant->id) {
                 $stats['already_correct']++;
@@ -122,7 +122,7 @@ class MigrateKunalCalendarAppointments extends Command
             [
                 ['Future Kunal Melbourne (non-cancelled)', $stats['total']],
                 ['Move to JRP (free)', $stats['to_jrp']],
-                ['Move to Employer Sponsored (paid)', $stats['to_paid']],
+                ['Move to Ajay (paid)', $stats['to_paid']],
                 ['Already on target calendar', $stats['already_correct']],
                 ['Ambiguous (skipped)', $stats['ambiguous']],
                 ['Slot conflicts (skipped)', $stats['conflicts']],
@@ -190,7 +190,7 @@ class MigrateKunalCalendarAppointments extends Command
                     $activityLog->created_by = null;
                     $activityLog->subject = 'Booking appointment consultant reassigned (Kunal migration)';
                     $activityLog->description = '<p><strong>Consultant assigned:</strong> '
-                        . e($targetConsultant->crm_display_label) . '</p>';
+                        .e($targetConsultant->crm_display_label).'</p>';
                     $activityLog->task_status = 0;
                     $activityLog->pin = 0;
                     $activityLog->save();

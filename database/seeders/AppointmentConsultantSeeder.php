@@ -18,7 +18,7 @@ class AppointmentConsultantSeeder extends Seeder
         // This will help us update appointments that reference old consultant IDs
         $idMapping = [
             6 => 1,  // Arun Kumar (paid) - old ID 6 -> new ID 1
-            7 => 2,  // Shubham/Yadwinder (jrp) - old ID 7 -> new ID 2
+            7 => 2,  // Shubham (JRP) - old ID 7 -> new ID 2
             8 => 3,  // Education Team - old ID 8 -> new ID 3
             9 => 4,  // Vijay (tourist) - old ID 9 -> new ID 4
             10 => 5, // Adelaide Office - old ID 10 -> new ID 5
@@ -50,11 +50,11 @@ class AppointmentConsultantSeeder extends Seeder
                 'calendar_type' => 'paid',
                 'location' => 'melbourne',
                 'specializations' => json_encode([1, 6, 7, 8]),
-                'is_active' => true,
-                'show_in_filter' => true,
+                'is_active' => false,
+                'show_in_filter' => false,
             ],
             [
-                'name' => 'Shubham/Yadwinder (JRP)',
+                'name' => 'Shubham (JRP)',
                 'email' => 'shubham@bansalimmigration.com',
                 'calendar_type' => 'jrp',
                 'location' => 'melbourne',

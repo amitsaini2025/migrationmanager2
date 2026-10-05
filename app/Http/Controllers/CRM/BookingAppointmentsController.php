@@ -134,7 +134,7 @@ class BookingAppointmentsController extends Controller
         }
 
         // List filter: all active consultants; labels use crm_display_label (e.g. Employer Sponsored Calendar, not personal names)
-        $calendarOrder = ['paid' => 1, 'jrp' => 2, 'education' => 3, 'tourist' => 4, 'adelaide' => 5, 'adelaide_education' => 6, 'ajay' => 7, 'arun' => 8];
+        $calendarOrder = ['jrp' => 1, 'education' => 2, 'tourist' => 3, 'adelaide' => 4, 'adelaide_education' => 5, 'ajay' => 6, 'arun' => 7];
         $consultants = AppointmentConsultant::active()
             ->get()
             ->sortBy(fn ($c) => $calendarOrder[$c->calendar_type] ?? 99)
@@ -340,9 +340,16 @@ class BookingAppointmentsController extends Controller
      */
     public function calendar(string $type)
     {
-        $validTypes = ['paid', 'jrp', 'education', 'tourist', 'adelaide', 'adelaide_education', 'ajay', 'arun'];
+        if ($type === 'paid') {
+            return redirect()->route('booking.appointments.index');
+        }
 
-        if (! in_array($type, $validTypes)) {
+        $validTypes = array_column(
+            app(StaffPersonalCalendarFeedService::class)->bookingCalendarTypeOptions(),
+            'key'
+        );
+
+        if (! in_array($type, $validTypes, true)) {
             abort(404);
         }
 
@@ -358,7 +365,6 @@ class BookingAppointmentsController extends Controller
         $appointments = $appointmentsQuery->get();
 
         $calendarTitle = match ($type) {
-            'paid' => 'Employer Sponsored Calendar',
             'jrp' => 'JRP/Skill Assessment',
             'education' => 'Education/Student Visa',
             'tourist' => 'Vijay',
@@ -393,10 +399,7 @@ class BookingAppointmentsController extends Controller
         // Use distinct() to ensure no duplicates
         $consultants = AppointmentConsultant::active()->shownInFilter()->distinct()->get();
 
-        $calendarTypes = [];
-        foreach (StaffPersonalCalendarFeedService::CALENDAR_TYPES as $key => $label) {
-            $calendarTypes[] = ['key' => $key, 'label' => $label];
-        }
+        $calendarTypes = app(StaffPersonalCalendarFeedService::class)->bookingCalendarTypeOptions();
 
         return view('crm.booking.appointments.calendar-v6', compact('type', 'appointments', 'calendarTitle', 'stats', 'consultants', 'calendarTypes'));
     }

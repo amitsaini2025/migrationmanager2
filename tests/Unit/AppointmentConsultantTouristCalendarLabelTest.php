@@ -25,6 +25,22 @@ class AppointmentConsultantTouristCalendarLabelTest extends TestCase
         $this->assertSame(['Tourist Visa'], $consultant->getSpecializationNames());
     }
 
+    public function test_melbourne_jrp_calendar_displays_shubham_without_yadwinder(): void
+    {
+        $consultant = new AppointmentConsultant([
+            'name' => 'Shubham (JRP)',
+            'calendar_type' => 'jrp',
+            'location' => 'melbourne',
+            'specializations' => [2, 3],
+            'is_active' => true,
+            'show_in_filter' => true,
+        ]);
+
+        $this->assertSame('jrp', $consultant->calendar_type);
+        $this->assertSame('JRP/Skill Assessment', $consultant->calendar_type_display);
+        $this->assertSame('Shubham (JRP)', $consultant->crm_display_label);
+    }
+
     public function test_dashboard_calendar_options_label_tourist_as_vijay(): void
     {
         $service = new StaffPersonalCalendarFeedService;

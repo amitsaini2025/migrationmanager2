@@ -29,6 +29,13 @@ class StaffPersonalCalendarFeedService
      *
      * @var array<string, string>
      */
+    /**
+     * Retired from the full booking calendar UI (/booking/calendar/{type}) but kept for dashboard feeds.
+     *
+     * @var list<string>
+     */
+    public const RETIRED_BOOKING_CALENDAR_TYPES = ['paid'];
+
     public const CALENDAR_TYPES = [
         'paid' => 'Employer Sponsored',
         'jrp' => 'JRP',
@@ -50,7 +57,6 @@ class StaffPersonalCalendarFeedService
         'ajay' => 'ajay',
         'vijay' => 'tourist',
         'shubham' => 'jrp',
-        'yadwinder' => 'jrp',
         'education' => 'education',
         'adelaide' => 'adelaide',
         'arun' => 'paid',
@@ -115,9 +121,36 @@ class StaffPersonalCalendarFeedService
      */
     public function calendarTypeOptions(): array
     {
+        return $this->calendarTypeOptionsForKeys(array_keys(self::CALENDAR_TYPES));
+    }
+
+    /**
+     * Calendar types exposed on the full booking calendar pages (sidebar + calendar-v6 switcher).
+     *
+     * @return list<array{key: string, label: string}>
+     */
+    public function bookingCalendarTypeOptions(): array
+    {
+        $keys = array_values(array_diff(
+            array_keys(self::CALENDAR_TYPES),
+            self::RETIRED_BOOKING_CALENDAR_TYPES
+        ));
+
+        return $this->calendarTypeOptionsForKeys($keys);
+    }
+
+    /**
+     * @param  list<string>  $keys
+     * @return list<array{key: string, label: string}>
+     */
+    protected function calendarTypeOptionsForKeys(array $keys): array
+    {
         $options = [];
-        foreach (self::CALENDAR_TYPES as $key => $label) {
-            $options[] = ['key' => $key, 'label' => $label];
+        foreach ($keys as $key) {
+            if (! array_key_exists($key, self::CALENDAR_TYPES)) {
+                continue;
+            }
+            $options[] = ['key' => $key, 'label' => self::CALENDAR_TYPES[$key]];
         }
 
         return $options;

@@ -50,6 +50,17 @@ class StaffPersonalCalendarFeedServiceTest extends TestCase
         $this->assertSame('paid', $service->defaultTypeForStaff(new Staff(['email' => 'sam@bansalcrm.com', 'first_name' => 'Sam'])));
     }
 
+    public function test_booking_calendar_options_exclude_retired_paid_calendar(): void
+    {
+        $service = new StaffPersonalCalendarFeedService;
+        $bookingKeys = collect($service->bookingCalendarTypeOptions())->pluck('key')->all();
+        $dashboardKeys = collect($service->calendarTypeOptions())->pluck('key')->all();
+
+        $this->assertNotContains('paid', $bookingKeys);
+        $this->assertContains('paid', $dashboardKeys);
+        $this->assertContains('jrp', $bookingKeys);
+    }
+
     public function test_admin_console_default_calendar_is_used_when_set(): void
     {
         $service = new StaffPersonalCalendarFeedService;

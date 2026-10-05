@@ -678,7 +678,8 @@ class ClientPortalAppointmentController extends BaseController
                 'enquiry_type' => BansalSchedulingServiceType::bansalEnquiryTypeForApi(
                     $requestData['noe_id'],
                     $location,
-                    $serviceTypeMapping['enquiry_type']
+                    $serviceTypeMapping['enquiry_type'],
+                    $serviceId != 2
                 ),
                 'service_type' => BansalSchedulingServiceType::bansalServiceTypeForApi(
                     $requestData['noe_id'],
@@ -1074,7 +1075,8 @@ class ClientPortalAppointmentController extends BaseController
                 'enquiry_type' => BansalSchedulingServiceType::bansalEnquiryTypeForApi(
                     $requestData['noe_id'],
                     $location,
-                    $serviceTypeMapping['enquiry_type']
+                    $serviceTypeMapping['enquiry_type'],
+                    $serviceId != 2
                 ),
                 'service_type' => BansalSchedulingServiceType::bansalServiceTypeForApi(
                     $requestData['noe_id'],
@@ -2085,7 +2087,8 @@ class ClientPortalAppointmentController extends BaseController
                 'enquiry_type' => BansalSchedulingServiceType::bansalEnquiryTypeForApi(
                     $appointment->noe_id ?? 0,
                     $appointment->location ?? 'melbourne',
-                    $appointment->enquiry_type ?? 'pr_complex'
+                    $appointment->enquiry_type ?? 'pr_complex',
+                    (bool) ($appointment->is_paid ?? false)
                 ),
                 'service_type' => BansalSchedulingServiceType::bansalServiceTypeForApi(
                     $appointment->noe_id ?? 0,

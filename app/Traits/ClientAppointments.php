@@ -388,7 +388,8 @@ trait ClientAppointments
                 'enquiry_type' => BansalSchedulingServiceType::bansalEnquiryTypeForApi(
                     $requestData['noe_id'],
                     $location,
-                    $serviceTypeMapping['enquiry_type']
+                    $serviceTypeMapping['enquiry_type'],
+                    $serviceId != 2
                 ),
                 'service_type' => BansalSchedulingServiceType::bansalServiceTypeForApi(
                     $requestData['noe_id'],

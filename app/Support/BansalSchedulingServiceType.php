@@ -8,16 +8,12 @@ use Illuminate\Http\Request;
  * Maps CRM "nature of enquiry" (noe_id / enquiry_item) to Bansal schedule API service_type
  * and builds Melbourne-only extras (is_paid, preferred_language) for get-datetime-backend
  * and get-disabled-datetime. Adelaide uses no extras so payloads stay unchanged for legacy behaviour.
- * Melbourne Family Visas (11) and Citizenship (12) use employer-sponsored timeslots on the
- * schedule API. Melbourne TR 485 (2) uses tourist-visa / Vijay timeslots for slot lookup
+ * Melbourne TR 485 (2) uses tourist-visa / Vijay timeslots for slot lookup
  * and CRM assignment only. add-appointment / re-sync still send tr / temporary-residency
  * so the Bansal website Type stays TR: 485 visa. CRM keeps display labels locally.
  */
 class BansalSchedulingServiceType
 {
-    /** NOE ids using Melbourne employer-sponsored timeslots (schedule API only). */
-    private const FAMILY_VISA_AND_CITIZENSHIP_NOE_IDS = [11, 12];
-
     /** Melbourne TR 485 uses Vijay (tourist-visa) timeslots and CRM tourist calendar; Bansal Type stays TR. */
     private const MELBOURNE_VIJAY_TR_485_NOE_ID = 2;
 
@@ -55,10 +51,6 @@ class BansalSchedulingServiceType
             return 'tourist-visa';
         }
 
-        if (self::melbourneUsesEmployerSponsoredRouting($key, $location)) {
-            return 'employer-sponsored';
-        }
-
         return self::ENQUIRY_TO_SERVICE_TYPE[$key] ?? 'permanent-residency';
     }
 
@@ -66,8 +58,12 @@ class BansalSchedulingServiceType
      * enquiry_type for Bansal add-appointment / re-sync API only.
      * Bansal accepts: tr, tourist, education, pr_complex, ajay, kunal, arun.
      */
-    public static function bansalEnquiryTypeForApi(mixed $noeId, ?string $location, string $crmEnquiryType): string
-    {
+    public static function bansalEnquiryTypeForApi(
+        mixed $noeId,
+        ?string $location,
+        string $crmEnquiryType,
+        ?bool $isPaid = null
+    ): string {
         $key = (int) $noeId;
         $loc = $location !== null ? strtolower(trim($location)) : '';
 
@@ -81,10 +77,10 @@ class BansalSchedulingServiceType
         }
 
         if ($loc === 'melbourne') {
-            if (in_array($key, [1, 3, 8, 9, 10, 11, 12], true)) {
-                return 'pr_complex';
+            if (in_array($key, [1, 3, 9, 10], true)) {
+                return $isPaid === true ? 'ajay' : 'tr';
             }
-            if (in_array($key, [6, 7, 13], true)) {
+            if (in_array($key, [6, 7, 8, 11, 12, 13], true)) {
                 return 'ajay';
             }
             if ($key === 14) {
@@ -125,14 +121,10 @@ class BansalSchedulingServiceType
         return in_array((int) $noeId, self::CRM_ONLY_NOE_IDS, true);
     }
 
+    /** @deprecated Melbourne family/citizenship no longer use employer-sponsored slot lookup. */
     public static function melbourneUsesEmployerSponsoredRouting(int $noeId, ?string $location): bool
     {
-        if ($location === null || $location === '') {
-            return false;
-        }
-
-        return strtolower(trim($location)) === 'melbourne'
-            && in_array($noeId, self::FAMILY_VISA_AND_CITIZENSHIP_NOE_IDS, true);
+        return false;
     }
 
     public static function melbourneUsesVijayCalendarRouting(int $noeId, ?string $location): bool

@@ -88,7 +88,8 @@ class RetryInvalidEnquirySyncService
             'enquiry_type' => BansalSchedulingServiceType::bansalEnquiryTypeForApi(
                 $appointment->noe_id ?? 0,
                 $location,
-                $appointment->enquiry_type ?? 'pr_complex'
+                $appointment->enquiry_type ?? 'pr_complex',
+                (bool) ($appointment->is_paid ?? false)
             ),
             'service_type' => BansalSchedulingServiceType::bansalServiceTypeForApi(
                 $appointment->noe_id ?? 0,

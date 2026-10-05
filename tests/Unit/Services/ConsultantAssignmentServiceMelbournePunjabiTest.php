@@ -46,9 +46,9 @@ class ConsultantAssignmentServiceMelbournePunjabiTest extends TestCase
         ]));
     }
 
-    public function test_melbourne_punjabi_gsm_paid_goes_employer_sponsored(): void
+    public function test_melbourne_punjabi_gsm_paid_goes_ajay(): void
     {
-        $this->assertSame('paid', $this->calendarType([
+        $this->assertSame('ajay', $this->calendarType([
             'noe_id' => 1,
             'location' => 'melbourne',
             'inperson_address' => 2,
@@ -72,9 +72,9 @@ class ConsultantAssignmentServiceMelbournePunjabiTest extends TestCase
         ]));
     }
 
-    public function test_melbourne_hindi_gsm_paid_goes_employer_sponsored(): void
+    public function test_melbourne_hindi_gsm_paid_goes_ajay(): void
     {
-        $this->assertSame('paid', $this->calendarType([
+        $this->assertSame('ajay', $this->calendarType([
             'noe_id' => 1,
             'location' => 'melbourne',
             'inperson_address' => 2,
@@ -85,9 +85,9 @@ class ConsultantAssignmentServiceMelbournePunjabiTest extends TestCase
         ]));
     }
 
-    public function test_melbourne_english_eoi_paid_goes_employer_sponsored(): void
+    public function test_melbourne_english_eoi_paid_goes_ajay(): void
     {
-        $this->assertSame('paid', $this->calendarType([
+        $this->assertSame('ajay', $this->calendarType([
             'noe_id' => 9,
             'location' => 'melbourne',
             'inperson_address' => 2,
@@ -149,9 +149,9 @@ class ConsultantAssignmentServiceMelbournePunjabiTest extends TestCase
         ]));
     }
 
-    public function test_melbourne_jrp_skill_assessment_paid_goes_employer_sponsored(): void
+    public function test_melbourne_jrp_skill_assessment_paid_goes_ajay(): void
     {
-        $this->assertSame('paid', $this->calendarType([
+        $this->assertSame('ajay', $this->calendarType([
             'noe_id' => 3,
             'location' => 'melbourne',
             'inperson_address' => 2,
@@ -212,9 +212,9 @@ class ConsultantAssignmentServiceMelbournePunjabiTest extends TestCase
         ]));
     }
 
-    public function test_melbourne_family_visas_goes_employer_sponsored(): void
+    public function test_melbourne_family_visas_goes_ajay(): void
     {
-        $this->assertSame('paid', $this->calendarType([
+        $this->assertSame('ajay', $this->calendarType([
             'noe_id' => 11,
             'location' => 'melbourne',
             'inperson_address' => 2,
@@ -224,9 +224,9 @@ class ConsultantAssignmentServiceMelbournePunjabiTest extends TestCase
         ]));
     }
 
-    public function test_melbourne_citizenship_goes_employer_sponsored(): void
+    public function test_melbourne_citizenship_goes_ajay(): void
     {
-        $this->assertSame('paid', $this->calendarType([
+        $this->assertSame('ajay', $this->calendarType([
             'noe_id' => 12,
             'location' => 'melbourne',
             'inperson_address' => 2,

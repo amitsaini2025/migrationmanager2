@@ -10,7 +10,7 @@ use Tests\TestCase;
 
 class RetryInvalidEnquirySyncServiceTest extends TestCase
 {
-    public function test_build_create_payload_maps_melbourne_jrp_enquiry_type_to_pr_complex(): void
+    public function test_build_create_payload_maps_melbourne_jrp_enquiry_type_to_tr_when_free(): void
     {
         $service = new RetryInvalidEnquirySyncService($this->createMock(BansalApiClient::class));
 
@@ -35,11 +35,34 @@ class RetryInvalidEnquirySyncServiceTest extends TestCase
 
         $payload = $service->buildCreatePayload($appointment);
 
-        $this->assertSame('pr_complex', $payload['enquiry_type']);
+        $this->assertSame('tr', $payload['enquiry_type']);
         $this->assertSame('jrp-skill-assessment', $payload['service_type']);
         $this->assertSame('consultation', $payload['specific_service']);
         $this->assertSame('in-person', $payload['meeting_type']);
         $this->assertSame(1, $payload['include_crm_extra_slots']);
+    }
+
+    public function test_build_create_payload_maps_melbourne_jrp_enquiry_type_to_ajay_when_paid(): void
+    {
+        $service = new RetryInvalidEnquirySyncService($this->createMock(BansalApiClient::class));
+
+        $appointment = new BookingAppointment([
+            'client_name' => 'Test Client',
+            'client_email' => 'client@example.com',
+            'appointment_datetime' => Carbon::parse('2026-08-01 10:30:00'),
+            'location' => 'melbourne',
+            'meeting_type' => 'in_person',
+            'service_id' => 1,
+            'noe_id' => 1,
+            'enquiry_type' => 'pr_complex',
+            'service_type' => 'GSM Visas: 491, 190, 189, 191',
+            'is_paid' => true,
+        ]);
+
+        $payload = $service->buildCreatePayload($appointment);
+
+        $this->assertSame('ajay', $payload['enquiry_type']);
+        $this->assertSame('permanent-residency', $payload['service_type']);
     }
 
     public function test_build_create_payload_maps_melbourne_complex_enquiry_type_to_ajay(): void

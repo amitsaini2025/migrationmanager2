@@ -7,18 +7,18 @@ use PHPUnit\Framework\TestCase;
 
 class BansalSchedulingServiceTypeTest extends TestCase
 {
-    public function test_melbourne_family_visas_uses_employer_sponsored_timeslots(): void
+    public function test_melbourne_family_visas_keep_family_service_type_for_slot_lookup(): void
     {
         $this->assertSame(
-            'employer-sponsored',
+            'family-visas',
             BansalSchedulingServiceType::fromEnquiryItem(11, 'melbourne')
         );
     }
 
-    public function test_melbourne_citizenship_uses_employer_sponsored_timeslots(): void
+    public function test_melbourne_citizenship_keeps_citizenship_service_type_for_slot_lookup(): void
     {
         $this->assertSame(
-            'employer-sponsored',
+            'citizenship',
             BansalSchedulingServiceType::fromEnquiryItem(12, 'melbourne')
         );
     }
@@ -39,7 +39,7 @@ class BansalSchedulingServiceTypeTest extends TestCase
         );
     }
 
-    public function test_employer_sponsored_unchanged_for_melbourne(): void
+    public function test_employer_sponsored_unchanged_for_melbourne_slot_lookup(): void
     {
         $this->assertSame(
             'employer-sponsored',
@@ -55,10 +55,10 @@ class BansalSchedulingServiceTypeTest extends TestCase
         );
     }
 
-    public function test_melbourne_outside_australia_bansal_sync_uses_pr_complex(): void
+    public function test_melbourne_outside_australia_bansal_sync_uses_ajay(): void
     {
         $this->assertSame(
-            'pr_complex',
+            'ajay',
             BansalSchedulingServiceType::bansalEnquiryTypeForApi(8, 'melbourne', 'international')
         );
     }
@@ -82,11 +82,19 @@ class BansalSchedulingServiceTypeTest extends TestCase
         );
     }
 
-    public function test_melbourne_employer_sponsored_bansal_sync_uses_pr_complex(): void
+    public function test_melbourne_employer_sponsored_bansal_sync_uses_tr_when_free(): void
     {
         $this->assertSame(
-            'pr_complex',
-            BansalSchedulingServiceType::bansalEnquiryTypeForApi(10, 'melbourne', 'employer_sponsored')
+            'tr',
+            BansalSchedulingServiceType::bansalEnquiryTypeForApi(10, 'melbourne', 'employer_sponsored', false)
+        );
+    }
+
+    public function test_melbourne_employer_sponsored_bansal_sync_uses_ajay_when_paid(): void
+    {
+        $this->assertSame(
+            'ajay',
+            BansalSchedulingServiceType::bansalEnquiryTypeForApi(10, 'melbourne', 'employer_sponsored', true)
         );
     }
 
@@ -109,18 +117,18 @@ class BansalSchedulingServiceTypeTest extends TestCase
         );
     }
 
-    public function test_melbourne_family_visas_bansal_sync_uses_pr_complex(): void
+    public function test_melbourne_family_visas_bansal_sync_uses_ajay(): void
     {
         $this->assertSame(
-            'pr_complex',
+            'ajay',
             BansalSchedulingServiceType::bansalEnquiryTypeForApi(11, 'melbourne', 'family_visas')
         );
     }
 
-    public function test_melbourne_citizenship_bansal_sync_uses_pr_complex(): void
+    public function test_melbourne_citizenship_bansal_sync_uses_ajay(): void
     {
         $this->assertSame(
-            'pr_complex',
+            'ajay',
             BansalSchedulingServiceType::bansalEnquiryTypeForApi(12, 'melbourne', 'citizenship')
         );
     }
@@ -208,27 +216,39 @@ class BansalSchedulingServiceTypeTest extends TestCase
         );
     }
 
-    public function test_melbourne_eoi_bansal_sync_uses_pr_complex(): void
+    public function test_melbourne_eoi_bansal_sync_uses_tr_when_free_and_ajay_when_paid(): void
     {
         $this->assertSame(
-            'pr_complex',
-            BansalSchedulingServiceType::bansalEnquiryTypeForApi(9, 'melbourne', 'eoi')
+            'tr',
+            BansalSchedulingServiceType::bansalEnquiryTypeForApi(9, 'melbourne', 'eoi', false)
+        );
+        $this->assertSame(
+            'ajay',
+            BansalSchedulingServiceType::bansalEnquiryTypeForApi(9, 'melbourne', 'eoi', true)
         );
     }
 
-    public function test_melbourne_jrp_bansal_sync_uses_pr_complex(): void
+    public function test_melbourne_jrp_bansal_sync_uses_tr_when_free_and_ajay_when_paid(): void
     {
         $this->assertSame(
-            'pr_complex',
-            BansalSchedulingServiceType::bansalEnquiryTypeForApi(3, 'melbourne', 'jrp')
+            'tr',
+            BansalSchedulingServiceType::bansalEnquiryTypeForApi(3, 'melbourne', 'jrp', false)
+        );
+        $this->assertSame(
+            'ajay',
+            BansalSchedulingServiceType::bansalEnquiryTypeForApi(3, 'melbourne', 'jrp', true)
         );
     }
 
-    public function test_melbourne_gsm_bansal_sync_uses_pr_complex(): void
+    public function test_melbourne_gsm_bansal_sync_uses_tr_when_free_and_ajay_when_paid(): void
     {
         $this->assertSame(
-            'pr_complex',
-            BansalSchedulingServiceType::bansalEnquiryTypeForApi(1, 'melbourne', 'pr_complex')
+            'tr',
+            BansalSchedulingServiceType::bansalEnquiryTypeForApi(1, 'melbourne', 'pr_complex', false)
+        );
+        $this->assertSame(
+            'ajay',
+            BansalSchedulingServiceType::bansalEnquiryTypeForApi(1, 'melbourne', 'pr_complex', true)
         );
     }
 
@@ -276,5 +296,10 @@ class BansalSchedulingServiceTypeTest extends TestCase
         $this->assertTrue(BansalSchedulingServiceType::isCrmOnlyNoe(14));
         $this->assertFalse(BansalSchedulingServiceType::isCrmOnlyNoe(6));
         $this->assertFalse(BansalSchedulingServiceType::isCrmOnlyNoe(7));
+    }
+
+    public function test_melbourne_employer_sponsored_routing_disabled(): void
+    {
+        $this->assertFalse(BansalSchedulingServiceType::melbourneUsesEmployerSponsoredRouting(11, 'melbourne'));
     }
 }

@@ -1348,7 +1348,9 @@ class VisaTypeSheetController extends Controller
             })
             ->sum(DB::raw('COALESCE(balance_amount, 0)'));
 
-        return ['total' => number_format($total, 2), 'pending' => number_format($pending, 2)];
+        // Keep a plain number. A thousands comma ("3,850.00") is truncated to 3
+        // when the sheet casts the value back to a float.
+        return ['total' => round($total, 2), 'pending' => round($pending, 2)];
     }
 
     /**

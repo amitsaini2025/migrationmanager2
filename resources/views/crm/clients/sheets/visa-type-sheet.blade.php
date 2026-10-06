@@ -778,8 +778,11 @@
                                                             —
                                                         @endif
                                                     @else
-                                                        @if(($row->total_payment ?? 0) > 0)
-                                                            ${{ number_format((float)($row->total_payment ?? 0), 2) }}
+                                                        @php
+                                                            $paymentReceived = (float) str_replace(',', '', (string) ($row->total_payment ?? 0));
+                                                        @endphp
+                                                        @if($paymentReceived > 0)
+                                                            ${{ number_format($paymentReceived, 2) }}
                                                         @elseif($row->payment_display_note ?? null)
                                                             {{ $row->payment_display_note }}
                                                         @else

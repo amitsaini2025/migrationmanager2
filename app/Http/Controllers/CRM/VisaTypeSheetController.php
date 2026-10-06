@@ -1195,7 +1195,10 @@ class VisaTypeSheetController extends Controller
             DB::raw("({$nominee}) AS sponsor_nominee"),
             DB::raw("({$occupation}) AS sponsor_occupation"),
             DB::raw('('.$this->sponsorApprovalEndSql($clientIdColumn, $matterIdColumn).') AS approval_end'),
-            DB::raw("(SELECT c.lmt_required FROM companies c WHERE c.id = {$companyId}) AS lmt_required"),
+            DB::raw('COALESCE('
+                ."(SELECT cm_lmt.lmt_required FROM client_matters cm_lmt WHERE cm_lmt.id = {$matterIdColumn}), "
+                ."(SELECT c.lmt_required FROM companies c WHERE c.id = {$companyId})"
+                .') AS lmt_required'),
             DB::raw('COALESCE('
                 ."(SELECT cs.regional_sponsorship FROM company_sponsorships cs WHERE cs.company_id = {$companyId} ORDER BY cs.sort_order ASC NULLS LAST, cs.id ASC LIMIT 1), "
                 ."(SELECT c.regional_sponsorship FROM companies c WHERE c.id = {$companyId})"

@@ -381,7 +381,7 @@
     $sheetRoute = $config['route'] ?? 'clients.sheets.visa-type';
     $sheetRouteParams = ['visaType' => $visaType];
     $showRefusedVisaType = (bool) ($showRefusedVisaType ?? false);
-    $emptyColspan = $tab === 'checklist' ? 15 : ($tab === 'discontinue' ? 15 : 13);
+    $emptyColspan = $tab === 'checklist' ? 15 : ($tab === 'discontinue' ? 16 : 14);
     if ($showRefusedVisaType) {
         $emptyColspan++;
     }
@@ -567,6 +567,9 @@
                                         <th>Branch</th>
                                         @endif
                                         <th class="sortable {{ $sortThClass('assignee') }}" data-sort="assignee">Migration Agent</th>
+                                        @if($tab !== 'checklist')
+                                        <th>Status</th>
+                                        @endif
                                         <th class="sortable {{ $sortThClass('visa_expiry') }}" data-sort="visa_expiry">Visa Expiry</th>
                                         <th class="sortable {{ $sortThClass('deadline') }}" data-sort="deadline">Deadline</th>
                                         @if($tab !== 'checklist')
@@ -681,6 +684,9 @@
                                                 <td>{{ $row->branch_name ?? '—' }}</td>
                                                 @endif
                                                 <td>{{ trim($row->assignee_name ?? '') ?: '—' }}</td>
+                                                @if($tab !== 'checklist')
+                                                    @include('crm.clients.sheets.partials.checklist-status-cell')
+                                                @endif
                                                 <td>{{ isset($row->visa_expiry) && $row->visa_expiry && $row->visa_expiry != '0000-00-00' ? \Carbon\Carbon::parse($row->visa_expiry)->format('d/m/Y') : '—' }}</td>
                                                 <td>{{ $row->deadline ? \Carbon\Carbon::parse($row->deadline)->format('d/m/Y') : '—' }}</td>
                                                 @if($tab !== 'checklist')
@@ -710,23 +716,7 @@
                                                     @endif
                                                 </td>
                                                 @if($tab === 'checklist')
-                                                <td onclick="event.stopPropagation();" class="checklist-status-cell">
-                                                    @if(!empty($row->matter_internal_id))
-                                                    @php
-                                                        $currentStatus = $row->tr_checklist_status ?? 'active';
-                                                        $statusLabels = ['active' => 'Active', 'convert_to_client' => 'Convert to client', 'discontinue' => 'Discontinue', 'hold' => 'Hold'];
-                                                    @endphp
-                                                    <select class="form-control form-control-sm checklist-status-select" data-matter-id="{{ $matterId }}" data-visa-type="{{ $visaType }}" title="Status">
-                                                        @foreach($statusLabels as $val => $label)
-                                                        <option value="{{ $val }}" {{ $currentStatus === $val ? 'selected' : '' }}>{{ $label }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                    @elseif($isLead)
-                                                    <span class="badge badge-info" title="{{ __('Lead row without a client matter; status is fixed until a matter exists.') }}">Lead</span>
-                                                    @else
-                                                    <span class="text-muted">—</span>
-                                                    @endif
-                                                </td>
+                                                @include('crm.clients.sheets.partials.checklist-status-cell')
                                                 <td onclick="event.stopPropagation();" class="checklist-sent-cell">
                                                     @if(!empty($row->checklist_sent_at))
                                                         {{ \Carbon\Carbon::parse($row->checklist_sent_at)->format('d/m/Y') }}

@@ -666,6 +666,7 @@ class VisaTypeSheetController extends Controller
                 'latest_matter.client_unique_matter_no',
                 'latest_matter.matter_title',
                 'latest_matter.deadline',
+                'latest_matter.matter_status',
                 'latest_matter.other_reference',
                 'latest_matter.department_reference',
                 'latest_matter.office_id',

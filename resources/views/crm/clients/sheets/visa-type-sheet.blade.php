@@ -324,14 +324,23 @@
         background: #f8fafc;
     }
     .visa-sheet-page #visa-sheet-table .matter-col {
-        min-width: 150px;
-        max-width: 200px;
+        width: 232px;
+        min-width: 232px;
+        max-width: 232px;
+        overflow: hidden;
+    }
+    .visa-sheet-page #visa-sheet-table .matter-col .matter-col-label {
+        display: block;
+        width: 222px;
+        max-width: 222px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
     .visa-sheet-page #visa-sheet-table .crm-ref-col {
         min-width: 110px;
     }
     .visa-sheet-page #visa-sheet-table .frozen-col,
-    .visa-sheet-page #visa-sheet-table .matter-col,
     .visa-sheet-page #visa-sheet-table .crm-ref-col,
     .visa-sheet-page #visa-sheet-table .client-name-col {
         max-width: none;
@@ -381,7 +390,7 @@
     $sheetRoute = $config['route'] ?? 'clients.sheets.visa-type';
     $sheetRouteParams = ['visaType' => $visaType];
     $showRefusedVisaType = (bool) ($showRefusedVisaType ?? false);
-    $emptyColspan = $tab === 'checklist' ? 15 : ($tab === 'discontinue' ? 16 : 14);
+    $emptyColspan = $tab === 'checklist' ? 14 : ($tab === 'discontinue' ? 15 : 13);
     if ($showRefusedVisaType) {
         $emptyColspan++;
     }
@@ -547,7 +556,7 @@
                                 <thead>
                                     <tr>
                                         <th class="pin-cell frozen-col frozen-col-1" title="Click star to pin row to top">@icon('fa-star')</th>
-                                        <th class="matter-col frozen-col frozen-col-2 sortable {{ $sortThClass('matter') }}" data-sort="matter">Matter / Course</th>
+                                        <th class="matter-col frozen-col frozen-col-2 sortable {{ $sortThClass('matter') }}" data-sort="matter"><span class="matter-col-label">Matter / Course</span></th>
                                         @if($showRefusedVisaType)
                                         <th class="frozen-col frozen-col-3 frozen-col-last">{{ $refusedVisaTypeLabel ?? 'Category' }}</th>
                                         @endif
@@ -611,6 +620,7 @@
                                                     'client_unique_matter_ref_no' => $row->client_unique_matter_no ?? '',
                                                 ]);
                                                 $matterId = $row->matter_internal_id ?? '';
+                                                $matterLabel = $row->matter_title ?? $row->client_unique_matter_no ?? $row->other_reference ?? '—';
                                                 $clientName = trim(($row->first_name ?? '') . ' ' . ($row->last_name ?? ''));
                                             @endphp
                                             <tr style="cursor: pointer;" onclick="window.location.href='{{ $detailUrl }}'">
@@ -627,7 +637,7 @@
                                                     <span class="text-muted" title="Lead">{{ __('Lead') }}</span>
                                                     @endif
                                                 </td>
-                                                <td class="matter-col frozen-col frozen-col-2" onclick="event.stopPropagation();"><a href="{{ $detailUrl }}" class="art-link">{{ $row->matter_title ?? $row->client_unique_matter_no ?? $row->other_reference ?? '—' }}</a></td>
+                                                <td class="matter-col frozen-col frozen-col-2" onclick="event.stopPropagation();"><a href="{{ $detailUrl }}" class="art-link matter-col-label" title="{{ $matterLabel }}">{{ $matterLabel }}</a></td>
                                                 @if($showRefusedVisaType)
                                                 <td onclick="event.stopPropagation();" class="refused-visa-type-cell frozen-col frozen-col-3 frozen-col-last">
                                                     @if(! $isLead && ! empty($matterId))

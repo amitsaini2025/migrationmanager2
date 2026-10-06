@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Query\Expression;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -96,7 +97,7 @@ class VisaTypeSheetController extends Controller
 
             $rows->appends(array_merge($request->except('page'), ['tab' => $tab]));
 
-            $rows->getCollection()->transform(function ($row) use ($tab) {
+            $rows->getCollection()->transform(function ($row) use ($tab, $config) {
                 $row->is_lead = $row->is_lead ?? false;
                 // Checklist tab shows cost-assignment Our Cost (Block Fees); skip ledger payment totals.
                 if ($tab !== 'checklist') {
@@ -115,8 +116,21 @@ class VisaTypeSheetController extends Controller
                     $row->current_funds_held = $held;
                 }
 
+                if ($this->isSponsorSheet($config)) {
+                    $row->sponsor_type_label = $this->sponsorTypeLabel($row->matter_nick ?? null, $config);
+                    $row->sheet_urgency_date = $row->approval_end ?? null;
+                }
+                $urgencyDate = property_exists($row, 'sheet_urgency_date')
+                    ? $row->sheet_urgency_date
+                    : ($row->visa_expiry ?? null);
+                $row->visa_expiry_within_week = $this->visaExpiryIsWithinDays($urgencyDate, 7);
+
                 return $row;
             });
+
+            if (! $this->isSponsorSheet($config)) {
+                $this->attachRelatedEmployers($rows->getCollection());
+            }
         }
 
         $branches = Branch::orderBy('office_name')->get(['id', 'office_name']);
@@ -124,6 +138,7 @@ class VisaTypeSheetController extends Controller
         $currentStages = $this->getCurrentStagesForTab($tab, $config);
         $matterTypes = $this->getMatterTypesForVisaType($config);
         $activeFilterCount = $this->countActiveFilters($request, $config);
+        $showSponsorColumns = $this->isSponsorSheet($config);
         $showRefusedVisaType = $this->hasRefusedVisaTypeFeature($config);
         $refusedVisaTypeOptions = $showRefusedVisaType ? $this->getRefusedVisaTypeOptions($config) : [];
         $refusedVisaTypeLabel = $showRefusedVisaType ? $this->getRefusedVisaTypeLabel($config) : '';
@@ -142,6 +157,7 @@ class VisaTypeSheetController extends Controller
             'tabConfig',
             'visaType',
             'setupRequired',
+            'showSponsorColumns',
             'showRefusedVisaType',
             'refusedVisaTypeOptions',
             'refusedVisaTypeLabel',
@@ -431,8 +447,12 @@ class VisaTypeSheetController extends Controller
             DB::raw($checklistBlockFeeSelect),
             DB::raw('cm.created_at as sheet_row_created_at'),
             DB::raw('NULL as lead_ref_row_id'),
-            DB::raw('0 as is_lead')
+            DB::raw('0 as is_lead'),
+            'm.nick_name as matter_nick'
         );
+        if ($this->isSponsorSheet($config)) {
+            $clientQuery->addSelect($this->sponsorSheetSelects('cm.client_id', 'cm.id'));
+        }
         $this->applyFilters($clientQuery, $request, $config, 'cm');
         $clientRows = $clientQuery->get();
 
@@ -482,8 +502,13 @@ class VisaTypeSheetController extends Controller
                         DB::raw($leadBlockFeeSql),
                         'lr.created_at as sheet_row_created_at',
                         'lr.id as lead_ref_row_id',
-                        DB::raw('1 as is_lead')
+                        DB::raw('1 as is_lead'),
+                        'm.nick_name as matter_nick'
                     );
+                if ($this->isSponsorSheet($config)) {
+                    $leadQuery->addSelect($this->sponsorSheetSelects('lr.lead_id', 'NULL'));
+                }
+
                 // Person Assisting: restrict leads to those assigned to them
                 if ($paId = StaffClientVisibility::personAssistingStaffIdOrNull(Auth::user())) {
                     $leadQuery->where('a.user_id', $paId);
@@ -491,10 +516,16 @@ class VisaTypeSheetController extends Controller
 
                 if ($request->filled('search')) {
                     $search = '%'.strtolower($request->input('search')).'%';
-                    $leadQuery->where(function ($q) use ($search) {
+                    $leadQuery->where(function ($q) use ($search, $config) {
                         $q->whereRaw('LOWER(a.first_name) LIKE ?', [$search])
                             ->orWhereRaw('LOWER(a.last_name) LIKE ?', [$search])
                             ->orWhereRaw('LOWER(a.client_id) LIKE ?', [$search]);
+                        if ($this->isSponsorSheet($config) && Schema::hasTable('companies')) {
+                            $q->orWhereRaw(
+                                "EXISTS (SELECT 1 FROM companies c WHERE c.admin_id = a.id AND (LOWER(c.company_name) LIKE ? OR LOWER(COALESCE(c.trading_name, '')) LIKE ?))",
+                                [$search, $search]
+                            );
+                        }
                     });
                 }
                 if ($request->filled('matter_type')) {
@@ -547,10 +578,19 @@ class VisaTypeSheetController extends Controller
                 : (int) ($row->matter_internal_id ?? 0);
         };
         if ($request->filled('sort')) {
-            $all = $this->sortChecklistCollection($all, $request);
+            $all = $this->sortChecklistCollection($all, $request, $config);
         } else {
             // Newest-created first globally (matter created_at vs lead reference created_at).
-            $all = $all->sort(function ($a, $b) use ($sheetRowTimestamp, $checklistSortTieBreaker) {
+            $all = $all->sort(function ($a, $b) use ($sheetRowTimestamp, $checklistSortTieBreaker, $config) {
+                $aUrgent = $this->visaExpiryIsWithinDays($this->checklistUrgencyDate($a, $config), 3) ? 0 : 1;
+                $bUrgent = $this->visaExpiryIsWithinDays($this->checklistUrgencyDate($b, $config), 3) ? 0 : 1;
+                if ($aUrgent !== $bUrgent) {
+                    return $aUrgent <=> $bUrgent;
+                }
+                if ($aUrgent === 0) {
+                    return strcmp((string) $this->checklistUrgencyDate($a, $config), (string) $this->checklistUrgencyDate($b, $config));
+                }
+
                 $ta = $sheetRowTimestamp($a);
                 $tb = $sheetRowTimestamp($b);
                 if ($tb !== $ta) {
@@ -637,7 +677,8 @@ class VisaTypeSheetController extends Controller
                 cm.matter_status,
                 cm.deadline,
                 cm.{$checklistCol} as checklist_status,
-                m.title as matter_title
+                m.title as matter_title,
+                m.nick_name as matter_nick
             FROM client_matters cm
             INNER JOIN matters m ON m.id = cm.sel_matter_id
             WHERE {$matterCondition}
@@ -665,6 +706,7 @@ class VisaTypeSheetController extends Controller
                 DB::raw('admins."visaExpiry" as visa_expiry'),
                 'latest_matter.client_unique_matter_no',
                 'latest_matter.matter_title',
+                'latest_matter.matter_nick',
                 'latest_matter.deadline',
                 'latest_matter.matter_status',
                 'latest_matter.other_reference',
@@ -688,6 +730,10 @@ class VisaTypeSheetController extends Controller
             ->where('admins.is_archived', 0)
             ->whereIn('admins.type', ['client', 'lead'])
             ->whereNull('admins.is_deleted');
+
+        if ($this->isSponsorSheet($config)) {
+            $query->addSelect($this->sponsorSheetSelects('latest_matter.client_id', 'latest_matter.matter_id'));
+        }
 
         // Person Assisting role: restrict to matters where they are MA / PR / PA
         if ($paId = StaffClientVisibility::personAssistingStaffIdOrNull(Auth::user())) {
@@ -774,18 +820,35 @@ class VisaTypeSheetController extends Controller
         if ($request->filled('current_stage')) {
             $query->where('ws.name', $request->input('current_stage'));
         }
-        if ($request->filled('visa_expiry_from')) {
-            try {
-                $from = Carbon::createFromFormat('d/m/Y', $request->input('visa_expiry_from'))->startOfDay();
-                $query->whereRaw('admins."visaExpiry" >= ?', [$from]);
-            } catch (\Exception $e) {
+        if ($request->filled('visa_expiry_from') || $request->filled('visa_expiry_to')) {
+            $sponsorEndSql = null;
+            if ($this->isSponsorSheet($config) && $this->sponsorTablesReady()) {
+                $sponsorEndSql = $this->sponsorApprovalEndSql(
+                    $this->sponsorClientIdColumn($matterAlias),
+                    $this->sponsorMatterIdColumn($matterAlias)
+                );
             }
-        }
-        if ($request->filled('visa_expiry_to')) {
-            try {
-                $to = Carbon::createFromFormat('d/m/Y', $request->input('visa_expiry_to'))->endOfDay();
-                $query->whereRaw('admins."visaExpiry" <= ?', [$to]);
-            } catch (\Exception $e) {
+            if ($request->filled('visa_expiry_from')) {
+                try {
+                    $from = Carbon::createFromFormat('d/m/Y', $request->input('visa_expiry_from'))->startOfDay();
+                    if ($sponsorEndSql !== null) {
+                        $query->whereRaw("({$sponsorEndSql}) >= ?", [$from]);
+                    } else {
+                        $query->whereRaw('admins."visaExpiry" >= ?', [$from]);
+                    }
+                } catch (\Exception $e) {
+                }
+            }
+            if ($request->filled('visa_expiry_to')) {
+                try {
+                    $to = Carbon::createFromFormat('d/m/Y', $request->input('visa_expiry_to'))->endOfDay();
+                    if ($sponsorEndSql !== null) {
+                        $query->whereRaw("({$sponsorEndSql}) <= ?", [$to]);
+                    } else {
+                        $query->whereRaw('admins."visaExpiry" <= ?', [$to]);
+                    }
+                } catch (\Exception $e) {
+                }
             }
         }
         if ($request->filled('deadline_from')) {
@@ -815,7 +878,7 @@ class VisaTypeSheetController extends Controller
         }
         if ($request->filled('search')) {
             $search = '%'.strtolower($request->input('search')).'%';
-            $query->where(function ($q) use ($search, $refAlias, $matterAlias) {
+            $query->where(function ($q) use ($search, $refAlias, $matterAlias, $config) {
                 $q->whereRaw('LOWER(admins.first_name) LIKE ?', [$search])
                     ->orWhereRaw('LOWER(admins.last_name) LIKE ?', [$search])
                     ->orWhereRaw('LOWER(admins.client_id) LIKE ?', [$search])
@@ -824,6 +887,13 @@ class VisaTypeSheetController extends Controller
                     ->orWhereRaw("LOWER({$matterAlias}.other_reference) LIKE ?", [$search])
                     ->orWhereRaw("LOWER({$matterAlias}.department_reference) LIKE ?", [$search])
                     ->orWhereRaw("LOWER({$matterAlias}.client_unique_matter_no) LIKE ?", [$search]);
+                if ($this->isSponsorSheet($config) && Schema::hasTable('companies')) {
+                    $clientCol = $this->sponsorClientIdColumn($matterAlias);
+                    $q->orWhereRaw(
+                        "EXISTS (SELECT 1 FROM companies c WHERE c.admin_id = {$clientCol} AND (LOWER(c.company_name) LIKE ? OR LOWER(COALESCE(c.trading_name, '')) LIKE ?))",
+                        [$search, $search]
+                    );
+                }
             });
         }
 
@@ -837,6 +907,23 @@ class VisaTypeSheetController extends Controller
         // First priority: pinned items (is_pinned DESC) - pinned items on top
         $query->orderByRaw("CASE WHEN {$refAlias}.is_pinned = true THEN 1 ELSE 0 END DESC");
 
+        // Approvals or visas expiring within 3 days stay above the remaining sort.
+        $today = Carbon::today()->toDateString();
+        $withinThreeDays = Carbon::today()->addDays(3)->toDateString();
+        $sponsorSort = $this->isSponsorSheet($config) && $this->sponsorTablesReady();
+        $approvalEndSql = $sponsorSort
+            ? '('.$this->sponsorApprovalEndSql('latest_matter.client_id', 'latest_matter.matter_id').')'
+            : null;
+        $expiresWithinThreeDays = $sponsorSort
+            ? "{$approvalEndSql} IS NOT NULL AND {$approvalEndSql} BETWEEN ? AND ?"
+            : 'admins."visaExpiry" IS NOT NULL AND admins."visaExpiry"::text <> \'0000-00-00\' AND admins."visaExpiry" BETWEEN ? AND ?';
+        $query->orderByRaw("CASE WHEN {$expiresWithinThreeDays} THEN 0 ELSE 1 END ASC", [$today, $withinThreeDays]);
+        if ($sponsorSort) {
+            $query->orderByRaw("CASE WHEN {$expiresWithinThreeDays} THEN {$approvalEndSql} END ASC NULLS LAST", [$today, $withinThreeDays]);
+        } else {
+            $query->orderByRaw("CASE WHEN {$expiresWithinThreeDays} THEN admins.\"visaExpiry\" END ASC NULLS LAST", [$today, $withinThreeDays]);
+        }
+
         // Second priority: checklist hold status (only for checklist tab)
         if ($tab === 'checklist') {
             $query->orderByRaw("CASE WHEN COALESCE(latest_matter.checklist_status, 'active') = 'hold' THEN 1 ELSE 0 END ASC");
@@ -849,7 +936,10 @@ class VisaTypeSheetController extends Controller
         }
 
         if ($sortField) {
-            $this->applyExplicitSort($query, $sortField, $sortDirection);
+            $this->applyExplicitSort($query, $sortField, $sortDirection, $config);
+        } elseif ($sponsorSort) {
+            $query->orderByRaw('latest_matter.deadline ASC NULLS LAST');
+            $query->orderByRaw("{$approvalEndSql} ASC NULLS LAST");
         } else {
             // Default: nearest deadline, then visa expiry
             $query->orderByRaw('latest_matter.deadline ASC NULLS LAST');
@@ -863,9 +953,10 @@ class VisaTypeSheetController extends Controller
         return $query;
     }
 
-    protected function applyExplicitSort($query, string $sortField, string $sortDirection): void
+    protected function applyExplicitSort($query, string $sortField, string $sortDirection, array $config = []): void
     {
         $nullsLast = $sortDirection === 'asc' ? 'LAST' : 'FIRST';
+        $sponsorSort = $this->isSponsorSheet($config) && $this->sponsorTablesReady();
 
         switch ($sortField) {
             case 'crm_ref':
@@ -888,7 +979,18 @@ class VisaTypeSheetController extends Controller
             case 'matter':
                 $query->orderBy('latest_matter.matter_title', $sortDirection);
                 break;
+            case 'company':
+                if ($sponsorSort) {
+                    $companyId = $this->sponsorCompanyIdSql('latest_matter.client_id', 'latest_matter.matter_id');
+                    $query->orderByRaw("(SELECT c.company_name FROM companies c WHERE c.id = ({$companyId})) {$sortDirection} NULLS {$nullsLast}");
+                }
+                break;
             case 'visa_expiry':
+                if ($sponsorSort) {
+                    $approvalEndSql = '('.$this->sponsorApprovalEndSql('latest_matter.client_id', 'latest_matter.matter_id').')';
+                    $query->orderByRaw("{$approvalEndSql} {$sortDirection} NULLS {$nullsLast}");
+                    break;
+                }
                 $query->orderByRaw("CASE WHEN admins.\"visaExpiry\" IS NULL OR admins.\"visaExpiry\"::text = '0000-00-00' THEN 1 ELSE 0 END ASC");
                 $query->orderByRaw('admins."visaExpiry" '.$sortDirection.' NULLS '.$nullsLast);
                 break;
@@ -898,22 +1000,25 @@ class VisaTypeSheetController extends Controller
         }
     }
 
-    protected function sortChecklistCollection($collection, Request $request)
+    protected function sortChecklistCollection($collection, Request $request, array $config = [])
     {
         $sortField = $request->get('sort');
         $sortDirection = strtolower($request->get('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
         $multiplier = $sortDirection === 'asc' ? 1 : -1;
 
-        $valueFor = static function ($row, string $field) {
+        $sponsorSheet = $this->isSponsorSheet($config);
+        $valueFor = static function ($row, string $field) use ($sponsorSheet) {
             switch ($field) {
                 case 'crm_ref':
                     return strtolower((string) ($row->crm_ref ?? ''));
                 case 'name':
                     return strtolower(trim(($row->last_name ?? '').' '.($row->first_name ?? '')));
+                case 'company':
+                    return strtolower(trim((string) ($row->company_name ?? '')));
                 case 'dob':
                     return (string) ($row->dob ?? '');
                 case 'visa_expiry':
-                    $expiry = $row->visa_expiry ?? null;
+                    $expiry = $sponsorSheet ? ($row->approval_end ?? null) : ($row->visa_expiry ?? null);
 
                     return ($expiry && $expiry !== '0000-00-00') ? (string) $expiry : '9999-99-99';
                 case 'deadline':
@@ -929,11 +1034,20 @@ class VisaTypeSheetController extends Controller
             }
         };
 
-        return $collection->sort(function ($a, $b) use ($sortField, $multiplier, $valueFor) {
+        return $collection->sort(function ($a, $b) use ($sortField, $multiplier, $valueFor, $config) {
             $aPin = ! empty($a->is_pinned) ? 1 : 0;
             $bPin = ! empty($b->is_pinned) ? 1 : 0;
             if ($bPin !== $aPin) {
                 return $bPin <=> $aPin;
+            }
+
+            $aUrgent = $this->visaExpiryIsWithinDays($this->checklistUrgencyDate($a, $config), 3) ? 0 : 1;
+            $bUrgent = $this->visaExpiryIsWithinDays($this->checklistUrgencyDate($b, $config), 3) ? 0 : 1;
+            if ($aUrgent !== $bUrgent) {
+                return $aUrgent <=> $bUrgent;
+            }
+            if ($aUrgent === 0) {
+                return strcmp((string) $this->checklistUrgencyDate($a, $config), (string) $this->checklistUrgencyDate($b, $config));
             }
 
             $aHold = (($a->tr_checklist_status ?? 'active') === 'hold') ? 1 : 0;
@@ -950,6 +1064,200 @@ class VisaTypeSheetController extends Controller
 
             return ($va < $vb ? -1 : 1) * $multiplier;
         })->values();
+    }
+
+    protected function isSponsorSheet(array $config): bool
+    {
+        return ! empty($config['sponsor_sheet']);
+    }
+
+    protected function sponsorTablesReady(): bool
+    {
+        return Schema::hasTable('companies')
+            && Schema::hasTable('company_nominations')
+            && Schema::hasTable('company_sponsorships');
+    }
+
+    protected function sponsorTypeLabel(?string $nick, array $config): string
+    {
+        $key = strtolower(trim((string) $nick));
+        $labels = $config['sponsor_type_labels'] ?? [];
+        if ($key !== '' && isset($labels[$key])) {
+            return (string) $labels[$key];
+        }
+
+        return 'Sponsor';
+    }
+
+    protected function checklistUrgencyDate(object $row, array $config): mixed
+    {
+        if ($this->isSponsorSheet($config)) {
+            return $row->approval_end ?? null;
+        }
+
+        return $row->visa_expiry ?? null;
+    }
+
+    protected function sponsorClientIdColumn(string $matterAlias): string
+    {
+        return match ($matterAlias) {
+            'latest_matter' => 'latest_matter.client_id',
+            'cm' => 'cm.client_id',
+            default => 'admins.id',
+        };
+    }
+
+    protected function sponsorMatterIdColumn(string $matterAlias): string
+    {
+        return match ($matterAlias) {
+            'latest_matter' => 'latest_matter.matter_id',
+            'cm' => 'cm.id',
+            default => 'NULL',
+        };
+    }
+
+    protected function sponsorCompanyIdSql(string $clientIdColumn, string $matterIdColumn): string
+    {
+        return 'COALESCE('
+            ."(SELECT cn.company_id FROM company_nominations cn WHERE cn.client_matter_id = {$matterIdColumn} ORDER BY cn.sort_order ASC NULLS LAST, cn.id ASC LIMIT 1), "
+            ."(SELECT c.id FROM companies c WHERE c.admin_id = {$clientIdColumn} ORDER BY c.id ASC LIMIT 1)"
+            .')';
+    }
+
+    protected function sponsorApprovalEndSql(string $clientIdColumn, string $matterIdColumn): string
+    {
+        $companyId = '('.$this->sponsorCompanyIdSql($clientIdColumn, $matterIdColumn).')';
+
+        return 'COALESCE('
+            ."(SELECT cn.expiry_date FROM company_nominations cn WHERE cn.client_matter_id = {$matterIdColumn} ORDER BY cn.sort_order ASC NULLS LAST, cn.id ASC LIMIT 1), "
+            ."(SELECT cs.sponsorship_end_date FROM company_sponsorships cs WHERE cs.company_id = {$companyId} ORDER BY cs.sort_order ASC NULLS LAST, cs.id ASC LIMIT 1), "
+            ."(SELECT c.sponsorship_end_date FROM companies c WHERE c.id = {$companyId})"
+            .')';
+    }
+
+    /**
+     * @return list<Expression>
+     */
+    protected function sponsorSheetSelects(string $clientIdColumn, string $matterIdColumn): array
+    {
+        if (! $this->sponsorTablesReady()) {
+            return [
+                DB::raw('NULL::text AS company_name'),
+                DB::raw('NULL::text AS company_trading_name'),
+                DB::raw('NULL::text AS sponsor_trn'),
+                DB::raw('NULL::text AS sponsor_nominee'),
+                DB::raw('NULL::text AS sponsor_occupation'),
+                DB::raw('NULL::date AS approval_end'),
+                DB::raw('NULL::boolean AS lmt_required'),
+                DB::raw('NULL::boolean AS regional_sponsorship'),
+                DB::raw('NULL::boolean AS adverse_information'),
+            ];
+        }
+
+        $companyId = '('.$this->sponsorCompanyIdSql($clientIdColumn, $matterIdColumn).')';
+        $nomination = static function (string $column) use ($matterIdColumn): string {
+            return "SELECT {$column} FROM company_nominations cn WHERE cn.client_matter_id = {$matterIdColumn} ORDER BY cn.sort_order ASC NULLS LAST, cn.id ASC LIMIT 1";
+        };
+
+        $trn = 'COALESCE('
+            .'NULLIF(TRIM(('.$nomination('cn.trn').")), ''), "
+            ."NULLIF(TRIM((SELECT cs.trn FROM company_sponsorships cs WHERE cs.company_id = {$companyId} ORDER BY cs.sort_order ASC NULLS LAST, cs.id ASC LIMIT 1)), ''), "
+            ."NULLIF(TRIM((SELECT c.trn FROM companies c WHERE c.id = {$companyId})), '')"
+            .')';
+
+        $linkedNominee = 'COALESCE('
+            .'NULLIF(TRIM(('.$nomination('cn.nominated_person_name').")), ''), "
+            ."NULLIF(TRIM((SELECT CONCAT(COALESCE(na.first_name, ''), ' ', COALESCE(na.last_name, '')) FROM company_nominations cn INNER JOIN admins na ON na.id = cn.nominated_client_id WHERE cn.client_matter_id = {$matterIdColumn} ORDER BY cn.sort_order ASC NULLS LAST, cn.id ASC LIMIT 1)), '')"
+            .')';
+        $nominationCount = "(SELECT COUNT(*) FROM company_nominations cn WHERE cn.company_id = {$companyId})";
+        $onlyNominee = "NULLIF(TRIM((SELECT COALESCE(NULLIF(TRIM(cn.nominated_person_name), ''), NULLIF(TRIM(CONCAT(COALESCE(na.first_name, ''), ' ', COALESCE(na.last_name, ''))), '')) FROM company_nominations cn LEFT JOIN admins na ON na.id = cn.nominated_client_id WHERE cn.company_id = {$companyId} ORDER BY cn.sort_order ASC NULLS LAST, cn.id ASC LIMIT 1)), '')";
+        $nominee = 'CASE '
+            ."WHEN NULLIF({$linkedNominee}, '') IS NOT NULL THEN {$linkedNominee} "
+            ."WHEN {$nominationCount} = 1 THEN {$onlyNominee} "
+            ."WHEN {$nominationCount} > 1 THEN {$nominationCount}::text || ' nominations' "
+            .'ELSE NULL END';
+
+        $linkedOccupation = 'NULLIF(TRIM(CONCAT('
+            .'COALESCE(('.$nomination('cn.position_title')."), ''), "
+            .'CASE WHEN NULLIF(TRIM(COALESCE(('.$nomination('cn.anzsco_code')."), '')), '') IS NULL THEN '' "
+            ."ELSE CONCAT(' (', TRIM((".$nomination('cn.anzsco_code').")), ')') END"
+            .")), '')";
+        $onlyOccupation = "NULLIF(TRIM((SELECT CONCAT(COALESCE(cn.position_title, ''), CASE WHEN NULLIF(TRIM(COALESCE(cn.anzsco_code, '')), '') IS NULL THEN '' ELSE CONCAT(' (', TRIM(cn.anzsco_code), ')') END) FROM company_nominations cn WHERE cn.company_id = {$companyId} ORDER BY cn.sort_order ASC NULLS LAST, cn.id ASC LIMIT 1)), '')";
+        $occupation = 'CASE '
+            ."WHEN {$linkedOccupation} IS NOT NULL THEN {$linkedOccupation} "
+            ."WHEN {$nominationCount} = 1 THEN {$onlyOccupation} "
+            .'ELSE NULL END';
+
+        return [
+            DB::raw("(SELECT c.company_name FROM companies c WHERE c.id = {$companyId}) AS company_name"),
+            DB::raw("(SELECT NULLIF(TRIM(c.trading_name), '') FROM companies c WHERE c.id = {$companyId}) AS company_trading_name"),
+            DB::raw("({$trn}) AS sponsor_trn"),
+            DB::raw("({$nominee}) AS sponsor_nominee"),
+            DB::raw("({$occupation}) AS sponsor_occupation"),
+            DB::raw('('.$this->sponsorApprovalEndSql($clientIdColumn, $matterIdColumn).') AS approval_end'),
+            DB::raw("(SELECT c.lmt_required FROM companies c WHERE c.id = {$companyId}) AS lmt_required"),
+            DB::raw('COALESCE('
+                ."(SELECT cs.regional_sponsorship FROM company_sponsorships cs WHERE cs.company_id = {$companyId} ORDER BY cs.sort_order ASC NULLS LAST, cs.id ASC LIMIT 1), "
+                ."(SELECT c.regional_sponsorship FROM companies c WHERE c.id = {$companyId})"
+                .') AS regional_sponsorship'),
+            DB::raw('COALESCE('
+                ."(SELECT cs.adverse_information FROM company_sponsorships cs WHERE cs.company_id = {$companyId} ORDER BY cs.sort_order ASC NULLS LAST, cs.id ASC LIMIT 1), "
+                ."(SELECT c.adverse_information FROM companies c WHERE c.id = {$companyId})"
+                .') AS adverse_information'),
+        ];
+    }
+
+    /**
+     * True when a visa expiry date falls on today or within the next $days days.
+     */
+    protected function visaExpiryIsWithinDays(mixed $expiry, int $days): bool
+    {
+        if ($expiry === null || $expiry === '' || $expiry === '0000-00-00') {
+            return false;
+        }
+
+        try {
+            $date = Carbon::parse($expiry)->startOfDay();
+        } catch (\Exception $e) {
+            return false;
+        }
+
+        $today = Carbon::today();
+
+        return $date->greaterThanOrEqualTo($today) && $date->lessThanOrEqualTo($today->copy()->addDays($days));
+    }
+
+    /**
+     * Attach employer nominations for the clients on this page.
+     * One query for the page, keyed by the nominated client.
+     */
+    protected function attachRelatedEmployers(Collection $rows): void
+    {
+        if ($rows->isEmpty() || ! Schema::hasTable('company_nominations') || ! Schema::hasTable('companies')) {
+            return;
+        }
+
+        $clientIds = $rows->pluck('client_id')->filter()->unique()->values();
+        if ($clientIds->isEmpty()) {
+            return;
+        }
+
+        $grouped = DB::table('company_nominations as cn')
+            ->join('companies as c', 'c.id', '=', 'cn.company_id')
+            ->whereIn('cn.nominated_client_id', $clientIds->all())
+            ->orderBy('cn.sort_order')
+            ->orderByDesc('cn.id')
+            ->get([
+                'cn.nominated_client_id',
+                'c.company_name',
+                'c.admin_id',
+                'cn.status',
+            ])
+            ->groupBy('nominated_client_id');
+
+        foreach ($rows as $row) {
+            $row->related_employers = $grouped->get($row->client_id, collect())->values();
+        }
     }
 
     protected function countActiveFilters(Request $request, array $config = []): int

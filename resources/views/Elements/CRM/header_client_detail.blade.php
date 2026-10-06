@@ -107,6 +107,7 @@
                         $sheetIcon = match (true) {
                             $vt === 'eoi-roi' => 'fa-passport',
                             in_array($vt, ['art', 'art-matters'], true) => 'fa-gavel',
+                            $vt === 'employer' => 'fa-building',
                             default => 'fa-clipboard-list',
                         };
                     @endphp

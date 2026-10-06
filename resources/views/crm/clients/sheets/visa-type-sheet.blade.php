@@ -128,6 +128,27 @@
         background: #006a9a !important;
         text-decoration: none;
     }
+    .visa-sheet-page .visa-quick-branches {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-left: 4px;
+    }
+    .visa-sheet-page .visa-quick-branch {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        font-size: 13px;
+        color: #374151;
+        cursor: pointer;
+        user-select: none;
+    }
+    .visa-sheet-page .visa-quick-branch input {
+        margin: 0;
+        cursor: pointer;
+    }
     .visa-sheet-page .active-filters-badge {
         background: #ff6b6b;
         color: white;
@@ -341,13 +362,23 @@
         min-width: 110px;
     }
     .visa-sheet-page #visa-sheet-table .frozen-col,
-    .visa-sheet-page #visa-sheet-table .crm-ref-col,
-    .visa-sheet-page #visa-sheet-table .client-name-col {
+    .visa-sheet-page #visa-sheet-table .crm-ref-col {
         max-width: none;
         white-space: nowrap;
     }
     .visa-sheet-page #visa-sheet-table .client-name-col {
-        min-width: 140px;
+        width: 102px;
+        min-width: 102px;
+        max-width: 102px;
+        overflow: hidden;
+    }
+    .visa-sheet-page #visa-sheet-table .client-name-col .client-name-label {
+        display: block;
+        width: 92px;
+        max-width: 92px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     /* Sortable column headers */
@@ -382,6 +413,10 @@
         opacity: 1;
         color: #005792;
     }
+    .visa-sheet-page #visa-sheet-table tbody td.visa-expiry-within-week {
+        color: #dc2626 !important;
+        font-weight: 700 !important;
+    }
 </style>
 @endsection
 
@@ -390,9 +425,13 @@
     $sheetRoute = $config['route'] ?? 'clients.sheets.visa-type';
     $sheetRouteParams = ['visaType' => $visaType];
     $showRefusedVisaType = (bool) ($showRefusedVisaType ?? false);
-    $emptyColspan = $tab === 'checklist' ? 14 : ($tab === 'discontinue' ? 15 : 13);
+    $showSponsorColumns = (bool) ($showSponsorColumns ?? false);
+    $emptyColspan = $tab === 'checklist' ? 15 : ($tab === 'discontinue' ? 15 : 13);
     if ($showRefusedVisaType) {
         $emptyColspan++;
+    }
+    if ($showSponsorColumns) {
+        $emptyColspan += 4;
     }
     $currentSort = request('sort');
     $currentDirection = request('direction', 'asc');
@@ -403,9 +442,22 @@
 
         return $currentDirection === 'asc' ? 'asc' : 'desc';
     };
-    $freezeThirdIsRefused = $showRefusedVisaType;
-    $freezeThirdIsCrmRef = ! $freezeThirdIsRefused && $tab !== 'checklist';
-    $freezeThirdIsClientName = ! $freezeThirdIsRefused && $tab === 'checklist';
+    $freezeThirdIsCompany = $showSponsorColumns;
+    $freezeThirdIsRefused = $showRefusedVisaType && ! $freezeThirdIsCompany;
+    $freezeThirdIsCrmRef = ! $freezeThirdIsRefused && ! $freezeThirdIsCompany && $tab !== 'checklist';
+    $freezeThirdIsClientName = ! $freezeThirdIsRefused && ! $freezeThirdIsCompany && $tab === 'checklist';
+    $selectedBranches = array_map('strval', (array) request('branch', []));
+    $quickBranchNames = ['adelaide', 'melbourne'];
+    $quickBranches = collect($quickBranchNames)->map(function (string $name) use ($branches) {
+        return $branches->first(fn ($branch) => strtolower(trim((string) $branch->office_name)) === $name);
+    })->filter()->values();
+    $panelBranches = $branches->reject(function ($branch) use ($quickBranchNames) {
+        return in_array(strtolower(trim((string) $branch->office_name)), $quickBranchNames, true);
+    })->values();
+    $nonQuickBranchSelected = collect($selectedBranches)->contains(function (string $id) use ($quickBranches) {
+        return ! $quickBranches->contains(fn ($branch) => (string) $branch->id === $id);
+    });
+    $quickBranchIsOnlyFilter = $selectedBranches !== [] && ! $nonQuickBranchSelected && $activeFilterCount === 1;
 @endphp
 <div class="listing-container visa-sheet-page art-sheet-page">
     <section class="listing-section">
@@ -413,7 +465,7 @@
             <div class="card art-sheet-card">
                 <div class="art-sheet-sticky-header">
                     <div class="art-sheet-top-bar">
-                        <h4 class="art-sheet-title">@icon('fa-clipboard-list') {{ $config['title'] ?? 'Visa Sheet' }}</h4>
+                        <h4 class="art-sheet-title">@icon($showSponsorColumns ? 'fa-building' : 'fa-clipboard-list') {{ $config['title'] ?? 'Visa Sheet' }}</h4>
                         <a href="{{ route('clients.index') }}" class="btn btn-theme btn-theme-sm">
                             @icon('fa-arrow-left') Back to Clients
                         </a>
@@ -457,26 +509,44 @@
                                 <option value="{{ $opt }}" {{ $perPage == $opt ? 'selected' : '' }}>{{ $opt }}/page</option>
                             @endforeach
                         </select>
+                        @if($quickBranches->isNotEmpty())
+                        <div class="visa-quick-branches" id="visa-quick-branches" data-quick-branch-ids="{{ $quickBranches->pluck('id')->implode(',') }}">
+                            @foreach($quickBranches as $b)
+                                <label class="visa-quick-branch" for="quick_branch_{{ $b->id }}">
+                                    <input type="checkbox" class="visa-quick-branch-input" id="quick_branch_{{ $b->id }}" value="{{ $b->id }}"
+                                        {{ in_array((string) $b->id, $selectedBranches, true) ? 'checked' : '' }}>
+                                    {{ Str::title(strtolower($b->office_name)) }}
+                                </label>
+                            @endforeach
+                        </div>
+                        @endif
                     </div>
-                    <div class="filter_panel {{ $activeFilterCount > 0 ? 'show' : '' }}">
+                    <div class="filter_panel {{ ($activeFilterCount > 0 && ! $quickBranchIsOnlyFilter) ? 'show' : '' }}">
                         <form action="{{ route($sheetRoute, $sheetRouteParams) }}" method="get" id="visaFilterForm">
                             <input type="hidden" name="tab" value="{{ $tab }}">
                             <input type="hidden" name="per_page" value="{{ $perPage }}">
                             <input type="hidden" name="assignee" value="{{ request('assignee') }}">
+                            @foreach($quickBranches as $b)
+                                @if(in_array((string) $b->id, $selectedBranches, true))
+                                    <input type="hidden" name="branch[]" value="{{ $b->id }}">
+                                @endif
+                            @endforeach
+                            @if($panelBranches->isNotEmpty())
                             <div class="row mb-3">
                                 <div class="col-md-12">
                                     <label class="mb-2" style="font-weight: 600; color: #374151;">@icon('fa-building') Filter by Branch:</label>
                                     <div class="d-flex flex-wrap gap-3">
-                                        @foreach($branches as $b)
+                                        @foreach($panelBranches as $b)
                                             <div class="form-check">
                                                 <input class="form-check-input" type="checkbox" name="branch[]" value="{{ $b->id }}" id="branch_{{ $b->id }}"
-                                                    {{ in_array($b->id, (array)request('branch', [])) ? 'checked' : '' }}>
+                                                    {{ in_array((string) $b->id, $selectedBranches, true) ? 'checked' : '' }}>
                                                 <label class="form-check-label" for="branch_{{ $b->id }}" style="cursor: pointer;">{{ $b->office_name }}</label>
                                             </div>
                                         @endforeach
                                     </div>
                                 </div>
                             </div>
+                            @endif
                             <div class="row">
                                 <div class="col-md-2">
                                     <label>Matter Type</label>
@@ -508,11 +578,11 @@
                                     </select>
                                 </div>
                                 <div class="col-md-2">
-                                    <label>Visa Expiry From</label>
+                                    <label>{{ $showSponsorColumns ? 'Approval End From' : 'Visa Expiry From' }}</label>
                                     <input type="text" name="visa_expiry_from" class="form-control datepicker" placeholder="dd/mm/yyyy" value="{{ request('visa_expiry_from') }}" autocomplete="off">
                                 </div>
                                 <div class="col-md-2">
-                                    <label>Visa Expiry To</label>
+                                    <label>{{ $showSponsorColumns ? 'Approval End To' : 'Visa Expiry To' }}</label>
                                     <input type="text" name="visa_expiry_to" class="form-control datepicker" placeholder="dd/mm/yyyy" value="{{ request('visa_expiry_to') }}" autocomplete="off">
                                 </div>
                                 <div class="col-md-2">
@@ -527,7 +597,7 @@
                             <div class="row mt-2">
                                 <div class="col-md-4">
                                     <label>Search</label>
-                                    <input type="text" name="search" class="form-control" placeholder="Name, CRM Ref, Matter ref..." value="{{ request('search') }}">
+                                    <input type="text" name="search" class="form-control" placeholder="{{ $showSponsorColumns ? 'Company, name, CRM ref...' : 'Name, CRM Ref, Matter ref...' }}" value="{{ request('search') }}">
                                 </div>
                                 <div class="col-md-2 d-flex align-items-end">
                                     <button type="submit" class="btn btn-primary mr-2">Apply Filters</button>
@@ -557,14 +627,20 @@
                                     <tr>
                                         <th class="pin-cell frozen-col frozen-col-1" title="Click star to pin row to top">@icon('fa-star')</th>
                                         <th class="matter-col frozen-col frozen-col-2 sortable {{ $sortThClass('matter') }}" data-sort="matter"><span class="matter-col-label">Matter / Course</span></th>
+                                        @if($showSponsorColumns)
+                                        <th class="client-name-col frozen-col frozen-col-3 frozen-col-last sortable {{ $sortThClass('company') }}" data-sort="company"><span class="client-name-label">Company</span></th>
+                                        <th>Type</th>
+                                        @endif
                                         @if($showRefusedVisaType)
                                         <th class="frozen-col frozen-col-3 frozen-col-last">{{ $refusedVisaTypeLabel ?? 'Category' }}</th>
                                         @endif
                                         @if($tab !== 'checklist')
                                         <th class="crm-ref-col {{ $freezeThirdIsCrmRef ? 'frozen-col frozen-col-3 frozen-col-last' : '' }} sortable {{ $sortThClass('crm_ref') }}" data-sort="crm_ref">CRM Ref</th>
                                         @endif
-                                        <th class="client-name-col {{ $freezeThirdIsClientName ? 'frozen-col frozen-col-3 frozen-col-last' : '' }} sortable {{ $sortThClass('name') }}" data-sort="name">Client Name</th>
-                                        <th class="sortable {{ $sortThClass('dob') }}" data-sort="dob">DOB</th>
+                                        <th class="client-name-col {{ $freezeThirdIsClientName ? 'frozen-col frozen-col-3 frozen-col-last' : '' }} sortable {{ $sortThClass('name') }}" data-sort="name"><span class="client-name-label">Client Name</span></th>
+                                        @if($tab !== 'checklist')
+                                        <th class="sortable {{ $sortThClass('stage') }}" data-sort="stage">Current Stage</th>
+                                        @endif
                                         @if($tab === 'checklist')
                                         <th class="text-nowrap visa-sheet-col-payment-request" title="Payment Request">Payment Request</th>
                                         @elseif($tab === 'ongoing')
@@ -576,17 +652,23 @@
                                         <th>Branch</th>
                                         @endif
                                         <th class="sortable {{ $sortThClass('assignee') }}" data-sort="assignee">Migration Agent</th>
-                                        @if($tab !== 'checklist')
-                                        <th>Status</th>
-                                        @endif
+                                        @if($showSponsorColumns)
+                                        <th>TRN</th>
+                                        <th>Nominee</th>
+                                        <th>Occupation</th>
+                                        <th class="sortable {{ $sortThClass('visa_expiry') }}" data-sort="visa_expiry">Approval End</th>
+                                        <th>LMT</th>
+                                        @else
                                         <th class="sortable {{ $sortThClass('visa_expiry') }}" data-sort="visa_expiry">Visa Expiry</th>
-                                        <th class="sortable {{ $sortThClass('deadline') }}" data-sort="deadline">Deadline</th>
-                                        @if($tab !== 'checklist')
-                                        <th class="sortable {{ $sortThClass('stage') }}" data-sort="stage">Current Stage</th>
                                         @endif
+                                        <th class="sortable {{ $sortThClass('deadline') }}" data-sort="deadline">Deadline</th>
                                         @if($tab === 'discontinue')
                                         <th>Outcome</th>
                                         <th>Decision Note</th>
+                                        @endif
+                                        @if(! $showSponsorColumns)
+                                        <th>Related Employer</th>
+                                        <th>File Status</th>
                                         @endif
                                         <th>Comment</th>
                                         @if($tab === 'checklist')
@@ -638,6 +720,19 @@
                                                     @endif
                                                 </td>
                                                 <td class="matter-col frozen-col frozen-col-2" onclick="event.stopPropagation();"><a href="{{ $detailUrl }}" class="art-link matter-col-label" title="{{ $matterLabel }}">{{ $matterLabel }}</a></td>
+                                                @if($showSponsorColumns)
+                                                @php
+                                                    $companyName = trim((string) ($row->company_name ?? ''));
+                                                    $tradingName = trim((string) ($row->company_trading_name ?? ''));
+                                                @endphp
+                                                <td class="client-name-col frozen-col frozen-col-3 frozen-col-last" onclick="event.stopPropagation();">
+                                                    <a href="{{ $detailUrl }}" class="art-link client-name-label" title="{{ $companyName !== '' ? $companyName : '—' }}">{{ $companyName !== '' ? $companyName : '—' }}</a>
+                                                    @if($tradingName !== '' && strcasecmp($tradingName, $companyName) !== 0)
+                                                        <div class="text-muted" style="font-size: 12px;">{{ $tradingName }}</div>
+                                                    @endif
+                                                </td>
+                                                <td>{{ $row->sponsor_type_label ?? '—' }}</td>
+                                                @endif
                                                 @if($showRefusedVisaType)
                                                 <td onclick="event.stopPropagation();" class="refused-visa-type-cell frozen-col frozen-col-3 frozen-col-last">
                                                     @if(! $isLead && ! empty($matterId))
@@ -665,8 +760,10 @@
                                                 @if($tab !== 'checklist')
                                                 <td class="crm-ref-col {{ $freezeThirdIsCrmRef ? 'frozen-col frozen-col-3 frozen-col-last' : '' }}" onclick="event.stopPropagation();"><a href="{{ $detailUrl }}" class="art-link">{{ $row->crm_ref ?? '—' }}</a></td>
                                                 @endif
-                                                <td class="client-name-col {{ $freezeThirdIsClientName ? 'frozen-col frozen-col-3 frozen-col-last' : '' }}" onclick="event.stopPropagation();"><a href="{{ $detailUrl }}" class="art-link">{{ trim(($row->first_name ?? '') . ' ' . ($row->last_name ?? '')) ?: '—' }}</a></td>
-                                                <td>{{ $row->dob ? \Carbon\Carbon::parse($row->dob)->format('d/m/Y') : '—' }}</td>
+                                                <td class="client-name-col {{ $freezeThirdIsClientName ? 'frozen-col frozen-col-3 frozen-col-last' : '' }}" onclick="event.stopPropagation();"><a href="{{ $detailUrl }}" class="art-link client-name-label" title="{{ $clientName !== '' ? $clientName : '—' }}">{{ $clientName !== '' ? $clientName : '—' }}</a></td>
+                                                @if($tab !== 'checklist')
+                                                <td>{{ $row->application_stage ?? '—' }}</td>
+                                                @endif
                                                 <td title="{{ $tab === 'checklist' ? 'Our Cost (Block Fees)' : ($tab === 'ongoing' ? 'Current Funds Held (Account → Client Funds Ledger)' : '') }}">
                                                     @if($tab === 'checklist')
                                                         @if(isset($row->checklist_block_fee) && $row->checklist_block_fee !== null && $row->checklist_block_fee !== '')
@@ -694,17 +791,57 @@
                                                 <td>{{ $row->branch_name ?? '—' }}</td>
                                                 @endif
                                                 <td>{{ trim($row->assignee_name ?? '') ?: '—' }}</td>
-                                                @if($tab !== 'checklist')
-                                                    @include('crm.clients.sheets.partials.checklist-status-cell')
+                                                @if($showSponsorColumns)
+                                                <td>{{ trim((string) ($row->sponsor_trn ?? '')) !== '' ? $row->sponsor_trn : '—' }}</td>
+                                                <td>{{ trim((string) ($row->sponsor_nominee ?? '')) !== '' ? $row->sponsor_nominee : '—' }}</td>
+                                                <td>{{ trim((string) ($row->sponsor_occupation ?? '')) !== '' ? $row->sponsor_occupation : '—' }}</td>
+                                                <td class="{{ ! empty($row->visa_expiry_within_week) ? 'visa-expiry-within-week' : '' }}" @if(! empty($row->visa_expiry_within_week)) title="Approval ends within 7 days" @endif>{{ ! empty($row->approval_end) && $row->approval_end != '0000-00-00' ? \Carbon\Carbon::parse($row->approval_end)->format('d/m/Y') : '—' }}</td>
+                                                <td>
+                                                    @php
+                                                        $lmt = $row->lmt_required ?? null;
+                                                        $lmtYes = $lmt === true || $lmt === 1 || $lmt === '1' || $lmt === 't' || $lmt === 'true';
+                                                        $lmtNo = $lmt === false || $lmt === 0 || $lmt === '0' || $lmt === 'f' || $lmt === 'false';
+                                                        $regional = ($row->regional_sponsorship ?? null) === true || ($row->regional_sponsorship ?? null) === 1 || ($row->regional_sponsorship ?? null) === '1' || ($row->regional_sponsorship ?? null) === 't';
+                                                        $adverse = ($row->adverse_information ?? null) === true || ($row->adverse_information ?? null) === 1 || ($row->adverse_information ?? null) === '1' || ($row->adverse_information ?? null) === 't';
+                                                    @endphp
+                                                    {{ $lmtYes ? 'Yes' : ($lmtNo ? 'No' : '—') }}
+                                                    @if($regional)<div class="text-muted" style="font-size: 12px;">Regional</div>@endif
+                                                    @if($adverse)<div class="text-muted" style="font-size: 12px;">Adverse info</div>@endif
+                                                </td>
+                                                @else
+                                                <td class="{{ ! empty($row->visa_expiry_within_week) ? 'visa-expiry-within-week' : '' }}" @if(! empty($row->visa_expiry_within_week)) title="Visa expires within 7 days" @endif>{{ isset($row->visa_expiry) && $row->visa_expiry && $row->visa_expiry != '0000-00-00' ? \Carbon\Carbon::parse($row->visa_expiry)->format('d/m/Y') : '—' }}</td>
                                                 @endif
-                                                <td>{{ isset($row->visa_expiry) && $row->visa_expiry && $row->visa_expiry != '0000-00-00' ? \Carbon\Carbon::parse($row->visa_expiry)->format('d/m/Y') : '—' }}</td>
                                                 <td>{{ $row->deadline ? \Carbon\Carbon::parse($row->deadline)->format('d/m/Y') : '—' }}</td>
-                                                @if($tab !== 'checklist')
-                                                <td>{{ $row->application_stage ?? '—' }}</td>
-                                                @endif
                                                 @if($tab === 'discontinue')
                                                 <td>{{ $row->decision_outcome ?? '—' }}</td>
                                                 <td class="comment-cell" title="{{ $row->decision_note ?? '' }}">{{ Str::limit($row->decision_note ?? '—', 50) }}</td>
+                                                @endif
+                                                @if(! $showSponsorColumns)
+                                                <td onclick="event.stopPropagation();">
+                                                    @forelse(($row->related_employers ?? []) as $employer)
+                                                        @php
+                                                            $employerName = trim((string) ($employer->company_name ?? ''));
+                                                            $employerAdminId = (int) ($employer->admin_id ?? 0);
+                                                        @endphp
+                                                        @if($employerAdminId > 0)
+                                                            <a href="{{ route('clients.detail', ['client_id' => base64_encode(convert_uuencode((string) $employerAdminId))]) }}" class="art-link">{{ $employerName !== '' ? $employerName : 'Company' }}</a>
+                                                        @else
+                                                            {{ $employerName !== '' ? $employerName : '—' }}
+                                                        @endif
+                                                        @if(! $loop->last)<br>@endif
+                                                    @empty
+                                                        —
+                                                    @endforelse
+                                                </td>
+                                                <td>
+                                                    @forelse(($row->related_employers ?? []) as $employer)
+                                                        @php $employerFileStatus = trim((string) ($employer->status ?? '')); @endphp
+                                                        {{ $employerFileStatus !== '' ? $employerFileStatus : '—' }}
+                                                        @if(! $loop->last)<br>@endif
+                                                    @empty
+                                                        —
+                                                    @endforelse
+                                                </td>
                                                 @endif
                                                 @php
                                                     $commentText = trim((string) ($row->sheet_comment_text ?? ''));
@@ -838,6 +975,37 @@ jQuery(document).ready(function($) {
     $('#visa_per_page').on('change', function() {
         var u = new URL(window.location.href);
         u.searchParams.set('per_page', $(this).val());
+        u.searchParams.delete('page');
+        window.location.href = u.toString();
+    });
+    function isBranchParam(key) {
+        return key === 'branch' || key === 'branch[]' || /^branch\[\d+\]$/.test(key);
+    }
+    $('.visa-quick-branch-input').on('change', function() {
+        var u = new URL(window.location.href);
+        var quickIds = ($('#visa-quick-branches').attr('data-quick-branch-ids') || '').split(',').filter(Boolean);
+        var kept = [];
+        u.searchParams.forEach(function(value, key) {
+            if (isBranchParam(key) && quickIds.indexOf(String(value)) === -1) {
+                kept.push(String(value));
+            }
+        });
+        var branchKeys = [];
+        u.searchParams.forEach(function(value, key) {
+            if (isBranchParam(key)) {
+                branchKeys.push(key);
+            }
+        });
+        branchKeys.forEach(function(key) {
+            u.searchParams.delete(key);
+        });
+        var selected = [];
+        $('.visa-quick-branch-input:checked').each(function() {
+            selected.push(String($(this).val()));
+        });
+        kept.concat(selected).forEach(function(id) {
+            u.searchParams.append('branch[]', id);
+        });
         u.searchParams.delete('page');
         window.location.href = u.toString();
     });

@@ -346,7 +346,7 @@ class ClientMatter extends Model
     }
 
     /**
-     * Get the visa sheet type for this matter (tr, art-matters, visitor, student, pr, employer-sponsored, partner, parents).
+     * Get the visa sheet type for this matter (tr, art-matters, visitor, student, pr, employer-sponsored, employer, partner, parents).
      * Determined by matching matter nick_name / title against config/sheets/visa_types.php.
      */
     public function getVisaSheetType(): ?string

@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\ClientMatterReference;
+
 /**
  * Visa type sheet configuration.
  * Add new visa types here to enable additional sheets (Visitor, Student, PR, etc.).
@@ -21,7 +23,7 @@ return [
         'reference_type' => 'tr',
         'lead_reference_table' => 'lead_matter_references',
         'lead_reminders_table' => 'lead_reminders',
-        'reference_model' => \App\Models\ClientMatterReference::class,
+        'reference_model' => ClientMatterReference::class,
         'reference_alias' => 'tr_ref',
         'reminders_table' => 'matter_reminders',
         'checklist_status_column' => 'tr_checklist_status',
@@ -65,7 +67,7 @@ return [
         'reference_type' => 'art-matters',
         'lead_reference_table' => 'lead_matter_references',
         'lead_reminders_table' => 'lead_reminders',
-        'reference_model' => \App\Models\ClientMatterReference::class,
+        'reference_model' => ClientMatterReference::class,
         'reference_alias' => 'art_ref',
         'reminders_table' => 'matter_reminders',
         'checklist_status_column' => 'art_checklist_status',
@@ -124,7 +126,7 @@ return [
         'reference_type' => 'visitor',
         'lead_reference_table' => 'lead_matter_references',
         'lead_reminders_table' => 'lead_reminders',
-        'reference_model' => \App\Models\ClientMatterReference::class,
+        'reference_model' => ClientMatterReference::class,
         'reference_alias' => 'visitor_ref',
         'reminders_table' => 'matter_reminders',
         'checklist_status_column' => 'visitor_checklist_status',
@@ -168,7 +170,7 @@ return [
         'reference_type' => 'student',
         'lead_reference_table' => 'lead_matter_references',
         'lead_reminders_table' => 'lead_reminders',
-        'reference_model' => \App\Models\ClientMatterReference::class,
+        'reference_model' => ClientMatterReference::class,
         'reference_alias' => 'student_ref',
         'reminders_table' => 'matter_reminders',
         'checklist_status_column' => 'student_checklist_status',
@@ -214,7 +216,7 @@ return [
         'reference_type' => 'pr',
         'lead_reference_table' => 'lead_matter_references',
         'lead_reminders_table' => 'lead_reminders',
-        'reference_model' => \App\Models\ClientMatterReference::class,
+        'reference_model' => ClientMatterReference::class,
         'reference_alias' => 'pr_ref',
         'reminders_table' => 'matter_reminders',
         'checklist_status_column' => 'pr_checklist_status',
@@ -245,7 +247,7 @@ return [
         'reference_type' => 'employer-sponsored',
         'lead_reference_table' => 'lead_matter_references',
         'lead_reminders_table' => 'lead_reminders',
-        'reference_model' => \App\Models\ClientMatterReference::class,
+        'reference_model' => ClientMatterReference::class,
         'reference_alias' => 'emp_ref',
         'reminders_table' => 'matter_reminders',
         'checklist_status_column' => 'employer_sponsored_checklist_status',
@@ -269,6 +271,47 @@ return [
         'checklist_convert_to_client_stage' => 'Cost Agreement, form 956 and First email Sent',
     ],
 
+    'employer' => [
+        'title' => 'Employers / Sponsors Sheet',
+        'route' => 'clients.sheets.visa-type',
+        'sponsor_sheet' => true,
+        'reference_table' => 'client_matter_references',
+        'reference_type' => 'employer',
+        'lead_reference_table' => 'lead_matter_references',
+        'lead_reminders_table' => 'lead_reminders',
+        'reference_model' => ClientMatterReference::class,
+        'reference_alias' => 'sponsor_ref',
+        'reminders_table' => 'matter_reminders',
+        'checklist_status_column' => 'employer_checklist_status',
+        'session_prefix' => 'employer_sheet_',
+
+        'matter_nick_names' => ['SBS', 'DAMA', 'TAS', 'DE', 'SESR', 'SIDCoreSkills', 'TN 407'],
+        'matter_title_patterns' => [],
+        'sponsor_type_labels' => [
+            'sbs' => 'SBS',
+            'tas' => 'TAS',
+            'dama' => 'Labour agreement',
+            'sidcoreskills' => 'Nomination — Core Skills',
+            'de' => 'Nomination — ENS',
+            'sesr' => 'Nomination — Regional',
+            'tn 407' => 'Nomination — 407',
+        ],
+
+        'ongoing_stages' => [
+            'Cost Agreement, form 956 and First email Sent',
+            'Cost Agreement, form 956 Received',
+            'Pending documents and payment requested',
+            'Documents Completed and Preparing for Lodgement',
+            'Verification: Payment, Service Agreement, Forms',
+            'Ready for Lodgement/Draft Application sent for confirmation',
+            'Draft Application confirmation received',
+        ],
+        'lodged_stages' => ['Application Lodged', 'Immi Request Received'],
+        'checklist_early_stages' => ['Checklist'],
+        'discontinue_stages' => ['Decision Received', 'Ready to Close', 'File Closed', 'Withdrawn', 'Refund', 'Discontinued'],
+        'checklist_convert_to_client_stage' => 'Cost Agreement, form 956 and First email Sent',
+    ],
+
     'partner' => [
         'title' => 'Partner Visa Sheet',
         'route' => 'clients.sheets.visa-type',
@@ -276,7 +319,7 @@ return [
         'reference_type' => 'partner',
         'lead_reference_table' => 'lead_matter_references',
         'lead_reminders_table' => 'lead_reminders',
-        'reference_model' => \App\Models\ClientMatterReference::class,
+        'reference_model' => ClientMatterReference::class,
         'reference_alias' => 'partner_ref',
         'reminders_table' => 'matter_reminders',
         'checklist_status_column' => 'partner_checklist_status',
@@ -307,7 +350,7 @@ return [
         'reference_type' => 'parents',
         'lead_reference_table' => 'lead_matter_references',
         'lead_reminders_table' => 'lead_reminders',
-        'reference_model' => \App\Models\ClientMatterReference::class,
+        'reference_model' => ClientMatterReference::class,
         'reference_alias' => 'parents_ref',
         'reminders_table' => 'matter_reminders',
         'checklist_status_column' => 'parents_checklist_status',

@@ -17,6 +17,8 @@ class DashboardWorkloadMarkupTest extends TestCase
 
         $strip = file_get_contents(resource_path('views/components/dashboard/workload-strip.blade.php'));
         $this->assertNotFalse($strip);
+        $this->assertStringContainsString('data-dash-section="workload"', $strip);
+        $this->assertStringContainsString('data-dash-toggle', $strip);
         $this->assertStringContainsString('workload-queue-bar', $strip);
         $this->assertStringContainsString('workload-chip--queue', $strip);
         $this->assertStringContainsString('workload-chip--done', $strip);
@@ -43,6 +45,8 @@ class DashboardWorkloadMarkupTest extends TestCase
         $this->assertStringContainsString('x-dashboard.file-time-auto', $myDay);
         $this->assertStringContainsString('x-dashboard.files-opened', $myDay);
         $this->assertStringContainsString('x-dashboard.activity-counts', $myDay);
+        $this->assertStringContainsString('data-dash-section="my-day"', $myDay);
+        $this->assertStringContainsString('id="myDayBody"', $myDay);
         $this->assertStringContainsString('data-deferred="1"', $myDay);
         $this->assertStringContainsString('my-day--loading', $myDay);
         $this->assertStringContainsString(':deferred="$deferred"', $myDay);
@@ -72,6 +76,7 @@ class DashboardWorkloadMarkupTest extends TestCase
         $this->assertStringContainsString('myDayCountChecklists', $activityCounts);
         $this->assertStringContainsString('myDayCountDocuments', $activityCounts);
         $this->assertStringContainsString('myDayCountActions', $activityCounts);
+        $this->assertStringContainsString('data-dash-section="activity-counts"', $activityCounts);
         $this->assertStringContainsString('myDayCountSms', $activityCounts);
         $this->assertLessThan(
             strpos($activityCounts, 'myDayCountChecklists'),
@@ -81,6 +86,7 @@ class DashboardWorkloadMarkupTest extends TestCase
         $fileTimeAuto = file_get_contents(resource_path('views/components/dashboard/file-time-auto.blade.php'));
         $this->assertNotFalse($fileTimeAuto);
         $this->assertStringContainsString("row['url']", $fileTimeAuto);
+        $this->assertStringContainsString('data-dash-section="auto-time"', $fileTimeAuto);
         $this->assertStringContainsString('myDayAutoCount', $fileTimeAuto);
         $this->assertStringContainsString("deferred ? '…'", $fileTimeAuto);
         $this->assertStringContainsString('Loading auto file time', $fileTimeAuto);
@@ -95,6 +101,7 @@ class DashboardWorkloadMarkupTest extends TestCase
         $this->assertStringContainsString('my-day-mins-chip', $crmEvents);
         $this->assertStringContainsString("item['minutes']", $crmEvents);
         $this->assertStringContainsString("item['url']", $crmEvents);
+        $this->assertStringContainsString('data-dash-section="crm"', $crmEvents);
         $this->assertStringContainsString('my-day-crm-show-more', $crmEvents);
         $this->assertStringContainsString("item['body']", $crmEvents);
         $this->assertStringContainsString('is-collapsed', $crmEvents);

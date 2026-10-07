@@ -591,6 +591,12 @@ class VisaTypeSheetController extends Controller
                     return strcmp((string) $this->checklistUrgencyDate($a, $config), (string) $this->checklistUrgencyDate($b, $config));
                 }
 
+                $aPin = ! empty($a->is_pinned) ? 1 : 0;
+                $bPin = ! empty($b->is_pinned) ? 1 : 0;
+                if ($bPin !== $aPin) {
+                    return $bPin <=> $aPin;
+                }
+
                 $ta = $sheetRowTimestamp($a);
                 $tb = $sheetRowTimestamp($b);
                 if ($tb !== $ta) {
@@ -1462,8 +1468,8 @@ class VisaTypeSheetController extends Controller
             ->where('cm.id', $matterInternalId)
             ->first(['cm.client_unique_matter_no', 'm.title']);
 
-        $matterRef = trim((string) ($matter->client_unique_matter_no ?? ''));
-        $matterTitle = trim((string) ($matter->title ?? ''));
+        $matterRef = trim((string) ($matter?->client_unique_matter_no ?? ''));
+        $matterTitle = trim((string) ($matter?->title ?? ''));
         $fileLabel = $matterRef !== '' ? $matterRef : ($matterTitle !== '' ? $matterTitle : 'file');
 
         $staffName = $this->currentStaffDisplayName();
@@ -1503,6 +1509,10 @@ class VisaTypeSheetController extends Controller
     protected function currentStaffDisplayName(): string
     {
         $staff = Auth::user();
+        if ($staff === null) {
+            return 'Staff';
+        }
+
         $staffName = trim(($staff->first_name ?? '').' '.($staff->last_name ?? ''));
 
         return $staffName !== '' ? $staffName : ($staff->email ?? 'Staff');

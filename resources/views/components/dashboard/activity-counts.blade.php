@@ -11,10 +11,15 @@
     $sms = $placeholder ?? (int) ($counts['sms'] ?? 0);
 @endphp
 
-<section class="my-day-card my-day-activity-counts" id="myDayActivityCounts" aria-label="No. of activities">
-    <h3>No. of activities</h3>
-    <p class="my-day-lead">Today’s totals for this staff member. Not limited by the list above.</p>
-    <div class="my-day-kpis my-day-activity-kpis">
+<section class="my-day-card my-day-activity-counts" id="myDayActivityCounts" aria-label="No. of activities" data-dash-section="activity-counts">
+    <button type="button" class="dash-section-toggle" data-dash-toggle aria-expanded="true" aria-controls="myDayActivityBody">
+        <span class="dash-section-chevron" aria-hidden="true"></span>
+        <span class="dash-section-toggle-text">
+            <h3>No. of activities</h3>
+            <p class="my-day-lead">Today’s totals for this staff member. Not limited by the list above.</p>
+        </span>
+    </button>
+    <div class="my-day-kpis my-day-activity-kpis dash-section-body" id="myDayActivityBody" data-dash-body>
         <div class="my-day-kpi">
             <div class="l">Checklists sent</div>
             <div class="n" id="myDayCountChecklists">{{ $checklists }}</div>

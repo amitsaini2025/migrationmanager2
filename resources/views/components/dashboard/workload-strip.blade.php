@@ -19,13 +19,16 @@
     $pendingOther = (int) ($pending['other'] ?? 0);
 @endphp
 
-<section class="workload-strip workload-strip--compact" aria-label="My workload today">
+<section class="workload-strip workload-strip--compact" aria-label="My workload today" data-dash-section="workload">
     <div class="workload-strip-header">
-        <h2>My Workload — Today</h2>
+        <button type="button" class="dash-section-toggle" data-dash-toggle aria-expanded="true" aria-controls="workloadStripBody">
+            <span class="dash-section-chevron" aria-hidden="true"></span>
+            <h2>My Workload — Today</h2>
+        </button>
         <span class="workload-strip-date">{{ $workload['date_label'] ?? '' }} ({{ $workload['timezone'] ?? config('app.timezone') }})</span>
     </div>
 
-    <div class="workload-queue-bar">
+    <div class="workload-queue-bar" id="workloadStripBody" data-dash-body>
         {{-- Queue first: only actionable tally --}}
         <div
             class="workload-chip workload-chip--queue"

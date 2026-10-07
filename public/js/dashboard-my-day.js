@@ -1362,3 +1362,66 @@
         refreshSummary();
     }
 })();
+
+(function () {
+    'use strict';
+
+    var storageKey = 'mm.dashboard.collapsedSections';
+
+    function readState() {
+        try {
+            var parsed = JSON.parse(window.localStorage.getItem(storageKey) || '{}');
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function writeState(state) {
+        try {
+            window.localStorage.setItem(storageKey, JSON.stringify(state));
+        } catch (e) {
+            // Private mode can block storage; the section still toggles for this page view.
+        }
+    }
+
+    function sectionParts(section) {
+        return {
+            toggle: section.querySelector(':scope > [data-dash-toggle], :scope > .my-day-head > [data-dash-toggle], :scope > .workload-strip-header > [data-dash-toggle]'),
+            body: section.querySelector(':scope > [data-dash-body]')
+        };
+    }
+
+    function setCollapsed(section, collapsed) {
+        var parts = sectionParts(section);
+        section.classList.toggle('is-collapsed', collapsed);
+        if (parts.body) {
+            parts.body.hidden = collapsed;
+        }
+        if (parts.toggle) {
+            parts.toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        }
+    }
+
+    document.querySelectorAll('[data-dash-section]').forEach(function (section) {
+        var key = section.getAttribute('data-dash-section');
+        var parts = sectionParts(section);
+        if (!key || !parts.toggle || !parts.body) {
+            return;
+        }
+        if (readState()[key]) {
+            setCollapsed(section, true);
+        }
+        parts.toggle.addEventListener('click', function () {
+            var collapsed = !section.classList.contains('is-collapsed');
+            setCollapsed(section, collapsed);
+            var next = readState();
+            if (collapsed) {
+                next[key] = true;
+            } else {
+                delete next[key];
+            }
+            writeState(next);
+        });
+    });
+})();

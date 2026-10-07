@@ -4,9 +4,15 @@
     $listTotal = (int) ($total ?: (count($items) + (int) $more));
 @endphp
 
-<section class="my-day-card">
-    <h3>Already in CRM</h3>
-    <p class="my-day-lead">Do not log again — emails, docs, bookings, notes, completed actions.</p>
+<section class="my-day-card" id="myDayCrmSection" data-dash-section="crm">
+    <button type="button" class="dash-section-toggle" data-dash-toggle aria-expanded="true" aria-controls="myDayCrmBody">
+        <span class="dash-section-chevron" aria-hidden="true"></span>
+        <span class="dash-section-toggle-text">
+            <h3>Already in CRM</h3>
+            <p class="my-day-lead">Do not log again — emails, docs, bookings, notes, completed actions.</p>
+        </span>
+    </button>
+    <div class="dash-section-body" id="myDayCrmBody" data-dash-body>
     <div id="myDayCrmList">
         @if($deferred)
             <div class="dashboard-widget-loading">
@@ -59,5 +65,6 @@
             >… and {{ $more }} more</button>
         @endif
         @endif
+    </div>
     </div>
 </section>

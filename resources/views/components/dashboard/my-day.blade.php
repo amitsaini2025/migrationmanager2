@@ -21,6 +21,7 @@
 <section
     class="my-day{{ $deferred ? ' my-day--loading' : '' }}"
     id="myDay"
+    data-dash-section="my-day"
     aria-label="My day"
     @if($deferred) aria-busy="true" data-deferred="1" @endif
     data-initial-entries='@json($entries)'
@@ -30,15 +31,17 @@
     data-initial-activity-counts='@json($activityCounts)'
 >
     <div class="my-day-head">
-        <div>
+        <button type="button" class="dash-section-toggle" data-dash-toggle aria-expanded="true" aria-controls="myDayBody">
+            <span class="dash-section-chevron" aria-hidden="true"></span>
             <h2>My day</h2>
-        </div>
+        </button>
         <div class="my-day-stamp">
             <span class="my-day-hours">Hours in CRM <b id="myDayHoursLabel">{{ $hoursLabel }}</b></span>
             <button type="button" class="my-day-add-btn" id="myDayAddBtn" aria-label="Add manual time log" title="Log time CRM cannot see">+</button>
         </div>
     </div>
 
+    <div id="myDayBody" data-dash-body>
     <x-dashboard.crm-events :items="$eventItems" :more="$eventMore" :total="$eventTotal" :deferred="$deferred" />
 
     <div class="my-day-split">
@@ -86,6 +89,7 @@
             <button type="button" class="my-day-btn" id="myDayCopyBtn">Copy summary</button>
         </div>
     </section>
+    </div>
 </section>
 
 <div class="modal fade" id="myDayLogModal" tabindex="-1" role="dialog" aria-labelledby="myDayLogModalLabel" aria-hidden="true">

@@ -84,10 +84,77 @@ body[data-crm-layout="dashboard"] .main-footer {
 .workload-strip-header {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     gap: 6px 12px;
     margin-bottom: 8px;
+}
+
+.workload-strip.is-collapsed .workload-strip-header {
+    margin-bottom: 0;
+}
+
+.dash-section-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    min-width: 0;
+}
+
+.workload-strip-header .dash-section-toggle {
+    flex: 1 1 auto;
+    align-items: center;
+}
+
+.dash-section-toggle-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.dash-section-chevron {
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    flex-shrink: 0;
+    border-radius: 4px;
+    background: #eef3fa;
+    position: relative;
+}
+
+.dash-section-chevron::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 5px;
+    width: 6px;
+    height: 6px;
+    border-right: 2px solid #6b7c93;
+    border-bottom: 2px solid #6b7c93;
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+}
+
+[data-dash-section].is-collapsed .dash-section-chevron::before {
+    top: 6px;
+    transform: rotate(-45deg);
+}
+
+.dash-section-toggle:hover .dash-section-chevron {
+    background: #e2ebf7;
+}
+
+[data-dash-section].is-collapsed > [data-dash-body] {
+    display: none;
 }
 
 .workload-strip-header h2 {

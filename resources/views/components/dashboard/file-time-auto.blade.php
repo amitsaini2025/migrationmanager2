@@ -7,9 +7,15 @@
     $auto = $sessions['auto'] ?? [];
 @endphp
 
-<section class="my-day-card my-day-auto" id="myDayAutoSection">
-    <h3>Time on files (auto) <span class="my-day-opened-badge" id="myDayAutoCount">{{ $deferred ? '…' : count($auto) }}</span></h3>
-    <p class="my-day-lead">Focused tab time on open files. With multiple activities the box shows the average; click activities for each share. Editing updates the total here only.</p>
+<section class="my-day-card my-day-auto" id="myDayAutoSection" data-dash-section="auto-time">
+    <button type="button" class="dash-section-toggle" data-dash-toggle aria-expanded="true" aria-controls="myDayAutoBody">
+        <span class="dash-section-chevron" aria-hidden="true"></span>
+        <span class="dash-section-toggle-text">
+            <h3>Time on files (auto) <span class="my-day-opened-badge" id="myDayAutoCount">{{ $deferred ? '…' : count($auto) }}</span></h3>
+            <p class="my-day-lead">Focused tab time on open files. With multiple activities the box shows the average; click activities for each share. Editing updates the total here only.</p>
+        </span>
+    </button>
+    <div class="dash-section-body" id="myDayAutoBody" data-dash-body>
     <div id="myDayAutoList">
         @if($deferred)
             <div class="dashboard-widget-loading">
@@ -77,5 +83,6 @@
             <p class="my-day-empty">No auto file time recorded yet today.</p>
         @endforelse
         @endif
+    </div>
     </div>
 </section>

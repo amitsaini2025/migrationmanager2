@@ -1108,7 +1108,7 @@ jQuery(document).ready(function($) {
             success: function(response) {
                 if (response.success) {
                     // Toggle star appearance
-                    $star.toggleClass('pinned');
+                    $star.toggleClass('pinned', !!response.is_pinned);
                     $star.attr('title', response.verified_star_title || (response.is_pinned ? 'Verified' : 'Mark as verified'));
                     
                     // Show success message

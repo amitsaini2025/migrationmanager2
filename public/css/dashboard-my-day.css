@@ -22,11 +22,19 @@
 
 .my-day-head {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
     flex-wrap: wrap;
     margin-bottom: 10px;
+}
+
+.my-day.is-collapsed .my-day-head {
+    margin-bottom: 0;
+}
+
+.my-day-head .dash-section-toggle {
+    align-items: center;
 }
 
 .my-day-head h2 {
@@ -261,6 +269,22 @@
     margin: 0 0 2px;
     font-size: 0.9rem;
     font-weight: 600;
+}
+
+.dash-section-toggle h3 {
+    margin: 0;
+}
+
+.dash-section-toggle .my-day-lead {
+    margin: 0;
+}
+
+.my-day-card > .dash-section-body {
+    margin-top: 8px;
+}
+
+.my-day--loading .dash-section-toggle {
+    pointer-events: auto;
 }
 
 .my-day-side { display: flex; flex-direction: column; gap: 10px; }

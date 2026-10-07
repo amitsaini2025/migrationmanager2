@@ -704,7 +704,7 @@
                                                 $matterLabel = $row->matter_title ?? $row->client_unique_matter_no ?? $row->other_reference ?? '—';
                                                 $clientName = trim(($row->first_name ?? '') . ' ' . ($row->last_name ?? ''));
                                             @endphp
-                                            <tr style="cursor: pointer;" onclick="window.location.href='{{ $detailUrl }}'">
+                                            <tr>
                                                 <td class="pin-cell frozen-col frozen-col-1" onclick="event.stopPropagation();">
                                                     @if(!$isLead || !empty($row->matter_internal_id))
                                                     {!! \App\Helpers\IconHelper::fromLegacy('fas fa-star', [
@@ -1043,7 +1043,7 @@ jQuery(document).ready(function($) {
         });
     }
 
-    // Capture phase so reminder/pin clicks work despite td onclick stopPropagation and row navigation
+    // Capture phase so reminder/pin clicks work despite td onclick stopPropagation
     var visaTable = document.getElementById('visa-sheet-table');
     if (visaTable) {
         visaTable.addEventListener('click', function(e) {

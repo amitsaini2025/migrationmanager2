@@ -485,7 +485,7 @@
                                                 $otherRef = $row->other_reference ?? $row->department_reference ?? '—';
                                                 $matterInternalId = $row->matter_internal_id ?? '';
                                             @endphp
-                                            <tr style="cursor: pointer;" onclick="window.location.href='{{ $clientDetailUrl }}'">
+                                            <tr>
                                                 <td class="pin-cell frozen-col frozen-col-1" onclick="event.stopPropagation();">
                                                     {!! \App\Helpers\IconHelper::fromLegacy('fas fa-star', [
                                                         'class' => 'pin-star ' . (($row->is_pinned ?? false) ? 'pinned' : ''),

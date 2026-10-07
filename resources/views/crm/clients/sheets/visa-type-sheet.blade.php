@@ -15,11 +15,12 @@
     }
     .visa-sheet-page .art-sheet-card {
         margin-top: 0 !important;
+        padding-top: 0 !important;
     }
     
     /* CRM Color Theme - Using #005792 */
     .visa-sheet-page .art-sheet-sticky-header {
-        position: sticky; top: 70px; z-index: 100;
+        position: sticky; top: 0; z-index: 100;
         background: linear-gradient(180deg, #f0f7fa 0%, #e6f2f7 100%);
         box-shadow: 0 2px 8px rgba(0, 87, 146, 0.1);
         border-bottom: 1px solid #b3d9ea;
@@ -266,7 +267,7 @@
     /* Table scroll area: vertical + horizontal scroll with sticky header */
     .visa-sheet-page .card-body {
         overflow: visible;
-        padding: 20px 30px 30px;
+        padding: 20px 0 30px;
     }
     .visa-sheet-page .table-container {
         position: relative;

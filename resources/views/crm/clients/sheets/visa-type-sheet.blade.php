@@ -711,7 +711,7 @@
                                                         'data-client-id' => $row->client_id,
                                                         'data-matter-id' => $matterId,
                                                         'data-visa-type' => $visaType,
-                                                        'title' => ($row->is_pinned ?? false) ? 'Verified' : 'Mark as verified',
+                                                        'title' => $row->verified_star_title ?? (($row->is_pinned ?? false) ? 'Verified' : 'Mark as verified'),
                                                     ]) !!}
                                                     @else
                                                     <span class="text-muted" title="Lead">{{ __('Lead') }}</span>
@@ -1109,7 +1109,7 @@ jQuery(document).ready(function($) {
                 if (response.success) {
                     // Toggle star appearance
                     $star.toggleClass('pinned');
-                    $star.attr('title', response.is_pinned ? 'Verified' : 'Mark as verified');
+                    $star.attr('title', response.verified_star_title || (response.is_pinned ? 'Verified' : 'Mark as verified'));
                     
                     // Show success message
                     if (typeof iziToast !== 'undefined') {

@@ -8,6 +8,7 @@ use App\Models\ClientMatter;
 use App\Models\Staff;
 use App\Support\StaffClientVisibility;
 use App\Traits\ClientAuthorization;
+use App\Traits\LogsClientActivity;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Expression;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\Schema;
 class VisaTypeSheetController extends Controller
 {
     use ClientAuthorization;
+    use LogsClientActivity;
 
     public const TABS = ['ongoing', 'lodged', 'checklist', 'discontinue'];
 
@@ -116,6 +118,10 @@ class VisaTypeSheetController extends Controller
                     ? $row->sheet_urgency_date
                     : ($row->visa_expiry ?? null);
                 $row->visa_expiry_within_week = $this->visaExpiryIsWithinDays($urgencyDate, 7);
+                $row->verified_star_title = $this->verifiedStarTitle(
+                    (bool) ($row->is_pinned ?? false),
+                    $row->verified_by_name ?? null
+                );
 
                 return $row;
             });
@@ -434,6 +440,7 @@ class VisaTypeSheetController extends Controller
             "{$refAlias}.comments as sheet_comment_text",
             "{$refAlias}.checklist_sent_at",
             "{$refAlias}.is_pinned",
+            $this->verifiedByNameSelect($refAlias),
             $this->refusedVisaTypeSelectColumn($config, $refAlias),
             DB::raw("COALESCE(cm.{$checklistCol}, 'active') as tr_checklist_status"),
             DB::raw($checklistBlockFeeSelect),
@@ -489,6 +496,7 @@ class VisaTypeSheetController extends Controller
                         DB::raw('NULL as sheet_comment_text'),
                         'lr.checklist_sent_at',
                         DB::raw('false as is_pinned'),
+                        DB::raw('NULL as verified_by_name'),
                         DB::raw('NULL as refused_visa_type'),
                         DB::raw("'active' as tr_checklist_status"),
                         DB::raw($leadBlockFeeSql),
@@ -714,6 +722,7 @@ class VisaTypeSheetController extends Controller
                 "{$refAlias}.comments as sheet_comment_text",
                 "{$refAlias}.checklist_sent_at",
                 "{$refAlias}.is_pinned",
+                $this->verifiedByNameSelect($refAlias),
                 $this->refusedVisaTypeSelectColumn($config, $refAlias),
                 'latest_matter.checklist_status as tr_checklist_status',
                 'latest_matter.decision_outcome',
@@ -1397,11 +1406,15 @@ class VisaTypeSheetController extends Controller
                 if (! empty($refType) && $refTable === 'client_matter_references') {
                     $updateQuery->where('type', $refType);
                 }
-                $updateQuery->update([
+                $pinUpdate = [
                     'is_pinned' => $newPinStatus,
                     'updated_by' => Auth::id(),
                     'updated_at' => now(),
-                ]);
+                ];
+                if (Schema::hasColumn($refTable, 'verified_by')) {
+                    $pinUpdate['verified_by'] = $newPinStatus ? Auth::id() : null;
+                }
+                $updateQuery->update($pinUpdate);
             } else {
                 // Create new reference record with pin
                 $insertData = [
@@ -1416,18 +1429,83 @@ class VisaTypeSheetController extends Controller
                 if ($refTable === 'client_matter_references') {
                     $insertData['type'] = $refType;
                 }
+                if (Schema::hasColumn($refTable, 'verified_by')) {
+                    $insertData['verified_by'] = Auth::id();
+                }
                 DB::table($refTable)->insert($insertData);
                 $newPinStatus = true;
             }
 
+            $this->recordSheetVerificationActivity((int) $clientId, (int) $matterInternalId, (bool) $newPinStatus);
+
+            $verifierName = $newPinStatus ? $this->currentStaffDisplayName() : null;
+
             return response()->json([
                 'success' => true,
                 'is_pinned' => $newPinStatus,
+                'verified_by_name' => $verifierName,
+                'verified_star_title' => $this->verifiedStarTitle((bool) $newPinStatus, $verifierName),
                 'message' => $newPinStatus ? 'Marked as verified' : 'Verification removed',
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error updating verification: '.$e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Write the verifying staff member onto the file activity feed.
+     */
+    protected function recordSheetVerificationActivity(int $clientId, int $matterInternalId, bool $verified): void
+    {
+        $matter = DB::table('client_matters as cm')
+            ->leftJoin('matters as m', 'm.id', '=', 'cm.sel_matter_id')
+            ->where('cm.id', $matterInternalId)
+            ->first(['cm.client_unique_matter_no', 'm.title']);
+
+        $matterRef = trim((string) ($matter->client_unique_matter_no ?? ''));
+        $matterTitle = trim((string) ($matter->title ?? ''));
+        $fileLabel = $matterRef !== '' ? $matterRef : ($matterTitle !== '' ? $matterTitle : 'file');
+
+        $staffName = $this->currentStaffDisplayName();
+
+        $subject = $verified
+            ? 'verified the file - '.$fileLabel
+            : 'removed file verification - '.$fileLabel;
+
+        $description = '<p><strong>'.($verified ? 'Verified By' : 'Removed By').':</strong> '.e($staffName).'</p>';
+        if ($matterTitle !== '' && $matterTitle !== $fileLabel) {
+            $description .= '<p><strong>Matter:</strong> '.e($matterTitle).'</p>';
+        }
+
+        $this->logClientActivity($clientId, $subject, $description, 'activity');
+    }
+
+    protected function verifiedByNameSelect(string $refAlias): Expression|string
+    {
+        if (! Schema::hasColumn('client_matter_references', 'verified_by')) {
+            return DB::raw('NULL as verified_by_name');
+        }
+
+        return DB::raw("(SELECT TRIM(CONCAT(COALESCE(verifier.first_name, ''), ' ', COALESCE(verifier.last_name, ''))) FROM staff AS verifier WHERE verifier.id = {$refAlias}.verified_by) AS verified_by_name");
+    }
+
+    protected function verifiedStarTitle(bool $verified, ?string $name): string
+    {
+        if (! $verified) {
+            return 'Mark as verified';
+        }
+
+        $name = trim((string) $name);
+
+        return $name !== '' ? 'Verified by '.$name : 'Verified';
+    }
+
+    protected function currentStaffDisplayName(): string
+    {
+        $staff = Auth::user();
+        $staffName = trim(($staff->first_name ?? '').' '.($staff->last_name ?? ''));
+
+        return $staffName !== '' ? $staffName : ($staff->email ?? 'Staff');
     }
 
     /**

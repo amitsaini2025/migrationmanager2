@@ -97,23 +97,15 @@ class VisaTypeSheetController extends Controller
 
             $rows->appends(array_merge($request->except('page'), ['tab' => $tab]));
 
-            $rows->getCollection()->transform(function ($row) use ($tab, $config) {
+            $rows->getCollection()->transform(function ($row) use ($config) {
                 $row->is_lead = $row->is_lead ?? false;
-                // Checklist tab shows cost-assignment Our Cost (Block Fees); skip ledger payment totals.
-                if ($tab !== 'checklist') {
-                    if (! $row->is_lead && isset($row->matter_internal_id)) {
-                        $payments = $this->calculatePaymentsForMatter($row->client_id, $row->matter_internal_id);
-                        $row->total_payment = $payments['total'];
-                        $row->pending_payment = $payments['pending'];
-                    } else {
-                        $row->total_payment = 0;
-                        $row->pending_payment = 0;
-                    }
-                }
-                // Ongoing: Payment Receipt column shows same balance as Account tab → Current Funds Held.
-                if ($tab === 'ongoing' && ! $row->is_lead && isset($row->matter_internal_id)) {
-                    $held = $this->currentFundsHeldForClientMatter((int) $row->client_id, (int) $row->matter_internal_id);
-                    $row->current_funds_held = $held;
+                if (! $row->is_lead && ! empty($row->matter_internal_id)) {
+                    $payments = $this->calculatePaymentsForMatter($row->client_id, $row->matter_internal_id);
+                    $row->total_payment = $payments['total'];
+                    $row->pending_payment = $payments['pending'];
+                } else {
+                    $row->total_payment = 0;
+                    $row->pending_payment = 0;
                 }
 
                 if ($this->isSponsorSheet($config)) {
@@ -904,10 +896,7 @@ class VisaTypeSheetController extends Controller
     {
         $refAlias = $config['reference_alias'] ?? 'ref';
 
-        // First priority: pinned items (is_pinned DESC) - pinned items on top
-        $query->orderByRaw("CASE WHEN {$refAlias}.is_pinned = true THEN 1 ELSE 0 END DESC");
-
-        // Approvals or visas expiring within 3 days stay above the remaining sort.
+        // Approvals or visas expiring within 3 days stay above verified rows.
         $today = Carbon::today()->toDateString();
         $withinThreeDays = Carbon::today()->addDays(3)->toDateString();
         $sponsorSort = $this->isSponsorSheet($config) && $this->sponsorTablesReady();
@@ -923,6 +912,9 @@ class VisaTypeSheetController extends Controller
         } else {
             $query->orderByRaw("CASE WHEN {$expiresWithinThreeDays} THEN admins.\"visaExpiry\" END ASC NULLS LAST", [$today, $withinThreeDays]);
         }
+
+        // Verified rows (starred by the backend team) come next, still below the 3-day expiry files.
+        $query->orderByRaw("CASE WHEN {$refAlias}.is_pinned = true THEN 1 ELSE 0 END DESC");
 
         // Second priority: checklist hold status (only for checklist tab)
         if ($tab === 'checklist') {
@@ -1035,12 +1027,6 @@ class VisaTypeSheetController extends Controller
         };
 
         return $collection->sort(function ($a, $b) use ($sortField, $multiplier, $valueFor, $config) {
-            $aPin = ! empty($a->is_pinned) ? 1 : 0;
-            $bPin = ! empty($b->is_pinned) ? 1 : 0;
-            if ($bPin !== $aPin) {
-                return $bPin <=> $aPin;
-            }
-
             $aUrgent = $this->visaExpiryIsWithinDays($this->checklistUrgencyDate($a, $config), 3) ? 0 : 1;
             $bUrgent = $this->visaExpiryIsWithinDays($this->checklistUrgencyDate($b, $config), 3) ? 0 : 1;
             if ($aUrgent !== $bUrgent) {
@@ -1048,6 +1034,12 @@ class VisaTypeSheetController extends Controller
             }
             if ($aUrgent === 0) {
                 return strcmp((string) $this->checklistUrgencyDate($a, $config), (string) $this->checklistUrgencyDate($b, $config));
+            }
+
+            $aPin = ! empty($a->is_pinned) ? 1 : 0;
+            $bPin = ! empty($b->is_pinned) ? 1 : 0;
+            if ($bPin !== $aPin) {
+                return $bPin <=> $aPin;
             }
 
             $aHold = (($a->tr_checklist_status ?? 'active') === 'hold') ? 1 : 0;
@@ -1317,10 +1309,11 @@ class VisaTypeSheetController extends Controller
         if (! $clientId || ! $matterInternalId) {
             return ['total' => '0.00', 'pending' => '0.00'];
         }
-        // Payment received = Client Fund Ledger (Deposits only) + Office Receipts
-        // Show total for client (sheet displays one row per client with their matter)
+        // Full amount received for this matter: client-fund deposits plus finalized office receipts.
+        // Withdrawals and refunds stay in the ledger and are not subtracted.
         $total = (float) DB::table('account_client_receipts')
             ->where('client_id', $clientId)
+            ->where('client_matter_id', $matterInternalId)
             ->where(function ($q) {
                 $q->where(function ($q1) {
                     // Client fund: only Deposits (exclude Fee Transfers which have deposit_amount=0)
@@ -1342,6 +1335,7 @@ class VisaTypeSheetController extends Controller
             ->sum(DB::raw('COALESCE(deposit_amount, 0)'));
         $pending = (float) DB::table('account_client_receipts')
             ->where('client_id', $clientId)
+            ->where('client_matter_id', $matterInternalId)
             ->where('receipt_type', 3)
             ->where(function ($q) {
                 $q->whereNull('void_fee_transfer')->orWhere('void_fee_transfer', '!=', 1);
@@ -1351,34 +1345,6 @@ class VisaTypeSheetController extends Controller
         // Keep a plain number. A thousands comma ("3,850.00") is truncated to 3
         // when the sheet casts the value back to a float.
         return ['total' => round($total, 2), 'pending' => round($pending, 2)];
-    }
-
-    /**
-     * Mirrors Client Funds Ledger "Current Funds Held" on Account tab (account.blade.php)
-     * for one client + matter: receipt_type ledger rows, excluding void_fee_transfer.
-     */
-    protected function currentFundsHeldForClientMatter(?int $clientId, ?int $matterInternalId): ?float
-    {
-        if (! $clientId || ! $matterInternalId || ! Schema::hasTable('account_client_receipts')) {
-            return null;
-        }
-
-        $ledgerEntries = DB::table('account_client_receipts')
-            ->select('deposit_amount', 'withdraw_amount', 'void_fee_transfer')
-            ->where('client_id', $clientId)
-            ->where('client_matter_id', $matterInternalId)
-            ->where('receipt_type', 1)
-            ->get();
-
-        $calculatedBalance = 0.0;
-        foreach ($ledgerEntries as $entry) {
-            if (isset($entry->void_fee_transfer) && $entry->void_fee_transfer == 1) {
-                continue;
-            }
-            $calculatedBalance += floatval($entry->deposit_amount ?? 0) - floatval($entry->withdraw_amount ?? 0);
-        }
-
-        return round($calculatedBalance, 2);
     }
 
     /**
@@ -1457,10 +1423,10 @@ class VisaTypeSheetController extends Controller
             return response()->json([
                 'success' => true,
                 'is_pinned' => $newPinStatus,
-                'message' => $newPinStatus ? 'Item pinned to top' : 'Item unpinned',
+                'message' => $newPinStatus ? 'Marked as verified' : 'Verification removed',
             ]);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error updating pin status: '.$e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'Error updating verification: '.$e->getMessage()], 500);
         }
     }
 

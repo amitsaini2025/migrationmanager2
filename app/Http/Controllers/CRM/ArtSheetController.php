@@ -168,10 +168,10 @@ class ArtSheetController extends Controller
             return ['total' => '0.00', 'pending' => '0.00'];
         }
 
-        // Payment received = Client Fund Ledger (Deposits only) + Office Receipts
-        // Show total for client (sheet displays one row per client with their matter)
+        // Full amount received for this matter: client-fund deposits plus finalized office receipts.
         $total = (float) DB::table('account_client_receipts')
             ->where('client_id', $clientId)
+            ->where('client_matter_id', $matterInternalId)
             ->where(function ($q) {
                 $q->where(function ($q1) {
                     // Client fund: only Deposits (exclude Fee Transfers which have deposit_amount=0)
@@ -194,6 +194,7 @@ class ArtSheetController extends Controller
 
         $pending = (float) DB::table('account_client_receipts')
             ->where('client_id', $clientId)
+            ->where('client_matter_id', $matterInternalId)
             ->where('receipt_type', 3)
             ->where(function ($q) {
                 $q->whereNull('void_fee_transfer')->orWhere('void_fee_transfer', '!=', 1);

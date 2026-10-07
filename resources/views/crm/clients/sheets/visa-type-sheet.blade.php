@@ -7,6 +7,7 @@
     /* Remove top blank space */
     .visa-sheet-page.listing-container { 
         margin-top: 0 !important; 
+        margin-left: 0 !important;
         padding-top: 0 !important; 
     }
     .visa-sheet-page .listing-section {
@@ -219,11 +220,13 @@
     
     /* Star/Pin Column Styles */
     .visa-sheet-page .pin-cell {
-        width: 45px;
-        min-width: 45px;
-        max-width: 45px;
+        width: 64px;
+        min-width: 64px;
+        max-width: 64px;
         text-align: center;
-        padding: 8px !important;
+        padding: 8px 4px !important;
+        font-size: 11px;
+        line-height: 1.1;
     }
     .visa-sheet-page .pin-star {
         width: 18px;
@@ -329,8 +332,8 @@
         overflow: visible;
     }
     .visa-sheet-page #visa-sheet-table .frozen-col-1 { left: var(--frozen-left-1, 0); }
-    .visa-sheet-page #visa-sheet-table .frozen-col-2 { left: var(--frozen-left-2, 45px); }
-    .visa-sheet-page #visa-sheet-table .frozen-col-3 { left: var(--frozen-left-3, 205px); }
+    .visa-sheet-page #visa-sheet-table .frozen-col-2 { left: var(--frozen-left-2, 64px); }
+    .visa-sheet-page #visa-sheet-table .frozen-col-3 { left: var(--frozen-left-3, 180px); }
     .visa-sheet-page #visa-sheet-table .frozen-col-3.frozen-col-last::after {
         content: '';
         position: absolute;
@@ -344,16 +347,21 @@
     .visa-sheet-page #visa-sheet-table tbody tr:hover .frozen-col {
         background: #f8fafc;
     }
-    .visa-sheet-page #visa-sheet-table .matter-col {
-        width: 232px;
-        min-width: 232px;
-        max-width: 232px;
+    .visa-sheet-page #visa-sheet-table .matter-col,
+    .visa-sheet-page #visa-sheet-table .matter-col.frozen-col {
+        width: 116px;
+        min-width: 116px;
+        max-width: 116px;
         overflow: hidden;
+    }
+    .visa-sheet-page .card .card-body #visa-sheet-table thead tr th.matter-col.sortable {
+        padding-right: 22px !important;
     }
     .visa-sheet-page #visa-sheet-table .matter-col .matter-col-label {
         display: block;
-        width: 222px;
-        max-width: 222px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -426,7 +434,7 @@
     $sheetRouteParams = ['visaType' => $visaType];
     $showRefusedVisaType = (bool) ($showRefusedVisaType ?? false);
     $showSponsorColumns = (bool) ($showSponsorColumns ?? false);
-    $emptyColspan = $tab === 'checklist' ? 15 : ($tab === 'discontinue' ? 15 : 13);
+    $emptyColspan = $tab === 'checklist' ? 14 : ($tab === 'discontinue' ? 13 : 11);
     if ($showRefusedVisaType) {
         $emptyColspan++;
     }
@@ -625,8 +633,8 @@
                             <table class="table table-bordered table-hover art-table" id="visa-sheet-table">
                                 <thead>
                                     <tr>
-                                        <th class="pin-cell frozen-col frozen-col-1" title="Click star to pin row to top">@icon('fa-star')</th>
-                                        <th class="matter-col frozen-col frozen-col-2 sortable {{ $sortThClass('matter') }}" data-sort="matter"><span class="matter-col-label">Matter / Course</span></th>
+                                        <th class="pin-cell frozen-col frozen-col-1" title="Star a row once the backend team has verified it. Verified rows stay below files expiring within 3 days.">Verified</th>
+                                        <th class="matter-col frozen-col frozen-col-2 sortable {{ $sortThClass('matter') }}" data-sort="matter"><span class="matter-col-label" data-full-label="Matter / Course">Matter / Course</span></th>
                                         @if($showSponsorColumns)
                                         <th class="client-name-col frozen-col frozen-col-3 frozen-col-last sortable {{ $sortThClass('company') }}" data-sort="company"><span class="client-name-label">Company</span></th>
                                         <th>Type</th>
@@ -641,17 +649,7 @@
                                         @if($tab !== 'checklist')
                                         <th class="sortable {{ $sortThClass('stage') }}" data-sort="stage">Current Stage</th>
                                         @endif
-                                        @if($tab === 'checklist')
-                                        <th class="text-nowrap visa-sheet-col-payment-request" title="Payment Request">Payment Request</th>
-                                        @elseif($tab === 'ongoing')
-                                        <th class="text-nowrap visa-sheet-col-payment-receipt" title="Payment Receipt">Payment Receipt</th>
-                                        @else
-                                        <th>Payment Received</th>
-                                        @endif
-                                        @if($tab !== 'checklist')
-                                        <th>Branch</th>
-                                        @endif
-                                        <th class="sortable {{ $sortThClass('assignee') }}" data-sort="assignee">Migration Agent</th>
+                                        <th class="text-nowrap visa-sheet-col-payment-receipt" title="Full amount received for this matter">Payment Received</th>
                                         @if($showSponsorColumns)
                                         <th>TRN</th>
                                         <th>Nominee</th>
@@ -713,13 +711,13 @@
                                                         'data-client-id' => $row->client_id,
                                                         'data-matter-id' => $matterId,
                                                         'data-visa-type' => $visaType,
-                                                        'title' => ($row->is_pinned ?? false) ? 'Unpin from top' : 'Pin to top',
+                                                        'title' => ($row->is_pinned ?? false) ? 'Verified' : 'Mark as verified',
                                                     ]) !!}
                                                     @else
                                                     <span class="text-muted" title="Lead">{{ __('Lead') }}</span>
                                                     @endif
                                                 </td>
-                                                <td class="matter-col frozen-col frozen-col-2" onclick="event.stopPropagation();"><a href="{{ $detailUrl }}" class="art-link matter-col-label" title="{{ $matterLabel }}">{{ $matterLabel }}</a></td>
+                                                <td class="matter-col frozen-col frozen-col-2" onclick="event.stopPropagation();"><a href="{{ $detailUrl }}" class="art-link matter-col-label" data-full-label="{{ $matterLabel }}">{{ $matterLabel }}</a></td>
                                                 @if($showSponsorColumns)
                                                 @php
                                                     $companyName = trim((string) ($row->company_name ?? ''));
@@ -764,36 +762,18 @@
                                                 @if($tab !== 'checklist')
                                                 <td>{{ $row->application_stage ?? '—' }}</td>
                                                 @endif
-                                                <td title="{{ $tab === 'checklist' ? 'Our Cost (Block Fees)' : ($tab === 'ongoing' ? 'Current Funds Held (Account → Client Funds Ledger)' : '') }}">
-                                                    @if($tab === 'checklist')
-                                                        @if(isset($row->checklist_block_fee) && $row->checklist_block_fee !== null && $row->checklist_block_fee !== '')
-                                                            ${{ number_format((float) $row->checklist_block_fee, 2) }}
-                                                        @else
-                                                            —
-                                                        @endif
-                                                    @elseif($tab === 'ongoing' && !$isLead)
-                                                        @if($row->current_funds_held !== null)
-                                                            ${{ number_format((float) $row->current_funds_held, 2) }}
-                                                        @else
-                                                            —
-                                                        @endif
+                                                <td title="Full amount received for this matter">
+                                                    @php
+                                                        $paymentReceived = (float) str_replace(',', '', (string) ($row->total_payment ?? 0));
+                                                    @endphp
+                                                    @if($paymentReceived > 0)
+                                                        ${{ number_format($paymentReceived, 2) }}
+                                                    @elseif($row->payment_display_note ?? null)
+                                                        {{ $row->payment_display_note }}
                                                     @else
-                                                        @php
-                                                            $paymentReceived = (float) str_replace(',', '', (string) ($row->total_payment ?? 0));
-                                                        @endphp
-                                                        @if($paymentReceived > 0)
-                                                            ${{ number_format($paymentReceived, 2) }}
-                                                        @elseif($row->payment_display_note ?? null)
-                                                            {{ $row->payment_display_note }}
-                                                        @else
-                                                            —
-                                                        @endif
+                                                        —
                                                     @endif
                                                 </td>
-                                                @if($tab !== 'checklist')
-                                                <td>{{ $row->branch_name ?? '—' }}</td>
-                                                @endif
-                                                <td>{{ trim($row->assignee_name ?? '') ?: '—' }}</td>
                                                 @if($showSponsorColumns)
                                                 <td>{{ trim((string) ($row->sponsor_trn ?? '')) !== '' ? $row->sponsor_trn : '—' }}</td>
                                                 <td>{{ trim((string) ($row->sponsor_nominee ?? '')) !== '' ? $row->sponsor_nominee : '—' }}</td>
@@ -961,14 +941,33 @@ jQuery(document).ready(function($) {
             left += header.getBoundingClientRect().width;
         });
     }
+    function updateMatterTooltips() {
+        var table = document.getElementById('visa-sheet-table');
+        if (!table) return;
+        table.querySelectorAll('.matter-col-label').forEach(function(el) {
+            var full = el.getAttribute('data-full-label') || '';
+            if (full !== '' && el.scrollWidth > el.clientWidth + 1) {
+                el.setAttribute('title', full);
+            } else {
+                el.removeAttribute('title');
+            }
+        });
+    }
 
     $scroll.on('scroll resize', updateScroll);
     setTimeout(function() {
         updateScroll();
         updateFrozenColumnOffsets();
+        updateMatterTooltips();
     }, 100);
-    setTimeout(updateFrozenColumnOffsets, 600);
-    $(window).on('resize', updateFrozenColumnOffsets);
+    setTimeout(function() {
+        updateFrozenColumnOffsets();
+        updateMatterTooltips();
+    }, 600);
+    $(window).on('resize', function() {
+        updateFrozenColumnOffsets();
+        updateMatterTooltips();
+    });
     $scroll.on('wheel', function(e) {
         if (e.shiftKey && e.originalEvent.deltaY && this.scrollWidth > this.clientWidth) {
             e.preventDefault();
@@ -1090,7 +1089,7 @@ jQuery(document).ready(function($) {
         
         if (!clientId || !matterId) {
             if (typeof iziToast !== 'undefined') {
-                iziToast.warning({ title: 'Error', message: 'Cannot pin: missing data', position: 'topRight' });
+                iziToast.warning({ title: 'Error', message: 'Cannot mark verified: missing data', position: 'topRight' });
             }
             return;
         }
@@ -1110,7 +1109,7 @@ jQuery(document).ready(function($) {
                 if (response.success) {
                     // Toggle star appearance
                     $star.toggleClass('pinned');
-                    $star.attr('title', response.is_pinned ? 'Unpin from top' : 'Pin to top');
+                    $star.attr('title', response.is_pinned ? 'Verified' : 'Mark as verified');
                     
                     // Show success message
                     if (typeof iziToast !== 'undefined') {
@@ -1130,7 +1129,7 @@ jQuery(document).ready(function($) {
                     if (typeof iziToast !== 'undefined') {
                         iziToast.error({
                             title: 'Error',
-                            message: response.message || 'Failed to update pin status',
+                            message: response.message || 'Failed to update verification',
                             position: 'topRight'
                         });
                     }
@@ -1141,7 +1140,7 @@ jQuery(document).ready(function($) {
                 if (typeof iziToast !== 'undefined') {
                     iziToast.error({
                         title: 'Error',
-                        message: 'Failed to update pin status. Please try again.',
+                        message: 'Failed to update verification. Please try again.',
                         position: 'topRight'
                     });
                 }

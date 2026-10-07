@@ -30,10 +30,13 @@ class VisaSheetPaymentDisplayTest extends TestCase
         $sheet = file_get_contents(resource_path('views/crm/clients/sheets/visa-type-sheet.blade.php'));
         $this->assertIsString($sheet);
         $this->assertStringContainsString("str_replace(',', '', (string) (\$row->total_payment ?? 0))", $sheet);
+        $this->assertStringContainsString('Payment Received', $sheet);
+        $this->assertStringNotContainsString('current_funds_held', $sheet);
+        $this->assertStringNotContainsString('checklist_block_fee', $sheet);
     }
 
     #[Test]
-    public function payment_total_is_a_plain_number_without_a_thousands_comma(): void
+    public function payment_total_is_this_matters_deposits_and_ignores_refunds_and_other_matters(): void
     {
         Schema::dropIfExists('account_client_receipts');
         Schema::create('account_client_receipts', function (Blueprint $table) {
@@ -41,6 +44,7 @@ class VisaSheetPaymentDisplayTest extends TestCase
             $table->unsignedBigInteger('client_id');
             $table->unsignedBigInteger('client_matter_id')->nullable();
             $table->decimal('deposit_amount', 12, 2)->default(0);
+            $table->decimal('withdraw_amount', 12, 2)->default(0);
             $table->decimal('balance_amount', 12, 2)->default(0);
             $table->unsignedTinyInteger('receipt_type')->nullable();
             $table->string('client_fund_ledger_type')->nullable();
@@ -50,11 +54,30 @@ class VisaSheetPaymentDisplayTest extends TestCase
         });
 
         DB::table('account_client_receipts')->insert([
-            'client_id' => 1,
-            'client_matter_id' => 10,
-            'deposit_amount' => 3850,
-            'receipt_type' => 1,
-            'client_fund_ledger_type' => 'Deposit',
+            [
+                'client_id' => 1,
+                'client_matter_id' => 10,
+                'deposit_amount' => 13913,
+                'withdraw_amount' => 0,
+                'receipt_type' => 1,
+                'client_fund_ledger_type' => 'Deposit',
+            ],
+            [
+                'client_id' => 1,
+                'client_matter_id' => 10,
+                'deposit_amount' => 0,
+                'withdraw_amount' => 13363,
+                'receipt_type' => 1,
+                'client_fund_ledger_type' => 'Refund',
+            ],
+            [
+                'client_id' => 1,
+                'client_matter_id' => 99,
+                'deposit_amount' => 500,
+                'withdraw_amount' => 0,
+                'receipt_type' => 1,
+                'client_fund_ledger_type' => 'Deposit',
+            ],
         ]);
 
         $controller = new class extends VisaTypeSheetController
@@ -70,7 +93,7 @@ class VisaSheetPaymentDisplayTest extends TestCase
 
         $payments = $controller->payments(1, 10);
 
-        $this->assertSame(3850.0, $payments['total']);
+        $this->assertSame(13913.0, $payments['total']);
         $this->assertStringNotContainsString(',', (string) $payments['total']);
     }
 }

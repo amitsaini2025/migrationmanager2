@@ -2730,11 +2730,16 @@ class ClientPersonalDetailsController extends Controller
                     'new' => $maritalStatus,
                 ];
             }
-            if ($request->has('source') && $client->source !== $resolvedSource) {
-                $changedFields[$fieldLabels['source']] = [
-                    'old' => $client->source,
-                    'new' => $resolvedSource,
-                ];
+            if ($request->has('source')) {
+                $oldSourceForLog = LeadSources::displayValue($client->source);
+                $newSourceForLog = LeadSources::displayValue($resolvedSource);
+
+                if ($oldSourceForLog !== $newSourceForLog) {
+                    $changedFields[$fieldLabels['source']] = [
+                        'old' => $oldSourceForLog,
+                        'new' => $newSourceForLog,
+                    ];
+                }
             }
 
             // Use direct assignment pattern (like the working old methods)

@@ -9,6 +9,21 @@ use Tests\TestCase;
 class LogsClientActivityDescriptionTest extends TestCase
 {
     #[Test]
+    public function legacy_unset_source_change_renders_as_empty_to_new_value(): void
+    {
+        $description = $this->harness()->describe([
+            'Source' => [
+                'old' => null,
+                'new' => 'Website',
+            ],
+        ]);
+
+        $this->assertStringContainsString('(empty)', $description);
+        $this->assertStringContainsString('Website', $description);
+        $this->assertStringNotContainsString('Others', $description);
+    }
+
+    #[Test]
     public function detailed_changes_with_null_new_value_do_not_crash(): void
     {
         $description = $this->harness()->describe([

@@ -153,6 +153,10 @@
                                     <span class="summary-label">Marital Status:</span>
                                     <span class="summary-value">{{ $fetchedData->marital_status ?: 'Not set' }}</span>
                                 </div>
+                                <div class="summary-item">
+                                    <span class="summary-label">Source:</span>
+                                    <span class="summary-value">{{ \App\Support\LeadSources::displayValue($fetchedData->source) ?: 'Not set' }}</span>
+                                </div>
                             </div>
                         </div>
 
@@ -235,6 +239,9 @@
                                         <span class="text-danger">{{ $message }}</span>
                                     @enderror
                                 </div>
+                                @include('crm.partials.lead_source_select', [
+                                    'selectedValue' => old('source', $fetchedData->source),
+                                ])
                             </div>
                             <div class="edit-actions">
                                 <button type="button" class="btn btn-primary" onclick="saveBasicInfo()">Save</button>

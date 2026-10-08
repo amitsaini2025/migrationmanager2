@@ -285,10 +285,10 @@
 														<td>{{$fetchedData->service}}</td>
 													</tr>
 													@endif
-													@if($fetchedData->lead_source != '')
+													@if(\App\Support\LeadSources::displayValue($fetchedData->source))
 													<tr>
-														<th>Lead Source</th>
-														<td>{{$fetchedData->lead_source}}</td>
+														<th>Source</th>
+														<td>{{ \App\Support\LeadSources::displayValue($fetchedData->source) }}</td>
 													</tr>
 													@endif
 													<tr>

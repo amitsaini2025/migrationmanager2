@@ -140,6 +140,10 @@
                                     <span class="summary-label">Marital Status:</span>
                                     <span class="summary-value">{{ $fetchedData->marital_status ?: 'Not set' }}</span>
                                 </div>
+                                <div class="summary-item">
+                                    <span class="summary-label">Source:</span>
+                                    <span class="summary-value">{{ \App\Support\LeadSources::displayValue($fetchedData->source) ?: 'Not set' }}</span>
+                                </div>
                                 @if($fetchedData->type === 'lead')
                                     @php
                                         $sumStage = $fetchedData->lead_status ?: 'new';
@@ -244,6 +248,9 @@
                                         <span class="text-danger">{{ $message }}</span>
                                     @enderror
 													</div>
+                                @include('crm.partials.lead_source_select', [
+                                    'selectedValue' => old('source', $fetchedData->source),
+                                ])
                                 @if($fetchedData->type === 'lead')
                                     @php
                                         $editStage = old('lead_status', $fetchedData->lead_status ?: 'new');

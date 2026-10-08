@@ -70,6 +70,13 @@
                             </span>
                         </div>
 
+                        @if(\App\Support\LeadSources::displayValue($fetchedData->source))
+                        <div class="field-group">
+                            <span class="field-label">Source</span>
+                            <span class="field-value">{{ \App\Support\LeadSources::displayValue($fetchedData->source) }}</span>
+                        </div>
+                        @endif
+
                         @if(($detailVerificationStatuses['full_name']['status'] ?? null) === \App\Support\ClientDetailVerificationFields::STATUS_CHANGE_REQUESTED)
                         <div class="field-group {{ \App\Support\ClientDetailVerificationUi::fieldGroupClass($detailVerificationStatuses['full_name'] ?? null) }}">
                             <span class="field-label">Full Name</span>

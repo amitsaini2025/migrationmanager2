@@ -2563,6 +2563,11 @@ window.saveBasicInfo = function() {
     formData.append('gender', document.getElementById('gender').value);
     formData.append('marital_status', document.getElementById('maritalStatus').value);
 
+    const sourceEl = document.getElementById('lead_source');
+    if (sourceEl) {
+        formData.append('source', sourceEl.value);
+    }
+
     const leadStageEl = document.getElementById('lead_pipeline_status_edit');
     if (leadStageEl) {
         formData.append('lead_status', leadStageEl.value);
@@ -2607,6 +2612,10 @@ window.saveBasicInfo = function() {
             <div class="summary-item">
                 <span class="summary-label">Marital Status:</span>
                 <span class="summary-value">${document.getElementById('maritalStatus').value || 'Not set'}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Source:</span>
+                <span class="summary-value">${sourceEl ? (sourceEl.value || 'Not set') : 'Not set'}</span>
             </div>
         `;
 

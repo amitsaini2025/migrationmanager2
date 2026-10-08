@@ -482,3 +482,22 @@
     display: block;
 }
 
+/* Lead Type row: company radios + compact source dropdown */
+.lead-type-source-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 15px 24px;
+}
+
+.lead-type-source-row > .form-group:first-child {
+    flex: 1 1 280px;
+    min-width: 0;
+}
+
+.lead-type-source-row .lead-source-field {
+    flex: 0 0 auto;
+    width: min(240px, 100%);
+    max-width: 240px;
+}
+

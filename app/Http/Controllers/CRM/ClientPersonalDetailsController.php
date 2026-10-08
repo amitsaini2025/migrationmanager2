@@ -33,6 +33,7 @@ use App\Services\ClientEditService;
 use App\Services\EnglishProficiencyService;
 use App\Services\LeadFollowUpNoteService;
 use App\Services\PointsService;
+use App\Support\LeadSources;
 use App\Support\StaffClientVisibility;
 use App\Traits\LogsClientActivity;
 use Carbon\Carbon;
@@ -92,7 +93,8 @@ class ClientPersonalDetailsController extends Controller
 
     // Fetch all contact list of any client at create note popup
     public function fetchClientContactNo(Request $request) // dd($request->all());
-    {$this->ensureCrmRecordAccessFromRequest($request, ['client_id']);
+    {
+        $this->ensureCrmRecordAccessFromRequest($request, ['client_id']);
         if (ClientContact::where('client_id', $request->client_id)->exists()) {
             // Fetch All client contacts
             $clientContacts = ClientContact::select('phone', 'country_code', 'contact_type')->where('client_id', $request->client_id)->get();
@@ -2612,6 +2614,7 @@ class ClientPersonalDetailsController extends Controller
                 'age' => 'nullable|string',
                 'gender' => 'nullable|in:Male,Female,Other',
                 'marital_status' => 'nullable|in:Never Married,Engaged,Married,De Facto,Defacto,Separated,Divorced,Widowed,Single',
+                'source' => LeadSources::updateRules($client->source),
             ]);
 
             // Convert DOB format and calculate age (like the working methods)
@@ -2683,7 +2686,12 @@ class ClientPersonalDetailsController extends Controller
                 'dob' => 'Date of Birth',
                 'gender' => 'Gender',
                 'marital_status' => 'Marital Status',
+                'source' => 'Source',
             ];
+
+            $resolvedSource = $request->has('source')
+                ? LeadSources::resolveOnSave($request->input('source'), $client->source)
+                : $client->source;
 
             // Compare and track changes with old and new values
             if ($client->first_name !== $validated['first_name']) {
@@ -2722,6 +2730,12 @@ class ClientPersonalDetailsController extends Controller
                     'new' => $maritalStatus,
                 ];
             }
+            if ($request->has('source') && $client->source !== $resolvedSource) {
+                $changedFields[$fieldLabels['source']] = [
+                    'old' => $client->source,
+                    'new' => $resolvedSource,
+                ];
+            }
 
             // Use direct assignment pattern (like the working old methods)
             $client->first_name = $validated['first_name'];
@@ -2731,6 +2745,9 @@ class ClientPersonalDetailsController extends Controller
             $client->age = $age;
             $client->gender = $validated['gender'] ?? null;
             $client->marital_status = $maritalStatus;
+            if ($request->has('source')) {
+                $client->source = $resolvedSource;
+            }
             $client->save();
 
             if ($client->type === 'lead') {

@@ -21,6 +21,7 @@ use App\Services\ClientLeadListExportService;
 use App\Services\ClientReferenceService;
 use App\Services\LeadFollowUpNoteService;
 use App\Services\LegalCrm\LegalCrmApiClient;
+use App\Support\LeadSources;
 use App\Support\StaffClientVisibility;
 use App\Traits\ClientHelpers;
 use Carbon\Carbon;
@@ -532,6 +533,7 @@ class LeadController extends Controller
                         ],
                         'phone.0' => 'required|max:255',
                         'email.0' => 'required|email|max:255',
+                        'source' => LeadSources::storeRules(),
                         'lead_status' => 'nullable|in:new,follow_up,not_qualified,hostile',
                         'followup_date' => 'nullable|date',
                         'assigned_staff_id' => 'nullable|exists:staff,id',
@@ -545,6 +547,8 @@ class LeadController extends Controller
                         'phone.0.required' => 'Phone number is required.',
                         'email.0.required' => 'Email address is required.',
                         'email.0.email' => 'Please enter a valid email address.',
+                        'source.required' => 'Source is required.',
+                        'source.in' => 'Please select a valid source.',
                     ];
                 } else {
                     $validationRules = [
@@ -554,6 +558,7 @@ class LeadController extends Controller
                         'dob' => 'required',
                         'phone.0' => 'required|max:255',
                         'email.0' => 'required|email|max:255',
+                        'source' => LeadSources::storeRules(),
                         'lead_status' => 'nullable|in:new,follow_up,not_qualified,hostile',
                         'followup_date' => 'nullable|date',
                         'assigned_staff_id' => 'nullable|exists:staff,id',
@@ -567,6 +572,8 @@ class LeadController extends Controller
                         'phone.0.required' => 'Phone number is required.',
                         'email.0.required' => 'Email address is required.',
                         'email.0.email' => 'Please enter a valid email address.',
+                        'source.required' => 'Source is required.',
+                        'source.in' => 'Please select a valid source.',
                     ];
                 }
 
@@ -730,6 +737,7 @@ class LeadController extends Controller
                     'phone' => $primaryPhone,
                     'email_type' => $requestData['email_type_hidden'][0] ?? null,
                     'email' => $adminEmail,
+                    'source' => $requestData['source'],
 
                     // Timestamps
                     'created_at' => now(),
@@ -964,12 +972,18 @@ class LeadController extends Controller
         $requestData = $request->all();
         $requestData['id'] = $id; // Ensure ID is set for validation
 
+        $lead = Lead::find($id);
+        if (! $lead) {
+            return Redirect::to('/leads')->with('error', 'Lead does not exist.');
+        }
+
         // Validate basic fields only (NOT phone/email as they are arrays)
         $this->validate($request, [
             'first_name' => 'required|max:255',
             'last_name' => 'required|max:255',
             'gender' => 'required|max:255',
             'dob' => 'required',
+            'source' => LeadSources::updateRules($lead->source),
             'lead_status' => 'sometimes|in:new,follow_up,not_qualified,hostile',
             'followup_date' => 'nullable|date',
             'assigned_staff_id' => 'nullable|exists:staff,id',
@@ -1038,14 +1052,6 @@ class LeadController extends Controller
                     }
                 }
             }
-        }
-
-        // Find the lead by ID using Lead model
-        $lead = Lead::find($id);
-
-        // Check if the lead exists
-        if (! $lead) {
-            return redirect()->back()->with('error', 'Lead not found.');
         }
 
         // Process related files with type validation
@@ -1126,7 +1132,12 @@ class LeadController extends Controller
             $lead->phone = $lastPhone;
             $lead->email_type = $lastEmailType;
             $lead->email = $lastEmail;
-            $lead->source = $requestData['lead_source'] ?? null;
+            if (array_key_exists('source', $requestData)) {
+                $lead->source = LeadSources::resolveOnSave(
+                    $requestData['source'] ?? null,
+                    $lead->source
+                );
+            }
             $lead->related_files = rtrim($related_files, ',');
 
             if (array_key_exists('lead_status', $requestData)) {

@@ -181,8 +181,8 @@
                                 <h3>@icon('fa-building') Lead Type</h3>
                             </div>
                             
-                            <div class="content-grid">
-                                <div class="form-group full-width">
+                            <div class="lead-type-source-row">
+                                <div class="form-group">
                                     <label style="display: block; margin-bottom: 10px; font-weight: 600;">
                                         Is this new lead a company?
                                     </label>
@@ -204,6 +204,11 @@
                                         <span class="text-danger">{{ $message }}</span>
                                     @enderror
                                 </div>
+                                @include('crm.partials.lead_source_select', [
+                                    'required' => true,
+                                    'selectedValue' => old('source'),
+                                    'wrapperClass' => 'lead-source-field',
+                                ])
                             </div>
                         </section>
 

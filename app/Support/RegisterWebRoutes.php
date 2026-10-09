@@ -336,6 +336,7 @@ final class RegisterWebRoutes
 
                 // Archive operations
                 $this->router->post('/archive/{id}', [LeadController::class, 'archive'])->name('archive');
+                $this->router->post('/list-field/{id}', [LeadController::class, 'updateListField'])->name('list_field.update');
 
                 // Legal CRM handoff (instant sync only; bit 1 = synced)
                 $this->router->post('/send-to-legal-crm/{id}', [LeadController::class, 'sendToLegalCrm'])->name('send_to_legal_crm');

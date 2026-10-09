@@ -160,6 +160,62 @@
         gap: 4px;
     }
 
+    .lead-list-editable {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        max-width: 100%;
+    }
+
+    .lead-list-editable__value {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .lead-list-editable__edit {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        background: #fff;
+        color: #64748b;
+        cursor: pointer;
+        line-height: 1;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .lead-list-editable:hover .lead-list-editable__edit,
+    .lead-list-editable__edit:focus-visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .lead-list-editable__edit:hover {
+        color: #4f46e5;
+        border-color: #a5b4fc;
+        background: #f8fafc;
+    }
+
+    .lead-list-editable__edit:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+    }
+
+    /* Touch devices: no hover — keep edit control visible */
+    @media (hover: none) {
+        .lead-list-editable__edit {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    }
+
     .listing-container .card-header {
         display: flex;
         justify-content: space-between;
@@ -542,6 +598,7 @@
                                     <th>Info</th>
                                     <th class="sortable-header">@sortablelink('created_at', 'Contact Date')</th>
                                     <th class="sortable-header">@sortablelink('lead_status', 'Stage')</th>
+                                    <th class="sortable-header">@sortablelink('source', 'Source')</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
@@ -568,18 +625,62 @@
                                         </td>
                                         <td>@icon('fa-mobile') {{@$list->phone}} <br/> @icon('fa-envelope') {{@$list->email}}</td>
                                         <td>{{date('d/m/Y h:i:s a', strtotime($list->created_at))}}</td>
-                                        <td>
+                                        <td class="js-lead-stage-cell" data-lead-row="{{ (int) $list->id }}">
                                             @php
                                                 $stageKey = $list->lead_status ?: 'new';
                                                 $stageLabel = ($leadStageLabels[$stageKey] ?? ucfirst(str_replace('_', ' ', $stageKey)));
                                                 $stageSlug = \Illuminate\Support\Str::slug($stageKey, '_');
+                                                $followupYmd = ($list->lead_status === 'follow_up' && $list->followup_date)
+                                                    ? $list->followup_date->format('Y-m-d')
+                                                    : '';
+                                                $listFieldUpdateUrl = route('leads.list_field.update', base64_encode(convert_uuencode(@$list->id)));
                                             @endphp
-                                            <span class="status-badge {{ $stageSlug }}">
-                                                @icon('fa-circle') {{ $stageLabel }}
-                                            </span>
-                                            @if($list->lead_status === 'follow_up' && $list->followup_date)
-                                                <br><small class="text-muted">Follow-up: {{ $list->followup_date->format('d/m/Y') }}</small>
-                                            @endif
+                                            <div class="lead-list-editable">
+                                                <div class="lead-list-editable__value js-lead-stage-display">
+                                                    <span class="status-badge {{ $stageSlug }}">
+                                                        @icon('fa-circle') <span class="js-lead-stage-label">{{ $stageLabel }}</span>
+                                                    </span>
+                                                    <small class="text-muted js-lead-followup-line" @if($list->lead_status !== 'follow_up' || !$list->followup_date) style="display:none;" @endif>
+                                                        @if($list->lead_status === 'follow_up' && $list->followup_date)
+                                                            Follow-up: <span class="js-lead-followup-text">{{ $list->followup_date->format('d/m/Y') }}</span>
+                                                        @else
+                                                            Follow-up: <span class="js-lead-followup-text"></span>
+                                                        @endif
+                                                    </small>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    class="lead-list-editable__edit js-open-lead-stage-modal"
+                                                    title="Edit stage"
+                                                    aria-label="Edit stage"
+                                                    data-update-url="{{ $listFieldUpdateUrl }}"
+                                                    data-lead-id="{{ (int) $list->id }}"
+                                                    data-stage-key="{{ $stageKey }}"
+                                                    data-followup-ymd="{{ $followupYmd }}"
+                                                >
+                                                    @icon('fa-pen', ['aria-hidden' => 'true'])
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td class="js-lead-source-cell" data-lead-row="{{ (int) $list->id }}">
+                                            @php
+                                                $sourceDisplay = \App\Support\LeadSources::displayValue($list->source) ?: config('constants.empty');
+                                                $sourceSelected = \App\Support\LeadSources::selectedValueForEdit($list->source);
+                                            @endphp
+                                            <div class="lead-list-editable">
+                                                <div class="lead-list-editable__value js-lead-source-display">{{ $sourceDisplay }}</div>
+                                                <button
+                                                    type="button"
+                                                    class="lead-list-editable__edit js-open-lead-source-modal"
+                                                    title="Edit source"
+                                                    aria-label="Edit source"
+                                                    data-update-url="{{ $listFieldUpdateUrl }}"
+                                                    data-lead-id="{{ (int) $list->id }}"
+                                                    data-source-value="{{ $sourceSelected ?? '' }}"
+                                                >
+                                                    @icon('fa-pen', ['aria-hidden' => 'true'])
+                                                </button>
+                                            </div>
                                         </td>
                                         <td>
                                             <div class="action-buttons">
@@ -636,7 +737,7 @@
 
                                 @else
                                     <tr>
-                                        <td colspan="6" style="text-align: center; padding: 20px;">
+                                        <td colspan="7" style="text-align: center; padding: 20px;">
                                             No Record Found
                                         </td>
                                     </tr>
@@ -653,6 +754,52 @@
             </div>
         </div>
     </section>
+</div>
+
+<div class="modal fade" id="leadListFieldModal" tabindex="-1" aria-labelledby="leadListFieldModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="leadListFieldModalTitle">Edit</h5>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="leadListFieldStagePanel" style="display: none;">
+                    <div class="form-group">
+                        <label for="leadListStageSelect">Stage</label>
+                        <select id="leadListStageSelect" class="form-control">
+                            @foreach(($leadStageLabels ?? []) as $stageVal => $stageLabel)
+                                <option value="{{ $stageVal }}">{{ $stageLabel }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group" id="leadListFollowupWrap" style="display: none;">
+                        <label for="leadListFollowupInput">Follow-up date</label>
+                        <input type="date" id="leadListFollowupInput" class="form-control">
+                    </div>
+                    <div class="text-danger small" id="leadListStageFieldError" style="display: none;"></div>
+                </div>
+                <div id="leadListFieldSourcePanel" style="display: none;">
+                    <div class="form-group">
+                        <label for="leadListSourceSelect">Source</label>
+                        <select id="leadListSourceSelect" class="form-control">
+                            <option value="">Select Source</option>
+                            @foreach(($leadSourceOptions ?? \App\Support\LeadSources::options()) as $option)
+                                <option value="{{ $option }}">{{ $option }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="text-danger small" id="leadListSourceFieldError" style="display: none;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="leadListFieldSaveBtn">Save</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="assignlead_modal">
@@ -1193,7 +1340,7 @@ function exportLeadList(filteredTotal) {
                         $(this).remove();
 
                         if ($('.listing-container .tdata tr').length === 0) {
-                            $('.listing-container .tdata').html('<tr><td colspan="6" style="text-align: center; padding: 20px;">No Record Found</td></tr>');
+                            $('.listing-container .tdata').html('<tr><td colspan="7" style="text-align: center; padding: 20px;">No Record Found</td></tr>');
                         }
                     });
 
@@ -1360,6 +1507,214 @@ function exportLeadList(filteredTotal) {
 
         return false;
     }
+
+    var leadListFieldState = {
+        field: null,
+        leadId: null,
+        updateUrl: null
+    };
+
+    var leadListEmptyDisplay = @json(config('constants.empty'));
+
+    var leadListStageSlugs = ['new', 'follow_up', 'not_qualified', 'hostile'];
+
+    function showLeadListFieldModal() {
+        var el = document.getElementById('leadListFieldModal');
+        if (!el) {
+            return;
+        }
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(el).show();
+        } else {
+            $(el).modal('show');
+        }
+    }
+
+    function hideLeadListFieldModal() {
+        var el = document.getElementById('leadListFieldModal');
+        if (!el) {
+            return;
+        }
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            var instance = bootstrap.Modal.getInstance(el);
+            if (instance) {
+                instance.hide();
+            }
+        } else {
+            $(el).modal('hide');
+        }
+    }
+
+    function clearLeadListFieldErrors() {
+        $('#leadListStageFieldError, #leadListSourceFieldError').hide().text('');
+    }
+
+    function showLeadListFieldError(panel, message) {
+        clearLeadListFieldErrors();
+        var $el = panel === 'source' ? $('#leadListSourceFieldError') : $('#leadListStageFieldError');
+        $el.text(message || 'Save failed.').show();
+    }
+
+    function toggleLeadListFollowupWrap() {
+        var stage = $('#leadListStageSelect').val();
+        if (stage === 'follow_up') {
+            $('#leadListFollowupWrap').show();
+        } else {
+            $('#leadListFollowupWrap').hide();
+        }
+    }
+
+    function openLeadListStageModal(button) {
+        var $btn = $(button);
+        leadListFieldState.field = 'stage';
+        leadListFieldState.leadId = $btn.data('lead-id');
+        leadListFieldState.updateUrl = $btn.data('update-url');
+
+        $('#leadListFieldModalTitle').text('Edit stage');
+        $('#leadListFieldStagePanel').show();
+        $('#leadListFieldSourcePanel').hide();
+        clearLeadListFieldErrors();
+
+        $('#leadListStageSelect').val($btn.data('stage-key') || 'new');
+        $('#leadListFollowupInput').val($btn.data('followup-ymd') || '');
+        toggleLeadListFollowupWrap();
+
+        showLeadListFieldModal();
+    }
+
+    function openLeadListSourceModal(button) {
+        var $btn = $(button);
+        leadListFieldState.field = 'source';
+        leadListFieldState.leadId = $btn.data('lead-id');
+        leadListFieldState.updateUrl = $btn.data('update-url');
+
+        $('#leadListFieldModalTitle').text('Edit source');
+        $('#leadListFieldSourcePanel').show();
+        $('#leadListFieldStagePanel').hide();
+        clearLeadListFieldErrors();
+
+        $('#leadListSourceSelect').val($btn.data('source-value') || '');
+
+        showLeadListFieldModal();
+    }
+
+    function applyLeadListStageUpdate(leadId, data) {
+        var $row = $('#id_' + leadId);
+        var $badge = $row.find('.js-lead-stage-display .status-badge');
+        var slug = data.stage_slug || 'new';
+
+        leadListStageSlugs.forEach(function (s) {
+            $badge.removeClass(s);
+        });
+        $badge.addClass(slug);
+        $row.find('.js-lead-stage-label').text(data.stage_label || slug);
+
+        var $line = $row.find('.js-lead-followup-line');
+        if (data.lead_status === 'follow_up' && data.followup_display) {
+            $line.show();
+            $row.find('.js-lead-followup-text').text(data.followup_display);
+        } else if (data.lead_status === 'follow_up') {
+            $line.show();
+            $row.find('.js-lead-followup-text').text('');
+        } else {
+            $line.hide();
+        }
+
+        var $stageBtn = $row.find('.js-open-lead-stage-modal');
+        $stageBtn.data('stage-key', data.lead_status || 'new');
+        $stageBtn.data('followup-ymd', data.followup_ymd || '');
+    }
+
+    $(document).on('click', '.js-open-lead-stage-modal', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openLeadListStageModal(this);
+    });
+
+    $(document).on('click', '.js-open-lead-source-modal', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openLeadListSourceModal(this);
+    });
+
+    $('#leadListStageSelect').on('change', toggleLeadListFollowupWrap);
+
+    $('#leadListFieldSaveBtn').on('click', function () {
+        if (!leadListFieldState.updateUrl || !leadListFieldState.field) {
+            return;
+        }
+
+        clearLeadListFieldErrors();
+
+        var payload = { field: leadListFieldState.field };
+
+        if (leadListFieldState.field === 'stage') {
+            payload.lead_status = $('#leadListStageSelect').val();
+            if (payload.lead_status === 'follow_up') {
+                payload.followup_date = $('#leadListFollowupInput').val() || '';
+            } else {
+                payload.followup_date = '';
+            }
+        } else {
+            payload.source = $('#leadListSourceSelect').val();
+            if (!payload.source) {
+                showLeadListFieldError('source', 'Please select a source.');
+                return;
+            }
+        }
+
+        var $saveBtn = $('#leadListFieldSaveBtn');
+        $saveBtn.prop('disabled', true);
+
+        $.ajax({
+            type: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                'Accept': 'application/json'
+            },
+            url: leadListFieldState.updateUrl,
+            data: payload,
+            dataType: 'json',
+            success: function (obj) {
+                $saveBtn.prop('disabled', false);
+
+                if (obj.status == 1) {
+                    hideLeadListFieldModal();
+
+                    if (leadListFieldState.field === 'stage') {
+                        applyLeadListStageUpdate(leadListFieldState.leadId, obj);
+                    } else {
+                        var display = obj.source_display || leadListEmptyDisplay;
+                        var $row = $('#id_' + leadListFieldState.leadId);
+                        $row.find('.js-lead-source-display').text(display);
+                        $row.find('.js-open-lead-source-modal').data('source-value', $('#leadListSourceSelect').val());
+                    }
+
+                    showListingMessage('success', obj.message || 'Saved.');
+                    $('html, body').animate({scrollTop: 0}, 'slow');
+                } else {
+                    showLeadListFieldError(leadListFieldState.field, obj.message || 'Save failed.');
+                }
+            },
+            error: function (xhr) {
+                $saveBtn.prop('disabled', false);
+                var msg = 'An error occurred while saving.';
+
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.errors) {
+                        var firstKey = Object.keys(xhr.responseJSON.errors)[0];
+                        if (firstKey && xhr.responseJSON.errors[firstKey][0]) {
+                            msg = xhr.responseJSON.errors[firstKey][0];
+                        }
+                    } else if (xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                }
+
+                showLeadListFieldError(leadListFieldState.field, msg);
+            }
+        });
+    });
 </script>
 @include('crm.partials.merge-test-modal', ['mergeSearchType' => 'lead'])
 @endpush

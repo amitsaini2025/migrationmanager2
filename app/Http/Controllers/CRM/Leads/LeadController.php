@@ -35,6 +35,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class LeadController extends Controller
@@ -93,7 +95,9 @@ class LeadController extends Controller
             ];
         }
 
-        return view('crm.leads.index', compact('lists', 'totalData', 'perPage', 'leadStageLabels'));
+        $leadSourceOptions = $leadSourceOptions ?? LeadSources::options();
+
+        return view('crm.leads.index', compact('lists', 'totalData', 'perPage', 'leadStageLabels', 'leadSourceOptions'));
     }
 
     /**
@@ -1437,6 +1441,142 @@ class LeadController extends Controller
         }
 
         return false;
+    }
+
+    /**
+     * Quick update of source or stage from the lead list (AJAX).
+     *
+     * @param  string  $id  Encoded lead ID
+     */
+    public function updateListField(Request $request, $id): JsonResponse
+    {
+        $roles = UserRole::find(Auth::user()->role);
+        $module_access = $this->decodeRoleModuleAccess($roles?->module_access);
+
+        if (! $this->staffRoleCanOpenLeadList($module_access)) {
+            return response()->json(['status' => 0, 'message' => config('constants.unauthorized')], 403);
+        }
+
+        try {
+            $decodedId = $this->decodeString($id);
+
+            if (! $decodedId) {
+                return response()->json([
+                    'status' => 0,
+                    'message' => config('constants.decode_string') ?? 'Invalid lead ID.',
+                ], 400);
+            }
+
+            if (! StaffClientVisibility::canAccessClientOrLead((int) $decodedId, Auth::user())) {
+                return response()->json(['status' => 0, 'message' => config('constants.unauthorized')], 403);
+            }
+
+            $lead = Lead::where('id', $decodedId)->where('is_archived', 0)->first();
+
+            if (! $lead) {
+                return response()->json(['status' => 0, 'message' => 'Lead not found.'], 404);
+            }
+
+            $field = (string) $request->input('field', '');
+
+            if ($field === 'source') {
+                $validated = $request->validate([
+                    'field' => 'required|in:source',
+                    'source' => ['required', Rule::in(LeadSources::allowedValues($lead->source))],
+                ]);
+
+                $lead->source = LeadSources::resolveOnSave(
+                    $validated['source'] ?? null,
+                    $lead->source
+                );
+                $lead->save();
+
+                return response()->json([
+                    'status' => 1,
+                    'message' => 'Source updated.',
+                    'source_display' => LeadSources::displayValue($lead->source) ?: '',
+                ]);
+            }
+
+            if ($field === 'stage') {
+                $pipelineStages = LeadFollowUpNoteService::pipelineStatuses();
+                $allowedStages = $pipelineStages;
+                $currentStage = (string) ($lead->lead_status ?? '');
+                if ($currentStage !== '' && ! in_array($currentStage, $pipelineStages, true)) {
+                    $allowedStages[] = $currentStage;
+                }
+
+                $validated = $request->validate([
+                    'field' => 'required|in:stage',
+                    'lead_status' => ['required', Rule::in($allowedStages)],
+                    'followup_date' => 'nullable|date',
+                ]);
+
+                $previousLeadStatus = $lead->lead_status;
+                $lead->lead_status = $validated['lead_status'];
+
+                if ($request->has('followup_date')) {
+                    $rawFd = $request->input('followup_date');
+                    if ($rawFd === '' || $rawFd === null) {
+                        if ($lead->lead_status !== 'follow_up') {
+                            $lead->followup_date = null;
+                        }
+                    } else {
+                        $parsed = $this->parseLeadDate(is_string($rawFd) ? $rawFd : '', false);
+                        $lead->followup_date = $parsed ? $parsed->format('Y-m-d H:i:s') : null;
+                    }
+                }
+
+                if ($lead->lead_status !== 'follow_up') {
+                    $lead->followup_date = null;
+                }
+
+                $lead->status = LeadFollowUpNoteService::adminsStatusForLeadStatus($lead->lead_status);
+                $lead->save();
+
+                app(LeadFollowUpNoteService::class)->syncNotesForLead($lead, $previousLeadStatus);
+
+                $stageKey = $lead->lead_status ?: 'new';
+                $stageLabels = [
+                    'new' => 'New',
+                    'follow_up' => 'Follow up',
+                    'not_qualified' => 'Not qualified',
+                    'hostile' => 'Hostile',
+                ];
+                $followupDisplay = null;
+                if ($lead->lead_status === 'follow_up' && $lead->followup_date) {
+                    $followupDisplay = $lead->followup_date->format('d/m/Y');
+                }
+
+                return response()->json([
+                    'status' => 1,
+                    'message' => 'Stage updated.',
+                    'lead_status' => $stageKey,
+                    'stage_label' => $stageLabels[$stageKey] ?? ucfirst(str_replace('_', ' ', $stageKey)),
+                    'stage_slug' => Str::slug($stageKey, '_'),
+                    'followup_display' => $followupDisplay,
+                    'followup_ymd' => ($lead->lead_status === 'follow_up' && $lead->followup_date)
+                        ? $lead->followup_date->format('Y-m-d')
+                        : '',
+                    'record_status' => (int) $lead->status,
+                ]);
+            }
+
+            return response()->json(['status' => 0, 'message' => 'Invalid field.'], 422);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => 0,
+                'message' => 'Validation failed.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error updating lead list field: '.$e->getMessage());
+
+            return response()->json([
+                'status' => 0,
+                'message' => 'An error occurred while saving. Please try again.',
+            ], 500);
+        }
     }
 
     /**

@@ -178,6 +178,14 @@ class LmtSheetController extends Controller
             return response()->json(['success' => false, 'message' => $fileErrors[0]], 422);
         }
 
+        $uploads = $this->advertisements->acceptedUploads($files);
+        if ($uploads !== [] && trim((string) $company->client_id) === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This company has no client reference, so advertisement files cannot be stored.',
+            ], 422);
+        }
+
         $result = $this->writer->save($company, [
             'client_matter_id' => $request->input('client_matter_id'),
             'lmt_required' => $request->input('lmt_required'),
@@ -191,8 +199,18 @@ class LmtSheetController extends Controller
             return response()->json(['success' => false, 'message' => $result['message']], $result['status']);
         }
 
-        if ($files !== []) {
-            $this->advertisements->store($company, $matter, $files, (int) auth('admin')->id());
+        if ($uploads !== []) {
+            try {
+                $this->advertisements->store($company, $matter, $uploads, (int) auth('admin')->id());
+            } catch (\Throwable $e) {
+                report($e);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'LMT details were saved, but the advertisement file could not be uploaded.',
+                ], 500);
+            }
+
             $this->logClientActivity(
                 (int) $company->id,
                 'uploaded LMT advertisement',

@@ -1156,6 +1156,8 @@ class VisaTypeSheetController extends Controller
                 DB::raw('NULL::text AS sponsor_occupation'),
                 DB::raw('NULL::date AS approval_end'),
                 DB::raw('NULL::boolean AS lmt_required'),
+                DB::raw('NULL::date AS lmt_start_date'),
+                DB::raw('NULL::date AS lmt_end_date'),
                 DB::raw('NULL::boolean AS regional_sponsorship'),
                 DB::raw('NULL::boolean AS adverse_information'),
             ];
@@ -1206,6 +1208,14 @@ class VisaTypeSheetController extends Controller
                 ."(SELECT cm_lmt.lmt_required FROM client_matters cm_lmt WHERE cm_lmt.id = {$matterIdColumn}), "
                 ."(SELECT c.lmt_required FROM companies c WHERE c.id = {$companyId})"
                 .') AS lmt_required'),
+            DB::raw('COALESCE('
+                ."(SELECT cm_lmt.lmt_start_date FROM client_matters cm_lmt WHERE cm_lmt.id = {$matterIdColumn}), "
+                ."(SELECT c.lmt_start_date FROM companies c WHERE c.id = {$companyId})"
+                .') AS lmt_start_date'),
+            DB::raw('COALESCE('
+                ."(SELECT cm_lmt.lmt_end_date FROM client_matters cm_lmt WHERE cm_lmt.id = {$matterIdColumn}), "
+                ."(SELECT c.lmt_end_date FROM companies c WHERE c.id = {$companyId})"
+                .') AS lmt_end_date'),
             DB::raw('COALESCE('
                 ."(SELECT cs.regional_sponsorship FROM company_sponsorships cs WHERE cs.company_id = {$companyId} ORDER BY cs.sort_order ASC NULLS LAST, cs.id ASC LIMIT 1), "
                 ."(SELECT c.regional_sponsorship FROM companies c WHERE c.id = {$companyId})"

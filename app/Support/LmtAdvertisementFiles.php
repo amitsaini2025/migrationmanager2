@@ -45,7 +45,19 @@ final class LmtAdvertisementFiles
     }
 
     /**
-     * @param  list<UploadedFile>  $files
+     * @param  list<mixed>  $files
+     * @return list<UploadedFile>
+     */
+    public function acceptedUploads(array $files): array
+    {
+        return array_values(array_filter(
+            $files,
+            fn ($file) => $file instanceof UploadedFile && $file->isValid()
+        ));
+    }
+
+    /**
+     * @param  list<mixed>  $files
      * @return list<string>
      */
     public function validateFiles(array $files): array
@@ -56,7 +68,12 @@ final class LmtAdvertisementFiles
                 continue;
             }
 
-            $fileName = $file->getClientOriginalName();
+            $fileName = $file->getClientOriginalName() ?: 'A file';
+            if (! $file->isValid()) {
+                $errors[] = $fileName.' did not upload. Please try again.';
+
+                continue;
+            }
             if (! DocumentFilenameRules::isAllowed($fileName)) {
                 $errors[] = $fileName.': '.DocumentFilenameRules::validationMessage();
             }
@@ -73,13 +90,17 @@ final class LmtAdvertisementFiles
      */
     public function store(Admin $client, ClientMatter $matter, array $files, int $userId): void
     {
-        $uploads = array_values(array_filter($files, fn ($file) => $file instanceof UploadedFile));
+        $uploads = $this->acceptedUploads($files);
         if ($uploads === []) {
             return;
         }
 
+        $clientUniqueId = trim((string) ($client->client_id ?? ''));
+        if ($clientUniqueId === '') {
+            throw new \InvalidArgumentException('This company has no client reference, so advertisement files cannot be stored.');
+        }
+
         $folder = $this->ensureFolder((int) $client->id, (int) $matter->id);
-        $clientUniqueId = (string) ($client->client_id ?? '');
         $prefix = DocumentStoredFilename::storedNamePrefix($client, 'company');
 
         foreach ($uploads as $index => $file) {
@@ -89,7 +110,7 @@ final class LmtAdvertisementFiles
             $storedKey = $prefix.'_'.$checklist.'_'.$uniqueId.($extension !== '' ? '.'.$extension : '');
             $filePath = $clientUniqueId.'/nomination/'.$storedKey;
 
-            Storage::disk('s3')->put($filePath, file_get_contents($file->getRealPath()));
+            Storage::disk('s3')->put($filePath, $file->getContent());
 
             $document = new Document;
             $document->user_id = $userId;

@@ -47,6 +47,12 @@
         margin-right: 8px;
         color: #005792;
     }
+    .lmt-status { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+    .lmt-status-expired, .lmt-status-too_short { background: #f8d7da; color: #842029; }
+    .lmt-status-incomplete { background: #fff3cd; color: #664d03; }
+    .lmt-status-advertising, .lmt-status-not_started { background: #cfe2ff; color: #084298; }
+    .lmt-status-ready { background: #d1e7dd; color: #0f5132; }
+    .lmt-status-not_required, .lmt-status-not_recorded { background: #e9ecef; color: #495057; }
     .visa-sheet-page .btn-theme,
     .visa-sheet-page .btn-theme-sm {
         background: linear-gradient(135deg, #005792 0%, #004670 100%) !important;
@@ -656,7 +662,7 @@
                                         <th>Nominee</th>
                                         <th>Occupation</th>
                                         <th class="sortable {{ $sortThClass('visa_expiry') }}" data-sort="visa_expiry">Approval End</th>
-                                        <th>LMT</th>
+                                        <th>LMT status</th>
                                         @else
                                         <th class="sortable {{ $sortThClass('visa_expiry') }}" data-sort="visa_expiry">Visa Expiry</th>
                                         @endif
@@ -782,13 +788,11 @@
                                                 <td class="{{ ! empty($row->visa_expiry_within_week) ? 'visa-expiry-within-week' : '' }}" @if(! empty($row->visa_expiry_within_week)) title="Approval ends within 7 days" @endif>{{ ! empty($row->approval_end) && $row->approval_end != '0000-00-00' ? \Carbon\Carbon::parse($row->approval_end)->format('d/m/Y') : '—' }}</td>
                                                 <td>
                                                     @php
-                                                        $lmt = $row->lmt_required ?? null;
-                                                        $lmtYes = $lmt === true || $lmt === 1 || $lmt === '1' || $lmt === 't' || $lmt === 'true';
-                                                        $lmtNo = $lmt === false || $lmt === 0 || $lmt === '0' || $lmt === 'f' || $lmt === 'false';
+                                                        $lmtStatus = \App\Support\LmtStatus::assess($row->lmt_required ?? null, $row->lmt_start_date ?? null, $row->lmt_end_date ?? null);
                                                         $regional = ($row->regional_sponsorship ?? null) === true || ($row->regional_sponsorship ?? null) === 1 || ($row->regional_sponsorship ?? null) === '1' || ($row->regional_sponsorship ?? null) === 't';
                                                         $adverse = ($row->adverse_information ?? null) === true || ($row->adverse_information ?? null) === 1 || ($row->adverse_information ?? null) === '1' || ($row->adverse_information ?? null) === 't';
                                                     @endphp
-                                                    {{ $lmtYes ? 'Yes' : ($lmtNo ? 'No' : '—') }}
+                                                    <span class="lmt-status lmt-status-{{ $lmtStatus['key'] }}" title="{{ $lmtStatus['detail'] }}">{{ $lmtStatus['label'] }}</span>
                                                     @if($regional)<div class="text-muted" style="font-size: 12px;">Regional</div>@endif
                                                     @if($adverse)<div class="text-muted" style="font-size: 12px;">Adverse info</div>@endif
                                                 </td>

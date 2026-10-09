@@ -122,6 +122,50 @@ class LmtMatterWriterTest extends TestCase
         $this->assertSame('Seek-ad', $listed[(int) $matter->id][0]['name']);
     }
 
+    #[Test]
+    public function advertisement_upload_rejects_a_file_that_did_not_upload(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'lmt');
+        file_put_contents($path, 'pdf');
+        $file = new UploadedFile($path, 'Seek-ad.pdf', 'application/pdf', UPLOAD_ERR_INI_SIZE, true);
+
+        $errors = (new LmtAdvertisementFiles)->validateFiles([$file]);
+
+        $this->assertNotSame([], $errors);
+        $this->assertSame([], (new LmtAdvertisementFiles)->acceptedUploads([$file]));
+        @unlink($path);
+    }
+
+    #[Test]
+    public function advertisement_upload_refuses_a_company_without_a_client_reference(): void
+    {
+        Storage::fake('s3');
+
+        $company = new Admin;
+        $company->forceFill([
+            'id' => 16,
+            'is_company' => 1,
+            'type' => 'client',
+            'client_id' => ' ',
+            'first_name' => 'Acme',
+        ]);
+        $company->exists = true;
+
+        $matter = new ClientMatter;
+        $matter->client_id = 16;
+        $matter->matter_status = 1;
+        $matter->save();
+
+        $file = UploadedFile::fake()->create('Seek-ad.pdf', 20, 'application/pdf');
+
+        try {
+            (new LmtAdvertisementFiles)->store($company, $matter, [$file], 3);
+            $this->fail('Expected a missing client reference to stop the upload.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertSame(0, Document::query()->count());
+        }
+    }
+
     private function createSchema(): void
     {
         Schema::dropIfExists('documents');

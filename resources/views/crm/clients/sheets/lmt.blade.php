@@ -232,6 +232,26 @@
         }
     }
 
+    function hideModal() {
+        if (window.bootstrap && window.bootstrap.Modal) {
+            var instance = window.bootstrap.Modal.getInstance(modalEl);
+            if (instance) {
+                instance.hide();
+            }
+            return;
+        }
+        if (window.jQuery) {
+            window.jQuery(modalEl).modal('hide');
+        }
+    }
+
+    modalEl.querySelectorAll('[data-bs-dismiss="modal"]').forEach(function (button) {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            hideModal();
+        });
+    });
+
     function resetForm() {
         editing = false;
         clearError();
@@ -314,7 +334,12 @@
         searchTimer = setTimeout(function () {
             fetch('{{ route('clients.sheets.lmt.companies') }}?q=' + encodeURIComponent(term), {
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-            }).then(function (response) { return response.json(); })
+            }).then(function (response) {
+                  if (!response.ok) {
+                      throw new Error('search failed');
+                  }
+                  return response.json();
+              })
               .then(function (data) {
                   companyResults.innerHTML = '';
                   (data.companies || []).forEach(function (company) {
@@ -331,6 +356,10 @@
                       companyResults.appendChild(button);
                   });
                   companyResults.style.display = companyResults.childElementCount ? 'block' : 'none';
+              })
+              .catch(function () {
+                  companyResults.innerHTML = '';
+                  companyResults.style.display = 'none';
               });
         }, 250);
     });

@@ -11,6 +11,8 @@ class CrmSheets
 
     public const KEY_ART = 'art';
 
+    public const KEY_LMT = 'lmt';
+
     /**
      * @return array<string, string> sheet_key => display label
      */
@@ -22,6 +24,13 @@ class CrmSheets
         ];
         foreach (config('sheets.visa_types', []) as $key => $cfg) {
             $def[(string) $key] = $cfg['title'] ?? ucfirst((string) $key);
+            if ((string) $key === 'employer') {
+                $def[self::KEY_LMT] = 'Labour Market Testing';
+            }
+        }
+
+        if (! array_key_exists(self::KEY_LMT, $def)) {
+            $def[self::KEY_LMT] = 'Labour Market Testing';
         }
 
         return $def;
@@ -55,6 +64,9 @@ class CrmSheets
         }
         if ($key === self::KEY_ART) {
             return route('clients.sheets.art');
+        }
+        if ($key === self::KEY_LMT) {
+            return route('clients.sheets.lmt');
         }
 
         return route('clients.sheets.visa-type', ['visaType' => $key]);

@@ -34,6 +34,7 @@ use App\Services\EnglishProficiencyService;
 use App\Services\LeadFollowUpNoteService;
 use App\Services\PointsService;
 use App\Support\LeadSources;
+use App\Support\LmtMatterWriter;
 use App\Support\StaffClientVisibility;
 use App\Traits\LogsClientActivity;
 use Carbon\Carbon;
@@ -2297,96 +2298,12 @@ class ClientPersonalDetailsController extends Controller
 
     private function saveLmtSection($request, $client)
     {
-        if (! $client->is_company) {
-            return response()->json(['success' => false, 'message' => 'Not a company client'], 400);
-        }
+        $result = (new LmtMatterWriter)->save($client, $request->all());
 
-        $matterId = $request->input('client_matter_id');
-        if ($matterId === null || $matterId === '') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Matter is required to save Labour Market Testing details.',
-            ], 422);
-        }
-
-        $matter = ClientMatter::query()
-            ->where('id', (int) $matterId)
-            ->where('client_id', $client->id)
-            ->first();
-
-        if (! $matter) {
-            return response()->json(['success' => false, 'message' => 'Matter not found.'], 404);
-        }
-
-        if ((int) $matter->matter_status !== 1) {
-            return response()->json([
-                'success' => false,
-                'message' => 'LMT can only be updated for active matters.',
-            ], 422);
-        }
-
-        if ($request->boolean('delete_lmt')) {
-            $matter->lmt_required = null;
-            $matter->lmt_start_date = null;
-            $matter->lmt_end_date = null;
-            $matter->lmt_notes = null;
-            $matter->lmt_password = null;
-            $matter->save();
-
-            return response()->json(['success' => true, 'message' => 'Labour Market Testing details removed for this matter. You can add a new record anytime.']);
-        }
-
-        $request->merge([
-            'lmt_start_date' => $request->filled('lmt_start_date') ? $request->input('lmt_start_date') : null,
-            'lmt_end_date' => $request->filled('lmt_end_date') ? $request->input('lmt_end_date') : null,
-        ]);
-
-        $validated = $request->validate([
-            'lmt_start_date' => 'nullable|date',
-            'lmt_end_date' => 'nullable|date',
-            'lmt_notes' => 'nullable|string',
-            'lmt_password' => 'nullable|string|max:255',
-        ]);
-
-        $reqRaw = $request->input('lmt_required');
-        $lmtRequired = null;
-        if ($reqRaw === '1' || $reqRaw === 1 || $reqRaw === true) {
-            $lmtRequired = true;
-        } elseif ($reqRaw === '0' || $reqRaw === 0 || $reqRaw === false) {
-            $lmtRequired = false;
-        }
-
-        $start = $validated['lmt_start_date'] ?? null;
-        $end = $validated['lmt_end_date'] ?? null;
-        if ($start !== null && $end !== null) {
-            try {
-                if (Carbon::parse($end)->lt(Carbon::parse($start))) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'LMT end date must be on or after the start date.',
-                    ], 422);
-                }
-            } catch (\Throwable $e) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid LMT date values.',
-                ], 422);
-            }
-        }
-
-        $notes = isset($validated['lmt_notes']) ? trim((string) $validated['lmt_notes']) : '';
-        $notes = $notes !== '' ? $notes : null;
-        $password = isset($validated['lmt_password']) ? trim((string) $validated['lmt_password']) : '';
-        $password = $password !== '' ? $password : null;
-
-        $matter->lmt_required = $lmtRequired;
-        $matter->lmt_start_date = $start;
-        $matter->lmt_end_date = $end;
-        $matter->lmt_notes = $notes;
-        $matter->lmt_password = $password;
-        $matter->save();
-
-        return response()->json(['success' => true, 'message' => 'LMT details updated successfully']);
+        return response()->json([
+            'success' => $result['ok'],
+            'message' => $result['message'],
+        ], $result['status']);
     }
 
     private function saveTrainingSection($request, $client)

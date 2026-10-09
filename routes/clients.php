@@ -20,6 +20,7 @@ use App\Http\Controllers\CRM\EmailUploadController;
 use App\Http\Controllers\CRM\EmailVerificationController;
 use App\Http\Controllers\CRM\EoiRoiSheetController;
 use App\Http\Controllers\CRM\Form956Controller;
+use App\Http\Controllers\CRM\LmtSheetController;
 use App\Http\Controllers\CRM\PhoneVerificationController;
 use App\Http\Controllers\CRM\SendGridSendersController;
 use App\Http\Controllers\CRM\SmartEmailImportController;
@@ -71,6 +72,12 @@ Route::get('/clients/sheets/art', [ArtSheetController::class, 'index'])->name('c
 Route::get('/clients/sheets/art/insights', [ArtSheetController::class, 'insights'])->name('clients.sheets.art.insights');
 Route::post('/clients/sheets/art/toggle-pin', [ArtSheetController::class, 'togglePin'])->name('clients.sheets.art.toggle-pin');
 Route::post('/clients/sheets/art/comment', [ArtSheetController::class, 'updateComment'])->name('clients.sheets.art.comment');
+
+Route::get('/clients/sheets/lmt', [LmtSheetController::class, 'index'])->name('clients.sheets.lmt');
+Route::get('/clients/sheets/lmt/companies', [LmtSheetController::class, 'companies'])->name('clients.sheets.lmt.companies');
+Route::get('/clients/sheets/lmt/companies/{company}/matters', [LmtSheetController::class, 'matters'])->name('clients.sheets.lmt.matters');
+Route::get('/clients/sheets/lmt/matters/{matter}', [LmtSheetController::class, 'show'])->name('clients.sheets.lmt.show');
+Route::post('/clients/sheets/lmt', [LmtSheetController::class, 'store'])->name('clients.sheets.lmt.store');
 
 Route::get('/clients/sheets/{visaType}', [VisaTypeSheetController::class, 'index'])
     ->where('visaType', CrmSheets::visaTypeRoutePattern())

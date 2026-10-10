@@ -31,6 +31,11 @@ class ClientMatter extends Model
         'lmt_required' => 'boolean',
         'lmt_start_date' => 'date',
         'lmt_end_date' => 'date',
+        'lmt_use_advertisements' => 'boolean',
+        'lmt_ad1_opened_on' => 'date',
+        'lmt_ad1_closed_on' => 'date',
+        'lmt_ad2_opened_on' => 'date',
+        'lmt_ad2_closed_on' => 'date',
     ];
 
     /**
@@ -60,6 +65,15 @@ class ClientMatter extends Model
         'lmt_end_date',
         'lmt_notes',
         'lmt_password',
+        'lmt_use_advertisements',
+        'lmt_ad1_publication',
+        'lmt_ad1_opened_on',
+        'lmt_ad1_closed_on',
+        'lmt_ad1_document_id',
+        'lmt_ad2_publication',
+        'lmt_ad2_opened_on',
+        'lmt_ad2_closed_on',
+        'lmt_ad2_document_id',
     ];
 
     /**

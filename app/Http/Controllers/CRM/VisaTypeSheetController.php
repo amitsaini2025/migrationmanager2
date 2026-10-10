@@ -1158,6 +1158,13 @@ class VisaTypeSheetController extends Controller
                 DB::raw('NULL::boolean AS lmt_required'),
                 DB::raw('NULL::date AS lmt_start_date'),
                 DB::raw('NULL::date AS lmt_end_date'),
+                DB::raw('NULL::boolean AS lmt_use_advertisements'),
+                DB::raw('NULL::text AS lmt_ad1_publication'),
+                DB::raw('NULL::date AS lmt_ad1_opened_on'),
+                DB::raw('NULL::date AS lmt_ad1_closed_on'),
+                DB::raw('NULL::text AS lmt_ad2_publication'),
+                DB::raw('NULL::date AS lmt_ad2_opened_on'),
+                DB::raw('NULL::date AS lmt_ad2_closed_on'),
                 DB::raw('NULL::boolean AS regional_sponsorship'),
                 DB::raw('NULL::boolean AS adverse_information'),
             ];
@@ -1216,6 +1223,13 @@ class VisaTypeSheetController extends Controller
                 ."(SELECT cm_lmt.lmt_end_date FROM client_matters cm_lmt WHERE cm_lmt.id = {$matterIdColumn}), "
                 ."(SELECT c.lmt_end_date FROM companies c WHERE c.id = {$companyId})"
                 .') AS lmt_end_date'),
+            DB::raw("(SELECT cm_lmt.lmt_use_advertisements FROM client_matters cm_lmt WHERE cm_lmt.id = {$matterIdColumn}) AS lmt_use_advertisements"),
+            DB::raw("(SELECT cm_lmt.lmt_ad1_publication FROM client_matters cm_lmt WHERE cm_lmt.id = {$matterIdColumn}) AS lmt_ad1_publication"),
+            DB::raw("(SELECT cm_lmt.lmt_ad1_opened_on FROM client_matters cm_lmt WHERE cm_lmt.id = {$matterIdColumn}) AS lmt_ad1_opened_on"),
+            DB::raw("(SELECT cm_lmt.lmt_ad1_closed_on FROM client_matters cm_lmt WHERE cm_lmt.id = {$matterIdColumn}) AS lmt_ad1_closed_on"),
+            DB::raw("(SELECT cm_lmt.lmt_ad2_publication FROM client_matters cm_lmt WHERE cm_lmt.id = {$matterIdColumn}) AS lmt_ad2_publication"),
+            DB::raw("(SELECT cm_lmt.lmt_ad2_opened_on FROM client_matters cm_lmt WHERE cm_lmt.id = {$matterIdColumn}) AS lmt_ad2_opened_on"),
+            DB::raw("(SELECT cm_lmt.lmt_ad2_closed_on FROM client_matters cm_lmt WHERE cm_lmt.id = {$matterIdColumn}) AS lmt_ad2_closed_on"),
             DB::raw('COALESCE('
                 ."(SELECT cs.regional_sponsorship FROM company_sponsorships cs WHERE cs.company_id = {$companyId} ORDER BY cs.sort_order ASC NULLS LAST, cs.id ASC LIMIT 1), "
                 ."(SELECT c.regional_sponsorship FROM companies c WHERE c.id = {$companyId})"

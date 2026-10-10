@@ -5,6 +5,7 @@ namespace App\Http\Controllers\CRM;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\ClientMatter;
+use App\Models\Document;
 use App\Support\CrmSheets;
 use App\Support\LmtAdvertisementFiles;
 use App\Support\LmtMatterWriter;
@@ -148,6 +149,11 @@ class LmtSheetController extends Controller
             'lmt_end_date' => $matter->lmt_end_date?->format('Y-m-d') ?? '',
             'lmt_notes' => $matter->lmt_notes ?? '',
             'lmt_password' => $matter->lmt_password ?? '',
+            'lmt_use_advertisements' => (bool) $matter->lmt_use_advertisements,
+            'advertisements' => [
+                $this->advertisementPayload($matter, 1),
+                $this->advertisementPayload($matter, 2),
+            ],
             'files' => $files,
         ]);
     }
@@ -169,23 +175,6 @@ class LmtSheetController extends Controller
             return response()->json(['success' => false, 'message' => 'Matter not found.'], 404);
         }
 
-        $files = $request->file('advertisements', []);
-        if (! is_array($files)) {
-            $files = [$files];
-        }
-        $fileErrors = $this->advertisements->validateFiles($files);
-        if ($fileErrors !== []) {
-            return response()->json(['success' => false, 'message' => $fileErrors[0]], 422);
-        }
-
-        $uploads = $this->advertisements->acceptedUploads($files);
-        if ($uploads !== [] && trim((string) $company->client_id) === '') {
-            return response()->json([
-                'success' => false,
-                'message' => 'This company has no client reference, so advertisement files cannot be stored.',
-            ], 422);
-        }
-
         $result = $this->writer->save($company, [
             'client_matter_id' => $request->input('client_matter_id'),
             'lmt_required' => $request->input('lmt_required'),
@@ -193,24 +182,22 @@ class LmtSheetController extends Controller
             'lmt_end_date' => $request->input('lmt_end_date'),
             'lmt_notes' => $request->input('lmt_notes'),
             'lmt_password' => $request->input('lmt_password'),
-        ]);
+            'lmt_ad1_publication' => $request->input('lmt_ad1_publication'),
+            'lmt_ad1_opened_on' => $request->input('lmt_ad1_opened_on'),
+            'lmt_ad1_closed_on' => $request->input('lmt_ad1_closed_on'),
+            'lmt_ad2_publication' => $request->input('lmt_ad2_publication'),
+            'lmt_ad2_opened_on' => $request->input('lmt_ad2_opened_on'),
+            'lmt_ad2_closed_on' => $request->input('lmt_ad2_closed_on'),
+        ], [
+            'ad1' => $request->file('lmt_ad1_file'),
+            'ad2' => $request->file('lmt_ad2_file'),
+        ], (int) auth('admin')->id());
 
         if (! $result['ok']) {
             return response()->json(['success' => false, 'message' => $result['message']], $result['status']);
         }
 
-        if ($uploads !== []) {
-            try {
-                $this->advertisements->store($company, $matter, $uploads, (int) auth('admin')->id());
-            } catch (\Throwable $e) {
-                report($e);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'LMT details were saved, but the advertisement file could not be uploaded.',
-                ], 500);
-            }
-
+        if ($result['uploaded']) {
             $this->logClientActivity(
                 (int) $company->id,
                 'uploaded LMT advertisement',
@@ -258,6 +245,15 @@ class LmtSheetController extends Controller
                 $lmt->whereNotNull('lmt_required')
                     ->orWhereNotNull('lmt_start_date')
                     ->orWhereNotNull('lmt_end_date')
+                    ->orWhere('lmt_use_advertisements', true)
+                    ->orWhereNotNull('lmt_ad1_opened_on')
+                    ->orWhereNotNull('lmt_ad2_opened_on')
+                    ->orWhere(function ($publication) {
+                        $publication->whereNotNull('lmt_ad1_publication')->where('lmt_ad1_publication', '!=', '');
+                    })
+                    ->orWhere(function ($publication) {
+                        $publication->whereNotNull('lmt_ad2_publication')->where('lmt_ad2_publication', '!=', '');
+                    })
                     ->orWhere(function ($notes) {
                         $notes->whereNotNull('lmt_notes')->where('lmt_notes', '!=', '');
                     })
@@ -329,16 +325,15 @@ class LmtSheetController extends Controller
      */
     private function mapRows(Collection $matters): Collection
     {
-        $files = $this->advertisements->filesForMatters($matters->pluck('id')->all());
+        $folderFiles = $this->advertisements->filesForMatters($matters->pluck('id')->all());
+        $slotFiles = $this->slotFiles($matters);
         $today = Carbon::today();
 
-        return $matters->map(function (ClientMatter $matter) use ($files, $today) {
-            $status = LmtStatus::assess(
-                $matter->lmt_required,
-                $matter->lmt_start_date,
-                $matter->lmt_end_date,
-                $today
-            );
+        return $matters->map(function (ClientMatter $matter) use ($folderFiles, $slotFiles, $today) {
+            $status = LmtStatus::assessRecord($matter, $today);
+            $files = $matter->lmt_use_advertisements
+                ? ($slotFiles[(int) $matter->id] ?? [])
+                : ($folderFiles[(int) $matter->id] ?? []);
             $hasNotes = trim((string) ($matter->lmt_notes ?? '')) !== '';
             $hasPassword = trim((string) ($matter->lmt_password ?? '')) !== '';
             if ($status['key'] === LmtStatus::NOT_RECORDED && ($hasNotes || $hasPassword)) {
@@ -416,5 +411,63 @@ class LmtSheetController extends Controller
             'path' => $request->url(),
             'query' => $request->query(),
         ]);
+    }
+
+    /**
+     * @return array{publication: string, opened_on: string, closed_on: string, file: ?array{name: string, url: ?string}}
+     */
+    private function advertisementPayload(ClientMatter $matter, int $number): array
+    {
+        $opened = $matter->{'lmt_ad'.$number.'_opened_on'};
+        $closed = $matter->{'lmt_ad'.$number.'_closed_on'};
+
+        return [
+            'publication' => (string) ($matter->{'lmt_ad'.$number.'_publication'} ?? ''),
+            'opened_on' => $opened?->format('Y-m-d') ?? '',
+            'closed_on' => $closed?->format('Y-m-d') ?? '',
+            'file' => $this->advertisements->describeDocument(
+                $matter->{'lmt_ad'.$number.'_document_id'} ? (int) $matter->{'lmt_ad'.$number.'_document_id'} : null
+            ),
+        ];
+    }
+
+    /**
+     * @param  Collection<int, ClientMatter>  $matters
+     * @return array<int, list<array{name: string, url: ?string}>>
+     */
+    private function slotFiles(Collection $matters): array
+    {
+        $ids = [];
+        foreach ($matters as $matter) {
+            foreach ([1, 2] as $number) {
+                $documentId = (int) ($matter->{'lmt_ad'.$number.'_document_id'} ?? 0);
+                if ($documentId > 0) {
+                    $ids[] = $documentId;
+                }
+            }
+        }
+
+        $documents = $ids === []
+            ? collect()
+            : Document::query()->whereIn('id', array_values(array_unique($ids)))->get(['id', 'checklist', 'file_name', 'myfile'])->keyBy('id');
+
+        $grouped = [];
+        foreach ($matters as $matter) {
+            $files = [];
+            foreach ([1, 2] as $number) {
+                $document = $documents->get((int) ($matter->{'lmt_ad'.$number.'_document_id'} ?? 0));
+                if (! $document) {
+                    continue;
+                }
+                $name = trim((string) ($document->checklist ?: $document->file_name));
+                $files[] = [
+                    'name' => $name !== '' ? $name : 'Advertisement '.$number,
+                    'url' => $document->myfile ?: null,
+                ];
+            }
+            $grouped[(int) $matter->id] = $files;
+        }
+
+        return $grouped;
     }
 }

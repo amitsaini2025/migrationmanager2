@@ -166,6 +166,194 @@ class LmtMatterWriterTest extends TestCase
         }
     }
 
+    #[Test]
+    public function one_advertisement_does_not_replace_the_existing_dates(): void
+    {
+        $company = $this->company();
+        $matter = $this->matter();
+        $matter->lmt_start_date = '2026-08-01';
+        $matter->lmt_end_date = '2026-08-28';
+        $matter->save();
+
+        $result = (new LmtMatterWriter)->save($company, [
+            'client_matter_id' => $matter->id,
+            'lmt_required' => '1',
+            'lmt_start_date' => '2026-08-01',
+            'lmt_end_date' => '2026-08-28',
+            'lmt_ad1_publication' => 'Seek',
+            'lmt_ad1_opened_on' => '2026-09-01',
+            'lmt_ad1_closed_on' => '2026-09-10',
+        ]);
+
+        $matter->refresh();
+        $this->assertTrue($result['ok']);
+        $this->assertSame('2026-08-01', $matter->lmt_start_date->format('Y-m-d'));
+        $this->assertSame('2026-08-28', $matter->lmt_end_date->format('Y-m-d'));
+        $this->assertSame('Seek', $matter->lmt_ad1_publication);
+        $this->assertFalse((bool) $matter->lmt_use_advertisements);
+    }
+
+    #[Test]
+    public function both_advertisements_replace_the_start_and_end_dates(): void
+    {
+        $company = $this->company();
+        $matter = $this->matter();
+        $matter->lmt_start_date = '2026-01-01';
+        $matter->lmt_end_date = '2026-02-01';
+        $matter->save();
+
+        $result = (new LmtMatterWriter)->save($company, [
+            'client_matter_id' => $matter->id,
+            'lmt_required' => '1',
+            'lmt_start_date' => '2026-01-01',
+            'lmt_end_date' => '2026-02-01',
+            'lmt_ad1_publication' => 'Seek',
+            'lmt_ad1_opened_on' => '2026-08-10',
+            'lmt_ad1_closed_on' => '2026-08-20',
+            'lmt_ad2_publication' => 'Indeed',
+            'lmt_ad2_opened_on' => '2026-08-01',
+            'lmt_ad2_closed_on' => '2026-08-28',
+        ]);
+
+        $matter->refresh();
+        $this->assertTrue($result['ok']);
+        $this->assertTrue((bool) $matter->lmt_use_advertisements);
+        $this->assertSame('2026-08-01', $matter->lmt_start_date->format('Y-m-d'));
+        $this->assertSame('2026-08-28', $matter->lmt_end_date->format('Y-m-d'));
+    }
+
+    #[Test]
+    public function an_open_advertisement_leaves_the_end_date_blank(): void
+    {
+        $company = $this->company();
+        $matter = $this->matter();
+
+        (new LmtMatterWriter)->save($company, [
+            'client_matter_id' => $matter->id,
+            'lmt_required' => '1',
+            'lmt_ad1_publication' => 'Seek',
+            'lmt_ad1_opened_on' => '2026-09-01',
+            'lmt_ad2_publication' => 'Indeed',
+            'lmt_ad2_opened_on' => '2026-09-01',
+            'lmt_ad2_closed_on' => '2026-09-20',
+        ]);
+
+        $matter->refresh();
+        $this->assertSame('2026-09-01', $matter->lmt_start_date->format('Y-m-d'));
+        $this->assertNull($matter->lmt_end_date);
+    }
+
+    #[Test]
+    public function clearing_one_advertisement_recalculates_without_restoring_the_old_dates(): void
+    {
+        $company = $this->company();
+        $matter = $this->matter();
+        $matter->lmt_start_date = '2026-01-01';
+        $matter->lmt_end_date = '2026-02-01';
+        $matter->save();
+
+        $writer = new LmtMatterWriter;
+        $writer->save($company, [
+            'client_matter_id' => $matter->id,
+            'lmt_required' => '1',
+            'lmt_ad1_publication' => 'Seek',
+            'lmt_ad1_opened_on' => '2026-08-01',
+            'lmt_ad1_closed_on' => '2026-08-20',
+            'lmt_ad2_publication' => 'Indeed',
+            'lmt_ad2_opened_on' => '2026-08-10',
+            'lmt_ad2_closed_on' => '2026-08-28',
+        ]);
+
+        $writer->save($company, [
+            'client_matter_id' => $matter->id,
+            'lmt_required' => '1',
+            'lmt_start_date' => '2026-01-01',
+            'lmt_end_date' => '2026-02-01',
+            'lmt_ad1_publication' => 'Seek',
+            'lmt_ad1_opened_on' => '2026-08-01',
+            'lmt_ad1_closed_on' => '2026-08-20',
+            'lmt_ad2_publication' => '',
+            'lmt_ad2_opened_on' => '',
+            'lmt_ad2_closed_on' => '',
+        ]);
+
+        $matter->refresh();
+        $this->assertTrue((bool) $matter->lmt_use_advertisements);
+        $this->assertSame('2026-08-01', $matter->lmt_start_date->format('Y-m-d'));
+        $this->assertSame('2026-08-20', $matter->lmt_end_date->format('Y-m-d'));
+        $this->assertNull($matter->lmt_ad2_publication);
+    }
+
+    #[Test]
+    public function a_save_without_advertisement_fields_keeps_the_stored_advertisements(): void
+    {
+        $company = $this->company();
+        $matter = $this->matter();
+        $writer = new LmtMatterWriter;
+        $writer->save($company, [
+            'client_matter_id' => $matter->id,
+            'lmt_required' => '1',
+            'lmt_ad1_publication' => 'Seek',
+            'lmt_ad1_opened_on' => '2026-08-01',
+            'lmt_ad1_closed_on' => '2026-08-28',
+            'lmt_ad2_publication' => 'Indeed',
+            'lmt_ad2_opened_on' => '2026-08-01',
+            'lmt_ad2_closed_on' => '2026-08-20',
+        ]);
+
+        $result = $writer->save($company, [
+            'client_matter_id' => $matter->id,
+            'lmt_required' => '1',
+            'lmt_start_date' => '2026-01-01',
+            'lmt_end_date' => '2026-02-01',
+            'lmt_notes' => 'Updated note',
+        ]);
+
+        $matter->refresh();
+        $this->assertTrue($result['ok']);
+        $this->assertSame('Seek', $matter->lmt_ad1_publication);
+        $this->assertSame('Indeed', $matter->lmt_ad2_publication);
+        $this->assertSame('2026-08-01', $matter->lmt_start_date->format('Y-m-d'));
+        $this->assertSame('2026-08-28', $matter->lmt_end_date->format('Y-m-d'));
+        $this->assertSame('Updated note', $matter->lmt_notes);
+    }
+
+    #[Test]
+    public function save_rejects_an_advertisement_close_before_its_open_date(): void
+    {
+        $result = (new LmtMatterWriter)->save($this->company(), [
+            'client_matter_id' => $this->matter()->id,
+            'lmt_required' => '1',
+            'lmt_ad1_publication' => 'Seek',
+            'lmt_ad1_opened_on' => '2026-08-20',
+            'lmt_ad1_closed_on' => '2026-08-01',
+        ]);
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame(422, $result['status']);
+    }
+
+    private function company(): Admin
+    {
+        $company = new Admin;
+        $company->id = 15;
+        $company->is_company = 1;
+        $company->type = 'client';
+        $company->exists = true;
+
+        return $company;
+    }
+
+    private function matter(): ClientMatter
+    {
+        $matter = new ClientMatter;
+        $matter->client_id = 15;
+        $matter->matter_status = 1;
+        $matter->save();
+
+        return $matter;
+    }
+
     private function createSchema(): void
     {
         Schema::dropIfExists('documents');
@@ -203,6 +391,15 @@ class LmtMatterWriterTest extends TestCase
             $table->date('lmt_end_date')->nullable();
             $table->text('lmt_notes')->nullable();
             $table->string('lmt_password')->nullable();
+            $table->boolean('lmt_use_advertisements')->nullable();
+            $table->string('lmt_ad1_publication')->nullable();
+            $table->date('lmt_ad1_opened_on')->nullable();
+            $table->date('lmt_ad1_closed_on')->nullable();
+            $table->unsignedBigInteger('lmt_ad1_document_id')->nullable();
+            $table->string('lmt_ad2_publication')->nullable();
+            $table->date('lmt_ad2_opened_on')->nullable();
+            $table->date('lmt_ad2_closed_on')->nullable();
+            $table->unsignedBigInteger('lmt_ad2_document_id')->nullable();
             $table->timestamps();
         });
 

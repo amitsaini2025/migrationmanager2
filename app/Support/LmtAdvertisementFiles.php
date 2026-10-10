@@ -100,33 +100,66 @@ final class LmtAdvertisementFiles
             throw new \InvalidArgumentException('This company has no client reference, so advertisement files cannot be stored.');
         }
 
+        foreach ($uploads as $index => $file) {
+            $this->storeOne($client, $matter, $file, $userId, $index);
+        }
+    }
+
+    public function storeOne(Admin $client, ClientMatter $matter, UploadedFile $file, int $userId, int $index = 0): Document
+    {
+        $clientUniqueId = trim((string) ($client->client_id ?? ''));
+        if ($clientUniqueId === '') {
+            throw new \InvalidArgumentException('This company has no client reference, so advertisement files cannot be stored.');
+        }
+
         $folder = $this->ensureFolder((int) $client->id, (int) $matter->id);
         $prefix = DocumentStoredFilename::storedNamePrefix($client, 'company');
+        $extension = $file->getClientOriginalExtension();
+        $checklist = $this->checklistName($file->getClientOriginalName());
+        $uniqueId = time().'_'.$index.'_'.Str::lower(Str::random(4));
+        $storedKey = $prefix.'_'.$checklist.'_'.$uniqueId.($extension !== '' ? '.'.$extension : '');
+        $filePath = $clientUniqueId.'/nomination/'.$storedKey;
 
-        foreach ($uploads as $index => $file) {
-            $extension = $file->getClientOriginalExtension();
-            $checklist = $this->checklistName($file->getClientOriginalName());
-            $uniqueId = time().'_'.$index.'_'.Str::lower(Str::random(4));
-            $storedKey = $prefix.'_'.$checklist.'_'.$uniqueId.($extension !== '' ? '.'.$extension : '');
-            $filePath = $clientUniqueId.'/nomination/'.$storedKey;
+        Storage::disk('s3')->put($filePath, $file->getContent());
 
-            Storage::disk('s3')->put($filePath, $file->getContent());
+        $document = new Document;
+        $document->user_id = $userId;
+        $document->client_id = $client->id;
+        $document->client_matter_id = $matter->id;
+        $document->type = 'client';
+        $document->doc_type = 'nomination';
+        $document->folder_name = (string) $folder->id;
+        $document->checklist = $checklist;
+        $document->file_name = $prefix.'_'.$checklist.'_'.$uniqueId;
+        $document->filetype = $extension;
+        $document->myfile = Storage::disk('s3')->url($filePath);
+        $document->myfile_key = $storedKey;
+        $document->file_size = $file->getSize();
+        $document->save();
 
-            $document = new Document;
-            $document->user_id = $userId;
-            $document->client_id = $client->id;
-            $document->client_matter_id = $matter->id;
-            $document->type = 'client';
-            $document->doc_type = 'nomination';
-            $document->folder_name = (string) $folder->id;
-            $document->checklist = $checklist;
-            $document->file_name = $prefix.'_'.$checklist.'_'.$uniqueId;
-            $document->filetype = $extension;
-            $document->myfile = Storage::disk('s3')->url($filePath);
-            $document->myfile_key = $storedKey;
-            $document->file_size = $file->getSize();
-            $document->save();
+        return $document;
+    }
+
+    /**
+     * @return array{name: string, url: ?string}|null
+     */
+    public function describeDocument(?int $documentId): ?array
+    {
+        if ($documentId === null || $documentId < 1) {
+            return null;
         }
+
+        $document = Document::query()->find($documentId, ['id', 'checklist', 'file_name', 'myfile']);
+        if (! $document) {
+            return null;
+        }
+
+        $name = trim((string) ($document->checklist ?: $document->file_name));
+
+        return [
+            'name' => $name !== '' ? $name : 'Advertisement',
+            'url' => $document->myfile ?: null,
+        ];
     }
 
     /**

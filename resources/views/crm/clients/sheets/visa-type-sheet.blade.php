@@ -788,7 +788,7 @@
                                                 <td class="{{ ! empty($row->visa_expiry_within_week) ? 'visa-expiry-within-week' : '' }}" @if(! empty($row->visa_expiry_within_week)) title="Approval ends within 7 days" @endif>{{ ! empty($row->approval_end) && $row->approval_end != '0000-00-00' ? \Carbon\Carbon::parse($row->approval_end)->format('d/m/Y') : '—' }}</td>
                                                 <td>
                                                     @php
-                                                        $lmtStatus = \App\Support\LmtStatus::assess($row->lmt_required ?? null, $row->lmt_start_date ?? null, $row->lmt_end_date ?? null);
+                                                        $lmtStatus = \App\Support\LmtStatus::assessRecord($row);
                                                         $regional = ($row->regional_sponsorship ?? null) === true || ($row->regional_sponsorship ?? null) === 1 || ($row->regional_sponsorship ?? null) === '1' || ($row->regional_sponsorship ?? null) === 't';
                                                         $adverse = ($row->adverse_information ?? null) === true || ($row->adverse_information ?? null) === 1 || ($row->adverse_information ?? null) === '1' || ($row->adverse_information ?? null) === 't';
                                                     @endphp

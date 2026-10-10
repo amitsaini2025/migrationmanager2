@@ -138,6 +138,11 @@
                             $nominationMatterHasLmt = $nominationMatterLmtRow->lmt_required !== null
                                 || ! empty($nominationMatterLmtRow->lmt_start_date)
                                 || ! empty($nominationMatterLmtRow->lmt_end_date)
+                                || (bool) $nominationMatterLmtRow->lmt_use_advertisements
+                                || trim((string) ($nominationMatterLmtRow->lmt_ad1_publication ?? '')) !== ''
+                                || ! empty($nominationMatterLmtRow->lmt_ad1_opened_on)
+                                || trim((string) ($nominationMatterLmtRow->lmt_ad2_publication ?? '')) !== ''
+                                || ! empty($nominationMatterLmtRow->lmt_ad2_opened_on)
                                 || (trim((string) ($nominationMatterLmtRow->lmt_notes ?? '')) !== '')
                                 || (trim((string) ($nominationMatterLmtRow->lmt_password ?? '')) !== '');
                         }
@@ -163,6 +168,22 @@
                         }
                         if (trim((string) ($nominationMatterLmtRow->lmt_password ?? '')) !== '') {
                             $parts[] = '<strong>Password:</strong> ' . e($nominationMatterLmtRow->lmt_password);
+                        }
+                        foreach ([1, 2] as $nominationLmtSlot) {
+                            $nominationLmtPublication = trim((string) ($nominationMatterLmtRow->{'lmt_ad'.$nominationLmtSlot.'_publication'} ?? ''));
+                            $nominationLmtOpened = $nominationMatterLmtRow->{'lmt_ad'.$nominationLmtSlot.'_opened_on'};
+                            if ($nominationLmtPublication === '' && empty($nominationLmtOpened)) {
+                                continue;
+                            }
+                            $nominationLmtLine = '<strong>Advertisement '.$nominationLmtSlot.':</strong> '.e($nominationLmtPublication !== '' ? $nominationLmtPublication : 'Publication not set');
+                            if (! empty($nominationLmtOpened)) {
+                                $nominationLmtLine .= ' from '.e($nominationLmtOpened->format('d/m/Y'));
+                            }
+                            $nominationLmtClosed = $nominationMatterLmtRow->{'lmt_ad'.$nominationLmtSlot.'_closed_on'};
+                            $nominationLmtLine .= ! empty($nominationLmtClosed)
+                                ? ' to '.e($nominationLmtClosed->format('d/m/Y'))
+                                : ' (still open)';
+                            $parts[] = $nominationLmtLine;
                         }
                         $nominationLmtPopoverHtml = '<div class="text-start small nomination-lmt-popover-body">' . implode('<br>', $parts) . '</div>';
                     }
@@ -228,10 +249,29 @@
                         @if(($fetchedData->is_company ?? false) && $client_selected_matter_id1)
                         <script type="application/json" id="nomination-lmt-initial-notes">{!! json_encode(($nominationMatterLmtRow ? $nominationMatterLmtRow->lmt_notes : null) ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) !!}</script>
                         <script type="application/json" id="nomination-lmt-initial-password">{!! json_encode(($nominationMatterLmtRow ? $nominationMatterLmtRow->lmt_password : null) ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) !!}</script>
+                        @php
+                            $nominationLmtAds = ['use' => false, 'slots' => []];
+                            if ($nominationMatterLmtRow) {
+                                $nominationLmtAds['use'] = (bool) $nominationMatterLmtRow->lmt_use_advertisements;
+                                foreach ([1, 2] as $nominationLmtSlot) {
+                                    $nominationLmtDocId = (int) ($nominationMatterLmtRow->{'lmt_ad'.$nominationLmtSlot.'_document_id'} ?? 0);
+                                    $nominationLmtDoc = $nominationLmtDocId > 0 ? \App\Models\Document::query()->find($nominationLmtDocId) : null;
+                                    $nominationLmtDocName = $nominationLmtDoc ? trim((string) ($nominationLmtDoc->checklist ?: $nominationLmtDoc->file_name)) : '';
+                                    $nominationLmtAds['slots'][] = [
+                                        'publication' => (string) ($nominationMatterLmtRow->{'lmt_ad'.$nominationLmtSlot.'_publication'} ?? ''),
+                                        'opened_on' => $nominationMatterLmtRow->{'lmt_ad'.$nominationLmtSlot.'_opened_on'}?->format('Y-m-d') ?? '',
+                                        'closed_on' => $nominationMatterLmtRow->{'lmt_ad'.$nominationLmtSlot.'_closed_on'}?->format('Y-m-d') ?? '',
+                                        'file_name' => $nominationLmtDocName,
+                                        'file_url' => $nominationLmtDoc?->myfile ?? '',
+                                    ];
+                                }
+                            }
+                        @endphp
+                        <script type="application/json" id="nomination-lmt-advertisements">{!! json_encode($nominationLmtAds, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) !!}</script>
                         <div id="nomination-lmt-popover-template" style="display:none" aria-hidden="true">{!! $nominationLmtPopoverHtml !!}</div>
 
                         <div class="modal fade" id="nominationLmtModal" tabindex="-1" role="dialog" aria-labelledby="nominationLmtModalLabel" aria-hidden="true">
-                            <div class="modal-dialog" role="document">
+                            <div class="modal-dialog modal-lg" role="document">
                                 <div class="modal-content">
                                     <div class="modal-header">
                                         <h5 class="modal-title" id="nominationLmtModalLabel">Labour Market Testing (LMT)</h5>
@@ -246,6 +286,51 @@
                                                 <option value="0">No</option>
                                             </select>
                                         </div>
+                                        <div class="border rounded p-3 mb-3">
+                                            <h6 class="mb-3">Advertisement 1</h6>
+                                            <div class="form-group">
+                                                <label for="nomination_lmt_ad1_publication">Publication</label>
+                                                <input type="text" id="nomination_lmt_ad1_publication" class="form-control nomination-lmt-ad" maxlength="255">
+                                            </div>
+                                            <div class="form-row">
+                                                <div class="form-group col-md-6">
+                                                    <label for="nomination_lmt_ad1_opened">Applications opened</label>
+                                                    <input type="date" id="nomination_lmt_ad1_opened" class="form-control nomination-lmt-ad">
+                                                </div>
+                                                <div class="form-group col-md-6">
+                                                    <label for="nomination_lmt_ad1_closed">Applications closed</label>
+                                                    <input type="date" id="nomination_lmt_ad1_closed" class="form-control nomination-lmt-ad">
+                                                </div>
+                                            </div>
+                                            <div class="form-group mb-0">
+                                                <label for="nomination_lmt_ad1_file">Copy</label>
+                                                <input type="file" id="nomination_lmt_ad1_file" class="form-control">
+                                                <p class="small mb-0 mt-1" id="nomination_lmt_ad1_current"></p>
+                                            </div>
+                                        </div>
+                                        <div class="border rounded p-3 mb-3">
+                                            <h6 class="mb-3">Advertisement 2</h6>
+                                            <div class="form-group">
+                                                <label for="nomination_lmt_ad2_publication">Publication</label>
+                                                <input type="text" id="nomination_lmt_ad2_publication" class="form-control nomination-lmt-ad" maxlength="255">
+                                            </div>
+                                            <div class="form-row">
+                                                <div class="form-group col-md-6">
+                                                    <label for="nomination_lmt_ad2_opened">Applications opened</label>
+                                                    <input type="date" id="nomination_lmt_ad2_opened" class="form-control nomination-lmt-ad">
+                                                </div>
+                                                <div class="form-group col-md-6">
+                                                    <label for="nomination_lmt_ad2_closed">Applications closed</label>
+                                                    <input type="date" id="nomination_lmt_ad2_closed" class="form-control nomination-lmt-ad">
+                                                </div>
+                                            </div>
+                                            <div class="form-group mb-0">
+                                                <label for="nomination_lmt_ad2_file">Copy</label>
+                                                <input type="file" id="nomination_lmt_ad2_file" class="form-control">
+                                                <p class="small mb-0 mt-1" id="nomination_lmt_ad2_current"></p>
+                                            </div>
+                                        </div>
+                                        <p class="text-muted small">Leave the close date blank while that advertisement is still open.</p>
                                         <div class="form-group">
                                             <label for="nomination_lmt_start_date">Start date</label>
                                             <input type="date" id="nomination_lmt_start_date" class="form-control" value="">
@@ -254,6 +339,7 @@
                                             <label for="nomination_lmt_end_date">End date</label>
                                             <input type="date" id="nomination_lmt_end_date" class="form-control" value="">
                                         </div>
+                                        <p class="text-muted small" id="nominationLmtDateHint">Start and end stay editable until both advertisements are saved.</p>
                                         <div class="form-group">
                                             <label for="nomination_lmt_notes">Notes</label>
                                             <textarea id="nomination_lmt_notes" class="nomination-lmt-notes-input" rows="3" placeholder="Optional notes"></textarea>
@@ -308,6 +394,7 @@
                         <script>
                         (function () {
                             window._nominationLmtInitialPassword = '';
+                            window._nominationLmtUseAdvertisements = false;
 
                             function nominationLmtMatterId() {
                                 var b = document.getElementById('nominationLmtOpenBtn');
@@ -325,15 +412,54 @@
                                 }
                             }
 
+                            function nominationLmtSlotFilled(number) {
+                                var publication = document.getElementById('nomination_lmt_ad' + number + '_publication');
+                                var opened = document.getElementById('nomination_lmt_ad' + number + '_opened');
+                                return publication && opened && publication.value.trim() !== '' && opened.value !== '';
+                            }
+
+                            function nominationLmtSyncDateLock() {
+                                var sd = document.getElementById('nomination_lmt_start_date');
+                                var ed = document.getElementById('nomination_lmt_end_date');
+                                var hint = document.getElementById('nominationLmtDateHint');
+                                if (!sd || !ed) return;
+                                var locked = window._nominationLmtUseAdvertisements || (nominationLmtSlotFilled(1) && nominationLmtSlotFilled(2));
+                                sd.disabled = locked;
+                                ed.disabled = locked;
+                                if (hint) {
+                                    hint.textContent = locked
+                                        ? 'Start is the earlier open date. End is the later close date, and stays blank while either advertisement is still open.'
+                                        : 'Start and end stay editable until both advertisements are saved.';
+                                }
+                            }
+
+                            function nominationLmtShowFile(number, slot) {
+                                var current = document.getElementById('nomination_lmt_ad' + number + '_current');
+                                if (!current) return;
+                                current.innerHTML = '';
+                                if (!slot || !slot.file_name) return;
+                                current.appendChild(document.createTextNode('Current copy: '));
+                                if (slot.file_url) {
+                                    var link = document.createElement('a');
+                                    link.href = slot.file_url;
+                                    link.target = '_blank';
+                                    link.rel = 'noopener';
+                                    link.textContent = slot.file_name;
+                                    current.appendChild(link);
+                                } else {
+                                    current.appendChild(document.createTextNode(slot.file_name));
+                                }
+                            }
+
                             window.nominationLmtSyncEndDateFromStart = function () {
                                 var sd = document.getElementById('nomination_lmt_start_date');
                                 var ed = document.getElementById('nomination_lmt_end_date');
-                                if (!sd || !ed || !sd.value) return;
+                                if (!sd || !ed || sd.disabled || !sd.value) return;
                                 var parts = sd.value.split('-');
                                 if (parts.length !== 3) return;
                                 var d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
                                 if (isNaN(d.getTime())) return;
-                                d.setDate(d.getDate() + 28);
+                                d.setDate(d.getDate() + 27);
                                 var y = d.getFullYear();
                                 var m = String(d.getMonth() + 1).padStart(2, '0');
                                 var day = String(d.getDate()).padStart(2, '0');
@@ -359,6 +485,28 @@
                                 if (!req || !sd || !ed || !nt || !pw) return;
                                 var has = btn && btn.getAttribute('data-lmt-has-data') === '1';
                                 if (del) del.style.display = has ? 'inline-block' : 'none';
+                                var ads = { use: false, slots: [] };
+                                var adsEl = document.getElementById('nomination-lmt-advertisements');
+                                if (adsEl && adsEl.textContent) {
+                                    try {
+                                        ads = JSON.parse(adsEl.textContent) || ads;
+                                    } catch (e) {
+                                        ads = { use: false, slots: [] };
+                                    }
+                                }
+                                window._nominationLmtUseAdvertisements = !!(has && ads.use);
+                                [1, 2].forEach(function (number) {
+                                    var slot = (ads.slots || [])[number - 1] || {};
+                                    var publication = document.getElementById('nomination_lmt_ad' + number + '_publication');
+                                    var opened = document.getElementById('nomination_lmt_ad' + number + '_opened');
+                                    var closed = document.getElementById('nomination_lmt_ad' + number + '_closed');
+                                    var file = document.getElementById('nomination_lmt_ad' + number + '_file');
+                                    if (publication) publication.value = has ? (slot.publication || '') : '';
+                                    if (opened) opened.value = has ? (slot.opened_on || '') : '';
+                                    if (closed) closed.value = has ? (slot.closed_on || '') : '';
+                                    if (file) file.value = '';
+                                    nominationLmtShowFile(number, has ? slot : null);
+                                });
                                 if (has && btn) {
                                     req.value = btn.getAttribute('data-lmt-required') || '';
                                     sd.value = btn.getAttribute('data-lmt-start') || '';
@@ -373,6 +521,7 @@
                                     pw.value = '';
                                 }
                                 window._nominationLmtInitialPassword = pw.value;
+                                nominationLmtSyncDateLock();
                             };
                             window.deleteNominationLmtDetail = function () {
                                 if (!window.confirm('Remove all Labour Market Testing details for this matter?')) return;
@@ -440,6 +589,16 @@
                                 fd.append('lmt_end_date', document.getElementById('nomination_lmt_end_date').value || '');
                                 fd.append('lmt_notes', document.getElementById('nomination_lmt_notes').value || '');
                                 fd.append('lmt_password', document.getElementById('nomination_lmt_password').value || '');
+                                fd.append('lmt_ad1_publication', document.getElementById('nomination_lmt_ad1_publication').value || '');
+                                fd.append('lmt_ad1_opened_on', document.getElementById('nomination_lmt_ad1_opened').value || '');
+                                fd.append('lmt_ad1_closed_on', document.getElementById('nomination_lmt_ad1_closed').value || '');
+                                fd.append('lmt_ad2_publication', document.getElementById('nomination_lmt_ad2_publication').value || '');
+                                fd.append('lmt_ad2_opened_on', document.getElementById('nomination_lmt_ad2_opened').value || '');
+                                fd.append('lmt_ad2_closed_on', document.getElementById('nomination_lmt_ad2_closed').value || '');
+                                var ad1File = document.getElementById('nomination_lmt_ad1_file');
+                                var ad2File = document.getElementById('nomination_lmt_ad2_file');
+                                if (ad1File && ad1File.files[0]) fd.append('lmt_ad1_file', ad1File.files[0]);
+                                if (ad2File && ad2File.files[0]) fd.append('lmt_ad2_file', ad2File.files[0]);
                                 if (btn) btn.disabled = true;
                                 fetch('{{ url('/clients/save-section') }}', {
                                     method: 'POST',
@@ -525,6 +684,10 @@
                                 if (!sd || sd.getAttribute('data-lmt-end-bound') === '1') return;
                                 sd.setAttribute('data-lmt-end-bound', '1');
                                 sd.addEventListener('change', window.nominationLmtSyncEndDateFromStart);
+                                document.querySelectorAll('.nomination-lmt-ad').forEach(function (field) {
+                                    field.addEventListener('input', nominationLmtSyncDateLock);
+                                    field.addEventListener('change', nominationLmtSyncDateLock);
+                                });
                             }
                             if (document.readyState === 'loading') {
                                 document.addEventListener('DOMContentLoaded', function () {

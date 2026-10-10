@@ -58,7 +58,7 @@
                     </form>
                 </div>
                 <div class="p-3">
-                    <p class="text-muted small">Status uses today as the nomination lodgement day. It is calculated from LMT required and the dates. Advertisement copies are saved in the matter's LMT folder on the company page.</p>
+                    <p class="text-muted small">Status uses today as the nomination lodgement day. Until both advertisements are entered, it follows the start and end dates. After that, the dates and the status come from the advertisements. Copies are saved in the matter's LMT folder.</p>
                     <div class="table-responsive">
                         <table class="table table-bordered table-sm mb-0">
                             <thead>
@@ -158,6 +158,51 @@
                         <option value="0">No</option>
                     </select>
                 </div>
+                <div class="border rounded p-3 mb-3">
+                    <h6 class="mb-3">Advertisement 1</h6>
+                    <div class="form-group">
+                        <label for="lmtAd1Publication">Publication</label>
+                        <input type="text" id="lmtAd1Publication" class="form-control" maxlength="255">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="lmtAd1Opened">Applications opened</label>
+                            <input type="date" id="lmtAd1Opened" class="form-control lmt-ad-field">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="lmtAd1Closed">Applications closed</label>
+                            <input type="date" id="lmtAd1Closed" class="form-control lmt-ad-field">
+                        </div>
+                    </div>
+                    <div class="form-group mb-0">
+                        <label for="lmtAd1File">Copy</label>
+                        <input type="file" id="lmtAd1File" class="form-control">
+                        <p class="small mb-0 mt-1" id="lmtAd1Current"></p>
+                    </div>
+                </div>
+                <div class="border rounded p-3 mb-3">
+                    <h6 class="mb-3">Advertisement 2</h6>
+                    <div class="form-group">
+                        <label for="lmtAd2Publication">Publication</label>
+                        <input type="text" id="lmtAd2Publication" class="form-control" maxlength="255">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="lmtAd2Opened">Applications opened</label>
+                            <input type="date" id="lmtAd2Opened" class="form-control lmt-ad-field">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="lmtAd2Closed">Applications closed</label>
+                            <input type="date" id="lmtAd2Closed" class="form-control lmt-ad-field">
+                        </div>
+                    </div>
+                    <div class="form-group mb-0">
+                        <label for="lmtAd2File">Copy</label>
+                        <input type="file" id="lmtAd2File" class="form-control">
+                        <p class="small mb-0 mt-1" id="lmtAd2Current"></p>
+                    </div>
+                </div>
+                <p class="text-muted small">Leave the close date blank while that advertisement is still open. A new copy is added to the LMT folder and this slot then points at it. The earlier file stays in the folder.</p>
                 <div class="form-row">
                     <div class="form-group col-md-6">
                         <label for="lmtStartDate">Start date</label>
@@ -168,6 +213,7 @@
                         <input type="date" id="lmtEndDate" class="form-control">
                     </div>
                 </div>
+                <p class="text-muted small" id="lmtDateHint">Start and end stay editable until both advertisements are saved. 28 calendar days run from the open date through the close date.</p>
                 <div class="form-group">
                     <label for="lmtNotes">Notes</label>
                     <textarea id="lmtNotes" class="form-control" rows="3" placeholder="Optional notes"></textarea>
@@ -175,12 +221,6 @@
                 <div class="form-group">
                     <label for="lmtPassword">Password</label>
                     <input type="text" id="lmtPassword" class="form-control" autocomplete="off" placeholder="LMT password">
-                </div>
-                <div class="form-group">
-                    <label for="lmtAdvertisements">Advertisement copies</label>
-                    <input type="file" id="lmtAdvertisements" class="form-control" multiple>
-                    <p class="text-muted small mb-0">Saved into this matter's LMT folder. Up to 20MB each. File names may use letters, numbers, spaces, and . - _ $ ( ) , &amp; ' +</p>
-                    <ul class="small mt-2 mb-0" id="lmtExistingFiles"></ul>
                 </div>
             </div>
             <div class="modal-footer">
@@ -202,8 +242,8 @@
     var companyChosen = document.getElementById('lmtCompanyChosen');
     var matterSelect = document.getElementById('lmtMatterId');
     var errorEl = document.getElementById('lmtSheetError');
-    var existingFiles = document.getElementById('lmtExistingFiles');
     var initialPassword = '';
+    var datesFromAdvertisements = false;
     var editing = false;
     var searchTimer = null;
 
@@ -268,21 +308,61 @@
         document.getElementById('lmtEndDate').value = '';
         document.getElementById('lmtNotes').value = '';
         document.getElementById('lmtPassword').value = '';
-        document.getElementById('lmtAdvertisements').value = '';
-        existingFiles.innerHTML = '';
+        ['1', '2'].forEach(function (number) {
+            document.getElementById('lmtAd' + number + 'Publication').value = '';
+            document.getElementById('lmtAd' + number + 'Opened').value = '';
+            document.getElementById('lmtAd' + number + 'Closed').value = '';
+            document.getElementById('lmtAd' + number + 'File').value = '';
+            document.getElementById('lmtAd' + number + 'Current').textContent = '';
+        });
         initialPassword = '';
+        datesFromAdvertisements = false;
+        syncDateLock();
         document.getElementById('lmtSheetModalLabel').textContent = 'Add Labour Market Testing';
+    }
+
+    function slotFilled(number) {
+        return document.getElementById('lmtAd' + number + 'Publication').value.trim() !== ''
+            && document.getElementById('lmtAd' + number + 'Opened').value !== '';
+    }
+
+    function syncDateLock() {
+        var locked = datesFromAdvertisements || (slotFilled('1') && slotFilled('2'));
+        document.getElementById('lmtStartDate').disabled = locked;
+        document.getElementById('lmtEndDate').disabled = locked;
+        document.getElementById('lmtDateHint').textContent = locked
+            ? 'Start is the earlier open date. End is the later close date, and stays blank while either advertisement is still open.'
+            : 'Start and end stay editable until both advertisements are saved. 28 calendar days run from the open date through the close date.';
+    }
+
+    function showSlotFile(number, file) {
+        var current = document.getElementById('lmtAd' + number + 'Current');
+        current.innerHTML = '';
+        if (!file || !file.name) {
+            return;
+        }
+        current.appendChild(document.createTextNode('Current copy: '));
+        if (file.url) {
+            var link = document.createElement('a');
+            link.href = file.url;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = file.name;
+            current.appendChild(link);
+        } else {
+            current.appendChild(document.createTextNode(file.name));
+        }
     }
 
     function syncEndDate() {
         var start = document.getElementById('lmtStartDate');
         var end = document.getElementById('lmtEndDate');
-        if (!start.value) return;
+        if (start.disabled || !start.value) return;
         var parts = start.value.split('-');
         if (parts.length !== 3) return;
         var date = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
         if (isNaN(date.getTime())) return;
-        date.setDate(date.getDate() + 28);
+        date.setDate(date.getDate() + 27);
         var month = String(date.getMonth() + 1).padStart(2, '0');
         var day = String(date.getDate()).padStart(2, '0');
         end.value = date.getFullYear() + '-' + month + '-' + day;
@@ -321,6 +401,10 @@
     });
 
     document.getElementById('lmtStartDate').addEventListener('change', syncEndDate);
+    modalEl.querySelectorAll('.lmt-ad-field, #lmtAd1Publication, #lmtAd2Publication').forEach(function (field) {
+        field.addEventListener('input', syncDateLock);
+        field.addEventListener('change', syncDateLock);
+    });
 
     companySearch.addEventListener('input', function () {
         companyId.value = '';
@@ -387,21 +471,15 @@
                     document.getElementById('lmtNotes').value = data.lmt_notes || '';
                     document.getElementById('lmtPassword').value = data.lmt_password || '';
                     initialPassword = data.lmt_password || '';
-                    existingFiles.innerHTML = '';
-                    (data.files || []).forEach(function (file) {
-                        var item = document.createElement('li');
-                        if (file.url) {
-                            var link = document.createElement('a');
-                            link.href = file.url;
-                            link.target = '_blank';
-                            link.rel = 'noopener';
-                            link.textContent = file.name;
-                            item.appendChild(link);
-                        } else {
-                            item.textContent = file.name;
-                        }
-                        existingFiles.appendChild(item);
+                    datesFromAdvertisements = !!data.lmt_use_advertisements;
+                    (data.advertisements || []).forEach(function (advertisement, index) {
+                        var number = String(index + 1);
+                        document.getElementById('lmtAd' + number + 'Publication').value = advertisement.publication || '';
+                        document.getElementById('lmtAd' + number + 'Opened').value = advertisement.opened_on || '';
+                        document.getElementById('lmtAd' + number + 'Closed').value = advertisement.closed_on || '';
+                        showSlotFile(number, advertisement.file);
                     });
+                    syncDateLock();
                     openModal();
                 });
             }).catch(function (error) {
@@ -429,9 +507,18 @@
         body.append('lmt_end_date', document.getElementById('lmtEndDate').value || '');
         body.append('lmt_notes', document.getElementById('lmtNotes').value || '');
         body.append('lmt_password', password || '');
-        Array.prototype.forEach.call(document.getElementById('lmtAdvertisements').files, function (file) {
-            body.append('advertisements[]', file);
-        });
+        body.append('lmt_ad1_publication', document.getElementById('lmtAd1Publication').value || '');
+        body.append('lmt_ad1_opened_on', document.getElementById('lmtAd1Opened').value || '');
+        body.append('lmt_ad1_closed_on', document.getElementById('lmtAd1Closed').value || '');
+        body.append('lmt_ad2_publication', document.getElementById('lmtAd2Publication').value || '');
+        body.append('lmt_ad2_opened_on', document.getElementById('lmtAd2Opened').value || '');
+        body.append('lmt_ad2_closed_on', document.getElementById('lmtAd2Closed').value || '');
+        if (document.getElementById('lmtAd1File').files[0]) {
+            body.append('lmt_ad1_file', document.getElementById('lmtAd1File').files[0]);
+        }
+        if (document.getElementById('lmtAd2File').files[0]) {
+            body.append('lmt_ad2_file', document.getElementById('lmtAd2File').files[0]);
+        }
         var saveBtn = document.getElementById('lmtSaveBtn');
         saveBtn.disabled = true;
         fetch('{{ route('clients.sheets.lmt.store') }}', {

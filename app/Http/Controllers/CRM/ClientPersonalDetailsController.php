@@ -2298,7 +2298,10 @@ class ClientPersonalDetailsController extends Controller
 
     private function saveLmtSection($request, $client)
     {
-        $result = (new LmtMatterWriter)->save($client, $request->all());
+        $result = (new LmtMatterWriter)->save($client, $request->all(), [
+            'ad1' => $request->file('lmt_ad1_file'),
+            'ad2' => $request->file('lmt_ad2_file'),
+        ], (int) auth('admin')->id());
 
         return response()->json([
             'success' => $result['ok'],

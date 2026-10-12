@@ -2074,6 +2074,16 @@ $(document).ready(function() {
     }
 
 });
+    function clientDocIsPlainTextPreviewType(fileType) {
+        const normalized = String(fileType || '').toLowerCase().trim();
+
+        if (normalized === 'txt' || normalized === 'text') {
+            return true;
+        }
+
+        return normalized === 'text/plain' || normalized.indexOf('text/plain') === 0;
+    }
+
     function previewFile(fileType, fileUrl, containerId) {
 
         //console.log('fileType='+fileType);
@@ -2162,6 +2172,45 @@ $(document).ready(function() {
 
         }
 
+        else if (clientDocIsPlainTextPreviewType(fileType)) {
+
+            container.html(`
+
+                <div class="preview-content preview-content--text" style="flex: 1; overflow: auto; text-align: left; padding: 12px;">
+
+                    <pre class="document-text-preview" style="white-space: pre-wrap; word-wrap: break-word; margin: 0; font-family: inherit; font-size: 13px; line-height: 1.45;">Loading text preview...</pre>
+
+                </div>
+
+            `);
+
+            const $pre = container.find('.document-text-preview');
+
+            fetch(fileUrl, { credentials: 'include', headers: { Accept: 'text/plain, */*' } })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Text preview fetch failed');
+                    }
+
+                    return response.text();
+                })
+                .then(function (text) {
+                    $pre.text(text);
+                })
+                .catch(function () {
+                    container.html(`
+
+                        <div class="preview-content" style="flex: 1; overflow: hidden;">
+
+                            <iframe src="${fileUrl}" title="Document Preview" style="width: 100%; height: calc(100vh - 100px); border: none;"></iframe>
+
+                        </div>
+
+                    `);
+                });
+
+        }
+
         else {
 
             container.html(`
@@ -2181,6 +2230,8 @@ $(document).ready(function() {
         }
 
     }
+
+    window.previewFile = previewFile;
 
 
 
@@ -9476,7 +9527,7 @@ success: function(response) {
 
                             '<a class="renamedoc" data-id="' + fileidL + '" href="javascript:;" style="display: none;"></a>' +
 
-                            '<a class="download-file" data-filelink="' + ress.fileurl + '" data-filename="' + ress.filekey + '" href="#" style="display: none;"></a>' +
+                            '<a class="download-file" data-filelink="' + escapeClientDocUiHtml(ress.fileurl) + '" data-filename="' + escapeClientDocUiHtml(ress.filekey) + '" data-id="' + fileidL + '" href="#" style="display: none;"></a>' +
 
                             '<a class="notuseddoc" data-id="' + fileidL + '" data-doctype="' + ress.doctype + '" data-href="notuseddoc" href="javascript:;" style="display: none;"></a>'
 
@@ -9729,7 +9780,7 @@ success: function(response) {
                         actionTd.html(
                             '<a class="renamechecklist" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
                             '<a class="renamedoc" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
-                            '<a class="download-file" data-filelink="' + ress.fileurl + '" data-filename="' + ress.filekey + '" href="#" style="display: none;"></a>' +
+                            '<a class="download-file" data-filelink="' + escapeClientDocUiHtml(ress.fileurl) + '" data-filename="' + escapeClientDocUiHtml(ress.filekey) + '" data-id="' + fileid + '" href="#" style="display: none;"></a>' +
                             '<a class="notuseddoc" data-id="' + fileid + '" data-doctype="' + ress.doctype + '" data-href="notuseddoc" href="javascript:;" style="display: none;"></a>'
                         );
                         
@@ -9822,7 +9873,7 @@ success: function(response) {
                         actionTd.html(
                             '<a class="renamechecklist" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
                             '<a class="renamedoc" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
-                            '<a class="download-file" data-filelink="' + ress.fileurl + '" data-filename="' + ress.filekey + '" href="#" style="display: none;"></a>' +
+                            '<a class="download-file" data-filelink="' + escapeClientDocUiHtml(ress.fileurl) + '" data-filename="' + escapeClientDocUiHtml(ress.filekey) + '" data-id="' + fileid + '" href="#" style="display: none;"></a>' +
                             '<a class="notuseddoc" data-id="' + fileid + '" data-doctype="' + laneDocType + '" data-href="notuseddoc" href="javascript:;" style="display: none;"></a>'
                         );
                         
@@ -10104,7 +10155,7 @@ success: function(response) {
 
                             '<a class="renamedoc" data-id="' + fileidL1 + '" href="javascript:;" style="display: none;"></a>' +
 
-                            '<a class="download-file" data-filelink="' + ress.fileurl + '" data-filename="' + ress.filekey + '" href="#" style="display: none;"></a>' +
+                            '<a class="download-file" data-filelink="' + escapeClientDocUiHtml(ress.fileurl) + '" data-filename="' + escapeClientDocUiHtml(ress.filekey) + '" data-id="' + fileidL1 + '" href="#" style="display: none;"></a>' +
 
                             '<a class="notuseddoc" data-id="' + fileidL1 + '" data-doctype="' + laneDocType + '" data-href="notuseddoc" href="javascript:;" style="display: none;"></a>'
 

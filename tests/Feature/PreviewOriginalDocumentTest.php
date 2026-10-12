@@ -83,11 +83,28 @@ class PreviewOriginalDocumentTest extends TestCase
             ->assertNotFound();
     }
 
-    private function makeDocument(string $myfile, string $status): Document
+    #[Test]
+    public function staff_can_preview_plain_text_original_inline(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('documents/notes.txt', 'Line one'.PHP_EOL.'Line two');
+
+        $document = $this->makeDocument('documents/notes.txt', 'sent', 'notes.txt', 'txt');
+
+        $response = $this->actingAs($this->staff, 'admin')
+            ->get(route('documents.preview.original', $document->id));
+
+        $response->assertOk();
+        $this->assertStringContainsString('Line one', $response->streamedContent());
+        $this->assertStringContainsString('inline', (string) $response->headers->get('content-disposition'));
+        $this->assertStringContainsString('text/plain', (string) $response->headers->get('content-type'));
+    }
+
+    private function makeDocument(string $myfile, string $status, string $fileName = 'jrp.pdf', string $filetype = 'pdf'): Document
     {
         $document = new Document;
-        $document->file_name = 'jrp.pdf';
-        $document->filetype = 'pdf';
+        $document->file_name = $fileName;
+        $document->filetype = $filetype;
         $document->myfile = $myfile;
         $document->status = $status;
         $document->created_by = $this->staff->id;

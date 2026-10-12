@@ -2624,6 +2624,7 @@ class DocumentController extends Controller
             'jpg', 'jpeg' => 'image/jpeg',
             'png' => 'image/png',
             'gif' => 'image/gif',
+            'txt' => 'text/plain; charset=UTF-8',
             'doc' => 'application/msword',
             'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             default => 'application/octet-stream',

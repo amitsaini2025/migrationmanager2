@@ -2563,6 +2563,104 @@ class DocumentController extends Controller
     }
 
     /**
+     * Short-lived publicly fetchable URL for Microsoft Office Online embed (doc/xls/ppt only).
+     */
+    public function officeEmbedSourceUrl($id)
+    {
+        try {
+            $document = Document::findOrFail($id);
+            $this->authorizeDocumentAssociatedAccess($document);
+
+            $extension = $document->getPreviewFileExtension();
+            if (! in_array($extension, ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'], true)) {
+                abort(422, 'Document type is not supported for Office preview.');
+            }
+
+            if (! empty($document->form956_id) && empty($document->myfile)) {
+                abort(422, 'Document is not available for Office preview.');
+            }
+
+            if (trim((string) ($document->myfile ?? '')) === '' && trim((string) ($document->myfile_key ?? '')) === '') {
+                abort(404, 'Document not available for preview.');
+            }
+
+            $location = OriginalDocumentPathResolver::locateOriginalPdfFile($document);
+            if ($location === null) {
+                abort(404, 'Document file not found.');
+            }
+
+            $filename = str_replace('"', "'", $document->getOriginalDownloadFilename());
+            $contentType = $this->previewContentType($document);
+
+            if ($location['disk'] === 'local') {
+                $publicUrl = $this->publicUrlForLocalOriginalFile($location);
+                if ($publicUrl === null) {
+                    abort(422, 'Office Online preview requires a publicly reachable file URL.');
+                }
+
+                return response()->json(['url' => $publicUrl]);
+            }
+
+            /** @var FilesystemAdapter $disk */
+            $disk = Storage::disk('s3');
+            $s3Key = $location['key'];
+
+            try {
+                $url = $disk->temporaryUrl(
+                    $s3Key,
+                    now()->addMinutes(10),
+                    [
+                        'ResponseContentDisposition' => 'inline; filename="'.$filename.'"',
+                        'ResponseContentType' => $contentType,
+                    ]
+                );
+
+                return response()->json(['url' => $url]);
+            } catch (\Throwable $e) {
+                Log::warning('officeEmbedSourceUrl temporaryUrl failed', [
+                    'document_id' => $id,
+                    's3_key' => $s3Key,
+                    'error' => $e->getMessage(),
+                ]);
+
+                abort(500, 'Unable to generate Office preview URL.');
+            }
+        } catch (ModelNotFoundException $e) {
+            throw $e;
+        } catch (HttpException $e) {
+            throw $e;
+        } catch (HttpResponseException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error('officeEmbedSourceUrl failed', ['id' => $id, 'error' => $e->getMessage()]);
+
+            abort(500, 'Unable to generate Office preview URL.');
+        }
+    }
+
+    /**
+     * @param  array{disk: 'local', path: string}  $location
+     */
+    private function publicUrlForLocalOriginalFile(array $location): ?string
+    {
+        $path = $location['path'];
+        $publicRoot = Storage::disk('public')->path('');
+        $publicRoot = rtrim(str_replace('\\', '/', $publicRoot), '/').'/';
+        $normalizedPath = str_replace('\\', '/', $path);
+
+        if (! str_starts_with($normalizedPath, $publicRoot)) {
+            return null;
+        }
+
+        $relative = ltrim(substr($normalizedPath, strlen($publicRoot)), '/');
+        if ($relative === '') {
+            return null;
+        }
+
+        return url(Storage::disk('public')->url($relative));
+    }
+
+    /**
      * Inline preview of the original (unsigned) upload. Streams through the app so private S3 files load in CRM viewers.
      */
     public function previewOriginal($id)
@@ -2627,6 +2725,10 @@ class DocumentController extends Controller
             'txt' => 'text/plain; charset=UTF-8',
             'doc' => 'application/msword',
             'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls' => 'application/vnd.ms-excel',
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'ppt' => 'application/vnd.ms-powerpoint',
+            'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
             default => 'application/octet-stream',
         };
     }

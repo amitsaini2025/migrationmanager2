@@ -550,6 +550,7 @@ use App\Http\Controllers\Controller;
             fetchVisaExpiryMessages: '{{ URL::to("/fetch-visa_expiry_messages") }}',
             downloadDocument: '{{ url("/documents/download") }}',
             previewOriginalDocument: '{{ url("/documents/__ID__/preview-original") }}',
+            officeEmbedUrl: '{{ url("/documents/__ID__/office-embed-url") }}',
             getTopInvoiceNo: '{{ URL::to("/clients/getTopInvoiceNoFromDB") }}',
             getTopReceiptVal: '{{ URL::to("/clients/getTopReceiptValInDB") }}',
             listOfInvoice: '{{ URL::to("/clients/listOfInvoice") }}',

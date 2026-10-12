@@ -2084,6 +2084,101 @@ $(document).ready(function() {
         return normalized === 'text/plain' || normalized.indexOf('text/plain') === 0;
     }
 
+    function clientDocIsOfficePreviewType(fileType) {
+        return String(fileType || '').toLowerCase().match(/^(docx?|xlsx?|pptx?)$/) !== null;
+    }
+
+    function clientDocExtractDocumentIdFromPreviewUrl(fileUrl) {
+        try {
+            const path = new URL(String(fileUrl || ''), window.location.origin).pathname;
+
+            const previewMatch = path.match(/\/documents\/(\d+)\/preview-original\/?$/);
+            if (previewMatch) {
+                return previewMatch[1];
+            }
+        } catch (e) {
+            return null;
+        }
+
+        return null;
+    }
+
+    function clientDocResolveOfficeEmbedFileUrl(fileUrl, onResolved) {
+        const fallback = function () {
+            onResolved(fileUrl);
+        };
+
+        if (!fileUrl) {
+            fallback();
+
+            return;
+        }
+
+        const docId = clientDocExtractDocumentIdFromPreviewUrl(fileUrl);
+        const embedTemplate = window.ClientDetailConfig?.urls?.officeEmbedUrl;
+
+        if (!docId || !embedTemplate) {
+            fallback();
+
+            return;
+        }
+
+        const endpoint = embedTemplate.replace('__ID__', docId);
+
+        fetch(endpoint, { credentials: 'include', headers: { Accept: 'application/json' } })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Office embed URL request failed');
+                }
+
+                return response.json();
+            })
+            .then(function (data) {
+                if (data && data.url) {
+                    onResolved(data.url);
+
+                    return;
+                }
+
+                fallback();
+            })
+            .catch(function () {
+                fallback();
+            });
+    }
+
+    function clientDocRenderOfficePreview(container, fileUrl) {
+        container.html(`
+
+            <div class="preview-content" style="flex: 1; display: flex; align-items: center; justify-content: center;">
+
+                <div style="text-align: center;">
+
+                    ${crmI('fas fa-spinner fa-spin', { size: 32, class: 'icon-spin' })}
+
+                    <p style="margin-top: 10px; color: #666;">Loading preview...</p>
+
+                </div>
+
+            </div>
+
+        `);
+
+        clientDocResolveOfficeEmbedFileUrl(fileUrl, function (resolvedUrl) {
+            const officeViewerUrl = 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(resolvedUrl);
+
+            container.html(`
+
+                <div class="preview-content" style="flex: 1; overflow: hidden; width: 100%;">
+
+                    <iframe src="${officeViewerUrl}" class="doc-viewer" title="Document Preview" style="width: 100%; height: calc(100vh - 100px); border: none;"></iframe>
+
+                </div>
+
+            `);
+        });
+    }
+
     function previewFile(fileType, fileUrl, containerId) {
 
         //console.log('fileType='+fileType);
@@ -2156,19 +2251,9 @@ $(document).ready(function() {
 
         }
 
-        else if (fileType.toLowerCase().match(/^(docx?|xlsx?|pptx?)$/)) {
+        else if (clientDocIsOfficePreviewType(fileType)) {
 
-            const officeViewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
-
-            container.html(`
-
-                <div class="preview-content" style="flex: 1; overflow: hidden; width: 100%;">
-
-                    <iframe src="${officeViewerUrl}" class="doc-viewer" style="width: 100%; height: calc(100vh - 100px); border: none;"></iframe>
-
-                </div>
-
-            `);
+            clientDocRenderOfficePreview(container, fileUrl);
 
         }
 

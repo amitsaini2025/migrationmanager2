@@ -187,6 +187,9 @@ Route::middleware('auth:admin')->group(function () {
     Route::get('/documents/{id}/preview-original', [AdminDocumentController::class, 'previewOriginal'])
         ->name('documents.preview.original');
 
+    Route::get('/documents/{id}/office-embed-url', [AdminDocumentController::class, 'officeEmbedSourceUrl'])
+        ->name('documents.office_embed_url');
+
     // Distinct URIs from public download routes so names are not overwritten (G3)
     Route::get('/admin/documents/{id}/download-signed', [AdminDocumentController::class, 'downloadSigned'])
         ->name('documents.download.signed');

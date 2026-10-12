@@ -53,6 +53,16 @@ class CompanyNominationMatterTest extends TestCase
     }
 
     #[Test]
+    public function company_details_nomination_nominee_link_does_not_gate_on_staff_client_visibility(): void
+    {
+        $blade = file_get_contents($this->projectPath('resources/views/crm/companies/tabs/company_details.blade.php'));
+        Assert::assertNotFalse($blade);
+
+        Assert::assertStringContainsString('$nomineeProfileLink', $blade);
+        Assert::assertStringNotContainsString('StaffClientVisibility', $blade);
+    }
+
+    #[Test]
     public function client_edit_service_loads_active_matters_for_company_nomination_dropdown(): void
     {
         $service = file_get_contents($this->projectPath('app/Services/ClientEditService.php'));

@@ -219,8 +219,10 @@
                     $nomineeLabel = $nom->nominatedClient
                         ? trim($nom->nominatedClient->first_name.' '.$nom->nominatedClient->last_name)
                         : ($nom->nominated_person_name ?? null);
-                    $mayOpenNominee = $nom->nominatedClient
-                        && \App\Support\StaffClientVisibility::canAccessClientOrLead((int) $nom->nominatedClient->id, auth()->user());
+                    $nomineeLabel = $nomineeLabel !== '' ? $nomineeLabel : ($nom->nominated_person_name ?? null);
+                    $nomineeProfileLink = $nom->nominatedClient
+                        ? route('clients.detail', base64_encode(convert_uuencode($nom->nominatedClient->id)))
+                        : null;
                 @endphp
                 <div class="{{ $nominationCount > 1 ? 'nomination-details-block' : '' }}">
                     @if($nominationCount > 1)
@@ -235,8 +237,8 @@
                             <span class="field-label">{{ $nom->trn ? 'Nominate Person:' : 'Person:' }}</span>
                             <span class="field-value">
                                 @if($nomineeLabel)
-                                    @if($mayOpenNominee)
-                                        <a href="{{ route('clients.detail', base64_encode(convert_uuencode($nom->nominatedClient->id))) }}"
+                                    @if($nomineeProfileLink)
+                                        <a href="{{ $nomineeProfileLink }}"
                                            style="color: #007bff; text-decoration: none;"
                                            title="Open client profile">
                                             {{ $nomineeLabel }}

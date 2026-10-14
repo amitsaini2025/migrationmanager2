@@ -83,6 +83,9 @@ class Kernel extends ConsoleKernel
 
         // Legal CRM — sync queued leads from Migration CRM
         '\App\Console\Commands\SyncPendingLegalCrmLeads',
+
+        // Visa pricing estimator — Google Sheets → cache (optional)
+        '\App\Console\Commands\SyncVisaPricingFromGoogleSheet',
     ];
 
     /**
@@ -187,6 +190,12 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('access:expire-grants')->hourly();
         $schedule->command('access:cache-grant-stats')->hourly();
+
+        $schedule->command('visa-pricing:sync-google-sheet')
+            ->hourly()
+            ->timezone('Australia/Melbourne')
+            ->withoutOverlapping(10)
+            ->appendOutputTo(storage_path('logs/visa-pricing-sync.log'));
     }
 
     /**

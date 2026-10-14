@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Services\VisaPricing\VisaPricingDataRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -15,6 +16,10 @@ use Illuminate\Support\Facades\Validator;
  */
 class VisaPricingEstimatorController extends BaseController
 {
+    public function __construct(
+        private VisaPricingDataRepository $visaPricingData,
+    ) {}
+
     /** Upper bound for visa-list pagination (config-backed list; allows full fetch in one page). */
     private const VISA_LIST_MAX_LIMIT = 500;
 
@@ -56,7 +61,7 @@ class VisaPricingEstimatorController extends BaseController
         $limit = min(max((int) $request->get('limit', 20), 1), $maxLimit);
         $page = max($page, 1);
 
-        $visas = config('visa_pricing_estimator.visas', []);
+        $visas = $this->visaPricingData->visas();
 
         if ($search !== '') {
             $searchLower = mb_strtolower($search);
@@ -135,15 +140,15 @@ class VisaPricingEstimatorController extends BaseController
 
         $visaId = (string) $validated['visa_id'];
 
-        $visas = config('visa_pricing_estimator.visas', []);
+        $visas = $this->visaPricingData->visas();
         $visa = collect($visas)->firstWhere('id', $visaId);
 
-        if (!$visa) {
+        if (! $visa) {
             return $this->sendError('Visa not found. Use /api/visa-estimate/visa-list for valid visa IDs.', [], 404);
         }
 
-        $default18Plus = config('visa_pricing_estimator.additional_applicant_charge_18_plus', 4685);
-        $defaultU18 = config('visa_pricing_estimator.additional_applicant_charge_u18', 2345);
+        $default18Plus = $this->visaPricingData->additionalApplicantCharge18Plus();
+        $defaultU18 = $this->visaPricingData->additionalApplicantChargeU18();
 
         $charge18Plus = $this->resolveAdditionalCharge($visa, 'additional_18_plus', $default18Plus);
         $chargeU18 = $this->resolveAdditionalCharge($visa, 'additional_u18', $defaultU18);
@@ -204,7 +209,7 @@ class VisaPricingEstimatorController extends BaseController
             'line_items' => $lineItems,
             'total' => round($total, 2),
             'currency' => 'AUD',
-            'price_starts_from' => 'AUD ' . number_format($total, 2, '.', ','),
+            'price_starts_from' => 'AUD '.number_format($total, 2, '.', ','),
             'disclaimer' => 'This is an estimate only. The estimator might not include the second instalment payable for some visas. Verify current charges at https://immi.homeaffairs.gov.au/visas/getting-a-visa/fees-and-charges',
         ];
 
@@ -219,13 +224,11 @@ class VisaPricingEstimatorController extends BaseController
      */
     private function resolveAdditionalCharge(array $visa, string $key, int $default): ?int
     {
-        $visaId = (string) ($visa['id'] ?? '');
-
-        if (in_array($visaId, self::VISAS_WITHOUT_ADDITIONAL_APPLICANTS, true)) {
-            return array_key_exists($key, $visa) ? $visa[$key] : $default;
+        if (array_key_exists($key, $visa)) {
+            return $visa[$key];
         }
 
-        return $visa[$key] ?? $default;
+        return $default;
     }
 
     /**
@@ -239,8 +242,8 @@ class VisaPricingEstimatorController extends BaseController
             return true;
         }
 
-        $default18Plus = config('visa_pricing_estimator.additional_applicant_charge_18_plus', 4685);
-        $defaultU18 = config('visa_pricing_estimator.additional_applicant_charge_u18', 2345);
+        $default18Plus = $this->visaPricingData->additionalApplicantCharge18Plus();
+        $defaultU18 = $this->visaPricingData->additionalApplicantChargeU18();
 
         $charge18Plus = $this->resolveAdditionalCharge($visa, 'additional_18_plus', $default18Plus);
         $chargeU18 = $this->resolveAdditionalCharge($visa, 'additional_u18', $defaultU18);

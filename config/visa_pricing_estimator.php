@@ -22,6 +22,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Google Sheets sync (optional — APIs fall back to the visas array below)
+    |--------------------------------------------------------------------------
+    |
+    | Share the spreadsheet with the service account email (Viewer).
+    | JSON key path is relative to storage/app/ (same pattern as FCM).
+    |
+    | VISA_PRICING_GOOGLE_SHEETS_ENABLED=false keeps current behaviour until ready.
+    */
+    'google_sheets' => [
+        'enabled' => filter_var(env('VISA_PRICING_GOOGLE_SHEETS_ENABLED', false), FILTER_VALIDATE_BOOL),
+        'spreadsheet_id' => env('VISA_PRICING_GOOGLE_SPREADSHEET_ID', '19rIOHPLH-SZZfhworCr5_f1kRGSUx19wjJa3lt2ncjs'),
+        'sheet_gid' => (int) env('VISA_PRICING_GOOGLE_SHEET_GID', 29243613),
+        'service_account_path' => env('VISA_PRICING_GOOGLE_SERVICE_ACCOUNT_PATH', env('FCM_SERVICE_ACCOUNT_PATH', 'firebase-service-account.json')),
+        'cache_key' => 'visa_pricing_estimator.google_sheets_payload',
+        'min_visa_rows' => (int) env('VISA_PRICING_GOOGLE_MIN_VISA_ROWS', 30),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Visa list synced from visa_pricing_clean.xlsx (All Visa Pricing sheet)
     |--------------------------------------------------------------------------
     | id: sequential value from sheet row order

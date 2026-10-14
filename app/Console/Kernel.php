@@ -86,6 +86,7 @@ class Kernel extends ConsoleKernel
 
         // Visa pricing estimator — Google Sheets → cache (optional)
         '\App\Console\Commands\SyncVisaPricingFromGoogleSheet',
+        '\App\Console\Commands\ExportVisaPricingConfigFromGoogleSheet',
     ];
 
     /**

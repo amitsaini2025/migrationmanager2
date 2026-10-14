@@ -10,16 +10,7 @@ class VisaPricingSheetParser
 
     /**
      * @param  list<list<string|null>>  $rows
-     * @return list<array{
-     *     id: string,
-     *     label: string,
-     *     base_charge: int,
-     *     additional_18_plus: int|null,
-     *     additional_u18: int|null,
-     *     non_internet_app_charge: int|null,
-     *     subsequent_temp_app_charge: int|null,
-     *     page: int|null
-     * }>
+     * @return list<VisaPricingVisaRecord::VisaPricingRow>
      */
     public function parse(array $rows): array
     {
@@ -40,13 +31,11 @@ class VisaPricingSheetParser
                 continue;
             }
 
-            $label = $this->resolveLabel($row, $columnMap);
-            if ($label === '') {
-                continue;
-            }
+            $visaStream = $this->resolveVisaStream($row, $columnMap);
+            $subclass = trim((string) ($this->cell($row, $columnMap, 'subclass') ?? ''));
+            $category = trim((string) ($this->cell($row, $columnMap, 'category') ?? ''));
 
-            $baseCharge = $this->parseCharge($this->cell($row, $columnMap, 'base_charge'), required: false);
-            if ($baseCharge === null) {
+            if ($visaStream === '' && $subclass === '' && $category === '') {
                 continue;
             }
 
@@ -56,16 +45,18 @@ class VisaPricingSheetParser
                 ? trim($explicitId)
                 : (string) $sequentialId;
 
-            $visas[] = [
+            $visas[] = VisaPricingVisaRecord::normalize([
                 'id' => $id,
-                'label' => $label,
-                'base_charge' => $baseCharge,
-                'additional_18_plus' => $this->parseCharge($this->cell($row, $columnMap, 'additional_18_plus')),
-                'additional_u18' => $this->parseCharge($this->cell($row, $columnMap, 'additional_u18')),
-                'non_internet_app_charge' => $this->parseCharge($this->cell($row, $columnMap, 'non_internet_app_charge')),
-                'subsequent_temp_app_charge' => $this->parseCharge($this->cell($row, $columnMap, 'subsequent_temp_app_charge')),
-                'page' => $this->parsePage($this->cell($row, $columnMap, 'page')),
-            ];
+                'category' => $category,
+                'subclass' => $subclass,
+                'visa_stream' => $visaStream !== '' ? $visaStream : $category,
+                'main_applicant_fee' => $this->cell($row, $columnMap, 'main_applicant_fee') ?? '',
+                'additional_applicant_18_plus_fee' => $this->cell($row, $columnMap, 'additional_applicant_18_plus_fee'),
+                'applicant_under_18_fee' => $this->cell($row, $columnMap, 'applicant_under_18_fee'),
+                'second_vac_charges' => $this->parseText($this->cell($row, $columnMap, 'second_vac_charges')),
+                'notes' => $this->parseText($this->cell($row, $columnMap, 'notes')),
+                'source' => $this->parseText($this->cell($row, $columnMap, 'source')),
+            ]);
         }
 
         if ($visas === []) {
@@ -93,7 +84,7 @@ class VisaPricingSheetParser
             }
         }
 
-        throw new InvalidArgumentException('Sheet must include Visa Subclass and Base Application Charge columns.');
+        throw new InvalidArgumentException('Sheet must include required visa pricing columns (e.g. Main Applicant / Visa Stream).');
     }
 
     /**
@@ -118,19 +109,19 @@ class VisaPricingSheetParser
     {
         $patterns = [
             'id' => ['^id$'],
-            'label' => ['visa subclass'],
+            'legacy_label' => ['visa subclass'],
             'category' => ['^category$'],
             'subclass' => ['^subclass$'],
-            'stream' => ['visa / stream', 'visa/stream', 'visa stream'],
-            'base_charge' => ['base application charge', 'main applicant'],
-            'additional_18_plus' => ['additional applicant charge 18', 'additional applicant 18'],
-            'additional_u18' => ['additional applicant charge under 18', 'applicant under 18'],
-            'non_internet_app_charge' => ['non-internet application charge', 'non internet application charge'],
-            'subsequent_temp_app_charge' => [
+            'visa_stream' => ['visa / stream', 'visa/stream', 'visa stream'],
+            'main_applicant_fee' => ['base application charge', 'main applicant'],
+            'additional_applicant_18_plus_fee' => ['additional applicant charge 18', 'additional applicant 18'],
+            'applicant_under_18_fee' => ['additional applicant charge under 18', 'applicant under 18'],
+            'second_vac_charges' => [
                 'subsequent temporary application charge',
                 'second vac',
-                'extra charge',
             ],
+            'notes' => ['^notes$'],
+            'source' => ['^source$'],
             'page' => ['^page$'],
         ];
 
@@ -144,7 +135,7 @@ class VisaPricingSheetParser
                         : str_contains($header, $needle);
 
                     if ($matches) {
-                        if ($key === 'subsequent_temp_app_charge' && isset($map[$key])) {
+                        if ($key === 'second_vac_charges' && isset($map[$key])) {
                             continue;
                         }
 
@@ -155,12 +146,12 @@ class VisaPricingSheetParser
             }
         }
 
-        $hasLegacyLabel = isset($map['label']);
-        $hasCompositeLabel = isset($map['stream']) || isset($map['subclass']);
-        $hasBaseCharge = isset($map['base_charge']);
+        $hasLegacyLabel = isset($map['legacy_label']);
+        $hasStreamLayout = isset($map['visa_stream']) || isset($map['subclass']) || isset($map['category']);
+        $hasMainFee = isset($map['main_applicant_fee']);
 
-        if (! $hasBaseCharge || (! $hasLegacyLabel && ! $hasCompositeLabel)) {
-            throw new InvalidArgumentException('Sheet must include Visa Subclass and Base Application Charge columns.');
+        if (! $hasMainFee || (! $hasLegacyLabel && ! $hasStreamLayout)) {
+            throw new InvalidArgumentException('Sheet must include required visa pricing columns (e.g. Main Applicant / Visa Stream).');
         }
 
         return $map;
@@ -170,30 +161,17 @@ class VisaPricingSheetParser
      * @param  list<string|null>  $row
      * @param  array<string, int>  $columnMap
      */
-    private function resolveLabel(array $row, array $columnMap): string
+    private function resolveVisaStream(array $row, array $columnMap): string
     {
-        if (isset($columnMap['label'])) {
-            return trim((string) ($this->cell($row, $columnMap, 'label') ?? ''));
+        if (isset($columnMap['visa_stream'])) {
+            $stream = trim((string) ($this->cell($row, $columnMap, 'visa_stream') ?? ''));
+            if ($stream !== '') {
+                return $stream;
+            }
         }
 
-        $stream = trim((string) ($this->cell($row, $columnMap, 'stream') ?? ''));
-        $subclass = trim((string) ($this->cell($row, $columnMap, 'subclass') ?? ''));
-        $category = trim((string) ($this->cell($row, $columnMap, 'category') ?? ''));
-
-        if ($stream !== '' && $subclass !== '') {
-            return $stream.' (subclass '.$subclass.')';
-        }
-
-        if ($stream !== '') {
-            return $stream;
-        }
-
-        if ($subclass !== '' && $category !== '') {
-            return $category.' (subclass '.$subclass.')';
-        }
-
-        if ($subclass !== '') {
-            return 'Visa (subclass '.$subclass.')';
+        if (isset($columnMap['legacy_label'])) {
+            return trim((string) ($this->cell($row, $columnMap, 'legacy_label') ?? ''));
         }
 
         return '';
@@ -235,44 +213,14 @@ class VisaPricingSheetParser
         return preg_replace('/\s+/', ' ', $header) ?? $header;
     }
 
-    private function parseCharge(?string $value, bool $required = false): ?int
+    private function parseText(?string $value): ?string
     {
-        if ($value === null || trim($value) === '') {
-            if ($required) {
-                throw new InvalidArgumentException('Missing required charge value in sheet row.');
-            }
-
+        if ($value === null) {
             return null;
         }
 
-        $normalized = strtolower(trim($value));
-        if (in_array($normalized, ['n/a', 'na', '-', 'nil', 'none'], true)) {
-            return null;
-        }
+        $trimmed = trim($value);
 
-        $numeric = preg_replace('/[^0-9.\-]/', '', str_replace(',', '', $value));
-        if ($numeric === '' || $numeric === null) {
-            if ($required) {
-                throw new InvalidArgumentException('Invalid charge value in sheet: '.$value);
-            }
-
-            return null;
-        }
-
-        return (int) round((float) $numeric);
-    }
-
-    private function parsePage(?string $value): ?int
-    {
-        if ($value === null || trim($value) === '') {
-            return null;
-        }
-
-        $numeric = preg_replace('/[^0-9]/', '', $value);
-        if ($numeric === '') {
-            return null;
-        }
-
-        return (int) $numeric;
+        return $trimmed === '' ? null : $trimmed;
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Services\VisaPricing\VisaPricingDataRepository;
+use App\Services\VisaPricing\VisaPricingVisaRecord;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -24,17 +25,11 @@ class VisaPricingEstimatorController extends BaseController
     private const VISA_LIST_MAX_LIMIT = 500;
 
     /**
-     * Visitor visa (subclass 600) Tourist stream rows where additional applicant
-     * charges do not apply per Home Affairs pricing data.
-     */
-    private const VISAS_WITHOUT_ADDITIONAL_APPLICANTS = ['147', '148'];
-
-    /**
      * Visa List with Search
      * GET /api/visa-estimate/visa-list
      *
      * Query Parameters (same style as GET /api/notifications):
-     * - q: Search query - case-insensitive substring match on visa label only (optional)
+     * - q: Search query - case-insensitive match on category, subclass, visa stream, notes, or display label (optional)
      * - page: Page number (optional, default: 1, integer min 1)
      * - limit: Items per page (optional, default: 20, integer min 1, max 500)
      */
@@ -65,11 +60,10 @@ class VisaPricingEstimatorController extends BaseController
 
         if ($search !== '') {
             $searchLower = mb_strtolower($search);
-            $visas = array_values(array_filter($visas, function ($visa) use ($searchLower) {
-                $label = mb_strtolower((string) ($visa['label'] ?? ''));
-
-                return str_contains($label, $searchLower);
-            }));
+            $visas = array_values(array_filter(
+                $visas,
+                static fn (array $visa): bool => VisaPricingVisaRecord::matchesSearchQuery($visa, $searchLower),
+            ));
         }
 
         $total = count($visas);
@@ -81,21 +75,10 @@ class VisaPricingEstimatorController extends BaseController
         $offset = ($page - 1) * $limit;
         $pageItems = array_slice($visas, $offset, $limit);
 
-        $items = array_map(function ($visa) {
-            $label = (string) ($visa['label'] ?? '');
-            $subclass = null;
-            if (preg_match('/\(\s*subclass\s*([^)]+)\)/i', $label, $matches)) {
-                $subclass = trim($matches[1]);
-            }
-
-            return [
-                'id' => $visa['id'],
-                'label' => $label,
-                'subclass' => $subclass,
-                'stream' => null,
-                'supports_additional_applicants' => $this->supportsAdditionalApplicants($visa),
-            ];
-        }, $pageItems);
+        $items = array_map(
+            static fn (array $visa): array => VisaPricingVisaRecord::toListResponseRow($visa),
+            $pageItems,
+        );
 
         $countOnPage = count($pageItems);
         $result = [
@@ -150,8 +133,8 @@ class VisaPricingEstimatorController extends BaseController
         $default18Plus = $this->visaPricingData->additionalApplicantCharge18Plus();
         $defaultU18 = $this->visaPricingData->additionalApplicantChargeU18();
 
-        $charge18Plus = $this->resolveAdditionalCharge($visa, 'additional_18_plus', $default18Plus);
-        $chargeU18 = $this->resolveAdditionalCharge($visa, 'additional_u18', $defaultU18);
+        $charge18Plus = $this->resolveAdditionalApplicant18PlusFee($visa, $default18Plus);
+        $chargeU18 = $this->resolveApplicantUnder18Fee($visa, $defaultU18);
 
         $additional18Plus = (int) ($validated['additional_applicants_18_plus'] ?? 0);
         $additionalU18 = (int) ($validated['additional_applicants_u18'] ?? 0);
@@ -167,16 +150,14 @@ class VisaPricingEstimatorController extends BaseController
         $lineItems = [];
         $total = 0.0;
 
-        // Primary visa charge
-        $baseCharge = (float) ($visa['base_charge'] ?? 0);
+        $baseCharge = (float) VisaPricingVisaRecord::mainApplicantFee($visa);
         $lineItems[] = [
-            'product' => $visa['label'],
+            'product' => VisaPricingVisaRecord::displayLabel($visa),
             'quantity' => 1,
             'price' => round($baseCharge, 2),
         ];
         $total += $baseCharge;
 
-        // Additional applicants 18+
         if ($additional18Plus > 0 && $charge18Plus !== null) {
             $amount = $charge18Plus * $additional18Plus;
             $lineItems[] = [
@@ -187,7 +168,6 @@ class VisaPricingEstimatorController extends BaseController
             $total += $amount;
         }
 
-        // Additional applicants under 18
         if ($additionalU18 > 0 && $chargeU18 !== null) {
             $amount = $chargeU18 * $additionalU18;
             $lineItems[] = [
@@ -198,7 +178,6 @@ class VisaPricingEstimatorController extends BaseController
             $total += $amount;
         }
 
-        // GST (visa charges are generally GST-free)
         $lineItems[] = [
             'product' => 'GST',
             'quantity' => 1,
@@ -216,38 +195,21 @@ class VisaPricingEstimatorController extends BaseController
         return $this->sendResponse($result, 'Estimate calculated successfully');
     }
 
-    /**
-     * Resolve per-visa additional applicant charge.
-     *
-     * For VISAS_WITHOUT_ADDITIONAL_APPLICANTS, explicit null in config means not applicable.
-     * All other visas keep legacy fallback to global defaults when config value is null.
-     */
-    private function resolveAdditionalCharge(array $visa, string $key, int $default): ?int
+    private function resolveAdditionalApplicant18PlusFee(array $visa, int $default): ?int
     {
-        if (array_key_exists($key, $visa)) {
-            return $visa[$key];
+        if (VisaPricingVisaRecord::hasAdditionalApplicant18PlusFeeKey($visa)) {
+            return VisaPricingVisaRecord::additionalApplicant18PlusFee($visa);
         }
 
         return $default;
     }
 
-    /**
-     * Whether the visa supports additional applicant input fields in the client UI.
-     */
-    private function supportsAdditionalApplicants(array $visa): bool
+    private function resolveApplicantUnder18Fee(array $visa, int $default): ?int
     {
-        $visaId = (string) ($visa['id'] ?? '');
-
-        if (! in_array($visaId, self::VISAS_WITHOUT_ADDITIONAL_APPLICANTS, true)) {
-            return true;
+        if (VisaPricingVisaRecord::hasApplicantUnder18FeeKey($visa)) {
+            return VisaPricingVisaRecord::applicantUnder18Fee($visa);
         }
 
-        $default18Plus = $this->visaPricingData->additionalApplicantCharge18Plus();
-        $defaultU18 = $this->visaPricingData->additionalApplicantChargeU18();
-
-        $charge18Plus = $this->resolveAdditionalCharge($visa, 'additional_18_plus', $default18Plus);
-        $chargeU18 = $this->resolveAdditionalCharge($visa, 'additional_u18', $defaultU18);
-
-        return $charge18Plus !== null || $chargeU18 !== null;
+        return $default;
     }
 }

@@ -11,14 +11,23 @@ class VisaPricingDataRepository
      */
     public function visas(): array
     {
+        $visas = [];
+
         if ($this->googleSheetsEnabled()) {
             $cached = Cache::get($this->cacheKey());
             if (is_array($cached) && ! empty($cached['visas']) && is_array($cached['visas'])) {
-                return $cached['visas'];
+                $visas = $cached['visas'];
             }
         }
 
-        return config('visa_pricing_estimator.visas', []);
+        if ($visas === []) {
+            $visas = config('visa_pricing_estimator.visas', []);
+        }
+
+        return array_map(
+            static fn (array $visa): array => VisaPricingVisaRecord::normalize($visa),
+            $visas,
+        );
     }
 
     public function additionalApplicantCharge18Plus(): int

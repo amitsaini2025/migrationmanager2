@@ -745,14 +745,29 @@ trait ClientAgreements
             $s3UploadSuccess = false;
 
             // Try to upload to S3
+            $docxContentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
             try {
-                $uploadResult = Storage::disk('s3')->put($s3Path, file_get_contents($outputPath));
+                $uploadResult = Storage::disk('s3')->put($s3Path, file_get_contents($outputPath), [
+                    'ContentType' => $docxContentType,
+                    'ContentDisposition' => 'attachment; filename="'.$fileName.'"',
+                ]);
 
                 if ($uploadResult) {
-                    // Get the S3 URL
                     /** @var FilesystemAdapter $disk */
                     $disk = Storage::disk('s3');
-                    $downloadUrl = $disk->url($s3Path);
+                    try {
+                        $downloadUrl = $disk->temporaryUrl(
+                            $s3Path,
+                            now()->addMinutes(15),
+                            [
+                                'ResponseContentDisposition' => 'attachment; filename="'.$fileName.'"',
+                                'ResponseContentType' => $docxContentType,
+                            ]
+                        );
+                    } catch (\Throwable $signedUrlException) {
+                        Log::warning('S3 temporary download URL failed, using public URL: '.$signedUrlException->getMessage());
+                        $downloadUrl = $disk->url($s3Path);
+                    }
 
                     // Verify the URL is not empty
                     if (! empty($downloadUrl)) {

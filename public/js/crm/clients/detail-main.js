@@ -5080,6 +5080,70 @@ success: function(response) {
 
 
         // Form 956 PDF: single download on create (not on visa tab reload — see visa_documents + sidebar-tabs)
+        /** Force-download generated visa agreement DOCX (avoid Edge/Office Online in-browser preview). */
+        window.downloadVisaAgreementOnce = function(url, filename, onDone) {
+            if (!url) {
+                if (typeof onDone === 'function') {
+                    onDone();
+                }
+                return;
+            }
+            var downloadName = filename || ('visa_agreement_' + Date.now() + '.docx');
+            var triggerLinkDownload = function() {
+                var link = document.createElement('a');
+                link.href = url;
+                link.download = downloadName;
+                link.rel = 'noopener';
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                setTimeout(function() {
+                    document.body.removeChild(link);
+                    if (typeof onDone === 'function') {
+                        onDone();
+                    }
+                }, 100);
+            };
+            var isSameOrigin = false;
+            try {
+                isSameOrigin = url.indexOf(window.location.origin) === 0;
+            } catch (e) {
+                isSameOrigin = false;
+            }
+            if (isSameOrigin) {
+                fetch(url, { credentials: 'same-origin' })
+                    .then(function(r) {
+                        if (!r.ok) {
+                            throw new Error('Agreement request failed');
+                        }
+                        return r.blob();
+                    })
+                    .then(function(blob) {
+                        if (!blob || blob.size === 0) {
+                            throw new Error('Empty agreement file');
+                        }
+                        var objectUrl = URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = objectUrl;
+                        a.download = downloadName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        setTimeout(function() {
+                            URL.revokeObjectURL(objectUrl);
+                            if (typeof onDone === 'function') {
+                                onDone();
+                            }
+                        }, 2000);
+                    })
+                    .catch(function() {
+                        triggerLinkDownload();
+                    });
+            } else {
+                triggerLinkDownload();
+            }
+        };
+
         window.downloadForm956PdfOnce = function(url, onDone) {
             if (!url) {
                 if (typeof onDone === 'function') {
@@ -5626,95 +5690,13 @@ success: function(response) {
 
                                             if (response.success && response.download_url) {
 
-                                                // Use window.open for download - single method to prevent duplicates
+                                                var agreementFilename = response.filename || ('visa_agreement_' + Date.now() + '.docx');
 
-                                                try {
-
-                                                    // Primary method: window.open for download
-
-                                                    var downloadWindow = window.open(response.download_url, '_blank');
-
-                                                    
-
-                                                    // Check if window.open was blocked or failed immediately
-
-                                                    if (!downloadWindow || downloadWindow.closed) {
-
-                                                        // Fallback: Use direct link click only if window.open was blocked
-
-                                                        var link = document.createElement('a');
-
-                                                        link.href = response.download_url;
-
-                                                        link.download = 'visa_agreement_' + new Date().getTime() + '.docx';
-
-                                                        link.target = '_blank';
-
-                                                        link.style.display = 'none';
-
-                                                        document.body.appendChild(link);
-
-                                                        link.click();
-
-                                                        // Clean up after a short delay
-
-                                                        setTimeout(function() {
-
-                                                            document.body.removeChild(link);
-
-                                                        }, 100);
-
-                                                    }
-
-                                                    
-
-                                                    // Show success message
+                                                window.downloadVisaAgreementOnce(response.download_url, agreementFilename, function() {
 
                                                     alert('Visa agreement generated successfully!');
 
-                                                } catch (error) {
-
-                                                    console.error('Download error:', error);
-
-                                                    
-
-                                                    // Last resort: Direct link approach only if window.open throws an error
-
-                                                    try {
-
-                                                        var link = document.createElement('a');
-
-                                                        link.href = response.download_url;
-
-                                                        link.download = 'visa_agreement_' + new Date().getTime() + '.docx';
-
-                                                        link.target = '_blank';
-
-                                                        link.style.display = 'none';
-
-                                                        document.body.appendChild(link);
-
-                                                        link.click();
-
-                                                        setTimeout(function() {
-
-                                                            document.body.removeChild(link);
-
-                                                        }, 100);
-
-                                                        
-
-                                                        alert('Visa agreement generated successfully!');
-
-                                                    } catch (fallbackError) {
-
-                                                        console.error('Fallback download error:', fallbackError);
-
-                                                        alert('Visa agreement generated successfully! Please check your downloads folder or browser download settings.');
-
-                                                    }
-
-                                                }
+                                                });
 
                                             } else {
 
@@ -5871,11 +5853,11 @@ success: function(response) {
 
 
 
-                    // Redirect to download URL
-
                     if (response.download_url) {
 
-                        window.location.href = response.download_url;
+                        var agreementFilename = response.filename || ('visa_agreement_' + Date.now() + '.docx');
+
+                        window.downloadVisaAgreementOnce(response.download_url, agreementFilename);
 
                     } else {
 

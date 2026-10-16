@@ -8,6 +8,7 @@ use App\Models\AppointmentConsultant;
 use App\Models\ClientAddress;
 use App\Models\ClientMatter;
 use App\Models\ClientRelationship;
+use App\Models\ClientSpouseDetail;
 use App\Models\Company;
 // use App\Models\OnlineForm; // REMOVED: OnlineForm model has been deleted
 use App\Models\CostAssignmentForm;
@@ -578,12 +579,15 @@ trait ClientAgreements
             }
 
             $scheduleAFamily = $this->buildScheduleAFamilyMacroStrings((int) $id);
+            $spouseNameMacros = $this->resolveSpouseNameMacrosForAgreement((int) $id);
 
             // Replace placeholders
             $replacements = [
                 'ClientID' => $client->client_id,
                 'ApplicantGivenNames' => $client->first_name,
                 'ApplicantSurname' => $client->last_name,
+                'SpouseGivenNames' => $spouseNameMacros['given'],
+                'SpouseSurname' => $spouseNameMacros['surname'],
                 'ApplicantDOB' => $dobFormated,
                 'ApplicantResidentialAddressStreet1and2' => $client_address,
                 'ApplicantResidentialAddressPostcode' => $client_zip,
@@ -938,6 +942,89 @@ trait ClientAgreements
         }
 
         $zip->close();
+    }
+
+    /**
+     * Spouse / partner name macros for the Visa Applicant Engage Contract signature block.
+     *
+     * @return array{given: string, surname: string}
+     */
+    protected function resolveSpouseNameMacrosForAgreement(int $clientAdminId): array
+    {
+        $partnerRow = ClientRelationship::query()
+            ->where('client_id', $clientAdminId)
+            ->whereIn('relationship_type', ClientRelationship::PARTNER_RELATIONSHIP_TYPES)
+            ->with(['relatedClient:id,first_name,last_name'])
+            ->orderBy('id')
+            ->first();
+
+        if ($partnerRow) {
+            return $this->agreementSpouseNamePartsFromRelationship($partnerRow);
+        }
+
+        $spouseDetail = ClientSpouseDetail::query()
+            ->where('client_id', $clientAdminId)
+            ->with(['relatedClient:id,first_name,last_name'])
+            ->first();
+
+        if ($spouseDetail?->relatedClient) {
+            return [
+                'given' => trim((string) ($spouseDetail->relatedClient->first_name ?? '')),
+                'surname' => trim((string) ($spouseDetail->relatedClient->last_name ?? '')),
+            ];
+        }
+
+        return ['given' => '', 'surname' => ''];
+    }
+
+    /**
+     * @return array{given: string, surname: string}
+     */
+    protected function agreementSpouseNamePartsFromRelationship(ClientRelationship $relationship): array
+    {
+        if (! empty($relationship->related_client_id)) {
+            $relatedClient = $relationship->relatedClient;
+            if ($relatedClient) {
+                return [
+                    'given' => trim((string) ($relatedClient->first_name ?? '')),
+                    'surname' => trim((string) ($relatedClient->last_name ?? '')),
+                ];
+            }
+        }
+
+        $firstName = trim((string) ($relationship->first_name ?? ''));
+        $lastName = trim((string) ($relationship->last_name ?? ''));
+        if ($firstName !== '' || $lastName !== '') {
+            return ['given' => $firstName, 'surname' => $lastName];
+        }
+
+        $details = trim((string) ($relationship->details ?? ''));
+        if ($details === '') {
+            return ['given' => '', 'surname' => ''];
+        }
+
+        return $this->agreementSplitSingleDisplayNameIntoGivenAndSurname($details);
+    }
+
+    /**
+     * @return array{given: string, surname: string}
+     */
+    protected function agreementSplitSingleDisplayNameIntoGivenAndSurname(string $displayName): array
+    {
+        $displayName = trim(preg_replace('/\s+/', ' ', $displayName) ?? '');
+        if ($displayName === '') {
+            return ['given' => '', 'surname' => ''];
+        }
+
+        $lastSpace = strrpos($displayName, ' ');
+        if ($lastSpace === false) {
+            return ['given' => $displayName, 'surname' => ''];
+        }
+
+        return [
+            'given' => trim(substr($displayName, 0, $lastSpace)),
+            'surname' => trim(substr($displayName, $lastSpace + 1)),
+        ];
     }
 
     /**

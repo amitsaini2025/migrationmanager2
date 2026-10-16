@@ -46,10 +46,16 @@ class WorkflowV2Display
         $currentStageIndex = $currentSortVal !== null
             ? $allStages->where(fn ($s) => ($s->sort_order ?? $s->id) <= $currentSortVal)->count()
             : 0;
-        $completedStages = max(0, $currentStageIndex - 1);
-        $progressPercentage = $totalStages > 0
-            ? (int) round(($completedStages / $totalStages) * 100)
-            : 0;
+        $lastWorkflowStage = $totalStages > 0
+            ? $allStages->sortBy(fn ($s) => $s->sort_order ?? $s->id)->last()
+            : null;
+        $isOnLastWorkflowStage = $currentStageRow && $lastWorkflowStage
+            && (int) $currentStageRow->id === (int) $lastWorkflowStage->id;
+        $progressPercentage = self::fileProgressPercentage(
+            $currentStageIndex,
+            $totalStages,
+            $isOnLastWorkflowStage
+        );
 
         if ($matter && $currentStageId && $totalStages > 0) {
             $currentStageName = $currentStageRow ? $currentStageRow->name : null;
@@ -644,6 +650,26 @@ class WorkflowV2Display
             ->value('body');
 
         return is_string($body) ? $body : '';
+    }
+
+    /**
+     * File progress for the workflow tab header (0–100).
+     *
+     * Uses completed prior stages only, except when the matter is on the final workflow stage (100%).
+     */
+    public static function fileProgressPercentage(int $currentStageIndex, int $totalStages, bool $isOnLastWorkflowStage): int
+    {
+        if ($totalStages <= 0 || $currentStageIndex <= 0) {
+            return 0;
+        }
+
+        if ($isOnLastWorkflowStage) {
+            return 100;
+        }
+
+        $completedStages = max(0, $currentStageIndex - 1);
+
+        return (int) round(($completedStages / $totalStages) * 100);
     }
 
     /**

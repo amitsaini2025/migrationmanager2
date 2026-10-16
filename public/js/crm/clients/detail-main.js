@@ -333,8 +333,13 @@
             fileCellHtml = '<span style="color:#6b7280;">N/A</span>';
         }
 
+        var hasFile = !!(fileName && (doc.myfile || doc.myfile_key || fileUrl));
+        var selectCell = (typeof window.bulkDownloadSelectCellHtml === 'function')
+            ? window.bulkDownloadSelectCellHtml(doc.id, hasFile)
+            : '';
         var rowHtml =
             '<tr class="drow" id="id_' + doc.id + '">' +
+                selectCell +
                 '<td style="white-space: initial;">' +
                     '<div data-id="' + doc.id + '" data-personalchecklistname="' + escapeClientDocUiHtml(checklist) + '" class="personalchecklist-row" ' +
                     'style="display: flex; align-items: center; gap: 8px;" ' +
@@ -413,8 +418,13 @@
             fileCellHtml = '<span style="color:#6b7280;">N/A</span>';
         }
 
+        var hasFile = !!(fileName && (doc.myfile || doc.myfile_key || fileUrl));
+        var selectCell = (typeof window.bulkDownloadSelectCellHtml === 'function')
+            ? window.bulkDownloadSelectCellHtml(doc.id, hasFile)
+            : '';
         var rowHtml =
             '<tr class="drow" data-matterid="' + escapeClientDocUiHtml(matterId) + '" data-catid="' + escapeClientDocUiHtml(categoryId) + '" id="id_' + doc.id + '">' +
+                selectCell +
                 '<td style="white-space: initial;">' +
                     '<div data-id="' + doc.id + '" data-visachecklistname="' + escapeClientDocUiHtml(checklist) + '" class="visachecklist-row" ' +
                     'style="display: flex; align-items: center; gap: 8px;" ' +
@@ -490,8 +500,13 @@
             fileCellHtml = '<span style="color:#6b7280;">N/A</span>';
         }
 
+        var hasFile = !!(fileName && (doc.myfile || doc.myfile_key || fileUrl));
+        var selectCell = (typeof window.bulkDownloadSelectCellHtml === 'function')
+            ? window.bulkDownloadSelectCellHtml(doc.id, hasFile)
+            : '';
         var rowHtml =
             '<tr class="drow" data-matterid="' + escapeClientDocUiHtml(matterId) + '" data-catid="' + escapeClientDocUiHtml(categoryId) + '" id="id_' + doc.id + '">' +
+                selectCell +
                 '<td style="white-space: initial;">' +
                     '<div data-id="' + doc.id + '" data-visachecklistname="' + escapeClientDocUiHtml(checklist) + '" class="visachecklist-row" ' +
                     'style="display: flex; align-items: center; gap: 8px;">' +
@@ -9583,8 +9598,10 @@ success: function(response) {
 
 
                         // Replace upload TD content (Column 1 = File Name)
+                        var fileCol = (typeof window.clientDocTableColumnIndex === 'function') ? window.clientDocTableColumnIndex(1) : 1;
+                        var actionCol = (typeof window.clientDocTableColumnIndex === 'function') ? window.clientDocTableColumnIndex(2) : 2;
 
-                        var uploadTd = row.find('td').eq(1);
+                        var uploadTd = row.find('td').eq(fileCol);
 
                         uploadTd.html(
 
@@ -9604,7 +9621,7 @@ success: function(response) {
 
                         // Add hidden elements for context menu actions (Column 2 = Actions)
 
-                        var actionTd = row.find('td').eq(2);
+                        var actionTd = row.find('td').eq(actionCol);
 
                         actionTd.html(
 
@@ -9618,7 +9635,9 @@ success: function(response) {
 
                         );
 
-                        
+                        if (typeof window.enableBulkDownloadCheckboxForRow === 'function') {
+                            window.enableBulkDownloadCheckboxForRow(row, fileidL);
+                        }
 
                         // Ensure the row has the proper class for event delegation
 
@@ -9851,7 +9870,9 @@ success: function(response) {
                         var docNameWithoutExt = ress.filename.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_").toLowerCase();
                         
                         // Replace upload TD content (Column 1 = File Name)
-                        var uploadTd = row.find('td').eq(1);
+                        var fileCol = (typeof window.clientDocTableColumnIndex === 'function') ? window.clientDocTableColumnIndex(1) : 1;
+                        var actionCol = (typeof window.clientDocTableColumnIndex === 'function') ? window.clientDocTableColumnIndex(2) : 2;
+                        var uploadTd = row.find('td').eq(fileCol);
                         uploadTd.html(
                             '<div data-id="' + fileid + '" data-name="' + docNameWithoutExt + '" class="doc-row" title="Uploaded by: ' + (ress.uploaded_by || 'Staff') + (ress.uploaded_at ? ' on ' + formatClientDocDateTime(ress.uploaded_at) : '') + '" oncontextmenu="showFileContextMenu(event, ' + fileid + ', \'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'' + doccategory + '\', \'' + (ress.status_value || 'draft') + '\'); return false;">' +
                                 '<a href="javascript:void(0);" onclick="previewFile(\'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'preview-container-' + doccategory + '\')">' +
@@ -9861,13 +9882,17 @@ success: function(response) {
                         );
                         
                         // Add hidden elements for context menu actions (Column 2 = Actions)
-                        var actionTd = row.find('td').eq(2);
+                        var actionTd = row.find('td').eq(actionCol);
                         actionTd.html(
                             '<a class="renamechecklist" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
                             '<a class="renamedoc" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
                             '<a class="download-file" data-filelink="' + escapeClientDocUiHtml(ress.fileurl) + '" data-filename="' + escapeClientDocUiHtml(ress.filekey) + '" data-id="' + fileid + '" href="#" style="display: none;"></a>' +
                             '<a class="notuseddoc" data-id="' + fileid + '" data-doctype="' + ress.doctype + '" data-href="notuseddoc" href="javascript:;" style="display: none;"></a>'
                         );
+
+                        if (typeof window.enableBulkDownloadCheckboxForRow === 'function') {
+                            window.enableBulkDownloadCheckboxForRow(row, fileid);
+                        }
                         
                         row.addClass('drow');
                     } else {
@@ -9936,7 +9961,9 @@ success: function(response) {
                         var visaPreviewUrl = (laneDocType === 'visa' && ress.previewurl) ? ress.previewurl : ress.fileurl;
                         
                         // Replace upload TD content (Column 1 = File Name)
-                        var uploadTd = row.find('td').eq(1);
+                        var fileCol = (typeof window.clientDocTableColumnIndex === 'function') ? window.clientDocTableColumnIndex(1) : 1;
+                        var actionCol = (typeof window.clientDocTableColumnIndex === 'function') ? window.clientDocTableColumnIndex(2) : 2;
+                        var uploadTd = row.find('td').eq(fileCol);
                         uploadTd.html(
                             '<div data-id="' + fileid + '" data-name="' + docNameWithoutExt + '" class="doc-row" title="Uploaded by: ' + (ress.uploaded_by || 'Staff') + (ress.uploaded_at ? ' on ' + formatClientDocDateTime(ress.uploaded_at) : '') + '" oncontextmenu="' + contextMenuFn + '(event, ' + fileid + ', \'' + ress.filetype + '\', \'' + visaPreviewUrl + '\', \'' + visa_doc_cat + '\', \'' + (ress.status_value || 'draft') + '\'); return false;">' +
                                 '<a href="javascript:void(0);" onclick="previewFile(\'' + ress.filetype + '\', \'' + visaPreviewUrl + '\', \'' + previewPane + '\')">' +
@@ -9954,13 +9981,17 @@ success: function(response) {
                         });
                         
                         // Add hidden elements for context menu actions (Column 2 = Actions)
-                        var actionTd = row.find('td').eq(2);
+                        var actionTd = row.find('td').eq(actionCol);
                         actionTd.html(
                             '<a class="renamechecklist" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
                             '<a class="renamedoc" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
                             '<a class="download-file" data-filelink="' + escapeClientDocUiHtml(ress.fileurl) + '" data-filename="' + escapeClientDocUiHtml(ress.filekey) + '" data-id="' + fileid + '" href="#" style="display: none;"></a>' +
                             '<a class="notuseddoc" data-id="' + fileid + '" data-doctype="' + laneDocType + '" data-href="notuseddoc" href="javascript:;" style="display: none;"></a>'
                         );
+
+                        if (typeof window.enableBulkDownloadCheckboxForRow === 'function') {
+                            window.enableBulkDownloadCheckboxForRow(row, fileid);
+                        }
                         
                         row.addClass('drow');
                     } else {
@@ -10202,8 +10233,10 @@ success: function(response) {
 
 
                         // Replace upload TD content (Column 1 = File Name)
+                        var fileCol = (typeof window.clientDocTableColumnIndex === 'function') ? window.clientDocTableColumnIndex(1) : 1;
+                        var actionCol = (typeof window.clientDocTableColumnIndex === 'function') ? window.clientDocTableColumnIndex(2) : 2;
 
-                        var uploadTd = row.find('td').eq(1);
+                        var uploadTd = row.find('td').eq(fileCol);
 
                         uploadTd.html(
 
@@ -10232,7 +10265,7 @@ success: function(response) {
 
                         // Add hidden elements for context menu actions (Column 2 = Actions)
 
-                        var actionTd = row.find('td').eq(2);
+                        var actionTd = row.find('td').eq(actionCol);
 
                         actionTd.html(
 
@@ -10246,7 +10279,9 @@ success: function(response) {
 
                         );
 
-                        
+                        if (typeof window.enableBulkDownloadCheckboxForRow === 'function') {
+                            window.enableBulkDownloadCheckboxForRow(row, fileidL1);
+                        }
 
                         // Ensure the row has the proper class for event delegation
 

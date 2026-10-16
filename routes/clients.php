@@ -294,6 +294,7 @@ Route::post('/documents/get-auto-checklist-matches', [ClientDocumentsController:
 Route::post('/documents/bulk-upload-personal', [ClientDocumentsController::class, 'bulkUploadPersonalDocuments'])->name('clients.documents.bulkUploadPersonalDocuments');
 Route::post('/documents/bulk-upload-visa', [ClientDocumentsController::class, 'bulkUploadVisaDocuments'])->name('clients.documents.bulkUploadVisaDocuments');
 Route::post('/documents/bulk-upload-nomination', [ClientDocumentsController::class, 'bulkUploadNominationDocuments'])->name('clients.documents.bulkUploadNominationDocuments');
+Route::post('/documents/bulk-download', [ClientDocumentsController::class, 'bulkDownloadDocuments'])->name('clients.documents.bulkDownload');
 
 /* ---------- Client EOI/ROI Management ---------- */
 Route::prefix('clients/{client}/eoi-roi')->name('clients.eoi-roi.')->group(function () {

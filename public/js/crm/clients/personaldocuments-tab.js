@@ -262,6 +262,9 @@
             window.SidebarTabs.bindNavButtons(root);
         }
         bindPersonalBulkUploadToggle();
+        if (typeof window.bindBulkDownloadHandlers === 'function') {
+            window.bindBulkDownloadHandlers();
+        }
         if (typeof window.initPersonalDocDragDrop === 'function') {
             window.initPersonalDocDragDrop();
         }
@@ -406,10 +409,16 @@
     window.bindPersonalBulkUploadToggle = bindPersonalBulkUploadToggle;
 
     bindPersonalBulkUploadToggle();
+    if (typeof window.bindBulkDownloadHandlers === 'function') {
+        window.bindBulkDownloadHandlers();
+    }
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
             bindPersonalBulkUploadToggle();
+            if (typeof window.bindBulkDownloadHandlers === 'function') {
+                window.bindBulkDownloadHandlers();
+            }
             bootPersonalDocumentsTabIfNeeded();
             setTimeout(bootPersonalDocumentsTabIfNeeded, 300);
         });

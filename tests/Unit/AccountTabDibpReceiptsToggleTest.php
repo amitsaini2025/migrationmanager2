@@ -96,6 +96,8 @@ class AccountTabDibpReceiptsToggleTest extends TestCase
         Assert::assertStringContainsString('Drag and drop files here', $panel);
         Assert::assertStringNotContainsString('bulk-upload-toggle-btn-visa', $panel);
         Assert::assertStringNotContainsString('bulk-upload-dropzone-visa', $panel);
+        Assert::assertStringNotContainsString('bulk-download-btn', $panel);
+        Assert::assertStringNotContainsString('bulk-download-doc-checkbox', $panel);
         Assert::assertStringNotContainsString('id="bulk-upload-mapping-modal"', $panel);
         Assert::assertStringNotContainsString('id="confirm-bulk-upload"', $panel);
         Assert::assertStringNotContainsString('id="auto-create-unmatched"', $panel);

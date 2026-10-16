@@ -17,6 +17,9 @@
                     $companyDocumentsOnlyGeneral = !empty($companyDocumentsOnlyGeneral);
                     $canDeletePersonalDocCategory = \Illuminate\Support\Facades\Auth::check()
                         && in_array((int) (\Illuminate\Support\Facades\Auth::user()->role ?? 0), config('crm.personal_document_category_delete_role_ids', [1, 16]), true);
+                    $authStaff = \Illuminate\Support\Facades\Auth::user();
+                    $canBulkDownloadClientDocuments = $authStaff instanceof \App\Models\Staff
+                        && $authStaff->hasCrmModule('84');
                     $personalDocTypeScope = $companyDocumentsOnlyGeneral
                         ? ['company', 'both']
                         : ['personal', 'both'];
@@ -113,6 +116,11 @@
                                                 <button type="button" class="btn btn-info bulk-upload-toggle-btn" data-categoryid="<?= $id ?>" data-categoryname="<?= htmlspecialchars($catVal->title) ?>">
                                                     @icon('fa-upload') Bulk Upload
                                                 </button>
+                                                <?php if ($canBulkDownloadClientDocuments): ?>
+                                                <button type="button" class="btn btn-info bulk-download-btn" data-categoryid="<?= $id ?>" disabled>
+                                                    @icon('fa-download') Bulk Download
+                                                </button>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
                                         
@@ -134,6 +142,9 @@
                                         <table class="checklist-table">
                                             <thead>
                                                 <tr>
+                                                    <?php if ($canBulkDownloadClientDocuments): ?>
+                                                    <th class="bulk-download-select-col" style="width:36px;"></th>
+                                                    <?php endif; ?>
                                                     <th>Checklist</th>
                                                     <th>File Name</th>
                                                     <th></th>
@@ -155,8 +166,17 @@
                                                         // Legacy format or relative path - construct full URL
                                                         $fileUrl = 'https://' . env('AWS_BUCKET') . '.s3.' . env('AWS_DEFAULT_REGION') . '.amazonaws.com/' . $clientId . '/personal/' . $fetch->myfile;
                                                     }
+                                                    $rowHasDownloadableFile = !empty($fetch->file_name)
+                                                        && (!empty($fetch->myfile) || !empty($fetch->myfile_key));
                                                     ?>
                                                     <tr class="drow" id="id_<?= $fetch->id ?>">
+                                                        <?php if ($canBulkDownloadClientDocuments): ?>
+                                                        <td class="bulk-download-select-cell" style="width:36px;vertical-align:middle;">
+                                                            <?php if ($rowHasDownloadableFile): ?>
+                                                            <input type="checkbox" class="bulk-download-doc-checkbox" value="<?= (int) $fetch->id ?>" data-document-id="<?= (int) $fetch->id ?>" aria-label="Select for bulk download">
+                                                            <?php endif; ?>
+                                                        </td>
+                                                        <?php endif; ?>
                                                         <td style="white-space: initial;">
                                                             <div data-id="<?= $fetch->id ?>" data-personalchecklistname="<?= htmlspecialchars($fetch->checklist) ?>" class="personalchecklist-row" title="Uploaded by: <?= htmlspecialchars($admin->first_name ?? 'NA') ?> on <?= date('d/m/Y H:i', strtotime($fetch->created_at)) ?>" style="display: flex; align-items: center; gap: 8px;" oncontextmenu="showPersonalChecklistContextMenu(event, <?= $fetch->id ?>); return false;">
                                                                 <span style="flex: 1;"><?= htmlspecialchars($fetch->checklist) ?></span>
@@ -503,7 +523,9 @@
                                             var row = $('#id_' + fileid);
                                             var docNameWithoutExt = ress.filename.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_").toLowerCase();
                                             
-                                            var uploadTd = row.find('td').eq(1);
+                                            var fileCol = (typeof window.clientDocTableColumnIndex === 'function') ? window.clientDocTableColumnIndex(1) : 1;
+                                            var actionCol = (typeof window.clientDocTableColumnIndex === 'function') ? window.clientDocTableColumnIndex(2) : 2;
+                                            var uploadTd = row.find('td').eq(fileCol);
                                             uploadTd.html(
                                                 '<div data-id="' + fileid + '" data-name="' + docNameWithoutExt + '" class="doc-row" title="Uploaded by: Admin" oncontextmenu="showFileContextMenu(event, ' + fileid + ', \'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'' + doccategory + '\', \'' + (ress.status_value || 'draft') + '\'); return false;">' +
                                                     '<a href="javascript:void(0);" onclick="previewFile(\'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'preview-container-' + doccategory + '\')">' +
@@ -512,7 +534,7 @@
                                                 '</div>'
                                             );
                                             
-                                            var actionTd = row.find('td').eq(2);
+                                            var actionTd = row.find('td').eq(actionCol);
                                             actionTd.html(
                                                 '<a class="renamechecklist" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
                                                 '<a class="renamedoc" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
@@ -696,7 +718,9 @@
                                         var docNameWithoutExt = ress.filename.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_").toLowerCase();
                                         
                                         // Replace upload TD content (Column 1 = File Name)
-                                        var uploadTd = row.find('td').eq(1);
+                                        var fileCol = (typeof window.clientDocTableColumnIndex === 'function') ? window.clientDocTableColumnIndex(1) : 1;
+                                        var actionCol = (typeof window.clientDocTableColumnIndex === 'function') ? window.clientDocTableColumnIndex(2) : 2;
+                                        var uploadTd = row.find('td').eq(fileCol);
                                         uploadTd.html(
                                             '<div data-id="' + fileid + '" data-name="' + docNameWithoutExt + '" class="doc-row" title="Uploaded by: Admin" oncontextmenu="showFileContextMenu(event, ' + fileid + ', \'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'' + doccategory + '\', \'' + (ress.status_value || 'draft') + '\'); return false;">' +
                                                 '<a href="javascript:void(0);" onclick="previewFile(\'' + ress.filetype + '\', \'' + ress.fileurl + '\', \'preview-container-' + doccategory + '\')">' +
@@ -706,7 +730,7 @@
                                         );
                                         
                                         // Add hidden elements for context menu actions (Column 2 = Actions)
-                                        var actionTd = row.find('td').eq(2);
+                                        var actionTd = row.find('td').eq(actionCol);
                                         actionTd.html(
                                             '<a class="renamechecklist" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +
                                             '<a class="renamedoc" data-id="' + fileid + '" href="javascript:;" style="display: none;"></a>' +

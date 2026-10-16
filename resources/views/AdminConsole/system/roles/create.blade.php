@@ -299,6 +299,20 @@
 											</ul>
 										</div> 
 									</div>
+									<div class="accordion">
+										<div class="accordion-header" role="button" data-bs-toggle="collapse" data-bs-target="#panel-body-client-documents">
+											<h4>CLIENT DOCUMENTS</h4>
+										</div>
+										<div class="accordion-body collapse" id="panel-body-client-documents" data-parent="#accordion">
+											<div class="select_toggle">
+												<a href="javascript:;" data-class="client_documents" class="btn btn-primary select_all">Select All</a>
+												<a href="javascript:;" data-class="client_documents" class="btn btn-secondary deselect_all">Deselect All</a>
+											</div>
+											<ul>
+												<li><label><input type="checkbox" name="module_access[84]" class="client_documents"> Can bulk download client documents</label></li>
+											</ul>
+										</div>
+									</div>
 								
 								</div>
 								<div class="form-group float-right">

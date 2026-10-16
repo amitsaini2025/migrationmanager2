@@ -13,6 +13,9 @@
                 @if($visaDocumentsTabFragmentUrl !== '') data-visadocuments-url="{{ $visaDocumentsTabFragmentUrl }}" @endif>
                 <div class="card full-width documentalls-container">
                     <?php
+                    $authStaffVisaDocs = \Illuminate\Support\Facades\Auth::user();
+                    $canBulkDownloadClientDocuments = $authStaffVisaDocs instanceof \App\Models\Staff
+                        && $authStaffVisaDocs->hasCrmModule('84');
                     $client_selected_matter_id1 = null;
                     $matter_cnt = \App\Models\ClientMatter::select('id')->where('client_id',$fetchedData->id)->where('matter_status',1)->count();
                     if( $matter_cnt >0 ) {
@@ -152,6 +155,11 @@
                                                 <button type="button" class="btn btn-info bulk-upload-toggle-btn-visa" data-categoryid="<?= $id ?>" data-categoryname="<?= htmlspecialchars($catVal->title) ?>" data-matterid="<?= $client_selected_matter_id1 ?? '' ?>">
                                                     @icon('fa-upload') Bulk Upload
                                                 </button>
+                                                <?php if ($canBulkDownloadClientDocuments): ?>
+                                                <button type="button" class="btn btn-info bulk-download-btn" data-categoryid="<?= $id ?>" disabled>
+                                                    @icon('fa-download') Bulk Download
+                                                </button>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
                                         
@@ -173,6 +181,9 @@
                                         <table class="checklist-table">
                                             <thead>
                                                 <tr>
+                                                    <?php if ($canBulkDownloadClientDocuments): ?>
+                                                    <th class="bulk-download-select-col" style="width:36px;"></th>
+                                                    <?php endif; ?>
                                                     <th>Checklist</th>
                                                     <th>File Name</th>
                                                     <th></th>
@@ -210,8 +221,17 @@
                                                         $downloadUrl = $fileUrl;
                                                     }
                                                     $previewUrl = $fetch->getInlinePreviewUrl() ?? $fileUrl;
+                                                    $rowHasDownloadableFile = !empty($fetch->file_name)
+                                                        && (!empty($fetch->myfile) || !empty($fetch->myfile_key));
                                                     ?>
                                                     <tr class="drow" data-matterid="<?= $fetch->client_matter_id ?>" data-catid="<?= $fetch->folder_name ?>" id="id_<?= $fetch->id ?>">
+                                                        <?php if ($canBulkDownloadClientDocuments): ?>
+                                                        <td class="bulk-download-select-cell" style="width:36px;vertical-align:middle;">
+                                                            <?php if ($rowHasDownloadableFile): ?>
+                                                            <input type="checkbox" class="bulk-download-doc-checkbox" value="<?= (int) $fetch->id ?>" data-document-id="<?= (int) $fetch->id ?>" aria-label="Select for bulk download">
+                                                            <?php endif; ?>
+                                                        </td>
+                                                        <?php endif; ?>
                                                         <td style="white-space: initial;">
                                                             <div data-id="<?= $fetch->id ?>" data-visachecklistname="<?= htmlspecialchars($fetch->checklist) ?>" class="visachecklist-row" title="Uploaded by: <?= htmlspecialchars($admin->first_name ?? 'NA') ?> on <?= date('d/m/Y H:i', strtotime($fetch->created_at)) ?>" style="display: flex; align-items: center; gap: 8px;" oncontextmenu="showVisaChecklistContextMenu(event, <?= $fetch->id ?>); return false;">
                                                                 <span style="flex: 1;"><?= htmlspecialchars($fetch->checklist) ?></span>
@@ -339,6 +359,13 @@
                                                             : 'signed.' . $signedPreviewExtension;
                                                     ?>
                                                     <tr class="drow visa-signed-row" data-matterid="<?= $signedDoc->client_matter_id ?>" data-catid="<?= $signedDoc->folder_name ?>" id="id_<?= $signedDoc->id ?>">
+                                                        <?php if ($canBulkDownloadClientDocuments): ?>
+                                                        <td class="bulk-download-select-cell" style="width:36px;vertical-align:middle;">
+                                                            <?php if (!empty($signedDoc->file_name) && (!empty($signedDoc->myfile) || !empty($signedDoc->myfile_key))): ?>
+                                                            <input type="checkbox" class="bulk-download-doc-checkbox" value="<?= (int) $signedDoc->id ?>" data-document-id="<?= (int) $signedDoc->id ?>" aria-label="Select for bulk download">
+                                                            <?php endif; ?>
+                                                        </td>
+                                                        <?php endif; ?>
                                                         <td style="white-space: initial;">
                                                             <div data-id="<?= $signedDoc->id ?>" data-visachecklistname="<?= htmlspecialchars($signedDoc->checklist) ?>" class="visachecklist-row" style="display: flex; align-items: center; gap: 8px;" oncontextmenu="showVisaChecklistContextMenu(event, <?= $signedDoc->id ?>); return false;">
                                                                 <span style="flex: 1;"><?= htmlspecialchars($signedDoc->checklist) ?></span>
@@ -386,6 +413,13 @@
                                                         $signedFileUrlJs = addslashes($signedFileUrl);
                                                 ?>
                                                     <tr class="drow visa-signed-row" data-matterid="<?= $signedDoc->client_matter_id ?>" data-catid="<?= $signedDoc->folder_name ?>" id="id_<?= $signedDoc->id ?>">
+                                                        <?php if ($canBulkDownloadClientDocuments): ?>
+                                                        <td class="bulk-download-select-cell" style="width:36px;vertical-align:middle;">
+                                                            <?php if (!empty($signedDoc->file_name) && (!empty($signedDoc->myfile) || !empty($signedDoc->myfile_key))): ?>
+                                                            <input type="checkbox" class="bulk-download-doc-checkbox" value="<?= (int) $signedDoc->id ?>" data-document-id="<?= (int) $signedDoc->id ?>" aria-label="Select for bulk download">
+                                                            <?php endif; ?>
+                                                        </td>
+                                                        <?php endif; ?>
                                                         <td style="white-space: initial;">
                                                             <div data-id="<?= $signedDoc->id ?>" data-visachecklistname="<?= htmlspecialchars($signedDoc->checklist) ?>" class="visachecklist-row" style="display: flex; align-items: center; gap: 8px;" oncontextmenu="showVisaChecklistContextMenu(event, <?= $signedDoc->id ?>); return false;">
                                                                 <span style="flex: 1;"><?= htmlspecialchars($signedDoc->checklist) ?></span>

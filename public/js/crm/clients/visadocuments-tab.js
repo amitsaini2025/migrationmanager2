@@ -228,6 +228,9 @@
         if (typeof window.initVisaBulkUploadDragDrop === 'function') {
             window.initVisaBulkUploadDragDrop();
         }
+        if (typeof window.bindBulkDownloadHandlers === 'function') {
+            window.bindBulkDownloadHandlers();
+        }
         filterVisaRowsAfterLoad();
     }
 

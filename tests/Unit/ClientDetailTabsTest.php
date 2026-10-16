@@ -622,6 +622,7 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertStringContainsString('click.personalBulkToggle', $js);
         Assert::assertStringContainsString('function importPersonalDocumentsOrphanAssets', $js);
         Assert::assertStringContainsString('bulk-upload-toggle-btn', $js);
+        Assert::assertStringContainsString('bindBulkDownloadHandlers', $js);
 
         $blade = file_get_contents($this->projectPath('resources/views/crm/clients/tabs/personal_documents.blade.php'));
         Assert::assertNotFalse($blade);
@@ -633,6 +634,9 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertStringContainsString('bulk-upload-toggle-btn', $blade);
         Assert::assertStringContainsString('bulk-upload-dropzone-container', $blade);
         Assert::assertStringContainsString('bindPersonalBulkUploadToggle', $blade);
+        Assert::assertStringContainsString('bulk-download-btn', $blade);
+        Assert::assertStringContainsString('hasCrmModule(\'84\')', $blade);
+        Assert::assertStringContainsString('bulk-download-doc-checkbox', $blade);
         Assert::assertStringContainsString('window.showFileContextMenu', $blade);
         Assert::assertStringContainsString('window.handleContextAction', $blade);
         Assert::assertStringContainsString('window.showPersonalChecklistContextMenu', $blade);
@@ -640,6 +644,8 @@ class ClientDetailTabsTest extends TestCase
         $companyDetail = file_get_contents($this->projectPath('resources/views/crm/companies/detail.blade.php'));
         Assert::assertNotFalse($companyDetail);
         Assert::assertStringContainsString('personaldocuments-tab.js', $companyDetail);
+        Assert::assertStringContainsString('bulk-download-documents.js', $companyDetail);
+        Assert::assertStringContainsString('canBulkDownloadClientDocuments', $companyDetail);
         Assert::assertStringNotContainsString('personal_documents_lazy', $companyDetail);
 
         $css = file_get_contents($this->projectPath('public/css/client-detail.css'));

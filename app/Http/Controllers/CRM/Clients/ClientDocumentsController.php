@@ -4,6 +4,7 @@ namespace App\Http\Controllers\CRM\Clients;
 
 use App\Helpers\IconHelper;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\BulkDownloadClientDocumentsRequest;
 use App\Http\Requests\StoreDibpReceiptBulkUploadRequest;
 use App\Http\Requests\StoreDibpReceiptChecklistRequest;
 use App\Http\Requests\StoreDibpReceiptDownloadRequest;
@@ -21,6 +22,7 @@ use App\Models\NominationDocumentType;
 // use App\Models\VisaDocChecklist; // REMOVED: VisaDocChecklist model has been deleted
 use App\Models\PersonalDocumentType;
 use App\Models\VisaDocumentType;
+use App\Services\DocumentBulkDownloadService;
 use App\Services\SystemEmailLogService;
 use App\Support\ClientDetailDocumentsTab;
 use App\Support\DocumentFilenameRules;
@@ -523,6 +525,7 @@ class ClientDocumentsController extends Controller
                             $fileUrl = $fetch->myfile_key ? $fetch->myfile : 'https://'.env('AWS_BUCKET').'.s3.'.env('AWS_DEFAULT_REGION').'.amazonaws.com/'.$clientid.'/personal/'.$fetch->myfile;
                             ?>
                         <tr class="drow" id="id_<?php echo $fetch->id; ?>">
+                            <?php echo $this->bulkDownloadSelectCellHtml($fetch); ?>
                             <td style="white-space: initial;">
                                 <div data-id="<?php echo $fetch->id; ?>" data-personalchecklistname="<?php echo htmlspecialchars($fetch->checklist); ?>" class="personalchecklist-row" title="Uploaded by: <?php echo htmlspecialchars($admin->first_name ?? 'NA'); ?> on <?php echo date('d/m/Y H:i', strtotime($fetch->created_at)); ?>" style="display: flex; align-items: center; gap: 8px;" oncontextmenu="showPersonalChecklistContextMenu(event, <?php echo $fetch->id; ?>); return false;">
                                     <span style="flex: 1;"><?php echo htmlspecialchars($fetch->checklist); ?></span>
@@ -973,6 +976,7 @@ class ClientDocumentsController extends Controller
                             }
                             ?>
                         <tr class="drow" data-matterid="<?php echo $fetch->client_matter_id; ?>" data-catid="<?php echo $fetch->folder_name; ?>" id="id_<?php echo $fetch->id; ?>" <?php echo $showCls; ?>>
+                            <?php echo $this->bulkDownloadSelectCellHtml($fetch); ?>
                             <td style="white-space: initial;">
                                 <div data-id="<?php echo $fetch->id; ?>" data-visachecklistname="<?php echo htmlspecialchars($fetch->checklist); ?>" class="visachecklist-row" title="Uploaded by: <?php echo htmlspecialchars($admin->first_name ?? 'NA'); ?> on <?php echo date('d/m/Y H:i', strtotime($fetch->created_at)); ?>" style="display: flex; align-items: center; gap: 8px;" oncontextmenu="showVisaChecklistContextMenu(event, <?php echo $fetch->id; ?>); return false;">
                                     <span style="flex: 1;"><?php echo htmlspecialchars($fetch->checklist); ?></span>
@@ -1191,6 +1195,7 @@ class ClientDocumentsController extends Controller
             $fileUrl = $fetch->myfile_key ? $fetch->myfile : 'https://'.env('AWS_BUCKET').'.s3.'.env('AWS_DEFAULT_REGION').'.amazonaws.com/'.$clientid.'/personal/'.$fetch->myfile;
             ?>
             <tr class="drow" id="id_<?php echo $fetch->id; ?>">
+                <?php echo $this->bulkDownloadSelectCellHtml($fetch); ?>
                 <td style="white-space: initial;">
                     <div data-id="<?php echo $fetch->id; ?>" data-personalchecklistname="<?php echo htmlspecialchars($fetch->checklist); ?>" class="personalchecklist-row" title="Uploaded by: <?php echo htmlspecialchars($admin->first_name ?? 'NA'); ?> on <?php echo date('d/m/Y H:i', strtotime($fetch->created_at)); ?>" style="display: flex; align-items: center; gap: 8px;" oncontextmenu="showPersonalChecklistContextMenu(event, <?php echo $fetch->id; ?>); return false;">
                         <span style="flex: 1;"><?php echo htmlspecialchars($fetch->checklist); ?></span>
@@ -1304,6 +1309,7 @@ class ClientDocumentsController extends Controller
             }
             ?>
             <tr class="drow" data-matterid="<?php echo $fetch->client_matter_id; ?>" data-catid="<?php echo $fetch->folder_name; ?>" id="id_<?php echo $fetch->id; ?>" <?php echo $showCls; ?>>
+                <?php echo $this->bulkDownloadSelectCellHtml($fetch); ?>
                 <td style="white-space: initial;">
                     <div data-id="<?php echo $fetch->id; ?>" data-visachecklistname="<?php echo htmlspecialchars($fetch->checklist); ?>" class="visachecklist-row" title="Uploaded by: <?php echo htmlspecialchars($admin->first_name ?? 'NA'); ?> on <?php echo date('d/m/Y H:i', strtotime($fetch->created_at)); ?>" style="display: flex; align-items: center; gap: 8px;" oncontextmenu="showVisaChecklistContextMenu(event, <?php echo $fetch->id; ?>); return false;">
                         <span style="flex: 1;"><?php echo htmlspecialchars($fetch->checklist); ?></span>
@@ -1484,6 +1490,7 @@ class ClientDocumentsController extends Controller
                 }
                 ?>
                         <tr class="drow" data-matterid="<?php echo $fetch->client_matter_id; ?>" data-catid="<?php echo $fetch->folder_name; ?>" id="id_<?php echo $fetch->id; ?>" <?php echo $showCls; ?>>
+                            <?php echo $this->bulkDownloadSelectCellHtml($fetch); ?>
                             <td style="white-space: initial;">
                                 <div data-id="<?php echo $fetch->id; ?>" data-visachecklistname="<?php echo htmlspecialchars($fetch->checklist); ?>" class="visachecklist-row" title="Uploaded by: <?php echo htmlspecialchars($admin->first_name ?? 'NA'); ?> on <?php echo date('d/m/Y H:i', strtotime($fetch->created_at)); ?>" style="display: flex; align-items: center; gap: 8px;">
                                     <span style="flex: 1;"><?php echo htmlspecialchars($fetch->checklist); ?></span>
@@ -2921,6 +2928,109 @@ class ClientDocumentsController extends Controller
         }
 
         return response()->json($response);
+    }
+
+    /**
+     * Bulk-download selected personal / visa / nomination documents as a ZIP.
+     */
+    public function bulkDownloadDocuments(
+        BulkDownloadClientDocumentsRequest $request,
+        DocumentBulkDownloadService $bulkDownloadService
+    ) {
+        $clientId = (int) $request->validated('client_id');
+        /** @var list<int> $documentIds */
+        $documentIds = array_values(array_unique(array_map(
+            static fn ($id): int => (int) $id,
+            $request->validated('document_ids')
+        )));
+
+        $client = Admin::query()
+            ->where('id', $clientId)
+            ->whereIn('type', ['client', 'lead'])
+            ->first();
+
+        if (! $client) {
+            abort(404, 'Client not found.');
+        }
+
+        $documents = Document::query()
+            ->whereIn('id', $documentIds)
+            ->where('client_id', $clientId)
+            ->whereNull('not_used_doc')
+            ->whereIn('doc_type', DocumentBulkDownloadService::ALLOWED_DOC_TYPES)
+            ->get();
+
+        if ($documents->count() !== count($documentIds)) {
+            abort(403, 'One or more selected documents are not available for download.');
+        }
+
+        foreach ($documents as $document) {
+            if (! $bulkDownloadService->documentHasStoredFile($document)) {
+                abort(422, 'One or more selected documents have no file to download.');
+            }
+        }
+
+        // Preserve request order inside the ZIP.
+        $ordered = collect($documentIds)
+            ->map(static fn (int $id) => $documents->firstWhere('id', $id))
+            ->filter();
+
+        $result = $bulkDownloadService->buildZip($client, $ordered);
+
+        try {
+            $this->logClientActivity(
+                $clientId,
+                'bulk downloaded client documents',
+                '<p>Downloaded '.$result['added_count'].' document(s) as ZIP.</p>'
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Failed to log bulk document download activity', [
+                'client_id' => $clientId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return response()
+            ->download($result['path'], $result['download_name'])
+            ->deleteFileAfterSend(true);
+    }
+
+    private function canBulkDownloadClientDocuments(): bool
+    {
+        return $this->hasModuleAccess('84');
+    }
+
+    private function bulkDownloadSelectHeaderHtml(): string
+    {
+        if (! $this->canBulkDownloadClientDocuments()) {
+            return '';
+        }
+
+        return '<th class="bulk-download-select-col" style="width:36px;"></th>';
+    }
+
+    private function bulkDownloadSelectCellHtml(?Document $document): string
+    {
+        if (! $this->canBulkDownloadClientDocuments()) {
+            return '';
+        }
+
+        $hasFile = $document !== null
+            && trim((string) ($document->file_name ?? '')) !== ''
+            && (
+                trim((string) ($document->myfile ?? '')) !== ''
+                || trim((string) ($document->myfile_key ?? '')) !== ''
+            );
+
+        if (! $hasFile) {
+            return '<td class="bulk-download-select-cell" style="width:36px;"></td>';
+        }
+
+        $id = (int) $document->id;
+
+        return '<td class="bulk-download-select-cell" style="width:36px;vertical-align:middle;">'
+            .'<input type="checkbox" class="bulk-download-doc-checkbox" value="'.$id.'" data-document-id="'.$id.'" aria-label="Select for bulk download">'
+            .'</td>';
     }
 
     /**

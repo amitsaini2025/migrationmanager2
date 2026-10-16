@@ -520,6 +520,11 @@ use App\Http\Controllers\Controller;
     }
 
     // Configuration object with all Blade variables needed for JavaScript
+    @php
+        $detailAuthStaff = \Illuminate\Support\Facades\Auth::user();
+        $canBulkDownloadClientDocuments = $detailAuthStaff instanceof \App\Models\Staff
+            && $detailAuthStaff->hasCrmModule('84');
+    @endphp
     window.ClientDetailConfig = {
         clientId: @json(($fetchedData->id ?? '')),
         encodeId: @json(($encodeId ?? '')),
@@ -530,6 +535,7 @@ use App\Http\Controllers\Controller;
         primaryEmail: @json(trim((string) ($fetchedData->email ?? ''))),
         primaryPhone: @json(trim((string) ($fetchedData->country_code ?? '')).trim((string) ($fetchedData->phone ?? ''))),
         notPickedCallSmsDefault: @json($notPickedCallSmsDefault ?? ''),
+        canBulkDownloadClientDocuments: @json($canBulkDownloadClientDocuments),
         // SMS Template Variables
         staffName: @json(($staffName ?? '')),
         matterNumber: @json(($matterNumber ?? '')),
@@ -549,6 +555,7 @@ use App\Http\Controllers\Controller;
             admin: '{{ URL::to("/") }}',
             fetchVisaExpiryMessages: '{{ URL::to("/fetch-visa_expiry_messages") }}',
             downloadDocument: '{{ url("/documents/download") }}',
+            bulkDownloadDocuments: '{{ route("clients.documents.bulkDownload") }}',
             previewOriginalDocument: '{{ url("/documents/__ID__/preview-original") }}',
             officeEmbedUrl: '{{ url("/documents/__ID__/office-embed-url") }}',
             getTopInvoiceNo: '{{ URL::to("/clients/getTopInvoiceNoFromDB") }}',
@@ -687,6 +694,7 @@ use App\Http\Controllers\Controller;
                 'js/crm/clients/modules/notes.js',
                 'js/crm/clients/modules/checklist.js',
                 'js/crm/clients/modules/documents.js',
+                'js/crm/clients/bulk-download-documents.js',
                 'js/crm/clients/modules/signature-placement.js',
                 'js/crm/clients/modules/accounts.js',
                 'js/crm/clients/modules/invoices.js',
@@ -724,6 +732,7 @@ use App\Http\Controllers\Controller;
 <script src="{{ URL::asset('js/crm/clients/modules/notes.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/checklist.js') }}?v={{ file_exists(public_path('js/crm/clients/modules/checklist.js')) ? filemtime(public_path('js/crm/clients/modules/checklist.js')) : 1 }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/documents.js') }}?v={{ file_exists(public_path('js/crm/clients/modules/documents.js')) ? filemtime(public_path('js/crm/clients/modules/documents.js')) : 1 }}"></script>
+<script src="{{ URL::asset('js/crm/clients/bulk-download-documents.js') }}?v={{ file_exists(public_path('js/crm/clients/bulk-download-documents.js')) ? filemtime(public_path('js/crm/clients/bulk-download-documents.js')) : 1 }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/signature-placement.js') }}?v={{ file_exists(public_path('js/crm/clients/modules/signature-placement.js')) ? filemtime(public_path('js/crm/clients/modules/signature-placement.js')) : 1 }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/accounts.js') }}?v={{ file_exists(public_path('js/crm/clients/modules/accounts.js')) ? filemtime(public_path('js/crm/clients/modules/accounts.js')) : time() }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/invoices.js') }}?v={{ file_exists(public_path('js/crm/clients/modules/invoices.js')) ? filemtime(public_path('js/crm/clients/modules/invoices.js')) : time() }}"></script>

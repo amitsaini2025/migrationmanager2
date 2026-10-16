@@ -796,6 +796,7 @@
                             '<button type="button" class="btn btn-info bulk-upload-toggle-btn" data-categoryid="' + id + '" data-categoryname="' + safeTitle + '">' +
                                 uploadIcon + ' Bulk Upload' +
                             '</button>' +
+                            (typeof window.bulkDownloadButtonHtml === 'function' ? window.bulkDownloadButtonHtml('data-categoryid="' + id + '"') : '') +
                         '</div>' +
                     '</div>' +
                     '<div class="bulk-upload-dropzone-container" id="bulk-upload-' + id + '" style="display: none; margin: 15px 0; padding: 20px; border: 2px dashed #4a90e2; border-radius: 8px; background-color: #f8f9fa;">' +
@@ -813,7 +814,9 @@
                         '</div>' +
                     '</div>' +
                     '<table class="checklist-table">' +
-                        '<thead><tr><th>Checklist</th><th>File Name</th><th></th></tr></thead>' +
+                        '<thead><tr>' +
+                            (typeof window.bulkDownloadSelectHeaderHtml === 'function' ? window.bulkDownloadSelectHeaderHtml() : '') +
+                            '<th>Checklist</th><th>File Name</th><th></th></tr></thead>' +
                         '<tbody class="tdata persdocumnetlist documnetlist_' + id + '"></tbody>' +
                     '</table>' +
                 '</div>' +
@@ -1034,6 +1037,7 @@
                             '<button type="button" class="btn btn-info bulk-upload-toggle-btn-visa" data-categoryid="' + id + '" data-categoryname="' + safeTitle + '" data-matterid="' + escapePersonalDocHtml(matterId) + '">' +
                                 uploadIcon + ' Bulk Upload' +
                             '</button>' +
+                            (typeof window.bulkDownloadButtonHtml === 'function' ? window.bulkDownloadButtonHtml('data-categoryid="' + id + '"') : '') +
                         '</div>' +
                     '</div>' +
                     '<div class="bulk-upload-dropzone-container-visa" id="bulk-upload-visa-' + id + '" style="display: none; margin: 15px 0; padding: 20px; border: 2px dashed #4a90e2; border-radius: 8px; background-color: #f8f9fa;">' +
@@ -1051,7 +1055,9 @@
                         '</div>' +
                     '</div>' +
                     '<table class="checklist-table">' +
-                        '<thead><tr><th>Checklist</th><th>File Name</th><th></th></tr></thead>' +
+                        '<thead><tr>' +
+                            (typeof window.bulkDownloadSelectHeaderHtml === 'function' ? window.bulkDownloadSelectHeaderHtml() : '') +
+                            '<th>Checklist</th><th>File Name</th><th></th></tr></thead>' +
                         '<tbody class="tdata migdocumnetlist1 migdocumnetlist_' + id + '"></tbody>' +
                     '</table>' +
                 '</div>' +
@@ -1260,6 +1266,7 @@
                             '<button type="button" class="btn btn-info bulk-upload-toggle-btn-nomination" data-categoryid="' + id + '" data-categoryname="' + safeTitle + '" data-matterid="' + escapePersonalDocHtml(matterId) + '">' +
                                 uploadIcon + ' Bulk Upload' +
                             '</button>' +
+                            (typeof window.bulkDownloadButtonHtml === 'function' ? window.bulkDownloadButtonHtml('data-categoryid="' + id + '"') : '') +
                         '</div>' +
                     '</div>' +
                     '<div class="bulk-upload-dropzone-container-nomination" id="bulk-upload-nomination-' + id + '" style="display: none; margin: 15px 0; padding: 20px; border: 2px dashed #4a90e2; border-radius: 8px; background-color: #f8f9fa;">' +
@@ -1277,7 +1284,9 @@
                         '</div>' +
                     '</div>' +
                     '<table class="checklist-table">' +
-                        '<thead><tr><th>Checklist</th><th>File Name</th><th></th></tr></thead>' +
+                        '<thead><tr>' +
+                            (typeof window.bulkDownloadSelectHeaderHtml === 'function' ? window.bulkDownloadSelectHeaderHtml() : '') +
+                            '<th>Checklist</th><th>File Name</th><th></th></tr></thead>' +
                         '<tbody class="tdata migdocumnetlist1 migdocumnetlist_' + id + '"></tbody>' +
                     '</table>' +
                 '</div>' +

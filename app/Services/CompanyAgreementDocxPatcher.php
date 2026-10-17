@@ -19,8 +19,10 @@ class CompanyAgreementDocxPatcher
     /** Section headings that must start on a new page in the company nomination template. */
     private const NOMINATION_SECTION_HEADINGS_WITH_PAGE_BREAK = [
         '3. Other Costs',
-        '5. Payment Structure',
     ];
+
+    /** Forced page break before this heading caused a near-blank page (letterhead + rule only). */
+    private const NOMINATION_SECTION_HEADING_WITHOUT_PAGE_BREAK = '5. Payment Structure';
 
     /**
      * @return array{xml: string, patched: bool, fixes: list<string>}
@@ -46,10 +48,10 @@ class CompanyAgreementDocxPatcher
         }
 
         if ($this->isCompanyNominationTemplate($templateFileName)) {
-            $safLevyPatch = $this->patchSafLevyChargeTypeLabel($xml);
+            $safLevyPatch = $this->removeSafLevyRateFromChargeTypeLabel($xml);
             $xml = $safLevyPatch['xml'];
             if ($safLevyPatch['patched']) {
-                $fixes[] = 'saf_levy_charge_type_label_rate';
+                $fixes[] = 'saf_levy_charge_type_label_rate_removed';
                 $patched = true;
             }
 
@@ -57,6 +59,16 @@ class CompanyAgreementDocxPatcher
             $xml = $pageBreakPatch['xml'];
             if ($pageBreakPatch['patched']) {
                 $fixes[] = 'nomination_section_page_breaks';
+                $patched = true;
+            }
+
+            $removeSectionFiveBreak = $this->removePageBreakBeforeNominationHeading(
+                $xml,
+                self::NOMINATION_SECTION_HEADING_WITHOUT_PAGE_BREAK
+            );
+            $xml = $removeSectionFiveBreak['xml'];
+            if ($removeSectionFiveBreak['patched']) {
+                $fixes[] = 'nomination_section_five_page_break_removed';
                 $patched = true;
             }
         }
@@ -178,19 +190,49 @@ class CompanyAgreementDocxPatcher
     /**
      * @return array{xml: string, patched: bool}
      */
-    private function patchSafLevyChargeTypeLabel(string $xml): array
+    private function removeSafLevyRateFromChargeTypeLabel(string $xml): array
     {
-        $oldRun = '<w:t>' . self::SAF_LEVY_CHARGE_TYPE_LABEL . '</w:t>';
-        $newRun = '<w:t>' . self::SAF_LEVY_CHARGE_TYPE_LABEL_WITH_RATE . '</w:t>';
+        $withRateRun = '<w:t>'.self::SAF_LEVY_CHARGE_TYPE_LABEL_WITH_RATE.'</w:t>';
+        $plainRun = '<w:t>'.self::SAF_LEVY_CHARGE_TYPE_LABEL.'</w:t>';
 
-        if (! str_contains($xml, $oldRun) || str_contains($xml, $newRun)) {
+        if (! str_contains($xml, $withRateRun)) {
             return ['xml' => $xml, 'patched' => false];
         }
 
         return [
-            'xml' => str_replace($oldRun, $newRun, $xml),
+            'xml' => str_replace($withRateRun, $plainRun, $xml),
             'patched' => true,
         ];
+    }
+
+    /**
+     * @return array{xml: string, patched: bool}
+     */
+    private function removePageBreakBeforeNominationHeading(string $xml, string $heading): array
+    {
+        $patched = false;
+
+        preg_match_all('/<w:p\b.*?<\/w:p>/s', $xml, $paragraphMatches);
+        foreach ($paragraphMatches[0] as $paragraph) {
+            $text = $this->extractParagraphPlainText($paragraph);
+            if ($text !== $heading) {
+                continue;
+            }
+
+            if (! preg_match('/<w:pageBreakBefore\b/', $paragraph)) {
+                continue;
+            }
+
+            $updated = preg_replace('/<w:pageBreakBefore\/?>/', '', $paragraph, 1);
+            if (! is_string($updated) || $updated === $paragraph) {
+                continue;
+            }
+
+            $xml = str_replace($paragraph, $updated, $xml);
+            $patched = true;
+        }
+
+        return ['xml' => $xml, 'patched' => $patched];
     }
 
     public static function isCompanyNominationTemplate(?string $templateFileName): bool
@@ -228,7 +270,7 @@ class CompanyAgreementDocxPatcher
             return false;
         }
 
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         if ($zip->open($docxPath) !== true) {
             return false;
         }

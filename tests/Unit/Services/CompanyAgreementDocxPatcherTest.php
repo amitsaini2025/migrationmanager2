@@ -98,7 +98,7 @@ class CompanyAgreementDocxPatcherTest extends TestCase
         $this->assertSame($xml, $patch['xml']);
     }
 
-    public function test_adds_page_break_before_section_three_only_for_company_nomination_template(): void
+    public function test_does_not_add_page_breaks_before_sections_three_or_five_for_company_nomination_template(): void
     {
         $path = storage_path('app/templates/Service_Agreement_company_nomination.docx');
         if (! is_file($path)) {
@@ -116,9 +116,24 @@ class CompanyAgreementDocxPatcherTest extends TestCase
             'Service_Agreement_company_nomination.docx'
         );
 
-        $this->assertContains('nomination_section_page_breaks', $patch['fixes']);
-        $this->assertSame(1, $this->pageBreakBeforeCountForHeading($patch['xml'], '3. Other Costs'));
+        $this->assertNotContains('nomination_section_page_breaks', $patch['fixes']);
+        $this->assertSame(0, $this->pageBreakBeforeCountForHeading($patch['xml'], '3. Other Costs'));
         $this->assertSame(0, $this->pageBreakBeforeCountForHeading($patch['xml'], '5. Payment Structure'));
+    }
+
+    public function test_removes_page_break_before_section_three_when_present(): void
+    {
+        $paragraph = '<w:p><w:pPr><w:pageBreakBefore/><w:spacing w:before="240"/></w:pPr>'
+            .'<w:r><w:t>3. Other Costs</w:t></w:r></w:p>';
+        $xml = '<w:document><w:body>'.$paragraph.'</w:body></w:document>';
+
+        $patch = (new CompanyAgreementDocxPatcher)->patchDocumentXml(
+            $xml,
+            'Service_Agreement_company_nomination.docx'
+        );
+
+        $this->assertContains('nomination_section_page_break_removed:3. Other Costs', $patch['fixes']);
+        $this->assertSame(0, $this->pageBreakBeforeCountForHeading($patch['xml'], '3. Other Costs'));
     }
 
     public function test_removes_page_break_before_section_five_when_present(): void
@@ -132,31 +147,24 @@ class CompanyAgreementDocxPatcherTest extends TestCase
             'Service_Agreement_company_nomination.docx'
         );
 
-        $this->assertContains('nomination_section_five_page_break_removed', $patch['fixes']);
+        $this->assertContains('nomination_section_page_break_removed:5. Payment Structure', $patch['fixes']);
         $this->assertSame(0, $this->pageBreakBeforeCountForHeading($patch['xml'], '5. Payment Structure'));
     }
 
-    public function test_section_page_break_patch_is_idempotent_for_company_nomination_template(): void
+    public function test_section_page_break_removal_is_idempotent_for_company_nomination_template(): void
     {
-        $path = storage_path('app/templates/Service_Agreement_company_nomination.docx');
-        if (! is_file($path)) {
-            $this->markTestSkipped('Service_Agreement_company_nomination.docx not present in storage/app/templates');
-        }
-
-        $zip = new \ZipArchive;
-        $this->assertTrue($zip->open($path));
-        $xml = $zip->getFromName('word/document.xml');
-        $zip->close();
-        $this->assertNotFalse($xml);
+        $paragraph = '<w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:t>3. Other Costs</w:t></w:r></w:p>'
+            .'<w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:t>5. Payment Structure</w:t></w:r></w:p>';
+        $xml = '<w:document><w:body>'.$paragraph.'</w:body></w:document>';
 
         $patcher = new CompanyAgreementDocxPatcher;
         $first = $patcher->patchDocumentXml($xml, 'Service_Agreement_company_nomination.docx');
         $second = $patcher->patchDocumentXml($first['xml'], 'Service_Agreement_company_nomination.docx');
 
-        $this->assertSame(1, $this->pageBreakBeforeCountForHeading($first['xml'], '3. Other Costs'));
+        $this->assertSame(0, $this->pageBreakBeforeCountForHeading($first['xml'], '3. Other Costs'));
         $this->assertSame(0, $this->pageBreakBeforeCountForHeading($first['xml'], '5. Payment Structure'));
-        $this->assertSame(1, $this->pageBreakBeforeCountForHeading($second['xml'], '3. Other Costs'));
-        $this->assertSame(0, $this->pageBreakBeforeCountForHeading($second['xml'], '5. Payment Structure'));
+        $this->assertFalse($second['patched']);
+        $this->assertSame($first['xml'], $second['xml']);
     }
 
     public function test_does_not_add_nomination_section_page_breaks_for_company_sponsorship_template(): void

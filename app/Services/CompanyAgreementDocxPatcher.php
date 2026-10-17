@@ -16,13 +16,16 @@ class CompanyAgreementDocxPatcher
 
     private const SAF_LEVY_CHARGE_TYPE_LABEL_WITH_RATE = 'Skilling Australians Fund (SAF) Levy ($1200 per year)';
 
-    /** Section headings that must start on a new page in the company nomination template. */
-    private const NOMINATION_SECTION_HEADINGS_WITH_PAGE_BREAK = [
+    /**
+     * Do not force (or keep) a page break before these nomination section headings —
+     * avoids extra near-blank pages with only the letterhead rule.
+     *
+     * @var list<string>
+     */
+    private const NOMINATION_SECTION_HEADINGS_WITHOUT_PAGE_BREAK = [
         '3. Other Costs',
+        '5. Payment Structure',
     ];
-
-    /** Forced page break before this heading caused a near-blank page (letterhead + rule only). */
-    private const NOMINATION_SECTION_HEADING_WITHOUT_PAGE_BREAK = '5. Payment Structure';
 
     /**
      * @return array{xml: string, patched: bool, fixes: list<string>}
@@ -55,21 +58,13 @@ class CompanyAgreementDocxPatcher
                 $patched = true;
             }
 
-            $pageBreakPatch = $this->patchNominationSectionPageBreaks($xml);
-            $xml = $pageBreakPatch['xml'];
-            if ($pageBreakPatch['patched']) {
-                $fixes[] = 'nomination_section_page_breaks';
-                $patched = true;
-            }
-
-            $removeSectionFiveBreak = $this->removePageBreakBeforeNominationHeading(
-                $xml,
-                self::NOMINATION_SECTION_HEADING_WITHOUT_PAGE_BREAK
-            );
-            $xml = $removeSectionFiveBreak['xml'];
-            if ($removeSectionFiveBreak['patched']) {
-                $fixes[] = 'nomination_section_five_page_break_removed';
-                $patched = true;
+            foreach (self::NOMINATION_SECTION_HEADINGS_WITHOUT_PAGE_BREAK as $heading) {
+                $removeBreak = $this->removePageBreakBeforeNominationHeading($xml, $heading);
+                $xml = $removeBreak['xml'];
+                if ($removeBreak['patched']) {
+                    $fixes[] = 'nomination_section_page_break_removed:'.$heading;
+                    $patched = true;
+                }
             }
         }
 
@@ -137,49 +132,6 @@ class CompanyAgreementDocxPatcher
         }
 
         return ['xml' => $xml, 'patched' => false];
-    }
-
-    /**
-     * @return array{xml: string, patched: bool}
-     */
-    private function patchNominationSectionPageBreaks(string $xml): array
-    {
-        $patched = false;
-
-        preg_match_all('/<w:p\b.*?<\/w:p>/s', $xml, $paragraphMatches);
-        foreach ($paragraphMatches[0] as $paragraph) {
-            $text = $this->extractParagraphPlainText($paragraph);
-            if (! in_array($text, self::NOMINATION_SECTION_HEADINGS_WITH_PAGE_BREAK, true)) {
-                continue;
-            }
-
-            if (preg_match('/<w:pageBreakBefore\b/', $paragraph)) {
-                continue;
-            }
-
-            $patchedParagraph = $this->addPageBreakBeforeToParagraph($paragraph);
-            if ($patchedParagraph === $paragraph) {
-                continue;
-            }
-
-            $xml = str_replace($paragraph, $patchedParagraph, $xml);
-            $patched = true;
-        }
-
-        return ['xml' => $xml, 'patched' => $patched];
-    }
-
-    private function addPageBreakBeforeToParagraph(string $paragraph): string
-    {
-        if (preg_match('/<w:pPr>/', $paragraph)) {
-            $updated = preg_replace('/(<w:pPr>)/', '$1<w:pageBreakBefore/>', $paragraph, 1);
-
-            return is_string($updated) ? $updated : $paragraph;
-        }
-
-        $updated = preg_replace('/^(<w:p\b[^>]*>)/', '$1<w:pPr><w:pageBreakBefore/></w:pPr>', $paragraph, 1);
-
-        return is_string($updated) ? $updated : $paragraph;
     }
 
     private function extractParagraphPlainText(string $paragraph): string

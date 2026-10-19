@@ -31,6 +31,7 @@ use App\Services\ClientPortalActionNoteService;
 use App\Services\MatterEmailBodyCleanupService;
 use App\Services\MessageAttachmentStorageService;
 use App\Models\WorkflowStage;
+use App\Support\WorkflowStageNavigation;
 use App\Models\Message;
 use App\Models\MessageRecipient;
 use App\Events\MessageSent;
@@ -3725,15 +3726,12 @@ class ClientPortalController extends Controller
 				], 404);
 			}
 
-			// Get next stage (ordered by sort_order, then id) - scope to same workflow as client matter
-			$currentOrder = $currentStage->sort_order ?? $currentStage->id;
-			$stageQuery = WorkflowStage::whereRaw('COALESCE(sort_order, id) > ?', [$currentOrder]);
-			if ($clientMatter->workflow_id) {
-				$stageQuery->where('workflow_id', $clientMatter->workflow_id);
-			} elseif ($currentStage->workflow_id) {
-				$stageQuery->where('workflow_id', $currentStage->workflow_id);
-			}
-			$nextStage = $stageQuery->orderByRaw('COALESCE(sort_order, id) ASC')->first();
+			// Next stage by list position (same order as Workflow tab) — avoids sort_order jump bugs
+			$stages = WorkflowStageNavigation::orderedStages(
+				$clientMatter->workflow_id ? (int) $clientMatter->workflow_id : null,
+				$currentStage->workflow_id ? (int) $currentStage->workflow_id : null
+			);
+			$nextStage = WorkflowStageNavigation::nextAfter($stages, (int) $currentStageId);
 
 			if (!$nextStage) {
 				return response()->json([
@@ -3795,22 +3793,12 @@ class ClientPortalController extends Controller
 			if ($saved) {
 				// applications table removed - workflow tracked via client_matters.workflow_stage_id
 
-				// Calculate progress percentage (by sort_order) - scope to same workflow
-				$progressQuery = WorkflowStage::query();
-				if ($clientMatter->workflow_id) {
-					$progressQuery->where('workflow_id', $clientMatter->workflow_id);
-				}
-				$totalStages = (clone $progressQuery)->count();
-				$nextOrder = $nextStage->sort_order ?? $nextStage->id;
-				$currentStageIndex = (clone $progressQuery)->whereRaw('COALESCE(sort_order, id) <= ?', [$nextOrder])->count();
-				$progressPercentage = $totalStages > 0 ? round(($currentStageIndex / $totalStages) * 100) : 0;
-
-				// Check if this is the last stage
-				$isLastStageQuery = WorkflowStage::whereRaw('COALESCE(sort_order, id) > ?', [$nextOrder]);
-				if ($clientMatter->workflow_id) {
-					$isLastStageQuery->where('workflow_id', $clientMatter->workflow_id);
-				}
-				$isLastStage = !$isLastStageQuery->exists();
+				$totalStages = $stages->count();
+				$nextIndex = WorkflowStageNavigation::indexOf($stages, (int) $nextStage->id);
+				$progressPercentage = ($totalStages > 0 && $nextIndex !== null)
+					? (int) round((($nextIndex + 1) / $totalStages) * 100)
+					: 0;
+				$isLastStage = $nextIndex !== null && $nextIndex === ($totalStages - 1);
 
 				$matterNo = $clientMatter->client_unique_matter_no ?? 'ID: ' . $matterId;
 
@@ -3962,14 +3950,12 @@ class ClientPortalController extends Controller
 				], 404);
 			}
 
-			$currentOrder = $currentStage->sort_order ?? $currentStage->id;
-			$prevQuery = WorkflowStage::whereRaw('COALESCE(sort_order, id) < ?', [$currentOrder]);
-			if ($clientMatter->workflow_id) {
-				$prevQuery->where('workflow_id', $clientMatter->workflow_id);
-			} elseif ($currentStage->workflow_id) {
-				$prevQuery->where('workflow_id', $currentStage->workflow_id);
-			}
-			$prevStage = $prevQuery->orderByRaw('COALESCE(sort_order, id) DESC')->first();
+			// Previous stage by list position (same order as Workflow tab) — avoids sort_order jump bugs
+			$stages = WorkflowStageNavigation::orderedStages(
+				$clientMatter->workflow_id ? (int) $clientMatter->workflow_id : null,
+				$currentStage->workflow_id ? (int) $currentStage->workflow_id : null
+			);
+			$prevStage = WorkflowStageNavigation::previousBefore($stages, (int) $currentStageId);
 
 			if (!$prevStage) {
 				return response()->json([
@@ -3985,21 +3971,12 @@ class ClientPortalController extends Controller
 			if ($saved) {
 				// applications table removed - workflow tracked via client_matters
 
-				// Calculate progress percentage (by sort_order) - scope to same workflow (match next-stage)
-				$progressQuery = WorkflowStage::query();
-				if ($clientMatter->workflow_id) {
-					$progressQuery->where('workflow_id', $clientMatter->workflow_id);
-				}
-				$totalStages = (clone $progressQuery)->count();
-				$prevOrder = $prevStage->sort_order ?? $prevStage->id;
-				$currentStageIndex = (clone $progressQuery)->whereRaw('COALESCE(sort_order, id) <= ?', [$prevOrder])->count();
-				$progressPercentage = $totalStages > 0 ? round(($currentStageIndex / $totalStages) * 100) : 0;
-
-				$isFirstStageQuery = WorkflowStage::whereRaw('COALESCE(sort_order, id) < ?', [$prevOrder]);
-				if ($clientMatter->workflow_id) {
-					$isFirstStageQuery->where('workflow_id', $clientMatter->workflow_id);
-				}
-				$isFirstStage = !$isFirstStageQuery->exists();
+				$totalStages = $stages->count();
+				$prevIndex = WorkflowStageNavigation::indexOf($stages, (int) $prevStage->id);
+				$progressPercentage = ($totalStages > 0 && $prevIndex !== null)
+					? (int) round((($prevIndex + 1) / $totalStages) * 100)
+					: 0;
+				$isFirstStage = $prevIndex === 0;
 
 				$matterNo = $clientMatter->client_unique_matter_no ?? 'ID: ' . $matterId;
 

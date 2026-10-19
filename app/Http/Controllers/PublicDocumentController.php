@@ -7,6 +7,7 @@ use App\Models\ClientMatter;
 use App\Models\Document;
 use App\Models\Signer;
 use App\Models\WorkflowStage;
+use App\Support\WorkflowStageNavigation;
 use App\Helpers\TempFileHelper;
 use App\Services\PythonService;
 use App\Services\SignedDocumentS3PathResolver;
@@ -707,13 +708,14 @@ class PublicDocumentController extends Controller
                                             'current_stage' => $currentStage->name,
                                         ]);
                                     } else {
-                                        $currentOrder = $currentStage->sort_order ?? $currentStage->id;
-                                        $stageQuery = WorkflowStage::whereRaw('COALESCE(sort_order, id) > ?', [$currentOrder], 'and');
-                                        $workflowId = $clientMatter->workflow_id ?? $currentStage->workflow_id;
-                                        if ($workflowId) {
-                                            $stageQuery->where('workflow_id', '=', $workflowId);
-                                        }
-                                        $nextStage = $stageQuery->orderByRaw('COALESCE(sort_order, id) ASC')->first();
+                                        $stages = WorkflowStageNavigation::orderedStages(
+                                            $clientMatter->workflow_id ? (int) $clientMatter->workflow_id : null,
+                                            $currentStage->workflow_id ? (int) $currentStage->workflow_id : null
+                                        );
+                                        $nextStage = WorkflowStageNavigation::nextAfter(
+                                            $stages,
+                                            (int) $clientMatter->workflow_stage_id
+                                        );
 
                                         // Only auto-advance if next stage is NOT "Decision Received" (requires outcome/note)
                                         if ($nextStage && strtolower(trim($nextStage->name ?? '')) !== 'decision received') {

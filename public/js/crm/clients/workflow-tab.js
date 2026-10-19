@@ -69,15 +69,14 @@
             var btn = document.getElementById(btnId);
             if (!btn) return;
 
-            btn.style.setProperty('display', 'inline-block', 'important');
-            btn.style.setProperty('visibility', 'visible', 'important');
-            btn.style.setProperty('opacity', '1', 'important');
-
-            // Workflow v2 header/toolbar use scoped icon styles — avoid legacy client-portal overrides
+            // Workflow v2 header/toolbar use scoped icon styles — do not force portal button layout
             if (btn.closest('.workflow-v2-toolbar') || btn.closest('.workflow-v2-header')) {
                 return;
             }
 
+            btn.style.setProperty('display', 'inline-block', 'important');
+            btn.style.setProperty('visibility', 'visible', 'important');
+            btn.style.setProperty('opacity', '1', 'important');
             btn.style.setProperty('color', '#3490dc', 'important');
             btn.style.setProperty('border-color', '#3490dc', 'important');
             btn.style.setProperty('background-color', '#ffffff', 'important');
@@ -771,8 +770,15 @@
         if (!btn) {
             return;
         }
-        // Page-header portal advance stays visible; panel footer btn follows view stage
+        // Page-header portal advance stays visible; header icon advance stays visible too.
+        // Only the panel footer "Advance…" button follows whether the viewed stage is current.
         if (btn.id === 'proceed-to-next-stage') {
+            return;
+        }
+        if (btn.closest && btn.closest('.workflow-v2-header')) {
+            return;
+        }
+        if (btn.id && String(btn.id).indexOf('-header') !== -1) {
             return;
         }
         var advanceDisplay = btn.classList.contains('workflow-v2-advance-btn') ? '' : 'inline-flex';

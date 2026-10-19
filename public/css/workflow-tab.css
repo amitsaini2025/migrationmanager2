@@ -124,6 +124,7 @@
 .workflow-v2-header #workflow-tab-back-to-previous-stage,
 .workflow-v2-header #back-to-previous-stage,
 .workflow-v2-header #workflow-tab-proceed-to-next-stage,
+.workflow-v2-header #workflow-tab-proceed-to-next-stage-header,
 .workflow-v2-header #proceed-to-next-stage,
 .workflow-v2-header .workflow-v2-header-icon-btn {
     display: inline-flex !important;
@@ -155,6 +156,7 @@
 }
 
 .workflow-v2-header #workflow-tab-proceed-to-next-stage.workflow-v2-header-icon-btn--primary,
+.workflow-v2-header #workflow-tab-proceed-to-next-stage-header.workflow-v2-header-icon-btn--primary,
 .workflow-v2-header #proceed-to-next-stage.workflow-v2-header-icon-btn--primary,
 .workflow-v2-header .workflow-v2-header-icon-btn--primary {
     background: rgba(34, 197, 94, 0.2) !important;

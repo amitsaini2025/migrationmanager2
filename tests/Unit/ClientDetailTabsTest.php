@@ -457,6 +457,32 @@ class ClientDetailTabsTest extends TestCase
     }
 
     #[Test]
+    public function workflow_header_back_next_icons_are_not_overridden_by_portal_stage_nav_styles(): void
+    {
+        $css = file_get_contents($this->projectPath('public/css/client-portal.css'));
+        Assert::assertNotFalse($css);
+        // Bare ID selector would restyle Workflow tab header icons (full-width portal button).
+        Assert::assertDoesNotMatchRegularExpression(
+            '/^[ \t]*#workflow-tab-back-to-previous-stage\b/m',
+            $css
+        );
+        Assert::assertStringContainsString('.stage-navigation-buttons #workflow-tab-back-to-previous-stage', $css);
+
+        $workflowCss = file_get_contents($this->projectPath('public/css/workflow-tab.css'));
+        Assert::assertNotFalse($workflowCss);
+        Assert::assertStringContainsString('#workflow-tab-proceed-to-next-stage-header', $workflowCss);
+
+        $js = file_get_contents($this->projectPath('public/js/crm/clients/workflow-tab.js'));
+        Assert::assertNotFalse($js);
+        Assert::assertStringContainsString("btn.closest('.workflow-v2-header')", $js);
+        Assert::assertStringContainsString("function setWorkflowAdvanceButtonVisible", $js);
+
+        $portal = file_get_contents($this->projectPath('resources/views/crm/clients/tabs/client_portal.blade.php'));
+        Assert::assertNotFalse($portal);
+        Assert::assertStringContainsString("backStageBtn.closest('.workflow-v2-header')", $portal);
+    }
+
+    #[Test]
     public function client_portal_tab_styles_load_from_a_stylesheet_on_lazy_inject(): void
     {
         $css = file_get_contents($this->projectPath('public/css/client-portal.css'));

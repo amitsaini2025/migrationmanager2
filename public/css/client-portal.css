@@ -2220,10 +2220,16 @@ body:has(#create_checklist.modal.show) .modal-backdrop {
     opacity: 1 !important;
 }
 
-/* Back to Previous Stage — always visible (workflow + client portal button IDs) */
+/* Back to Previous Stage — Client Portal / legacy stage-nav only.
+   Do NOT target bare #workflow-tab-back-to-previous-stage: that ID is also used
+   in .workflow-v2-header icon buttons and must keep workflow-tab.css sizing/colors. */
 .stage-navigation-buttons .btn-outline-primary,
 #back-to-previous-stage,
-#workflow-tab-back-to-previous-stage {
+.stage-navigation-buttons #workflow-tab-back-to-previous-stage,
+.in-progress-section #back-to-previous-stage,
+.in-progress-section #workflow-tab-back-to-previous-stage,
+.info-card #back-to-previous-stage,
+.info-card #workflow-tab-back-to-previous-stage {
     display: inline-block !important;
     visibility: visible !important;
     opacity: 1 !important;
@@ -2240,23 +2246,19 @@ body:has(#create_checklist.modal.show) .modal-backdrop {
 .stage-navigation-buttons .btn-outline-primary:focus,
 #back-to-previous-stage:hover,
 #back-to-previous-stage:focus,
-#workflow-tab-back-to-previous-stage:hover,
-#workflow-tab-back-to-previous-stage:focus {
+.stage-navigation-buttons #workflow-tab-back-to-previous-stage:hover,
+.stage-navigation-buttons #workflow-tab-back-to-previous-stage:focus,
+.in-progress-section #back-to-previous-stage:hover,
+.in-progress-section #back-to-previous-stage:focus,
+.in-progress-section #workflow-tab-back-to-previous-stage:hover,
+.in-progress-section #workflow-tab-back-to-previous-stage:focus,
+.info-card #back-to-previous-stage:hover,
+.info-card #back-to-previous-stage:focus,
+.info-card #workflow-tab-back-to-previous-stage:hover,
+.info-card #workflow-tab-back-to-previous-stage:focus {
     color: #ffffff !important;
     background-color: #3490dc !important;
     border-color: #3490dc !important;
-}
-
-/* Override any global styles that might hide the button */
-.stage-navigation-buttons #back-to-previous-stage,
-.stage-navigation-buttons #workflow-tab-back-to-previous-stage,
-.in-progress-section #back-to-previous-stage,
-.in-progress-section #workflow-tab-back-to-previous-stage,
-.info-card #back-to-previous-stage,
-.info-card #workflow-tab-back-to-previous-stage {
-    display: inline-block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
 }
 
 .current-stage-info {

@@ -1425,11 +1425,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Back to Previous Stage button handler
+    // Back to Previous Stage button handler (Client Portal / legacy stage-nav only)
     function ensureBackButtonVisible() {
         ['back-to-previous-stage', 'workflow-tab-back-to-previous-stage'].forEach(function(btnId) {
             const backStageBtn = document.getElementById(btnId);
             if (!backStageBtn) return;
+
+            // Workflow v2 header icons must keep workflow-tab.css — skip portal force-styles
+            if (backStageBtn.closest('.workflow-v2-toolbar') || backStageBtn.closest('.workflow-v2-header')) {
+                return;
+            }
 
             backStageBtn.style.setProperty('display', 'inline-block', 'important');
             backStageBtn.style.setProperty('visibility', 'visible', 'important');

@@ -32,6 +32,7 @@ use App\Services\PsaAgreementSection4SummaryTablePatcher;
 use App\Services\PsaAgreementServiceTypeRowPatcher;
 use App\Services\VisaAgreementAmountTablePatcher;
 use App\Services\VisaAgreementApplicantAddressResolver;
+use App\Services\VisaAgreementGeneralServiceTypeTablePatcher;
 use App\Services\VisaAgreementServiceTypeRowPatcher;
 use App\Services\VisaAgreementTemplateResolver;
 use Carbon\Carbon;
@@ -222,6 +223,19 @@ trait ClientAgreements
                                 if ($psaSection4Patch['patched']) {
                                     $xmlPatchesApplied = true;
                                     Log::info('[AgreementMacro:Section4] DOCX patch fixed PSA authority charges amount cell', [
+                                        'client_id' => $request->client_id,
+                                        'client_matter_id' => $request->client_matter_id ?? null,
+                                        'template' => $templateFileName,
+                                    ]);
+                                }
+                            }
+
+                            if (VisaAgreementGeneralServiceTypeTablePatcher::supportsTemplate($templateFileName)) {
+                                $generalServiceTypePatch = app(VisaAgreementGeneralServiceTypeTablePatcher::class)->patchDocumentXml($xml);
+                                $xml = $generalServiceTypePatch['xml'];
+                                if ($generalServiceTypePatch['patched']) {
+                                    $xmlPatchesApplied = true;
+                                    Log::info('[AgreementMacro:ServiceType] DOCX patch two-column table for Category/Subclass on general template', [
                                         'client_id' => $request->client_id,
                                         'client_matter_id' => $request->client_matter_id ?? null,
                                         'template' => $templateFileName,

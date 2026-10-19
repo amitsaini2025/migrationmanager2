@@ -45,14 +45,19 @@ class VisaAgreementServiceTypeRowPatcherTest extends TestCase
         $this->assertSame($before['placeholder'], $after['placeholder'], "{$templateFile} placeholder should be unchanged");
     }
 
-    public function test_patch_is_idempotent_for_general_template(): void
+    public function test_patch_is_idempotent_for_parents_template(): void
     {
-        $path = storage_path('app/templates/Service_Agreement_general.docx');
+        $path = storage_path('app/templates/Service_Agreement_parents.docx');
         if (! is_file($path)) {
-            $this->markTestSkipped('Service_Agreement_general.docx not present in storage/app/templates');
+            $this->markTestSkipped('Service_Agreement_parents.docx not present in storage/app/templates');
         }
 
         $xml = $this->readDocumentXml($path);
+        $before = $this->categorySubclassParagraph($xml);
+        if ($before === null) {
+            $this->markTestSkipped('Service_Agreement_parents.docx has no Category/Subclass service type row');
+        }
+
         $first = $this->patcher->patchDocumentXml($xml);
         $second = $this->patcher->patchDocumentXml($first['xml']);
 
@@ -63,7 +68,7 @@ class VisaAgreementServiceTypeRowPatcherTest extends TestCase
 
     public function test_supports_all_service_agreement_templates(): void
     {
-        $this->assertTrue(VisaAgreementServiceTypeRowPatcher::supportsTemplate('Service_Agreement_general.docx'));
+        $this->assertFalse(VisaAgreementServiceTypeRowPatcher::supportsTemplate('Service_Agreement_general.docx'));
         $this->assertTrue(VisaAgreementServiceTypeRowPatcher::supportsTemplate('Service_Agreement_parents.docx'));
         $this->assertTrue(VisaAgreementServiceTypeRowPatcher::supportsTemplate('Service_Agreement_408.docx'));
         $this->assertTrue(VisaAgreementServiceTypeRowPatcher::supportsTemplate('Service_Agreement_408_applicant.docx'));
@@ -86,7 +91,6 @@ class VisaAgreementServiceTypeRowPatcherTest extends TestCase
     public static function serviceTypeRowTemplateProvider(): array
     {
         return [
-            'general' => ['Service_Agreement_general.docx'],
             'parents' => ['Service_Agreement_parents.docx'],
             '408' => ['Service_Agreement_408.docx'],
             '408_applicant' => ['Service_Agreement_408_applicant.docx'],

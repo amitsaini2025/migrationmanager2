@@ -74,11 +74,13 @@ class VisaAgreementServiceTypeRowPatcher
 
             if ($categoryLabelRun === null && str_contains($runText, 'Category:')) {
                 $categoryLabelRun = $run;
+
                 continue;
             }
 
             if ($subclassLabelRun === null && str_contains($runText, 'Subclass:')) {
                 $subclassLabelRun = $run;
+
                 continue;
             }
 
@@ -105,13 +107,13 @@ class VisaAgreementServiceTypeRowPatcher
 
         $valueRunProperties = $categoryValueRunProperties ?? $this->extractRunProperties($categoryLabelRun);
         $newParagraph = $openMatch[1]
-            . ($openMatch[2] ?? '')
-            . $categoryLabelRun
-            . $this->buildTextRun($valueRunProperties, $categoryValue)
-            . $this->buildTabRun($valueRunProperties)
-            . $subclassLabelRun
-            . $placeholderRun
-            . '</w:p>';
+            .($openMatch[2] ?? '')
+            .$categoryLabelRun
+            .$this->buildTextRun($valueRunProperties, $categoryValue)
+            .$this->buildTabRun($valueRunProperties)
+            .$subclassLabelRun
+            .$placeholderRun
+            .'</w:p>';
 
         return $this->addRightTabToParagraphProperties($newParagraph);
     }
@@ -128,7 +130,7 @@ class VisaAgreementServiceTypeRowPatcher
             return $paragraph;
         }
 
-        $rightTab = '<w:tab w:val="right" w:pos="' . self::RIGHT_TAB_POS . '"/>';
+        $rightTab = '<w:tab w:val="right" w:pos="'.self::RIGHT_TAB_POS.'"/>';
 
         $updated = preg_replace_callback(
             '/(<w:pPr>)(.*?)(<\/w:pPr>)/s',
@@ -138,14 +140,14 @@ class VisaAgreementServiceTypeRowPatcher
                 if (preg_match('/<w:tabs>(.*?)<\/w:tabs>/s', $inner, $tabsMatch)) {
                     $inner = str_replace(
                         $tabsMatch[0],
-                        '<w:tabs>' . $tabsMatch[1] . $rightTab . '</w:tabs>',
+                        '<w:tabs>'.$tabsMatch[1].$rightTab.'</w:tabs>',
                         $inner
                     );
                 } else {
-                    $inner .= '<w:tabs>' . $rightTab . '</w:tabs>';
+                    $inner .= '<w:tabs>'.$rightTab.'</w:tabs>';
                 }
 
-                return $matches[1] . $inner . $matches[3];
+                return $matches[1].$inner.$matches[3];
             },
             $paragraph,
             1
@@ -162,6 +164,7 @@ class VisaAgreementServiceTypeRowPatcher
         foreach ($runs as $run) {
             if ($run === $subclassLabelRun) {
                 $collect = true;
+
                 continue;
             }
 
@@ -209,12 +212,12 @@ class VisaAgreementServiceTypeRowPatcher
     {
         $escaped = htmlspecialchars($text, ENT_XML1 | ENT_QUOTES, 'UTF-8');
 
-        return '<w:r>' . $runProperties . '<w:t xml:space="preserve">' . $escaped . '</w:t></w:r>';
+        return '<w:r>'.$runProperties.'<w:t xml:space="preserve">'.$escaped.'</w:t></w:r>';
     }
 
     private function buildTabRun(string $runProperties): string
     {
-        return '<w:r>' . $runProperties . '<w:tab/></w:r>';
+        return '<w:r>'.$runProperties.'<w:tab/></w:r>';
     }
 
     private function extractRunProperties(string $run): string
@@ -236,6 +239,11 @@ class VisaAgreementServiceTypeRowPatcher
     public static function supportsTemplate(?string $templateFileName): bool
     {
         if ($templateFileName === null || $templateFileName === '') {
+            return false;
+        }
+
+        $generalTemplate = config('visa_agreement_templates.default', 'Service_Agreement_general.docx');
+        if ($templateFileName === $generalTemplate) {
             return false;
         }
 

@@ -2123,18 +2123,14 @@ public function getChapters(Request $request)
 
         $this->ensureCrmRecordAccess((int) $request->client_id);
 
-        $visaInfo = \App\Models\ClientVisaCountry::query()
-            ->where('client_id', '=', (int) $request->client_id, 'and')
-            ->latest('id')
-            ->first();
-
-        if (!$visaInfo || !$visaInfo->visa_expiry_date) {
+        $expiry = \App\Support\CurrentVisaExpiry::latestDate((int) $request->client_id);
+        if ($expiry === null) {
             return '';
         }
 
-        $visaExpiredAt = \Carbon\Carbon::parse($visaInfo->visa_expiry_date);
-        $today = \Carbon\Carbon::now();
-        $sevenDaysFromNow = \Carbon\Carbon::now()->addDays(7);
+        $visaExpiredAt = \Carbon\Carbon::parse($expiry)->startOfDay();
+        $today = \Carbon\Carbon::today();
+        $sevenDaysFromNow = $today->copy()->addDays(7);
 
         if ($visaExpiredAt->lt($today)) {
             return "Your visa has expired. Please contact us immediately.";

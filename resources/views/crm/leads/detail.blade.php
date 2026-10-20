@@ -147,16 +147,11 @@
     								    {{@$fetchedData->marital_status}}</span>
     							</p>
 								@endif
-								@if($fetchedData->visa_expiry_date != '')
+								@php $currentVisaExpiry = \App\Support\CurrentVisaExpiry::formatForDisplay($fetchedData->id ?? null); @endphp
+								@if($currentVisaExpiry !== '')
 								    <p class="clearfix"> 
 								<span class="float-left">Visa Expiry Date:</span>
-								<span class="float-right text-muted">
-								     <?php
-										if($fetchedData->visa_expiry_date != ''){
-										    echo date('d/m/Y', strtotime($fetchedData->visa_expiry_date));
-										}
-										?>
-								 </span>
+								<span class="float-right text-muted">{{ $currentVisaExpiry }}</span>
 							</p>
 								@endif
 								@if(false && $fetchedData->lead_quality != '')

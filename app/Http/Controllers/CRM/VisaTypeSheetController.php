@@ -361,7 +361,7 @@ class VisaTypeSheetController extends Controller
         $leadRemindersTable = $config['lead_reminders_table'] ?? null;
         $matterCondition = $this->getMatterCondition($config);
 
-        // PostgreSQL lowercases unquoted identifiers; TotalBLOCKFEE requires quoting (same pattern as admins."visaExpiry").
+        // PostgreSQL lowercases unquoted identifiers; TotalBLOCKFEE must stay quoted.
         $cafTotalBlockFee = 'caf."TotalBLOCKFEE"';
 
         $checklistBlockFeeSelect = Schema::hasTable('cost_assignment_forms')

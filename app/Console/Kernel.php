@@ -67,6 +67,7 @@ class Kernel extends ConsoleKernel
 
         // CRM: align admins.type with active matters
         '\App\Console\Commands\PromoteLeadsWithActiveMatters',
+        '\App\Console\Commands\ImportEmployerSpreadsheets',
 
         // Visa Sheet Diagnostics
         '\App\Console\Commands\DiagnoseVisaSheet',

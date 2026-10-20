@@ -90,6 +90,22 @@ class ClientEditFieldComponentTest extends TestCase
         Assert::assertStringContainsString('$this.trigger(\'change\')', $js);
     }
 
+    public function test_edit_client_js_parses_flexible_address_start_and_end_dates(): void
+    {
+        $js = $this->viewContents('public/js/clients/edit-client.js');
+        $addressField = $this->viewContents('resources/views/components/client-edit/address-field.blade.php');
+
+        Assert::assertStringContainsString('function isAddressDateField(', $js);
+        Assert::assertStringContainsString('function supportsFlexibleDateParse(', $js);
+        Assert::assertStringContainsString('supportsFlexibleDateParse(element)', $js);
+        Assert::assertStringContainsString('/^address_(start|end)_date(\\[|$)/', $js);
+        Assert::assertStringContainsString('name="address_start_date[]"', $addressField);
+        Assert::assertStringContainsString('name="address_end_date[]"', $addressField);
+        Assert::assertStringContainsString('date-picker date-picker-past-only', $addressField);
+        // Address dates keep past-only limits; flexible parse must not widen maxDate.
+        Assert::assertStringContainsString("const maxDateObj = isPastOnly ? 'today' : new Date(new Date().getFullYear() + 50, 11, 31);", $js);
+    }
+
     public function test_client_edit_views_pass_visa_types_json_once(): void
     {
         $edit = $this->viewContents('resources/views/crm/clients/edit.blade.php');

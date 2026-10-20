@@ -1620,6 +1620,24 @@ function isPassportOrVisaDateField(element) {
         || /^visa_grant_date(\[|$)/.test(name);
 }
 
+/**
+ * Address start/end dates on the client edit Address section.
+ * Uses the same flexible parse/paste path as passport/visa without changing date limits.
+ */
+function isAddressDateField(element) {
+    if (!element) {
+        return false;
+    }
+
+    const name = element.getAttribute('name') || '';
+
+    return /^address_(start|end)_date(\[|$)/.test(name);
+}
+
+function supportsFlexibleDateParse(element) {
+    return isPassportOrVisaDateField(element) || isAddressDateField(element);
+}
+
 function isDateWithinPickerLimits(fp, parsed) {
     if (!fp || !fp.config) {
         return true;
@@ -2001,7 +2019,7 @@ function initializeDatepickers() {
         const element = this;
         const currentValue = $this.val(); // Get the current value of the field
         const isPastOnly = $this.hasClass('date-picker-past-only');
-        const enableFlexiblePaste = isPassportOrVisaDateField(element);
+        const enableFlexiblePaste = supportsFlexibleDateParse(element);
 
         if (!$this.data('flatpickr')) {
             // Past-only fields (address, travel, employment, passport issue, visa grant): maxDate = today

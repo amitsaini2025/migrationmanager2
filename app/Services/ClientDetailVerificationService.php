@@ -15,8 +15,8 @@ use App\Models\ClientVisaCountry;
 use App\Models\Matter;
 use App\Services\Sms\UnifiedSmsManager;
 use App\Support\ClientDetailVerificationFields;
-use App\Support\CurrentVisaExpiry;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -511,7 +511,7 @@ class ClientDetailVerificationService
             return (string) $visa->visa_expiry_date;
         }
 
-        return (string) ($client->visaExpiry ?? '');
+        return '';
     }
 
     private function primaryPassportCountry(Admin $client): string
@@ -720,15 +720,16 @@ class ClientDetailVerificationService
         $visa = $this->latestVisa($client);
         if ($visa) {
             $visa->update(['visa_expiry_date' => $date]);
-            CurrentVisaExpiry::sync($client);
 
             return;
         }
 
-        if (Schema::hasColumn('admins', 'visaExpiry')) {
-            $client->visaExpiry = $date;
-            $client->save();
-        }
+        ClientVisaCountry::create([
+            'client_id' => $client->id,
+            'admin_id' => Auth::id(),
+            'visa_type' => is_numeric($client->visa_type) ? $client->visa_type : null,
+            'visa_expiry_date' => $date,
+        ]);
     }
 
     private function applyPassportCountry(Admin $client, string $requested): void

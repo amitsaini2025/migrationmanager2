@@ -2,26 +2,26 @@
 
 namespace App\Services;
 
+use App\Models\ActivitiesLog;
 use App\Models\Admin;
 use App\Models\ClientAddress;
+use App\Models\ClientCharacter;
 use App\Models\ClientContact;
 use App\Models\ClientEmail;
 use App\Models\ClientPassportInformation;
-use App\Models\ClientTravelInformation;
-use App\Models\ClientCharacter;
-use App\Models\ClientVisaCountry;
 use App\Models\ClientTestScore;
-use App\Models\ActivitiesLog;
+use App\Models\ClientTravelInformation;
+use App\Models\ClientVisaCountry;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
-use Carbon\Carbon;
 
 class ClientExportService
 {
     /**
      * Export client data to JSON format
-     * 
-     * @param int $clientId
+     *
+     * @param  int  $clientId
      * @return array
      */
     public function exportClient($clientId)
@@ -31,7 +31,7 @@ class ClientExportService
                 ->whereIn('type', ['client', 'lead'])
                 ->first();
 
-            if (!$client) {
+            if (! $client) {
                 throw new \Exception('Client not found');
             }
 
@@ -53,9 +53,9 @@ class ClientExportService
 
             return $exportData;
         } catch (\Exception $e) {
-            Log::error('Client export error: ' . $e->getMessage(), [
+            Log::error('Client export error: '.$e->getMessage(), [
                 'client_id' => $clientId,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
         }
@@ -116,7 +116,17 @@ class ClientExportService
         ];
 
         // Visa summary from last visa (bansalcrm2 stores visa name in admins; migrationmanager2 uses Matter ID)
-        $lastVisa = ClientVisaCountry::with('matter')->where('client_id', $clientId)->orderBy('id', 'desc')->first();
+        $lastVisa = ClientVisaCountry::with('matter')
+            ->where('client_id', $clientId)
+            ->whereNotNull('visa_expiry_date')
+            ->orderByDesc('visa_expiry_date')
+            ->first();
+        if (! $lastVisa) {
+            $lastVisa = ClientVisaCountry::with('matter')
+                ->where('client_id', $clientId)
+                ->orderByDesc('id')
+                ->first();
+        }
         if ($lastVisa) {
             $matter = $lastVisa->matter;
             $data['visa_type'] = $matter ? ($matter->nick_name ?? $matter->title) : (string) $lastVisa->visa_type;
@@ -251,8 +261,8 @@ class ClientExportService
     private function getClientPassport($clientId)
     {
         $passport = ClientPassportInformation::where('client_id', $clientId)->first();
-        
-        if (!$passport) {
+
+        if (! $passport) {
             return null;
         }
 
@@ -299,7 +309,7 @@ class ClientExportService
                 $expiry = $visa->visa_expiry_date;
                 if ($expiry instanceof \DateTimeInterface) {
                     $expiry = $expiry->format('Y-m-d');
-                } elseif (is_string($expiry) && $expiry !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $expiry)) {
+                } elseif (is_string($expiry) && $expiry !== '' && ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $expiry)) {
                     try {
                         $expiry = Carbon::parse($expiry)->format('Y-m-d');
                     } catch (\Exception $e) {
@@ -309,13 +319,14 @@ class ClientExportService
                 $grant = $visa->visa_grant_date;
                 if ($grant instanceof \DateTimeInterface) {
                     $grant = $grant->format('Y-m-d');
-                } elseif (is_string($grant) && $grant !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $grant)) {
+                } elseif (is_string($grant) && $grant !== '' && ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $grant)) {
                     try {
                         $grant = Carbon::parse($grant)->format('Y-m-d');
                     } catch (\Exception $e) {
                         $grant = $visa->visa_grant_date;
                     }
                 }
+
                 return [
                     'visa_type' => $visa->visa_type,
                     'visa_type_matter_title' => $matter ? $matter->title : null,
@@ -358,13 +369,14 @@ class ClientExportService
                 $testDate = $test->test_date;
                 if ($testDate instanceof \DateTimeInterface) {
                     $testDate = $testDate->format('Y-m-d');
-                } elseif (is_string($testDate) && $testDate !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $testDate)) {
+                } elseif (is_string($testDate) && $testDate !== '' && ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $testDate)) {
                     try {
                         $testDate = Carbon::parse($testDate)->format('Y-m-d');
                     } catch (\Exception $e) {
                         $testDate = $test->test_date;
                     }
                 }
+
                 return [
                     'test_type' => $test->test_type ?? null,
                     'listening' => $test->listening ?? null,
@@ -406,6 +418,7 @@ class ClientExportService
                 if (Schema::hasColumn('activities_logs', 'created_by')) {
                     $arr['created_by'] = $activity->created_by ?? null;
                 }
+
                 return $arr;
             })
             ->toArray();

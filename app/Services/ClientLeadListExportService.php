@@ -109,7 +109,7 @@ class ClientLeadListExportService
     public function streamCsv(Builder $query, string $recordType, string $filenamePrefix, ?int $totalMatching = null): StreamedResponse
     {
         $headers = $this->getHeaders($recordType);
-        $filename = $filenamePrefix . '_' . date('Y-m-d_His') . '.csv';
+        $filename = $filenamePrefix.'_'.date('Y-m-d_His').'.csv';
         $totalMatching = $totalMatching ?? $this->countMatching($query);
 
         return response()->streamDownload(function () use ($query, $headers, $recordType, $totalMatching) {
@@ -135,7 +135,7 @@ class ClientLeadListExportService
         int $totalMatching,
         int $batchCount
     ): StreamedResponse {
-        $filename = $filenamePrefix . '_' . date('Y-m-d_His') . '_batches.zip';
+        $filename = $filenamePrefix.'_'.date('Y-m-d_His').'_batches.zip';
         $headers = $this->getHeaders($recordType);
 
         return response()->streamDownload(function () use ($query, $recordType, $filenamePrefix, $totalMatching, $batchCount, $headers) {
@@ -146,7 +146,7 @@ class ClientLeadListExportService
                 throw new \RuntimeException('Unable to create temporary export file.');
             }
 
-            $zip = new ZipArchive();
+            $zip = new ZipArchive;
             if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
                 @unlink($zipPath);
                 throw new \RuntimeException('Unable to create export ZIP archive.');
@@ -212,7 +212,7 @@ class ClientLeadListExportService
         int $batchLimit,
         bool $flushStream = false
     ): int {
-        fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
+        fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
         fputcsv($out, $headers);
 
         $exportedCount = $this->chunkRecords(
@@ -307,7 +307,7 @@ class ClientLeadListExportService
         fputcsv($out, []);
         fputcsv($out, ['Export Summary']);
         if ($batchNumber !== null && $batchTotal !== null) {
-            fputcsv($out, ['Export batch', $batchNumber . ' of ' . $batchTotal]);
+            fputcsv($out, ['Export batch', $batchNumber.' of '.$batchTotal]);
             fputcsv($out, ['Records in this file', $exportedCount]);
         }
         fputcsv($out, ['Total matching records', $totalMatching]);
@@ -319,7 +319,7 @@ class ClientLeadListExportService
         if ($batchNumber !== null && $batchTotal !== null && $batchTotal > 1) {
             fputcsv($out, [
                 'All batches required',
-                'Yes (' . $batchTotal . ' files in ZIP download)',
+                'Yes ('.$batchTotal.' files in ZIP download)',
             ]);
         }
         fputcsv($out, ['Exported at', now()->format('Y-m-d H:i:s')]);
@@ -348,7 +348,7 @@ class ClientLeadListExportService
                         ->whereIn('id', $missingIds)
                         ->get(['id', 'first_name', 'last_name'])
                         ->each(function (Staff $staff) use (&$staffNames) {
-                            $staffNames[$staff->id] = trim($staff->first_name . ' ' . $staff->last_name);
+                            $staffNames[$staff->id] = trim($staff->first_name.' '.$staff->last_name);
                         });
                 }
 
@@ -427,7 +427,12 @@ class ClientLeadListExportService
             ->groupBy('client_id');
 
         $latestVisas = $visas->map(function (Collection $items) {
-            return $items->sortByDesc('id')->first();
+            $withExpiry = $items
+                ->filter(fn (ClientVisaCountry $visa) => ! empty($visa->visa_expiry_date))
+                ->sortByDesc(fn (ClientVisaCountry $visa) => (string) $visa->visa_expiry_date)
+                ->first();
+
+            return $withExpiry ?? $items->sortByDesc('id')->first();
         });
 
         $character = ClientCharacter::query()
@@ -676,9 +681,9 @@ class ClientLeadListExportService
     protected function formatContacts(array $contacts): string
     {
         return collect($contacts)->map(function (array $contact) {
-            $phone = trim(($contact['country_code'] ?? '') . ' ' . ($contact['phone'] ?? ''));
+            $phone = trim(($contact['country_code'] ?? '').' '.($contact['phone'] ?? ''));
 
-            return trim(($contact['contact_type'] ?? 'Phone') . ': ' . $phone);
+            return trim(($contact['contact_type'] ?? 'Phone').': '.$phone);
         })->filter()->implode(' | ');
     }
 
@@ -688,7 +693,7 @@ class ClientLeadListExportService
     protected function formatEmails(array $emails): string
     {
         return collect($emails)->map(function (array $email) {
-            return trim(($email['email_type'] ?? 'Email') . ': ' . ($email['email'] ?? ''));
+            return trim(($email['email_type'] ?? 'Email').': '.($email['email'] ?? ''));
         })->filter()->implode(' | ');
     }
 
@@ -723,8 +728,8 @@ class ClientLeadListExportService
             $parts = array_filter([
                 $label,
                 $visa['visa_description'] ?? null,
-                isset($visa['visa_grant_date']) ? 'Grant: ' . $visa['visa_grant_date'] : null,
-                isset($visa['visa_expiry_date']) ? 'Expiry: ' . $visa['visa_expiry_date'] : null,
+                isset($visa['visa_grant_date']) ? 'Grant: '.$visa['visa_grant_date'] : null,
+                isset($visa['visa_expiry_date']) ? 'Expiry: '.$visa['visa_expiry_date'] : null,
             ]);
 
             return implode(', ', $parts);
@@ -755,11 +760,11 @@ class ClientLeadListExportService
         return collect($scores)->map(function (array $score) {
             $parts = array_filter([
                 $score['test_type'] ?? null,
-                isset($score['overall_score']) ? 'Overall: ' . $score['overall_score'] : null,
-                isset($score['listening']) ? 'L:' . $score['listening'] : null,
-                isset($score['reading']) ? 'R:' . $score['reading'] : null,
-                isset($score['writing']) ? 'W:' . $score['writing'] : null,
-                isset($score['speaking']) ? 'S:' . $score['speaking'] : null,
+                isset($score['overall_score']) ? 'Overall: '.$score['overall_score'] : null,
+                isset($score['listening']) ? 'L:'.$score['listening'] : null,
+                isset($score['reading']) ? 'R:'.$score['reading'] : null,
+                isset($score['writing']) ? 'W:'.$score['writing'] : null,
+                isset($score['speaking']) ? 'S:'.$score['speaking'] : null,
                 $score['test_date'] ?? null,
             ]);
 

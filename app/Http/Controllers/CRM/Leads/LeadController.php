@@ -1074,7 +1074,7 @@ class LeadController extends Controller
         }
 
         $visa_expiry_date = null;
-        if (! empty($requestData['visa_expiry_date'])) {
+        if (! empty($requestData['visa_expiry_date']) && is_string($requestData['visa_expiry_date'])) {
             $visa_expiry_dates = explode('/', $requestData['visa_expiry_date']);
             if (count($visa_expiry_dates) === 3) {
                 $visa_expiry_date = $visa_expiry_dates[2].'-'.$visa_expiry_dates[1].'-'.$visa_expiry_dates[0];
@@ -1096,8 +1096,31 @@ class LeadController extends Controller
             $lead->marital_status = $requestData['marital_status'] ?? null;
             $lead->passport_number = $requestData['passport_no'] ?? null;
             $lead->visa_type = $requestData['visa_type'] ?? null;
-            $lead->visaExpiry = $visa_expiry_date;
             $lead->tagname = $requestData['tags_label'] ?? null;
+
+            if ($visa_expiry_date !== null) {
+                $visa = ClientVisaCountry::query()
+                    ->where('client_id', $lead->id)
+                    ->whereNotNull('visa_expiry_date')
+                    ->orderByDesc('visa_expiry_date')
+                    ->first();
+                if (! $visa) {
+                    $visa = ClientVisaCountry::query()
+                        ->where('client_id', $lead->id)
+                        ->latest('id')
+                        ->first();
+                }
+                if ($visa) {
+                    $visa->update(['visa_expiry_date' => $visa_expiry_date]);
+                } else {
+                    ClientVisaCountry::create([
+                        'client_id' => $lead->id,
+                        'admin_id' => Auth::id(),
+                        'visa_type' => is_numeric($requestData['visa_type'] ?? null) ? $requestData['visa_type'] : null,
+                        'visa_expiry_date' => $visa_expiry_date,
+                    ]);
+                }
+            }
 
             // Extract LAST phone from array (following ClientPersonalDetailsController pattern)
             $lastPhone = null;

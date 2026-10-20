@@ -64,7 +64,7 @@
                                     $clientAssigneeName = 'NA';
                                 }
                                 ?>
-								<select data-valid="" class="form-control mm-select selecttemplate" name="template" data-clientid="{{@$fetchedData->id}}" data-clientfirstname="{{@$fetchedData->first_name}}" data-clientvisaExpiry="{{@$fetchedData->visaExpiry}}" data-clientreference_number="{{@$fetchedData->client_id}}" data-clientassignee_name="{{@$clientAssigneeName}}">
+								<select data-valid="" class="form-control mm-select selecttemplate" name="template" data-clientid="{{@$fetchedData->id}}" data-clientfirstname="{{@$fetchedData->first_name}}" data-clientvisaExpiry="{{ \App\Support\CurrentVisaExpiry::formatForDisplay($fetchedData->id ?? null) }}" data-clientreference_number="{{@$fetchedData->client_id}}" data-clientassignee_name="{{@$clientAssigneeName}}">
 									<option value="">Select</option>
 								</select>
                             </div>

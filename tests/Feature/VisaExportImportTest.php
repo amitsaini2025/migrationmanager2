@@ -2,20 +2,20 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use App\Models\Admin;
+use App\Models\ClientVisaCountry;
+use App\Models\Matter;
 use App\Services\ClientExportService;
 use App\Services\ClientImportService;
-use App\Models\Admin;
-use App\Models\Matter;
-use App\Models\ClientVisaCountry;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Tests\TestCase;
 
 /**
  * Verifies visa type and visa expiry export/import fix.
  * - Export includes visa_type_matter_title, visa_type_matter_nick_name; dates as Y-m-d.
- * - Import resolves visa_type by nick_name/title; syncs last visa to client.visa_type / visaExpiry.
+ * - Import resolves visa_type by nick_name/title and stores the expiry on the visa row.
  *
  * Requires matters, client_visa_countries, and admins tables. Skips when schema is incomplete
  * (e.g. test DB without full migrations).
@@ -35,7 +35,7 @@ class VisaExportImportTest extends TestCase
         $this->admin = Admin::create([
             'first_name' => 'Test',
             'last_name' => 'Admin',
-            'email' => 'test-admin-visa-' . uniqid() . '@example.com',
+            'email' => 'test-admin-visa-'.uniqid().'@example.com',
             'password' => Hash::make('password'),
             'role' => 1,
         ]);
@@ -53,10 +53,10 @@ class VisaExportImportTest extends TestCase
         $client = Admin::create([
             'first_name' => 'Export',
             'last_name' => 'VisaTest',
-            'email' => 'export-visa-test-' . uniqid() . '@example.com',
+            'email' => 'export-visa-test-'.uniqid().'@example.com',
             'password' => Hash::make('password'),
             'type' => 'client',
-            'client_id' => 'EXPT' . time(),
+            'client_id' => 'EXPT'.time(),
             'client_counter' => str_pad((string) random_int(1, 99999), 5, '0', STR_PAD_LEFT),
         ]);
 
@@ -72,7 +72,7 @@ class VisaExportImportTest extends TestCase
             'visa_description' => null,
         ]);
 
-        $export = (new ClientExportService())->exportClient($client->id);
+        $export = (new ClientExportService)->exportClient($client->id);
 
         $this->assertArrayHasKey('visa_countries', $export);
         $this->assertIsArray($export['visa_countries']);
@@ -105,7 +105,7 @@ class VisaExportImportTest extends TestCase
             'client' => [
                 'first_name' => 'Import',
                 'last_name' => 'VisaTest',
-                'email' => 'import-visa-test-' . uniqid() . '@example.com',
+                'email' => 'import-visa-test-'.uniqid().'@example.com',
             ],
             'visa_countries' => [
                 [
@@ -134,9 +134,11 @@ class VisaExportImportTest extends TestCase
         $this->assertSame('2022-06-03', $visa->visa_grant_date);
 
         $client = Admin::find($result['client_id']);
-        if (Schema::hasColumn('admins', 'visa_type') && Schema::hasColumn('admins', 'visaExpiry')) {
+        if (Schema::hasColumn('admins', 'visa_type')) {
             $this->assertSame((string) $matter->id, (string) $client->visa_type);
-            $this->assertSame('2025-12-31', $client->visaExpiry);
+        }
+        if (Schema::hasColumn('admins', 'visaExpiry')) {
+            $this->assertNull($client->visaExpiry);
         }
     }
 }

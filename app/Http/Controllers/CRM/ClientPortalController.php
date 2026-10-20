@@ -31,7 +31,6 @@ use App\Services\ClientPortalActionNoteService;
 use App\Services\MatterEmailBodyCleanupService;
 use App\Services\MessageAttachmentStorageService;
 use App\Models\WorkflowStage;
-use App\Support\CurrentVisaExpiry;
 use App\Support\WorkflowStageNavigation;
 use App\Models\Message;
 use App\Models\MessageRecipient;
@@ -755,7 +754,6 @@ class ClientPortalController extends Controller
                         'visa_expiry_date' => $visaExpiryDate,
                     ]);
                 }
-                CurrentVisaExpiry::sync($client);
                 foreach ($auditEntries as $e) {
                     $e->delete();
                 }

@@ -33,7 +33,6 @@ use App\Services\ClientEditService;
 use App\Services\EnglishProficiencyService;
 use App\Services\LeadFollowUpNoteService;
 use App\Services\PointsService;
-use App\Support\CurrentVisaExpiry;
 use App\Support\LeadSources;
 use App\Support\LmtMatterWriter;
 use App\Support\StaffClientVisibility;
@@ -900,11 +899,6 @@ class ClientPersonalDetailsController extends Controller
                 $dob = $dobs[2].'-'.$dobs[1].'-'.$dobs[0];
             }
 
-            $visaExpiry = '';
-            if (array_key_exists('visaExpiry', $requestData) && $requestData['visaExpiry'] != '') {
-                $visaExpirys = explode('/', $requestData['visaExpiry']);
-                $visaExpiry = $visaExpirys[2].'-'.$visaExpirys[1].'-'.$visaExpirys[0];
-            }
             $obj = Admin::find(@$requestData['id']);
             $first_name = substr(@$requestData['first_name'], 0, 4);
 
@@ -1144,7 +1138,6 @@ class ClientPersonalDetailsController extends Controller
                         }
                     }
                 }
-                CurrentVisaExpiry::sync($obj);
             }
 
             // Address Start Code
@@ -3565,8 +3558,6 @@ class ClientPersonalDetailsController extends Controller
                     );
                 }
             }
-
-            CurrentVisaExpiry::sync($client);
 
             return response()->json([
                 'success' => true,

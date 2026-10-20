@@ -2,27 +2,27 @@
 
 namespace App\Services;
 
+use App\Models\ActivitiesLog;
 use App\Models\Admin;
 use App\Models\ClientAddress;
+use App\Models\ClientCharacter;
 use App\Models\ClientContact;
 use App\Models\ClientEmail;
-use App\Models\ClientPassportInformation;
-use App\Models\ClientTravelInformation;
-use App\Models\ClientCharacter;
-use App\Models\ClientVisaCountry;
-use App\Models\ClientTestScore;
-use App\Models\ClientOccupation;
-use App\Models\ClientQualification;
 use App\Models\ClientExperience;
-use App\Models\ActivitiesLog;
+use App\Models\ClientOccupation;
+use App\Models\ClientPassportInformation;
+use App\Models\ClientQualification;
+use App\Models\ClientTestScore;
+use App\Models\ClientTravelInformation;
+use App\Models\ClientVisaCountry;
+use App\Models\Country;
 use App\Models\Matter;
-use App\Services\ClientReferenceService;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
-use Carbon\Carbon;
 
 class ClientImportService
 {
@@ -35,9 +35,8 @@ class ClientImportService
 
     /**
      * Import client data from JSON
-     * 
-     * @param array $importData
-     * @param bool $skipDuplicates
+     *
+     * @param  bool  $skipDuplicates
      * @return array ['success' => bool, 'client_id' => int|null, 'message' => string]
      */
     public function importClient(array $importData, $skipDuplicates = true)
@@ -46,7 +45,7 @@ class ClientImportService
 
         try {
             // Validate import data structure
-            if (!isset($importData['client'])) {
+            if (! isset($importData['client'])) {
                 throw new \Exception('Invalid import file: missing client data');
             }
 
@@ -55,29 +54,29 @@ class ClientImportService
             // Normalize office_visit_form_v1 format for CRM compatibility
             if (isset($importData['format']) && $importData['format'] === 'office_visit_form_v1') {
                 // visa_expiry -> visaExpiry alias
-                if (!isset($clientData['visaExpiry']) && isset($clientData['visa_expiry'])) {
+                if (! isset($clientData['visaExpiry']) && isset($clientData['visa_expiry'])) {
                     $clientData['visaExpiry'] = $clientData['visa_expiry'];
                 }
                 // maritalStatus -> marital_status alias
-                if (!isset($clientData['marital_status']) && isset($clientData['maritalStatus'])) {
+                if (! isset($clientData['marital_status']) && isset($clientData['maritalStatus'])) {
                     $clientData['marital_status'] = $clientData['maritalStatus'];
                 }
                 // assessing_authority alias:
                 // - if value is Yes/No-like, treat as skill_assessment
                 // - otherwise treat as assessing authority list value
-                if (!isset($clientData['skill_assessment']) && isset($clientData['assessing_authority'])) {
+                if (! isset($clientData['skill_assessment']) && isset($clientData['assessing_authority'])) {
                     $aaRaw = trim((string) $clientData['assessing_authority']);
                     $aaLower = mb_strtolower($aaRaw);
                     if (in_array($aaLower, ['yes', 'y', 'true', '1', 'no', 'n', 'false', '0'], true)) {
                         $clientData['skill_assessment'] = $clientData['assessing_authority'];
-                    } elseif (!isset($clientData['list'])) {
+                    } elseif (! isset($clientData['list'])) {
                         $clientData['list'] = $clientData['assessing_authority'];
                     }
                 }
                 // test_scores: overall -> overall_score alias
                 if (isset($importData['test_scores']) && is_array($importData['test_scores'])) {
                     foreach ($importData['test_scores'] as &$ts) {
-                        if (isset($ts['overall']) && !isset($ts['overall_score'])) {
+                        if (isset($ts['overall']) && ! isset($ts['overall_score'])) {
                             $ts['overall_score'] = $ts['overall'];
                         }
                     }
@@ -107,12 +106,13 @@ class ClientImportService
                     if ($existingClient) {
                         DB::rollBack();
                         $match = $email !== '' && $existingClient->email === $email
-                            ? 'email ' . $email
-                            : 'phone ' . $phone;
+                            ? 'email '.$email
+                            : 'phone '.$phone;
+
                         return [
                             'success' => false,
                             'client_id' => null,
-                            'message' => 'Lead with same ' . $match . ' already exists. Import skipped.'
+                            'message' => 'Lead with same '.$match.' already exists. Import skipped.',
                         ];
                     }
                 }
@@ -124,38 +124,38 @@ class ClientImportService
             $client_current_counter = $reference['client_counter'];
 
             // Create the client
-            $client = new Admin();
+            $client = new Admin;
             $client->first_name = $clientData['first_name']; // Required field
             $client->last_name = $clientData['last_name'] ?? null;
             $client->email = $clientData['email']; // Required field (unique, NOT NULL)
             $client->phone = $clientData['phone'] ?? null;
             $client->country_code = $clientData['country_code'] ?? null;
-            
+
             // Personal Information
             $client->dob = $this->parseDate($clientData['dob'] ?? null);
             $client->age = $clientData['age'] ?? null;
             $client->gender = $clientData['gender'] ?? null;
             $client->marital_status = $clientData['marital_status'] ?? null;
-            
+
             // Address
             $client->address = $clientData['address'] ?? null;
             $client->city = $clientData['city'] ?? null;
             $client->state = $this->mapState($clientData['state'] ?? null);
             $client->country = $this->mapCountry($clientData['country'] ?? null);
             $client->zip = $clientData['zip'] ?? null;
-            
+
             // Passport
             $client->country_passport = $clientData['country_passport'] ?? null;
             if (Schema::hasColumn('admins', 'passport_number') && isset($clientData['passport_number'])) {
                 $client->passport_number = $clientData['passport_number'];
             }
-            
+
             // Additional Contact (if exists in both systems)
-            
+
             // Email and Contact Type (stored in admins table)
             $client->email_type = $clientData['email_type'] ?? null;
             $client->contact_type = $clientData['contact_type'] ?? null;
-            
+
             // Optional bansalcrm2-style fields (if columns exist)
             $bansalOptional = [
                 'att_email', 'att_phone', 'att_country_code',
@@ -177,9 +177,6 @@ class ClientImportService
             if (Schema::hasColumn('admins', 'visa_opt') && array_key_exists('visa_opt', $clientData)) {
                 $client->visa_opt = $clientData['visa_opt'];
             }
-            if (Schema::hasColumn('admins', 'visaExpiry') && array_key_exists('visaExpiry', $clientData)) {
-                $client->visaExpiry = $this->parseDate($clientData['visaExpiry']);
-            }
 
             // Other
             $client->naati_test = $clientData['naati_test'] ?? null;
@@ -190,17 +187,17 @@ class ClientImportService
             $client->type = $clientData['type'] ?? 'lead';
             $client->status = $clientData['status'] ?? 1;
             $client->agent_id = $clientData['agent_id'] ?? null;
-            
+
             // Verification metadata (dates only, not staff IDs)
             $client->dob_verified_date = $this->parseDateTime($clientData['dob_verified_date'] ?? null);
             $client->dob_verify_document = $clientData['dob_verify_document'] ?? null;
             $client->phone_verified_date = $this->parseDateTime($clientData['phone_verified_date'] ?? null);
             $client->visa_expiry_verified_at = $this->parseDateTime($clientData['visa_expiry_verified_at'] ?? null);
-            
+
             // System fields
             $client->client_counter = $client_current_counter;
             $client->client_id = $client_id;
-            $client->password = Hash::make('CLIENT_IMPORT_' . time()); // Temporary password
+            $client->password = Hash::make('CLIENT_IMPORT_'.time()); // Temporary password
             $client->verified = 0;
             $client->cp_status = 0;
             $client->cp_code_verify = 0;
@@ -210,7 +207,7 @@ class ClientImportService
             $client->is_archived = 0;
             // Note: archived_by is not set during import - imported clients are not archived
             // archived_by will be null for imported clients
-            
+
             $client->save();
             $newClientId = $client->id;
 
@@ -219,7 +216,7 @@ class ClientImportService
             $occupationsProvided = isset($importData['occupations']) && is_array($importData['occupations']) && count($importData['occupations']) > 0;
             if ($occupationsProvided) {
                 foreach ($importData['occupations'] as $occupationData) {
-                    if (!is_array($occupationData)) {
+                    if (! is_array($occupationData)) {
                         continue;
                     }
 
@@ -243,33 +240,33 @@ class ClientImportService
                     $anzscoOccupationId = $occupationData['anzsco_occupation_id'] ?? null;
 
                     $hasOccupationData =
-                        !empty($nomiOccupation) ||
-                        !empty($occupationCode) ||
-                        !empty($skillAssessment) ||
-                        !empty($assessingAuthority) ||
-                        !empty($visaSubclass) ||
-                        !empty($assessmentDate) ||
-                        !empty($expiryDate) ||
+                        ! empty($nomiOccupation) ||
+                        ! empty($occupationCode) ||
+                        ! empty($skillAssessment) ||
+                        ! empty($assessingAuthority) ||
+                        ! empty($visaSubclass) ||
+                        ! empty($assessmentDate) ||
+                        ! empty($expiryDate) ||
                         $relevantOccupation === 1 ||
-                        !empty($referenceNo) ||
-                        !empty($anzscoOccupationId);
+                        ! empty($referenceNo) ||
+                        ! empty($anzscoOccupationId);
 
-                    if (!$hasOccupationData) {
+                    if (! $hasOccupationData) {
                         continue;
                     }
 
                     ClientOccupation::create([
-                        'client_id'            => $newClientId,
-                        'admin_id'             => Auth::id(),
-                        'skill_assessment'     => $skillAssessment,
-                        'nomi_occupation'      => $nomiOccupation,
-                        'occupation_code'      => $occupationCode,
-                        'list'                 => $assessingAuthority,
-                        'visa_subclass'        => $visaSubclass,
-                        'dates'                => $assessmentDate,
-                        'expiry_dates'         => $expiryDate,
-                        'relevant_occupation'  => $relevantOccupation,
-                        'occ_reference_no'     => $referenceNo,
+                        'client_id' => $newClientId,
+                        'admin_id' => Auth::id(),
+                        'skill_assessment' => $skillAssessment,
+                        'nomi_occupation' => $nomiOccupation,
+                        'occupation_code' => $occupationCode,
+                        'list' => $assessingAuthority,
+                        'visa_subclass' => $visaSubclass,
+                        'dates' => $assessmentDate,
+                        'expiry_dates' => $expiryDate,
+                        'relevant_occupation' => $relevantOccupation,
+                        'occ_reference_no' => $referenceNo,
                         'anzsco_occupation_id' => (is_numeric($anzscoOccupationId) ? (int) $anzscoOccupationId : null),
                     ]);
                 }
@@ -290,16 +287,16 @@ class ClientImportService
                 $expiryDate = $this->parseDate($clientData['expiry_dates'] ?? null);
                 $relevantOccupation = $this->parseBooleanFlag($clientData['relevant_occupation'] ?? null, 0);
 
-                if (!empty($nomiOccupation) || !empty($occupationCode) || !empty($skillAssessment) || !empty($assessingAuthority) || !empty($assessmentDate) || !empty($expiryDate) || $relevantOccupation === 1) {
+                if (! empty($nomiOccupation) || ! empty($occupationCode) || ! empty($skillAssessment) || ! empty($assessingAuthority) || ! empty($assessmentDate) || ! empty($expiryDate) || $relevantOccupation === 1) {
                     ClientOccupation::create([
-                        'client_id'           => $newClientId,
-                        'admin_id'            => Auth::id(),
-                        'nomi_occupation'     => $nomiOccupation,
-                        'occupation_code'     => $occupationCode,
-                        'skill_assessment'    => $skillAssessment,
-                        'list'                => $assessingAuthority,
-                        'dates'               => $assessmentDate,
-                        'expiry_dates'        => $expiryDate,
+                        'client_id' => $newClientId,
+                        'admin_id' => Auth::id(),
+                        'nomi_occupation' => $nomiOccupation,
+                        'occupation_code' => $occupationCode,
+                        'skill_assessment' => $skillAssessment,
+                        'list' => $assessingAuthority,
+                        'dates' => $assessmentDate,
+                        'expiry_dates' => $expiryDate,
                         'relevant_occupation' => $relevantOccupation,
                     ]);
                 }
@@ -330,7 +327,7 @@ class ClientImportService
             // Saved into client_qualifications so they appear in Skills & Education on edit page.
             if (isset($importData['qualifications']) && is_array($importData['qualifications'])) {
                 foreach ($importData['qualifications'] as $qualificationData) {
-                    if (!is_array($qualificationData)) {
+                    if (! is_array($qualificationData)) {
                         continue;
                     }
 
@@ -346,17 +343,17 @@ class ClientImportService
 
                     // Avoid inserting blank qualification rows.
                     $hasQualificationData =
-                        !empty($level) ||
-                        !empty($name) ||
-                        !empty($college) ||
-                        !empty($campus) ||
-                        !empty($country) ||
-                        !empty($state) ||
-                        !empty($startDate) ||
-                        !empty($finishDate) ||
+                        ! empty($level) ||
+                        ! empty($name) ||
+                        ! empty($college) ||
+                        ! empty($campus) ||
+                        ! empty($country) ||
+                        ! empty($state) ||
+                        ! empty($startDate) ||
+                        ! empty($finishDate) ||
                         $relevant === 1;
 
-                    if (!$hasQualificationData) {
+                    if (! $hasQualificationData) {
                         continue;
                     }
 
@@ -380,7 +377,7 @@ class ClientImportService
             // Saved into client_experiences so they appear in Work Experience on edit page.
             if (isset($importData['experiences']) && is_array($importData['experiences'])) {
                 foreach ($importData['experiences'] as $experienceData) {
-                    if (!is_array($experienceData)) {
+                    if (! is_array($experienceData)) {
                         continue;
                     }
 
@@ -396,18 +393,18 @@ class ClientImportService
                     $fteMultiplier = $experienceData['fte_multiplier'] ?? null;
 
                     $hasExperienceData =
-                        !empty($jobTitle) ||
-                        !empty($jobCode) ||
-                        !empty($employerName) ||
-                        !empty($jobCountry) ||
-                        !empty($jobState) ||
-                        !empty($jobType) ||
-                        !empty($jobStartDate) ||
-                        !empty($jobFinishDate) ||
+                        ! empty($jobTitle) ||
+                        ! empty($jobCode) ||
+                        ! empty($employerName) ||
+                        ! empty($jobCountry) ||
+                        ! empty($jobState) ||
+                        ! empty($jobType) ||
+                        ! empty($jobStartDate) ||
+                        ! empty($jobFinishDate) ||
                         $relevantExperience === 1 ||
-                        !empty($fteMultiplier);
+                        ! empty($fteMultiplier);
 
-                    if (!$hasExperienceData) {
+                    if (! $hasExperienceData) {
                         continue;
                     }
 
@@ -440,28 +437,28 @@ class ClientImportService
                         continue;
                     }
                     ClientContact::create([
-                        'client_id'    => $newClientId,
-                        'admin_id'     => Auth::id(),
+                        'client_id' => $newClientId,
+                        'admin_id' => Auth::id(),
                         'contact_type' => $contactData['contact_type'] ?? 'Personal',
                         'country_code' => $contactData['country_code'] ?? $clientData['country_code'] ?? null,
-                        'phone'        => $phone,
-                        'is_verified'  => $contactData['is_verified'] ?? false,
-                        'verified_at'  => $this->parseDateTime($contactData['verified_at'] ?? null),
+                        'phone' => $phone,
+                        'is_verified' => $contactData['is_verified'] ?? false,
+                        'verified_at' => $this->parseDateTime($contactData['verified_at'] ?? null),
                     ]);
                     $contactPhonesFromArray[] = $phone;
                 }
             }
             // Always persist client.phone to client_contacts (mirrors LeadController::store),
             // unless that exact number was already added from the contacts array above.
-            if (!empty($clientData['phone']) && !in_array($clientData['phone'], $contactPhonesFromArray, true)) {
+            if (! empty($clientData['phone']) && ! in_array($clientData['phone'], $contactPhonesFromArray, true)) {
                 ClientContact::create([
-                    'client_id'    => $newClientId,
-                    'admin_id'     => Auth::id(),
+                    'client_id' => $newClientId,
+                    'admin_id' => Auth::id(),
                     'contact_type' => $clientData['contact_type'] ?? 'Personal',
                     'country_code' => $clientData['country_code'] ?? null,
-                    'phone'        => $clientData['phone'],
-                    'is_verified'  => false,
-                    'verified_at'  => null,
+                    'phone' => $clientData['phone'],
+                    'is_verified' => false,
+                    'verified_at' => null,
                 ]);
             }
 
@@ -477,10 +474,10 @@ class ClientImportService
                         continue;
                     }
                     ClientEmail::create([
-                        'client_id'   => $newClientId,
-                        'admin_id'    => Auth::id(),
-                        'email_type'  => $emailData['email_type'] ?? 'Personal',
-                        'email'       => $emailAddr,
+                        'client_id' => $newClientId,
+                        'admin_id' => Auth::id(),
+                        'email_type' => $emailData['email_type'] ?? 'Personal',
+                        'email' => $emailAddr,
                         'is_verified' => $emailData['is_verified'] ?? false,
                         'verified_at' => $this->parseDateTime($emailData['verified_at'] ?? null),
                     ]);
@@ -489,12 +486,12 @@ class ClientImportService
             }
             // Always persist client.email to client_emails (mirrors LeadController::store),
             // unless that exact address was already added from the emails array above.
-            if (!empty($clientData['email']) && !in_array($clientData['email'], $emailAddrsFromArray, true)) {
+            if (! empty($clientData['email']) && ! in_array($clientData['email'], $emailAddrsFromArray, true)) {
                 ClientEmail::create([
-                    'client_id'   => $newClientId,
-                    'admin_id'    => Auth::id(),
-                    'email_type'  => $clientData['email_type'] ?? 'Personal',
-                    'email'       => $clientData['email'],
+                    'client_id' => $newClientId,
+                    'admin_id' => Auth::id(),
+                    'email_type' => $clientData['email_type'] ?? 'Personal',
+                    'email' => $clientData['email'],
                     'is_verified' => false,
                     'verified_at' => null,
                 ]);
@@ -528,12 +525,11 @@ class ClientImportService
 
             // Import visa countries; resolve visa_type by matter title/nick_name when provided (cross-system portability)
             $lastVisaType = null;
-            $lastVisaExpiry = null;
             $visaCountriesProvided = isset($importData['visa_countries']) && is_array($importData['visa_countries']) && count($importData['visa_countries']) > 0;
 
             if ($visaCountriesProvided) {
                 foreach ($importData['visa_countries'] as $visaData) {
-                    if (!is_array($visaData)) {
+                    if (! is_array($visaData)) {
                         continue;
                     }
                     $resolvedType = $this->resolveVisaType($visaData);
@@ -548,36 +544,33 @@ class ClientImportService
                         'visa_grant_date' => $grant,
                     ]);
                     $lastVisaType = $resolvedType;
-                    $lastVisaExpiry = $expiry;
                 }
             } else {
                 // Fallback: build one visa record from client-level summary fields when visa_countries not provided
-                $clientVisaType   = $clientData['visa_type'] ?? null;
+                $clientVisaType = $clientData['visa_type'] ?? null;
                 $clientVisaExpiry = $this->parseDate($clientData['visa_expiry'] ?? $clientData['visaExpiry'] ?? null);
-                if (!empty($clientVisaType) || !empty($clientVisaExpiry)) {
+                if (! empty($clientVisaType) || ! empty($clientVisaExpiry)) {
                     $resolvedType = $this->resolveVisaType([
-                        'visa_type'                  => $clientVisaType,
-                        'visa_type_matter_title'     => $clientVisaType,
+                        'visa_type' => $clientVisaType,
+                        'visa_type_matter_title' => $clientVisaType,
                         'visa_type_matter_nick_name' => $clientVisaType,
                     ]);
                     ClientVisaCountry::create([
-                        'client_id'       => $newClientId,
-                        'admin_id'        => Auth::id(),
-                        'visa_type'       => $resolvedType,
-                        'visa_description'=> $clientData['visa_opt'] ?? null,
-                        'visa_expiry_date'=> $clientVisaExpiry,
+                        'client_id' => $newClientId,
+                        'admin_id' => Auth::id(),
+                        'visa_type' => $resolvedType,
+                        'visa_description' => $clientData['visa_opt'] ?? null,
+                        'visa_expiry_date' => $clientVisaExpiry,
                         'visa_grant_date' => null,
                     ]);
-                    $lastVisaType   = $resolvedType;
-                    $lastVisaExpiry = $clientVisaExpiry;
+                    $lastVisaType = $resolvedType;
                 }
             }
 
-            // Sync last visa to client summary columns for sidebar/summary display
-            if (($lastVisaType !== null || $lastVisaExpiry !== null) &&
-                Schema::hasColumn('admins', 'visa_type') && Schema::hasColumn('admins', 'visaExpiry')) {
-                $client->visa_type  = $lastVisaType ?? $client->visa_type;
-                $client->visaExpiry = $lastVisaExpiry ?? $client->visaExpiry;
+            // Keep the client visa type in step with the imported visa row.
+            // Expiry lives only on the visa row.
+            if ($lastVisaType !== null && Schema::hasColumn('admins', 'visa_type')) {
+                $client->visa_type = $lastVisaType;
                 $client->save();
             }
 
@@ -617,15 +610,15 @@ class ClientImportService
             if (isset($importData['activities']) && is_array($importData['activities'])) {
                 foreach ($importData['activities'] as $activityData) {
                     $activityAttrs = [
-                        'client_id'     => $newClientId,
-                        'created_by'    => $activityData['created_by'] ?? Auth::id(),
-                        'subject'       => $activityData['subject'] ?? 'Imported Activity',
-                        'description'   => $activityData['description'] ?? null,
+                        'client_id' => $newClientId,
+                        'created_by' => $activityData['created_by'] ?? Auth::id(),
+                        'subject' => $activityData['subject'] ?? 'Imported Activity',
+                        'description' => $activityData['description'] ?? null,
                         'activity_type' => $activityData['activity_type'] ?? 'activity',
                         'followup_date' => $this->parseDateTime($activityData['followup_date'] ?? null),
-                        'task_group'    => $activityData['task_group'] ?? null,
-                        'task_status'   => $activityData['task_status'] ?? 0,
-                        'pin'           => $activityData['pin'] ?? 0,
+                        'task_group' => $activityData['task_group'] ?? null,
+                        'task_status' => $activityData['task_status'] ?? 0,
+                        'pin' => $activityData['pin'] ?? 0,
                     ];
                     if (Schema::hasColumn('activities_logs', 'use_for') && array_key_exists('use_for', $activityData)) {
                         $activityAttrs['use_for'] = $activityData['use_for'];
@@ -636,15 +629,15 @@ class ClientImportService
             }
 
             // Fallback: auto-generate activity from client.comments_note when no activities provided
-            if (!$activitiesImported && !empty($clientData['comments_note'])) {
+            if (! $activitiesImported && ! empty($clientData['comments_note'])) {
                 $fallbackAttrs = [
-                    'client_id'     => $newClientId,
-                    'created_by'    => Auth::id(),
-                    'subject'       => 'Office Visit Check-in Notes',
-                    'description'   => $clientData['comments_note'],
+                    'client_id' => $newClientId,
+                    'created_by' => Auth::id(),
+                    'subject' => 'Office Visit Check-in Notes',
+                    'description' => $clientData['comments_note'],
                     'activity_type' => 'office_visit_checkin',
-                    'task_status'   => 0,
-                    'pin'           => 0,
+                    'task_status' => 0,
+                    'pin' => 0,
                 ];
                 if (Schema::hasColumn('activities_logs', 'use_for')) {
                     $fallbackAttrs['use_for'] = null;
@@ -658,13 +651,13 @@ class ClientImportService
             if (isset($importData['notes']) && trim((string) $importData['notes']) !== '') {
                 $notesContent = trim((string) $importData['notes']);
                 $notesAttrs = [
-                    'client_id'     => $newClientId,
-                    'created_by'    => Auth::id(),
-                    'subject'       => 'Lead intake – additional information',
-                    'description'   => '<p>' . nl2br(e($notesContent)) . '</p>',
+                    'client_id' => $newClientId,
+                    'created_by' => Auth::id(),
+                    'subject' => 'Lead intake – additional information',
+                    'description' => '<p>'.nl2br(e($notesContent)).'</p>',
                     'activity_type' => 'note',
-                    'task_status'   => 0,
-                    'pin'           => 0,
+                    'task_status' => 0,
+                    'pin' => 0,
                 ];
                 if (Schema::hasColumn('activities_logs', 'use_for')) {
                     $notesAttrs['use_for'] = null;
@@ -685,7 +678,7 @@ class ClientImportService
                     $normalised = [];
                     foreach ($extraFields as $item) {
                         $label = $item['label'] ?? $item['name'] ?? $item['key'] ?? null;
-                        $val   = $item['value'] ?? $item['val'] ?? null;
+                        $val = $item['value'] ?? $item['val'] ?? null;
                         if ($label !== null && $label !== '') {
                             $normalised[trim((string) $label)] = $val;
                         }
@@ -697,38 +690,38 @@ class ClientImportService
                     // Build a cleanly formatted HTML table for the activity feed
                     $rows = '';
                     $isLast = false;
-                    $keys   = array_keys($extraFields);
+                    $keys = array_keys($extraFields);
                     foreach ($keys as $idx => $label) {
-                        $isLast     = $idx === count($keys) - 1;
-                        $rowBorder  = $isLast ? '' : 'border-bottom: 1px solid #e9ecef;';
-                        $labelHtml  = e(trim((string) $label));
-                        $rawVal     = $extraFields[$label];
-                        $valueHtml  = ($rawVal === null || $rawVal === '')
+                        $isLast = $idx === count($keys) - 1;
+                        $rowBorder = $isLast ? '' : 'border-bottom: 1px solid #e9ecef;';
+                        $labelHtml = e(trim((string) $label));
+                        $rawVal = $extraFields[$label];
+                        $valueHtml = ($rawVal === null || $rawVal === '')
                             ? '<em style="color:#adb5bd;">—</em>'
                             : nl2br(e(trim((string) $rawVal)));
                         $rows .= '<tr>';
                         $rows .= '<td style="padding:6px 12px 6px 0;font-weight:600;color:#495057;'
-                               . 'width:42%;vertical-align:top;' . $rowBorder . '">'
-                               . $labelHtml . '</td>';
+                               .'width:42%;vertical-align:top;'.$rowBorder.'">'
+                               .$labelHtml.'</td>';
                         $rows .= '<td style="padding:6px 0;color:#212529;'
-                               . 'vertical-align:top;' . $rowBorder . '">'
-                               . $valueHtml . '</td>';
+                               .'vertical-align:top;'.$rowBorder.'">'
+                               .$valueHtml.'</td>';
                         $rows .= '</tr>';
                     }
 
                     $description = '<div style="margin-top:4px;">'
-                        . '<table style="width:100%;border-collapse:collapse;font-size:13px;line-height:1.5;">'
-                        . '<tbody>' . $rows . '</tbody>'
-                        . '</table></div>';
+                        .'<table style="width:100%;border-collapse:collapse;font-size:13px;line-height:1.5;">'
+                        .'<tbody>'.$rows.'</tbody>'
+                        .'</table></div>';
 
                     $extraAttrs = [
-                        'client_id'     => $newClientId,
-                        'created_by'    => Auth::id(),
-                        'subject'       => 'Lead intake – form details',
-                        'description'   => $description,
+                        'client_id' => $newClientId,
+                        'created_by' => Auth::id(),
+                        'subject' => 'Lead intake – form details',
+                        'description' => $description,
                         'activity_type' => 'note',
-                        'task_status'   => 0,
-                        'pin'           => 0,
+                        'task_status' => 0,
+                        'pin' => 0,
                     ];
                     if (Schema::hasColumn('activities_logs', 'use_for')) {
                         $extraAttrs['use_for'] = null;
@@ -743,19 +736,19 @@ class ClientImportService
                 'success' => true,
                 'client_id' => $newClientId,
                 'client_id_reference' => $client_id,
-                'message' => 'Lead imported successfully. Lead ID: ' . $client_id
+                'message' => 'Lead imported successfully. Lead ID: '.$client_id,
             ];
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Lead import error: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
+            Log::error('Lead import error: '.$e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return [
                 'success' => false,
                 'client_id' => null,
-                'message' => 'Failed to import lead: ' . $e->getMessage()
+                'message' => 'Failed to import lead: '.$e->getMessage(),
             ];
         }
     }
@@ -775,11 +768,12 @@ class ClientImportService
             if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
                 return $date;
             }
-            
+
             // Try to parse with Carbon (handles most formats)
             return Carbon::parse($date)->format('Y-m-d');
         } catch (\Exception $e) {
-            Log::warning('Failed to parse date: ' . $date, ['error' => $e->getMessage()]);
+            Log::warning('Failed to parse date: '.$date, ['error' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -887,7 +881,7 @@ class ClientImportService
 
         // If country is a string sortname (like "AU"), try to find ID
         if (is_string($country) && strlen($country) <= 3) {
-            $countryModel = \App\Models\Country::where('sortname', $country)->first();
+            $countryModel = Country::where('sortname', $country)->first();
             if ($countryModel) {
                 return $countryModel->id;
             }
@@ -904,7 +898,6 @@ class ClientImportService
      * 2. visa_type_matter_title -> lookup Matter by title
      * 3. Fall back to numeric visa_type (backwards compat with older exports)
      *
-     * @param array $visaData
      * @return int|string|null
      */
     private function resolveVisaType(array $visaData)

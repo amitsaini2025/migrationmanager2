@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\ClientMatter;
 use App\Models\Staff;
+use App\Support\CurrentVisaExpiry;
 use App\Support\StaffClientVisibility;
 use App\Traits\ClientAuthorization;
 use App\Traits\LogsClientActivity;
@@ -424,7 +425,7 @@ class VisaTypeSheetController extends Controller
             'admins.first_name',
             'admins.last_name',
             'admins.dob',
-            DB::raw('admins."visaExpiry" as visa_expiry'),
+            DB::raw('('.CurrentVisaExpiry::sql('admins').') as visa_expiry'),
             'cm.client_unique_matter_no',
             'm.title as matter_title',
             'cm.deadline',
@@ -479,7 +480,7 @@ class VisaTypeSheetController extends Controller
                         'a.first_name',
                         'a.last_name',
                         'a.dob',
-                        DB::raw('a."visaExpiry" as visa_expiry'),
+                        DB::raw('('.CurrentVisaExpiry::sql('a').') as visa_expiry'),
                         DB::raw("CONCAT('Lead - ', COALESCE(m.title, '')) as client_unique_matter_no"),
                         'm.title as matter_title',
                         'lr.matter_id as sel_matter_id',
@@ -709,7 +710,7 @@ class VisaTypeSheetController extends Controller
                 'admins.first_name',
                 'admins.last_name',
                 'admins.dob',
-                DB::raw('admins."visaExpiry" as visa_expiry'),
+                DB::raw('('.CurrentVisaExpiry::sql('admins').') as visa_expiry'),
                 'latest_matter.client_unique_matter_no',
                 'latest_matter.matter_title',
                 'latest_matter.matter_nick',
@@ -841,7 +842,7 @@ class VisaTypeSheetController extends Controller
                     if ($sponsorEndSql !== null) {
                         $query->whereRaw("({$sponsorEndSql}) >= ?", [$from]);
                     } else {
-                        $query->whereRaw('admins."visaExpiry" >= ?', [$from]);
+                        $query->whereRaw('('.CurrentVisaExpiry::sql('admins').') >= ?', [$from]);
                     }
                 } catch (\Exception $e) {
                 }
@@ -852,7 +853,7 @@ class VisaTypeSheetController extends Controller
                     if ($sponsorEndSql !== null) {
                         $query->whereRaw("({$sponsorEndSql}) <= ?", [$to]);
                     } else {
-                        $query->whereRaw('admins."visaExpiry" <= ?', [$to]);
+                        $query->whereRaw('('.CurrentVisaExpiry::sql('admins').') <= ?', [$to]);
                     }
                 } catch (\Exception $e) {
                 }
@@ -918,14 +919,15 @@ class VisaTypeSheetController extends Controller
         $approvalEndSql = $sponsorSort
             ? '('.$this->sponsorApprovalEndSql('latest_matter.client_id', 'latest_matter.matter_id').')'
             : null;
+        $visaExpirySql = '('.CurrentVisaExpiry::sql('admins').')';
         $expiresWithinThreeDays = $sponsorSort
             ? "{$approvalEndSql} IS NOT NULL AND {$approvalEndSql} BETWEEN ? AND ?"
-            : 'admins."visaExpiry" IS NOT NULL AND admins."visaExpiry"::text <> \'0000-00-00\' AND admins."visaExpiry" BETWEEN ? AND ?';
+            : "{$visaExpirySql} IS NOT NULL AND {$visaExpirySql}::text <> '0000-00-00' AND {$visaExpirySql} BETWEEN ? AND ?";
         $query->orderByRaw("CASE WHEN {$expiresWithinThreeDays} THEN 0 ELSE 1 END ASC", [$today, $withinThreeDays]);
         if ($sponsorSort) {
             $query->orderByRaw("CASE WHEN {$expiresWithinThreeDays} THEN {$approvalEndSql} END ASC NULLS LAST", [$today, $withinThreeDays]);
         } else {
-            $query->orderByRaw("CASE WHEN {$expiresWithinThreeDays} THEN admins.\"visaExpiry\" END ASC NULLS LAST", [$today, $withinThreeDays]);
+            $query->orderByRaw("CASE WHEN {$expiresWithinThreeDays} THEN {$visaExpirySql} END ASC NULLS LAST", [$today, $withinThreeDays]);
         }
 
         // Verified rows (starred by the backend team) come next, still below the 3-day expiry files.
@@ -951,8 +953,9 @@ class VisaTypeSheetController extends Controller
             // Default: nearest deadline, then visa expiry
             $query->orderByRaw('latest_matter.deadline ASC NULLS LAST');
 
-            $query->orderByRaw("CASE WHEN admins.\"visaExpiry\" IS NULL OR admins.\"visaExpiry\"::text = '0000-00-00' THEN 1 ELSE 0 END ASC");
-            $query->orderByRaw('admins."visaExpiry" ASC');
+            $visaExpirySql = '('.CurrentVisaExpiry::sql('admins').')';
+            $query->orderByRaw("CASE WHEN {$visaExpirySql} IS NULL OR {$visaExpirySql}::text = '0000-00-00' THEN 1 ELSE 0 END ASC");
+            $query->orderByRaw("{$visaExpirySql} ASC");
         }
 
         $query->orderBy('latest_matter.matter_id', 'asc');
@@ -998,8 +1001,9 @@ class VisaTypeSheetController extends Controller
                     $query->orderByRaw("{$approvalEndSql} {$sortDirection} NULLS {$nullsLast}");
                     break;
                 }
-                $query->orderByRaw("CASE WHEN admins.\"visaExpiry\" IS NULL OR admins.\"visaExpiry\"::text = '0000-00-00' THEN 1 ELSE 0 END ASC");
-                $query->orderByRaw('admins."visaExpiry" '.$sortDirection.' NULLS '.$nullsLast);
+                $visaExpirySql = '('.CurrentVisaExpiry::sql('admins').')';
+                $query->orderByRaw("CASE WHEN {$visaExpirySql} IS NULL OR {$visaExpirySql}::text = '0000-00-00' THEN 1 ELSE 0 END ASC");
+                $query->orderByRaw("{$visaExpirySql} {$sortDirection} NULLS {$nullsLast}");
                 break;
             case 'deadline':
                 $query->orderByRaw('latest_matter.deadline '.$sortDirection.' NULLS '.$nullsLast);

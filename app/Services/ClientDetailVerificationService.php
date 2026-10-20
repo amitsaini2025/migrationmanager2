@@ -15,6 +15,7 @@ use App\Models\ClientVisaCountry;
 use App\Models\Matter;
 use App\Services\Sms\UnifiedSmsManager;
 use App\Support\ClientDetailVerificationFields;
+use App\Support\CurrentVisaExpiry;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -719,6 +720,7 @@ class ClientDetailVerificationService
         $visa = $this->latestVisa($client);
         if ($visa) {
             $visa->update(['visa_expiry_date' => $date]);
+            CurrentVisaExpiry::sync($client);
 
             return;
         }

@@ -2,21 +2,16 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use DB;
+use App\Mail\CommonMail;
 use App\Models\Admin;
 use App\Models\EmailTemplate;
+use App\Services\SystemEmailLogService;
+use App\Support\CurrentVisaExpiry;
+// use Mail;
+
 use Carbon\Carbon;
-//use Mail;
-use Auth;
-
-
-use App\Mail\CommonMail;
-
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
-
-use Swift_SmtpTransport;
-use Swift_Mailer;
 
 class VisaExpireReminderEmail extends Command
 {
@@ -34,64 +29,67 @@ class VisaExpireReminderEmail extends Command
      */
     protected $description = 'Visa Expire Reminder Email before 15 days';
 
-
-    protected function send_compose_template($content, $sendername, $to = null, $subject = null, $sender = null, $array = array(), $cc = array(), ?int $clientId = null)
-	{
-        $systemEmailLog = app(\App\Services\SystemEmailLogService::class);
+    protected function send_compose_template($content, $sendername, $to = null, $subject = null, $sender = null, $array = [], $cc = [], ?int $clientId = null)
+    {
+        $systemEmailLog = app(SystemEmailLogService::class);
         $log = null;
 
-	try {
-		$explodeTo = explode(';', $to);//for multiple and single to
-        $log = $systemEmailLog->createPending([
-            'category'  => 'visa_reminder',
-            'from_mail' => $sender,
-            'to_mail'   => $to,
-            'subject'   => $subject,
-            'message'   => $content,
-            'client_id' => $clientId,
-        ]);
-        $array['email_log_id'] = $log->id;
+        try {
+            $explodeTo = explode(';', $to); // for multiple and single to
+            $log = $systemEmailLog->createPending([
+                'category' => 'visa_reminder',
+                'from_mail' => $sender,
+                'to_mail' => $to,
+                'subject' => $subject,
+                'message' => $content,
+                'client_id' => $clientId,
+            ]);
+            $array['email_log_id'] = $log->id;
 
-		$q = Mail::mailer()->to($explodeTo);
-		if(!empty($cc)){
-			$q->cc($cc);
-		}
-		$q->send($systemEmailLog->applyTrackingToMailable(
-            new CommonMail($content, $subject, $sender, $sendername, $array),
-            $log->id
-        ));
-		
-		return true;
-	} catch (\Exception $e) {
-        if ($log !== null) {
-            $systemEmailLog->markSendFailed($log, $e->getMessage());
+            $q = Mail::mailer()->to($explodeTo);
+            if (! empty($cc)) {
+                $q->cc($cc);
+            }
+            $q->send($systemEmailLog->applyTrackingToMailable(
+                new CommonMail($content, $subject, $sender, $sendername, $array),
+                $log->id
+            ));
+
+            return true;
+        } catch (\Exception $e) {
+            if ($log !== null) {
+                $systemEmailLog->markSendFailed($log, $e->getMessage());
+            }
+            \Log::error('Email sending failed in VisaExpireReminderEmail: '.$e->getMessage());
+
+            return false;
         }
-		\Log::error('Email sending failed in VisaExpireReminderEmail: ' . $e->getMessage());
-		return false;
-	}
 
-	}
+    }
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $query 	= \App\Models\Admin::select('id','visaExpiry','email','first_name','last_name')
-        ->whereIn('type', ['client', 'lead'])
-        ->where('visaExpiry','!=','')
-        ->where('visaExpiry', '=', Carbon::now()->addDays(15)->toDateString() ) ;
-        $totalLogs = $query->count();//dd($totalLogs);
-		$logs = $query->get(); //dd($logs);
-        if($totalLogs >0){
-            $from_email = env("MAIL_FROM_ADDRESS");
-            $FROM_MAIL_COMPANY_NAME = env("FROM_MAIL_COMPANY_NAME");
-			foreach($logs as $key=>$val){ //dd($val->id);
+        $expirySql = '('.CurrentVisaExpiry::sql('admins').')';
+        $expiresOn = Carbon::now()->addDays(15)->toDateString();
+        $query = Admin::query()
+            ->select('id', 'email', 'first_name', 'last_name')
+            ->selectRaw($expirySql.' as current_visa_expiry')
+            ->whereIn('type', ['client', 'lead'])
+            ->whereRaw($expirySql.' = ?', [$expiresOn]);
+        $totalLogs = $query->count(); // dd($totalLogs);
+        $logs = $query->get(); // dd($logs);
+        if ($totalLogs > 0) {
+            $from_email = env('MAIL_FROM_ADDRESS');
+            $FROM_MAIL_COMPANY_NAME = env('FROM_MAIL_COMPANY_NAME');
+            foreach ($logs as $key => $val) { // dd($val->id);
 
                 $to_email = $val->email;
                 $first_name = $val->first_name;
                 $fullname = $val->first_name.' '.$val->last_name;
-                $visaExpiry = date('d-m-Y',strtotime($val->visaExpiry));
+                $visaExpiry = date('d-m-Y', strtotime($val->current_visa_expiry));
                 /*$details = [
                     'title' => 'Your visa is expiring soon',
                     'body' => 'This is for testing email using smtp',
@@ -100,29 +98,28 @@ class VisaExpireReminderEmail extends Command
                 ];
                 $mail_sent = \Mail::to($to_email)->send(new \App\Mail\VisaExpireReminderMail($details));*/
 
-                //visa expiry email reminder
+                // visa expiry email reminder
                 $templateId = config('email_templates.visa_expiry_template_id');
                 $crm_template_data = $templateId
                     ? EmailTemplate::crm()->find($templateId)
                     : EmailTemplate::crm()->whereRaw("name ILIKE '%visa%' AND name ILIKE '%expir%'")->first();
-                if (!empty($crm_template_data))
-                {
+                if (! empty($crm_template_data)) {
                     $subject = $crm_template_data['subject'];
                     $subject = str_replace('{Client First Name}', $first_name, $subject);
 
                     $message = $crm_template_data['description'];
-                    $message = str_replace('{Client First Name}',$first_name, $message);
-                    $message = str_replace('{Visa Valid Upto}',$visaExpiry, $message);
-                    $message = str_replace('{Company Name}',$FROM_MAIL_COMPANY_NAME, $message);
+                    $message = str_replace('{Client First Name}', $first_name, $message);
+                    $message = str_replace('{Visa Valid Upto}', $visaExpiry, $message);
+                    $message = str_replace('{Company Name}', $FROM_MAIL_COMPANY_NAME, $message);
 
                     $consumerGuideLink = '<br><br>Consumer guide: <a href="https://www.mara.gov.au/get-help-visa-subsite/FIles/consumer_guide_english.pdf">https://www.mara.gov.au/get-help-visa-subsite/FIles/consumer_guide_english.pdf</a>';
                     $message .= $consumerGuideLink;
 
-                    $ccarray = array();
-                    $array = array();
+                    $ccarray = [];
+                    $array = [];
 
                     $mail_sent = $this->send_compose_template($message, '', $to_email, $subject, $from_email, $array, @$ccarray, (int) $val->id);
-                    if($mail_sent){
+                    if ($mail_sent) {
                         $this->info('Mail is sent.');
                         // is_visa_expire_mail_sent column dropped Phase 4 - no tracking
                     } else {

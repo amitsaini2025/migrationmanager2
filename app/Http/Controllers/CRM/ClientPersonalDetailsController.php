@@ -33,6 +33,7 @@ use App\Services\ClientEditService;
 use App\Services\EnglishProficiencyService;
 use App\Services\LeadFollowUpNoteService;
 use App\Services\PointsService;
+use App\Support\CurrentVisaExpiry;
 use App\Support\LeadSources;
 use App\Support\LmtMatterWriter;
 use App\Support\StaffClientVisibility;
@@ -1104,7 +1105,6 @@ class ClientPersonalDetailsController extends Controller
 
                             $obj->visa_type = '';
                             $obj->country_passport = $requestData['visa_country'][0];
-                            $obj->visaExpiry = '';
                             $obj->save();
                         }
                     }
@@ -1134,18 +1134,17 @@ class ClientPersonalDetailsController extends Controller
                             if ($count_visa > 0) {
                                 $lastVisaCountry = $requestData['visa_country'][0];
                                 $lastVisaType = end($requestData['visa_type_hidden']);
-                                $lastVisaExpiryDate = end($requestData['visa_expiry_date']);
                                 // Check if the last visa details are not empty before assigning
                                 if (! empty($lastVisaType) && ! empty($lastVisaCountry)) {
                                     $obj->visa_type = $lastVisaType;
                                     $obj->country_passport = $lastVisaCountry;
-                                    $obj->visaExpiry = $lastVisaExpiryDate;
                                     $obj->save();
                                 }
                             }
                         }
                     }
                 }
+                CurrentVisaExpiry::sync($obj);
             }
 
             // Address Start Code
@@ -3566,6 +3565,8 @@ class ClientPersonalDetailsController extends Controller
                     );
                 }
             }
+
+            CurrentVisaExpiry::sync($client);
 
             return response()->json([
                 'success' => true,

@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Branch;
 use App\Models\Staff;
 use App\Models\StaffLoginLog;
 use App\Models\Team;
-use App\Models\Branch;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -16,14 +16,6 @@ class ActiveStaffService
     /**
      * Fetch active staff leveraging session and login logs.
      *
-     * @param  int  $onlineThresholdMinutes
-     * @param  string|null  $search
-     * @param  int|null  $roleId
-     * @param  int|null  $teamId
-     * @param  string|null  $sortBy
-     * @param  string  $sortDir
-     * @param  int  $perPage
-     * @param  int  $page
      * @return array{data: Collection, meta: array}
      */
     public function getActiveStaff(
@@ -36,9 +28,10 @@ class ActiveStaffService
         int $perPage = 15,
         int $page = 1
     ): array {
-        $cacheKey = "active_staff_{$onlineThresholdMinutes}_" . md5(json_encode([$search, $roleId, $teamId, $sortBy, $sortDir]));
+        $cacheKey = 'active_staff_v2_'.$onlineThresholdMinutes.'_'.md5(json_encode([$search, $roleId, $teamId, $sortBy, $sortDir]));
 
-        $result = Cache::remember($cacheKey, 30, function () use ($onlineThresholdMinutes, $search, $roleId, $teamId, $sortBy, $sortDir) {
+        /** @var list<array<string, mixed>> $cachedRows */
+        $cachedRows = Cache::remember($cacheKey, 30, function () use ($onlineThresholdMinutes, $search, $roleId, $teamId, $sortBy, $sortDir): array {
             $threshold = Carbon::now()->subMinutes($onlineThresholdMinutes)->timestamp;
 
             $sessions = DB::table('sessions')
@@ -58,7 +51,7 @@ class ActiveStaffService
             $staffIds = $sessions->keys();
 
             if ($staffIds->isEmpty()) {
-                return collect();
+                return [];
             }
 
             $query = Staff::query()
@@ -71,8 +64,8 @@ class ActiveStaffService
                 $query->where(function ($q) use ($search) {
                     $searchLower = strtolower($search);
                     $q->whereRaw('LOWER(first_name) LIKE ?', ["%{$searchLower}%"])
-                      ->orWhereRaw('LOWER(last_name) LIKE ?', ["%{$searchLower}%"])
-                      ->orWhereRaw('LOWER(email) LIKE ?', ["%{$searchLower}%"]);
+                        ->orWhereRaw('LOWER(last_name) LIKE ?', ["%{$searchLower}%"])
+                        ->orWhereRaw('LOWER(email) LIKE ?', ["%{$searchLower}%"]);
                 });
             }
 
@@ -142,8 +135,10 @@ class ActiveStaffService
                 }, SORT_REGULAR, $sortDir === 'desc');
             }
 
-            return $mapped->values();
+            return $mapped->values()->all();
         });
+
+        $result = collect(is_array($cachedRows) ? $cachedRows : []);
 
         // Apply pagination
         $total = $result->count();

@@ -49,6 +49,9 @@ python_services/start_services.sh
 # Graphify knowledge graph (local-only generated output)
 graphify-out/
 
+# Employer spreadsheet import workbooks (keep off the public web root)
+/import/
+
 # Postman local collection sync (workspace-linked v3 YAML)
 .postman/
 postman/

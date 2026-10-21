@@ -73,7 +73,7 @@ final class MatterTypeCatalog
             str_contains($label, 'standard business sponsorship') => self::company('Standard Business Sponsorship', 'sponsorship', null),
             str_contains($label, 'temporary activities sponsorship'),
             str_contains($label, 'temporary activity sponsorship') => self::company('Temporary Activities Sponsorship', 'sponsorship', null),
-            str_contains($label, 'designated area migration agreement') => self::company('Designated Area Migration Agreement', 'sponsorship', null),
+            str_contains($label, 'designated area migration agreement'),
             $label === 'labour agreement' => self::company('Labour Agreement-DAMA', 'sponsorship', null),
             str_contains($label, 'skills in demand') => self::company('Skill in Demand Nomination - Core Skills', 'nomination', null),
             $label === 'employer nomination' => self::company('Employer Nomination Scheme', 'nomination', null),

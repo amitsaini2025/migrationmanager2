@@ -54,6 +54,7 @@ class EmployerSpreadsheetImportTest extends TestCase
 
         $this->assertNull(MatterTypeCatalog::match('Temporary Skill Shortage Nomination', 'Sponsor', 'direct-entry'));
         $this->assertSame('Standard Business Sponsorship', MatterTypeCatalog::match('Standard Business Sponsorship', 'Sponsor', 'direct-entry')['title']);
+        $this->assertSame('Labour Agreement-DAMA', MatterTypeCatalog::match('Designated Area Migration Agreement', 'Sponsor', 'direct-entry')['title']);
         $this->assertSame(0, MatterTypeCatalog::isActiveFileStatus('File Closed') ? 1 : 0);
     }
 

@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Services;
 
+use App\Http\Middleware\TrackStaffCrmActivity;
 use App\Models\Staff;
 use App\Services\ActiveStaffService;
 use Carbon\Carbon;
@@ -27,12 +28,39 @@ class ActiveStaffServiceTest extends TestCase
     }
 
     #[Test]
-    public function returns_empty_list_when_no_recent_sessions(): void
+    public function returns_empty_list_when_no_recent_presence(): void
     {
         $result = $this->service->getActiveStaff(5);
 
         $this->assertSame([], $result['data']->all());
         $this->assertSame(0, $result['meta']['total']);
+    }
+
+    #[Test]
+    public function lists_staff_with_recent_crm_activity_logs(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-21 12:00:00'));
+
+        Staff::query()->create([
+            'first_name' => 'Alex',
+            'last_name' => 'Active',
+            'email' => 'alex-active@test.com',
+            'password' => Hash::make('password'),
+            'role' => 2,
+            'status' => 1,
+        ]);
+
+        DB::table('staff_login_logs')->insert([
+            'user_id' => 1,
+            'message' => TrackStaffCrmActivity::ACTIVITY_MESSAGE,
+            'created_at' => Carbon::now()->subMinutes(2),
+            'updated_at' => Carbon::now()->subMinutes(1),
+        ]);
+
+        $result = $this->service->getActiveStaff(5);
+
+        $this->assertSame(1, $result['meta']['total']);
+        $this->assertSame('Alex Active', $result['data']->first()['name']);
     }
 
     #[Test]
@@ -55,7 +83,7 @@ class ActiveStaffServiceTest extends TestCase
             'last_activity' => Carbon::now()->timestamp,
         ]);
 
-        $cacheKey = 'active_staff_v2_5_'.md5(json_encode([null, null, null, 'name', 'asc']));
+        $cacheKey = 'active_staff_v3_5_'.md5(json_encode([null, null, null, 'name', 'asc']));
 
         $first = $this->service->getActiveStaff(5);
         $cached = Cache::get($cacheKey);

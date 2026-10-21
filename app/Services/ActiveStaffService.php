@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Middleware\TrackStaffCrmActivity;
 use App\Models\Branch;
 use App\Models\Staff;
 use App\Models\StaffLoginLog;
@@ -28,27 +29,13 @@ class ActiveStaffService
         int $perPage = 15,
         int $page = 1
     ): array {
-        $cacheKey = 'active_staff_v2_'.$onlineThresholdMinutes.'_'.md5(json_encode([$search, $roleId, $teamId, $sortBy, $sortDir]));
+        $cacheKey = 'active_staff_v3_'.$onlineThresholdMinutes.'_'.md5(json_encode([$search, $roleId, $teamId, $sortBy, $sortDir]));
 
         /** @var list<array<string, mixed>> $cachedRows */
         $cachedRows = Cache::remember($cacheKey, 30, function () use ($onlineThresholdMinutes, $search, $roleId, $teamId, $sortBy, $sortDir): array {
-            $threshold = Carbon::now()->subMinutes($onlineThresholdMinutes)->timestamp;
+            $presenceByStaffId = $this->resolveRecentPresenceByStaffId($onlineThresholdMinutes);
 
-            $sessions = DB::table('sessions')
-                ->select(['user_id', 'last_activity'])
-                ->whereNotNull('user_id')
-                ->where('last_activity', '>=', $threshold)
-                ->get()
-                ->groupBy(fn ($session) => (int) $session->user_id)
-                ->map(function ($records) {
-                    $latest = $records->max('last_activity');
-
-                    return [
-                        'last_activity' => Carbon::createFromTimestamp((int) $latest),
-                    ];
-                });
-
-            $staffIds = $sessions->keys();
+            $staffIds = $presenceByStaffId->keys();
 
             if ($staffIds->isEmpty()) {
                 return [];
@@ -100,8 +87,8 @@ class ActiveStaffService
             $teams = Team::whereIn('id', $teamIds)->get()->keyBy('id');
             $offices = Branch::whereIn('id', $officeIds)->get()->keyBy('id');
 
-            $mapped = $staffList->map(function (Staff $staff) use ($sessions, $teams, $offices) {
-                $session = $sessions->get($staff->id);
+            $mapped = $staffList->map(function (Staff $staff) use ($presenceByStaffId, $teams, $offices) {
+                $session = $presenceByStaffId->get($staff->id);
                 $lastLogin = $this->resolveLastLogin($staff->id, $staff->updated_at);
                 $team = $staff->team ? $teams->get($staff->team) : null;
                 $office = $staff->office_id ? $offices->get($staff->office_id) : null;
@@ -156,6 +143,72 @@ class ActiveStaffService
                 'generated_at' => now()->toIso8601String(),
             ],
         ];
+    }
+
+    /**
+     * Staff considered online: CRM presence logs (Redis session environments) plus DB sessions when used.
+     *
+     * @return Collection<int, array{last_activity: Carbon}>
+     */
+    protected function resolveRecentPresenceByStaffId(int $onlineThresholdMinutes): Collection
+    {
+        $presence = $this->presenceFromDatabaseSessions($onlineThresholdMinutes);
+
+        foreach ($this->presenceFromCrmActivityLogs($onlineThresholdMinutes) as $staffId => $activity) {
+            $existing = $presence->get($staffId);
+            if ($existing === null || $activity['last_activity']->gt($existing['last_activity'])) {
+                $presence->put($staffId, $activity);
+            }
+        }
+
+        return $presence;
+    }
+
+    /**
+     * @return Collection<int, array{last_activity: Carbon}>
+     */
+    protected function presenceFromDatabaseSessions(int $onlineThresholdMinutes): Collection
+    {
+        $threshold = Carbon::now()->subMinutes($onlineThresholdMinutes)->timestamp;
+
+        return DB::table('sessions')
+            ->select(['user_id', 'last_activity'])
+            ->whereNotNull('user_id')
+            ->where('last_activity', '>=', $threshold)
+            ->get()
+            ->groupBy(fn ($session) => (int) $session->user_id)
+            ->map(function ($records) {
+                $latest = $records->max('last_activity');
+
+                return [
+                    'last_activity' => Carbon::createFromTimestamp((int) $latest),
+                ];
+            });
+    }
+
+    /**
+     * @return Collection<int, array{last_activity: Carbon}>
+     */
+    protected function presenceFromCrmActivityLogs(int $onlineThresholdMinutes): Collection
+    {
+        $cutoff = Carbon::now()->subMinutes($onlineThresholdMinutes);
+
+        return StaffLoginLog::query()
+            ->select(['user_id', DB::raw('MAX(updated_at) as last_activity_at')])
+            ->where('message', TrackStaffCrmActivity::ACTIVITY_MESSAGE)
+            ->where('updated_at', '>=', $cutoff)
+            ->whereNotNull('user_id')
+            ->groupBy('user_id')
+            ->get()
+            ->mapWithKeys(function ($row) {
+                $staffId = (int) $row->user_id;
+
+                return [
+                    $staffId => [
+                        'last_activity' => Carbon::parse($row->last_activity_at),
+                    ],
+                ];
+            });
     }
 
     /**

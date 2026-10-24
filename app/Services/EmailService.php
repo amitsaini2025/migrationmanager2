@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\Mail;
 class EmailService
 {
     /**
-     * Mailer names that may fail over from SES to a mailbox Zoho SMTP.
+     * Mailer names that may fail over from AWS SMTP to a mailbox Zoho SMTP.
      *
      * @var list<string>
      */
-    private const FAILOVER_DEFAULTS = ['failover', 'sendgrid', 'ses', 'zoho'];
+    private const FAILOVER_DEFAULTS = ['failover', 'sendgrid', 'smtp', 'ses', 'zoho'];
 
     /**
      * Get all active email configurations.
@@ -98,8 +98,8 @@ class EmailService
     }
 
     /**
-     * SES first, then this mailbox's Zoho SMTP when a password is stored.
-     * Array/log/smtp test mailers are left unchanged.
+     * AWS SMTP first, then this mailbox's Zoho SMTP when a password is stored.
+     * Array/log drivers (and a plain smtp default without mailbox password) stay unchanged.
      */
     public function composeMailerName(?Email $account): string
     {
@@ -161,7 +161,7 @@ class EmailService
             ],
             "mail.mailers.{$failoverMailer}" => [
                 'transport' => 'failover',
-                'mailers' => ['ses', $zohoMailer],
+                'mailers' => ['smtp', $zohoMailer],
                 'retry_after' => 60,
             ],
         ]);

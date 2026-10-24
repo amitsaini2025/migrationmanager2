@@ -9,14 +9,15 @@ use Tests\TestCase;
 class OutboundMailerConfigTest extends TestCase
 {
     #[Test]
-    public function failover_mailer_tries_ses_then_zoho(): void
+    public function failover_mailer_tries_aws_smtp_then_zoho(): void
     {
+        $this->assertSame('smtp', config('mail.mailers.smtp.transport'));
         $this->assertSame('ses', config('mail.mailers.ses.transport'));
         $this->assertSame('smtp', config('mail.mailers.zoho.transport'));
         $this->assertSame('smtp.zoho.com', config('mail.mailers.zoho.host'));
         $this->assertSame('failover', config('mail.mailers.failover.transport'));
-        $this->assertSame(['ses', 'zoho'], config('mail.mailers.failover.mailers'));
-        $this->assertSame(['ses', 'zoho'], config('mail.mailers.sendgrid.mailers'));
+        $this->assertSame(['smtp', 'zoho'], config('mail.mailers.failover.mailers'));
+        $this->assertSame(['smtp', 'zoho'], config('mail.mailers.sendgrid.mailers'));
     }
 
     #[Test]

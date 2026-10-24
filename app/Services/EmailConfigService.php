@@ -178,7 +178,7 @@ class EmailConfigService
 
     /**
      * Resolve EOI From + mailer. Adelaide uses adelaide@; Melbourne/other offices
-     * use admin@. Both try SES first, then that mailbox's Zoho SMTP from emails.
+     * use admin@. Both try AWS SMTP first, then that mailbox's Zoho SMTP from emails.
      *
      * @return array{from: array{from_address: string, from_name: string, email_signature?: string}|null, mailer: string|null}
      */

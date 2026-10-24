@@ -35,7 +35,7 @@ return [
     ],
 
     /*
-    | CRM outbound (AWS SES, Zoho failover). From dropdown + send validation.
+    | CRM outbound (AWS SMTP primary, Zoho failover). From dropdown + send validation.
     | SES_SENDERS: comma-separated verified @bansalimmigration.com.au addresses.
     */
     'ses_crm' => [

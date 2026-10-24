@@ -37,6 +37,25 @@ return [
 
     'mailers' => [
 
+        /*
+         * Primary outbound: AWS SES SMTP (Mail Manager / SES SMTP credentials).
+         * Kept as the first hop in failover; Zoho is the fallback.
+         */
+        'smtp' => [
+            'transport' => 'smtp',
+            'host' => env('MAIL_HOST', 'email-smtp.ap-southeast-2.amazonaws.com'),
+            'port' => (int) env('MAIL_PORT', 587),
+            'username' => env('MAIL_USERNAME'),
+            'password' => env('MAIL_PASSWORD'),
+            'encryption' => env('MAIL_ENCRYPTION', 'tls'),
+            'timeout' => null,
+            'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+        ],
+
+        /*
+         * Legacy SES API transport — kept so explicit Mail::mailer('ses') callers
+         * still resolve. Outbound failover no longer uses this as primary.
+         */
         'ses' => [
             'transport' => 'ses',
         ],
@@ -55,7 +74,7 @@ return [
         'failover' => [
             'transport' => 'failover',
             'mailers' => [
-                'ses',
+                'smtp',
                 'zoho',
             ],
             'retry_after' => 60,
@@ -63,12 +82,12 @@ return [
 
         /*
          * Deprecated name kept so queued jobs that still address "sendgrid"
-         * keep sending via SES → Zoho instead of a missing mailer.
+         * keep sending via AWS SMTP → Zoho instead of a missing mailer.
          */
         'sendgrid' => [
             'transport' => 'failover',
             'mailers' => [
-                'ses',
+                'smtp',
                 'zoho',
             ],
             'retry_after' => 60,
@@ -95,7 +114,7 @@ return [
         'roundrobin' => [
             'transport' => 'roundrobin',
             'mailers' => [
-                'ses',
+                'smtp',
                 'zoho',
             ],
         ],

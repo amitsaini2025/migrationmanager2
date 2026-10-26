@@ -10,7 +10,7 @@ use Tests\TestCase;
 class EmailServiceComposeMailerTest extends TestCase
 {
     #[Test]
-    public function mailbox_with_password_uses_aws_smtp_then_that_zoho_account(): void
+    public function mailbox_with_password_uses_that_zoho_account_then_aws_smtp(): void
     {
         config(['mail.default' => 'failover']);
 
@@ -28,13 +28,13 @@ class EmailServiceComposeMailerTest extends TestCase
 
         $this->assertSame('failover', config("mail.mailers.{$mailer}.transport"));
         $this->assertIsArray($chain);
-        $this->assertSame('smtp', $chain[0]);
-        $this->assertSame('student2@bansalimmigration.com.au', config("mail.mailers.{$chain[1]}.username"));
-        $this->assertSame('mailbox-secret', config("mail.mailers.{$chain[1]}.password"));
-        $this->assertSame('smtp.zoho.com', config("mail.mailers.{$chain[1]}.host"));
-        $this->assertSame(587, (int) config("mail.mailers.{$chain[1]}.port"));
-        $this->assertSame('tls', config("mail.mailers.{$chain[1]}.encryption"));
-        $this->assertSame(['smtp', 'zoho'], config('mail.mailers.failover.mailers'));
+        $this->assertSame('smtp', $chain[1]);
+        $this->assertSame('student2@bansalimmigration.com.au', config("mail.mailers.{$chain[0]}.username"));
+        $this->assertSame('mailbox-secret', config("mail.mailers.{$chain[0]}.password"));
+        $this->assertSame('smtp.zoho.com', config("mail.mailers.{$chain[0]}.host"));
+        $this->assertSame(587, (int) config("mail.mailers.{$chain[0]}.port"));
+        $this->assertSame('tls', config("mail.mailers.{$chain[0]}.encryption"));
+        $this->assertSame(['zoho', 'smtp'], config('mail.mailers.failover.mailers'));
     }
 
     #[Test]
@@ -48,7 +48,7 @@ class EmailServiceComposeMailerTest extends TestCase
         ]);
 
         $this->assertSame('failover', (new EmailService)->composeMailerName($account));
-        $this->assertSame(['smtp', 'zoho'], config('mail.mailers.failover.mailers'));
+        $this->assertSame(['zoho', 'smtp'], config('mail.mailers.failover.mailers'));
     }
 
     #[Test]

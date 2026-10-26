@@ -38,8 +38,8 @@ return [
     'mailers' => [
 
         /*
-         * Primary outbound: AWS SES SMTP (Mail Manager / SES SMTP credentials).
-         * Kept as the first hop in failover; Zoho is the fallback.
+         * AWS SES SMTP (Mail Manager / SES SMTP credentials).
+         * Temporary: Zoho is first in failover until AWS SMTP delivery is confirmed.
          */
         'smtp' => [
             'transport' => 'smtp',
@@ -74,21 +74,21 @@ return [
         'failover' => [
             'transport' => 'failover',
             'mailers' => [
-                'smtp',
                 'zoho',
+                'smtp',
             ],
             'retry_after' => 60,
         ],
 
         /*
          * Deprecated name kept so queued jobs that still address "sendgrid"
-         * keep sending via AWS SMTP → Zoho instead of a missing mailer.
+         * keep sending via Zoho → AWS SMTP instead of a missing mailer.
          */
         'sendgrid' => [
             'transport' => 'failover',
             'mailers' => [
-                'smtp',
                 'zoho',
+                'smtp',
             ],
             'retry_after' => 60,
         ],
@@ -114,8 +114,8 @@ return [
         'roundrobin' => [
             'transport' => 'roundrobin',
             'mailers' => [
-                'smtp',
                 'zoho',
+                'smtp',
             ],
         ],
 

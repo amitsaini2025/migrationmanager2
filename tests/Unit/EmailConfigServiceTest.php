@@ -211,10 +211,10 @@ class EmailConfigServiceTest extends TestCase
         $this->assertNotSame('failover', $context['mailer']);
 
         $chain = config("mail.mailers.{$context['mailer']}.mailers");
-        $this->assertSame('smtp', $chain[0]);
-        $this->assertSame('admin@bansalimmigration.com.au', config("mail.mailers.{$chain[1]}.username"));
-        $this->assertSame('admin-secret', config("mail.mailers.{$chain[1]}.password"));
-        $this->assertSame(['smtp', 'zoho'], config('mail.mailers.failover.mailers'));
+        $this->assertSame('smtp', $chain[1]);
+        $this->assertSame('admin@bansalimmigration.com.au', config("mail.mailers.{$chain[0]}.username"));
+        $this->assertSame('admin-secret', config("mail.mailers.{$chain[0]}.password"));
+        $this->assertSame(['zoho', 'smtp'], config('mail.mailers.failover.mailers'));
     }
 
     #[Test]
@@ -247,10 +247,10 @@ class EmailConfigServiceTest extends TestCase
         $this->assertNotSame('failover', $context['mailer']);
 
         $chain = config("mail.mailers.{$context['mailer']}.mailers");
-        $this->assertSame('smtp', $chain[0]);
-        $this->assertSame('Adelaide@bansalimmigration.com.au', config("mail.mailers.{$chain[1]}.username"));
-        $this->assertSame('adelaide-secret', config("mail.mailers.{$chain[1]}.password"));
-        $this->assertSame(['smtp', 'zoho'], config('mail.mailers.failover.mailers'));
+        $this->assertSame('smtp', $chain[1]);
+        $this->assertSame('Adelaide@bansalimmigration.com.au', config("mail.mailers.{$chain[0]}.username"));
+        $this->assertSame('adelaide-secret', config("mail.mailers.{$chain[0]}.password"));
+        $this->assertSame(['zoho', 'smtp'], config('mail.mailers.failover.mailers'));
     }
 
     #[Test]

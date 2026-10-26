@@ -1725,7 +1725,11 @@ public function getChapters(Request $request)
 			} catch (\Exception $s3Ex) {
 				Log::warning('CRM sent email S3 storage failed (email still sent)', ['error' => $s3Ex->getMessage()]);
 			}
-			$this->recordChecklistEmailReminderIfRequested($requestData, $clientMatterId, $checklistWasSent);
+			$this->recordChecklistEmailReminderIfRequested(
+				$requestData,
+				$clientMatterId !== null && $clientMatterId !== '' ? (int) $clientMatterId : null,
+				$checklistWasSent
+			);
 			if ($request->ajax() || $request->wantsJson()) {
 				return response()->json([
 					'status' => true,
@@ -1761,7 +1765,7 @@ public function getChapters(Request $request)
 	/**
 	 * Log a visa-sheet email reminder when staff sent from the checklist reminder popup.
 	 */
-	private function recordChecklistEmailReminderIfRequested(array $requestData, int $clientMatterId, bool $checklistWasSent): void
+	private function recordChecklistEmailReminderIfRequested(array $requestData, ?int $clientMatterId, bool $checklistWasSent): void
 	{
 		if (($requestData['checklist_reminder_type'] ?? '') !== 'email') {
 			return;

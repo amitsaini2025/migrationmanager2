@@ -11,11 +11,11 @@ use Illuminate\Support\Facades\Log;
 class BansalAppointmentRecoveryService
 {
     public const APPOINTMENT_NOT_FOUND_SYNC_ERROR = 'Appointment not found';
+
     public function __construct(
         protected BansalApiClient $apiClient,
         protected RetryInvalidEnquirySyncService $createService
-    ) {
-    }
+    ) {}
 
     public static function isUnsyncedBansalId(?int $bansalAppointmentId): bool
     {
@@ -68,18 +68,18 @@ class BansalAppointmentRecoveryService
         $query = BookingAppointment::query()
             ->where('sync_status', 'error')
             ->where(function (Builder $query): void {
-                $query->where('sync_error', 'like', '%' . self::APPOINTMENT_NOT_FOUND_SYNC_ERROR . '%')
+                $query->where('sync_error', 'like', '%'.self::APPOINTMENT_NOT_FOUND_SYNC_ERROR.'%')
                     ->orWhere('sync_error', 'like', '%status code 404%');
             })
             ->where(function (Builder $query): void {
                 foreach (RetryInvalidEnquirySyncService::invalidEnquirySyncErrors() as $invalidEnquiryError) {
                     $query->where('sync_error', '!=', $invalidEnquiryError);
                 }
-                $query->where('sync_error', 'not like', '%' . RetryInvalidEnquirySyncService::INVALID_ENQUIRY_SYNC_ERROR . '%');
+                $query->where('sync_error', 'not like', '%'.RetryInvalidEnquirySyncService::INVALID_ENQUIRY_SYNC_ERROR.'%');
             })
             ->where('status', '!=', 'cancelled');
 
-        if (!$includePast) {
+        if (! $includePast) {
             $query->whereDate(
                 'appointment_datetime',
                 '>=',
@@ -182,7 +182,7 @@ class BansalAppointmentRecoveryService
             }
 
             $recovery = $this->recoverWithCreate($appointment, 'Temporary Bansal appointment ID detected during status sync.');
-            if (!$recovery['synced']) {
+            if (! $recovery['synced']) {
                 return $recovery;
             }
 
@@ -193,7 +193,7 @@ class BansalAppointmentRecoveryService
             'cancelled' => 'cancel',
             'completed' => 'complete',
             'confirmed' => 'confirm',
-            'paid' => 'pay',
+            'paid' => 'paid',
             default => null,
         };
 
@@ -212,7 +212,7 @@ class BansalAppointmentRecoveryService
         } catch (Exception $e) {
             if (self::shouldRecoverWithCreate($e->getMessage()) && $status !== 'cancelled') {
                 $recovery = $this->recoverWithCreate($appointment, $e->getMessage());
-                if (!$recovery['synced']) {
+                if (! $recovery['synced']) {
                     return $recovery;
                 }
 
@@ -313,7 +313,7 @@ class BansalAppointmentRecoveryService
             $appointments = $response['data'] ?? [];
 
             foreach ($appointments as $row) {
-                if (!is_array($row)) {
+                if (! is_array($row)) {
                     continue;
                 }
 
@@ -323,7 +323,7 @@ class BansalAppointmentRecoveryService
                 }
 
                 $rowMinute = null;
-                if (!empty($row['appointment_datetime'])) {
+                if (! empty($row['appointment_datetime'])) {
                     $rowMinute = Carbon::parse($row['appointment_datetime'])->format('Y-m-d H:i');
                 }
 
@@ -361,22 +361,22 @@ class BansalAppointmentRecoveryService
         }
 
         if ($originalError !== null && $originalError !== '') {
-            return 'Failed to create appointment on website. Original error: ' . $originalError;
+            return 'Failed to create appointment on website. Original error: '.$originalError;
         }
 
-        return 'Failed to create appointment on website: ' . $message;
+        return 'Failed to create appointment on website: '.$message;
     }
 
     protected function isBansalIdLinkable(BookingAppointment $appointment, int $bansalAppointmentId): bool
     {
-        return !BookingAppointment::where('bansal_appointment_id', $bansalAppointmentId)
+        return ! BookingAppointment::where('bansal_appointment_id', $bansalAppointmentId)
             ->where('id', '!=', $appointment->id)
             ->exists();
     }
 
     protected function assertBansalIdIsLinkable(BookingAppointment $appointment, int $bansalAppointmentId): void
     {
-        if (!$this->isBansalIdLinkable($appointment, $bansalAppointmentId)) {
+        if (! $this->isBansalIdLinkable($appointment, $bansalAppointmentId)) {
             throw new Exception(
                 "Bansal appointment ID {$bansalAppointmentId} is already linked to another CRM record."
             );

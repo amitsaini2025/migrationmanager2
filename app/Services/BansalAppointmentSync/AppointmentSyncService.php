@@ -707,7 +707,7 @@ class AppointmentSyncService
             'cancelled' => 'cancel',
             'completed' => 'complete',
             'confirmed' => 'confirm',
-            'paid' => 'pay',
+            'paid' => 'paid',
             default => null,
         };
 

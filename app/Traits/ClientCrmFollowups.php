@@ -3315,7 +3315,8 @@ trait ClientCrmFollowups
     }
 
     /**
-     * Reverse a dd/mm/yyyy search to yyyy/mm/dd for admins.dob. Incomplete slash queries stay empty.
+     * Parse a dd/mm/yyyy search into Y-m-d for admins.dob.
+     * Incomplete, 2-digit-year, or invalid calendar dates stay empty (skip DOB equality).
      */
     protected function globalSearchDobFromQuery(string $squery): string
     {
@@ -3328,7 +3329,27 @@ trait ClientCrmFollowups
             return '';
         }
 
-        return $dob[2].'/'.$dob[1].'/'.$dob[0];
+        $day = $dob[0];
+        $month = $dob[1];
+        $year = $dob[2];
+
+        if (! ctype_digit($day) || ! ctype_digit($month) || ! ctype_digit($year)) {
+            return '';
+        }
+
+        if (strlen($year) !== 4) {
+            return '';
+        }
+
+        $dayInt = (int) $day;
+        $monthInt = (int) $month;
+        $yearInt = (int) $year;
+
+        if (! checkdate($monthInt, $dayInt, $yearInt)) {
+            return '';
+        }
+
+        return sprintf('%04d-%02d-%02d', $yearInt, $monthInt, $dayInt);
     }
 
     /**

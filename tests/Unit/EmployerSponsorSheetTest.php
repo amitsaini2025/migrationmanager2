@@ -38,6 +38,8 @@ class EmployerSponsorSheetTest extends TestCase
         $this->assertSame('employer', $this->sheetType('nomination', 'Skill in Demand Nomination - Core Skills'));
         $this->assertSame('employer', $this->sheetType('TN 407', 'Training Nomination'));
         $this->assertSame('employer', $this->sheetType('DAMA', 'Labour Agreement-DAMA'));
+        $this->assertSame('employer', $this->sheetType('NominationENS', 'Employer Nomination Scheme'));
+        $this->assertSame('employer', $this->sheetType('DE', 'Employer Nomination Scheme'));
     }
 
     #[Test]

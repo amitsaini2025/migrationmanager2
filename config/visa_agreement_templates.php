@@ -73,7 +73,7 @@ return [
     /*
     | Company nomination template: only these company matters (nick_name or title marker).
     */
-    'company_nomination_matter_nick_names' => ['de', 'sesr', 'sidcoreskills', 'tn 407'],
+    'company_nomination_matter_nick_names' => ['nominationens', 'de', 'sesr', 'sidcoreskills', 'tn 407'],
 
     'company_nomination_title_markers' => [
         'training nomination',

@@ -25,6 +25,7 @@ use App\Models\ClientTestScore;
 use App\Models\ClientTravelInformation;
 use App\Models\ClientVisaCountry;
 use App\Models\Company;
+use App\Models\CompanyNomination;
 use App\Models\Country;
 use App\Models\Lead;
 use App\Models\Matter;
@@ -2342,7 +2343,8 @@ class ClientPersonalDetailsController extends Controller
             $positionTitle = trim($positionTitles[$i] ?? '');
             $clientId = $nominatedClientIds[$i] ?? null;
             $personName = trim($personNames[$i] ?? '');
-            $clientMatterId = ! empty($clientMatterIds[$i]) ? (int) $clientMatterIds[$i] : null;
+            $rowMatterIds = CompanyNomination::normalizeClientMatterIds($clientMatterIds[$i] ?? []);
+            $clientMatterId = $rowMatterIds[0] ?? null;
             if ($clientId && $personName) {
                 return response()->json([
                     'success' => false,
@@ -2350,15 +2352,15 @@ class ClientPersonalDetailsController extends Controller
                     'errors' => ['nomination_nominated' => ['Cannot have both nominated client and nominated person name.']],
                 ], 422);
             }
-            if (! $clientId && ! $personName && ! $positionTitle && ! $clientMatterId) {
+            if (! $clientId && ! $personName && ! $positionTitle && $rowMatterIds === []) {
                 continue;
             }
-            if ($clientMatterId) {
-                $validClientMatter = ClientMatter::query()
-                    ->where('id', $clientMatterId)
+            if ($rowMatterIds !== []) {
+                $validCount = ClientMatter::query()
+                    ->whereIn('id', $rowMatterIds)
                     ->where('client_id', $client->id)
-                    ->exists();
-                if (! $validClientMatter) {
+                    ->count();
+                if ($validCount !== count($rowMatterIds)) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Nomination '.($i + 1).': Selected matter is not valid for this company client.',
@@ -2366,7 +2368,7 @@ class ClientPersonalDetailsController extends Controller
                     ], 422);
                 }
             }
-            $company->nominations()->create([
+            $nomination = $company->nominations()->create([
                 'position_title' => $positionTitle ?: null,
                 'anzsco_code' => $anzscoCodes[$i] ?? null,
                 'position_description' => $descriptions[$i] ?? null,
@@ -2381,6 +2383,7 @@ class ClientPersonalDetailsController extends Controller
                 'expiry_date' => ! empty($expiries[$i]) ? $expiries[$i] : null,
                 'sort_order' => $i,
             ]);
+            $nomination->syncClientMatters($rowMatterIds);
         }
 
         return response()->json(['success' => true, 'message' => 'Nominations updated successfully']);

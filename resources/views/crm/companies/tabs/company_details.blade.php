@@ -252,10 +252,13 @@
                                 @endif
                             </span>
                         </div>
-                        @if($nom->clientMatter)
+                        @php
+                            $nomMatterLabels = $nom->clientMatterLabels();
+                        @endphp
+                        @if($nomMatterLabels->isNotEmpty())
                         <div class="field-group">
                             <span class="field-label">Matter:</span>
-                            <span class="field-value">{{ $nom->clientMatter->dropdownLabel() }}</span>
+                            <span class="field-value">{{ $nomMatterLabels->implode(', ') }}</span>
                         </div>
                         @endif
                     </div>

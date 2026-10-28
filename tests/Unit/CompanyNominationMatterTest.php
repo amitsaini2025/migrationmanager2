@@ -14,10 +14,12 @@ class CompanyNominationMatterTest extends TestCase
         $blade = file_get_contents($this->projectPath('resources/views/crm/clients/company_edit.blade.php'));
         Assert::assertNotFalse($blade);
 
-        Assert::assertStringContainsString('nomination_client_matter_ids[]', $blade);
-        Assert::assertStringContainsString('Select matter (optional)', $blade);
+        Assert::assertStringContainsString('nomination_client_matter_ids[', $blade);
+        Assert::assertStringContainsString('Select matter(s) (optional)', $blade);
+        Assert::assertStringContainsString('multiple="multiple"', $blade);
         Assert::assertStringContainsString('buildNominationMatterSelectHtml', $blade);
         Assert::assertStringContainsString('window.companyActiveClientMatters', $blade);
+        Assert::assertStringContainsString('reindexNominationMatterSelects', $blade);
         Assert::assertStringContainsString('nomination_nominated_client_ids[]', $blade);
     }
 
@@ -28,7 +30,9 @@ class CompanyNominationMatterTest extends TestCase
         Assert::assertNotFalse($controller);
 
         Assert::assertStringContainsString('nomination_client_matter_ids', $controller);
+        Assert::assertStringContainsString('CompanyNomination::normalizeClientMatterIds', $controller);
         Assert::assertStringContainsString("'client_matter_id' => \$clientMatterId", $controller);
+        Assert::assertStringContainsString('syncClientMatters', $controller);
     }
 
     #[Test]
@@ -39,6 +43,9 @@ class CompanyNominationMatterTest extends TestCase
 
         Assert::assertStringContainsString("'client_matter_id'", $model);
         Assert::assertStringContainsString('function clientMatter()', $model);
+        Assert::assertStringContainsString('function clientMatters()', $model);
+        Assert::assertStringContainsString('function syncClientMatters', $model);
+        Assert::assertStringContainsString('company_nomination_client_matter', $model);
     }
 
     #[Test]
@@ -47,9 +54,8 @@ class CompanyNominationMatterTest extends TestCase
         $blade = file_get_contents($this->projectPath('resources/views/crm/companies/tabs/company_details.blade.php'));
         Assert::assertNotFalse($blade);
 
-        Assert::assertStringContainsString('$nom->clientMatter', $blade);
+        Assert::assertStringContainsString('clientMatterLabels()', $blade);
         Assert::assertStringContainsString('field-label">Matter:', $blade);
-        Assert::assertStringContainsString('dropdownLabel()', $blade);
     }
 
     #[Test]
@@ -70,7 +76,30 @@ class CompanyNominationMatterTest extends TestCase
 
         Assert::assertStringContainsString('activeClientMattersForNomination', $service);
         Assert::assertStringContainsString('company.nominations.clientMatter.matter', $service);
+        Assert::assertStringContainsString('company.nominations.clientMatters.matter', $service);
         Assert::assertStringContainsString('getActiveClientMattersForNomination', $service);
+    }
+
+    #[Test]
+    public function pivot_migration_backfills_existing_client_matter_id_links(): void
+    {
+        $migration = file_get_contents($this->projectPath('database/migrations/2026_10_28_211151_create_company_nomination_client_matter_table.php'));
+        Assert::assertNotFalse($migration);
+
+        Assert::assertStringContainsString('company_nomination_client_matter', $migration);
+        Assert::assertStringContainsString('insertOrIgnore', $migration);
+        Assert::assertStringContainsString('client_matter_id', $migration);
+        Assert::assertStringContainsString('cascadeOnDelete', $migration);
+    }
+
+    #[Test]
+    public function visa_type_sheet_matches_nomination_matters_via_pivot_or_primary(): void
+    {
+        $controller = file_get_contents($this->projectPath('app/Http/Controllers/CRM/VisaTypeSheetController.php'));
+        Assert::assertNotFalse($controller);
+
+        Assert::assertStringContainsString('nominationMatchesMatterSql', $controller);
+        Assert::assertStringContainsString('company_nomination_client_matter', $controller);
     }
 
     private function projectPath(string $relative): string

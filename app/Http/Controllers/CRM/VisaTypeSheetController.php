@@ -1089,6 +1089,23 @@ class VisaTypeSheetController extends Controller
             && Schema::hasTable('company_sponsorships');
     }
 
+    /**
+     * Match a nomination by legacy primary client_matter_id and/or pivot links.
+     */
+    protected function nominationMatchesMatterSql(string $nominationAlias, string $matterIdColumn): string
+    {
+        $primary = "{$nominationAlias}.client_matter_id = {$matterIdColumn}";
+        if (! Schema::hasTable('company_nomination_client_matter')) {
+            return $primary;
+        }
+
+        return "({$primary} OR EXISTS ("
+            .'SELECT 1 FROM company_nomination_client_matter cncm '
+            ."WHERE cncm.company_nomination_id = {$nominationAlias}.id "
+            ."AND cncm.client_matter_id = {$matterIdColumn}"
+            .'))';
+    }
+
     protected function sponsorTypeLabel(?string $nick, array $config): string
     {
         $key = strtolower(trim((string) $nick));
@@ -1129,8 +1146,10 @@ class VisaTypeSheetController extends Controller
 
     protected function sponsorCompanyIdSql(string $clientIdColumn, string $matterIdColumn): string
     {
+        $match = $this->nominationMatchesMatterSql('cn', $matterIdColumn);
+
         return 'COALESCE('
-            ."(SELECT cn.company_id FROM company_nominations cn WHERE cn.client_matter_id = {$matterIdColumn} ORDER BY cn.sort_order ASC NULLS LAST, cn.id ASC LIMIT 1), "
+            ."(SELECT cn.company_id FROM company_nominations cn WHERE {$match} ORDER BY cn.sort_order ASC NULLS LAST, cn.id ASC LIMIT 1), "
             ."(SELECT c.id FROM companies c WHERE c.admin_id = {$clientIdColumn} ORDER BY c.id ASC LIMIT 1)"
             .')';
     }
@@ -1138,9 +1157,10 @@ class VisaTypeSheetController extends Controller
     protected function sponsorApprovalEndSql(string $clientIdColumn, string $matterIdColumn): string
     {
         $companyId = '('.$this->sponsorCompanyIdSql($clientIdColumn, $matterIdColumn).')';
+        $match = $this->nominationMatchesMatterSql('cn', $matterIdColumn);
 
         return 'COALESCE('
-            ."(SELECT cn.expiry_date FROM company_nominations cn WHERE cn.client_matter_id = {$matterIdColumn} ORDER BY cn.sort_order ASC NULLS LAST, cn.id ASC LIMIT 1), "
+            ."(SELECT cn.expiry_date FROM company_nominations cn WHERE {$match} ORDER BY cn.sort_order ASC NULLS LAST, cn.id ASC LIMIT 1), "
             ."(SELECT cs.sponsorship_end_date FROM company_sponsorships cs WHERE cs.company_id = {$companyId} ORDER BY cs.sort_order ASC NULLS LAST, cs.id ASC LIMIT 1), "
             ."(SELECT c.sponsorship_end_date FROM companies c WHERE c.id = {$companyId})"
             .')';
@@ -1175,8 +1195,9 @@ class VisaTypeSheetController extends Controller
         }
 
         $companyId = '('.$this->sponsorCompanyIdSql($clientIdColumn, $matterIdColumn).')';
-        $nomination = static function (string $column) use ($matterIdColumn): string {
-            return "SELECT {$column} FROM company_nominations cn WHERE cn.client_matter_id = {$matterIdColumn} ORDER BY cn.sort_order ASC NULLS LAST, cn.id ASC LIMIT 1";
+        $match = $this->nominationMatchesMatterSql('cn', $matterIdColumn);
+        $nomination = static function (string $column) use ($match): string {
+            return "SELECT {$column} FROM company_nominations cn WHERE {$match} ORDER BY cn.sort_order ASC NULLS LAST, cn.id ASC LIMIT 1";
         };
 
         $trn = 'COALESCE('
@@ -1187,7 +1208,7 @@ class VisaTypeSheetController extends Controller
 
         $linkedNominee = 'COALESCE('
             .'NULLIF(TRIM(('.$nomination('cn.nominated_person_name').")), ''), "
-            ."NULLIF(TRIM((SELECT CONCAT(COALESCE(na.first_name, ''), ' ', COALESCE(na.last_name, '')) FROM company_nominations cn INNER JOIN admins na ON na.id = cn.nominated_client_id WHERE cn.client_matter_id = {$matterIdColumn} ORDER BY cn.sort_order ASC NULLS LAST, cn.id ASC LIMIT 1)), '')"
+            ."NULLIF(TRIM((SELECT CONCAT(COALESCE(na.first_name, ''), ' ', COALESCE(na.last_name, '')) FROM company_nominations cn INNER JOIN admins na ON na.id = cn.nominated_client_id WHERE {$match} ORDER BY cn.sort_order ASC NULLS LAST, cn.id ASC LIMIT 1)), '')"
             .')';
         $nominationCount = "(SELECT COUNT(*) FROM company_nominations cn WHERE cn.company_id = {$companyId})";
         $onlyNominee = "NULLIF(TRIM((SELECT COALESCE(NULLIF(TRIM(cn.nominated_person_name), ''), NULLIF(TRIM(CONCAT(COALESCE(na.first_name, ''), ' ', COALESCE(na.last_name, ''))), '')) FROM company_nominations cn LEFT JOIN admins na ON na.id = cn.nominated_client_id WHERE cn.company_id = {$companyId} ORDER BY cn.sort_order ASC NULLS LAST, cn.id ASC LIMIT 1)), '')";

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\CRM;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\Staff;
+use App\Support\ArtMatterMatcher;
 use App\Support\StaffClientVisibility;
 use App\Traits\ClientAuthorization;
 use Carbon\Carbon;
@@ -90,6 +91,7 @@ class ArtSheetController extends Controller
      */
     protected function buildBaseQuery(Request $request)
     {
+        $artMatterCondition = ArtMatterMatcher::sqlCondition('m');
         $latestArtMatterSql = "
             SELECT DISTINCT ON (cm.client_id)
                 cm.client_id,
@@ -105,12 +107,7 @@ class ArtSheetController extends Controller
             FROM client_matters cm
             INNER JOIN matters m ON m.id = cm.sel_matter_id
             WHERE cm.matter_status = 1
-              AND (
-                  LOWER(COALESCE(m.nick_name, '')) = 'art'
-                  OR LOWER(COALESCE(m.title, '')) LIKE '%art%'
-                  OR LOWER(COALESCE(m.title, '')) LIKE '%administrative appeals%'
-                  OR LOWER(COALESCE(m.title, '')) LIKE '%tribunal%'
-              )
+              AND {$artMatterCondition}
             ORDER BY cm.client_id, cm.id DESC
         ";
 
@@ -307,12 +304,7 @@ class ArtSheetController extends Controller
 
     protected function getArtAgents()
     {
-        $artCondition = "cm.matter_status = 1 AND (
-            LOWER(COALESCE(m.nick_name, '')) = 'art'
-            OR LOWER(COALESCE(m.title, '')) LIKE '%art%'
-            OR LOWER(COALESCE(m.title, '')) LIKE '%administrative appeals%'
-            OR LOWER(COALESCE(m.title, '')) LIKE '%tribunal%'
-        )";
+        $artCondition = 'cm.matter_status = 1 AND '.ArtMatterMatcher::sqlCondition('m');
         $allIds = DB::table('client_matters as cm')
             ->join('matters as m', 'cm.sel_matter_id', '=', 'm.id')
             ->whereRaw($artCondition)
@@ -498,12 +490,7 @@ class ArtSheetController extends Controller
             ->where('cm.id', $matterInternalId)
             ->where('cm.client_id', $clientId)
             ->whereRaw('cm.matter_status = 1')
-            ->where(function ($q) {
-                $q->whereRaw("LOWER(COALESCE(m.nick_name, '')) = 'art'")
-                    ->orWhereRaw("LOWER(COALESCE(m.title, '')) LIKE '%art%'")
-                    ->orWhereRaw("LOWER(COALESCE(m.title, '')) LIKE '%administrative appeals%'")
-                    ->orWhereRaw("LOWER(COALESCE(m.title, '')) LIKE '%tribunal%'");
-            })
+            ->whereRaw(ArtMatterMatcher::sqlCondition('m'))
             ->select('cm.id', 'cm.client_id')
             ->first();
 

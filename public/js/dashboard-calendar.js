@@ -381,6 +381,66 @@
         });
     }
 
+    function placeMorePopover(pop, left, top) {
+        var box = pop.getBoundingClientRect();
+        var nextLeft = left;
+        var nextTop = top;
+        if (box.right > window.innerWidth - 8) {
+            nextLeft = Math.max(8, window.innerWidth - box.width - 8);
+        }
+        if (box.bottom > window.innerHeight - 8) {
+            nextTop = Math.max(8, window.innerHeight - box.height - 8);
+        }
+        if (nextLeft < 8) {
+            nextLeft = 8;
+        }
+        if (nextTop < 8) {
+            nextTop = 8;
+        }
+        pop.style.left = nextLeft + 'px';
+        pop.style.top = nextTop + 'px';
+    }
+
+    function liftMorePopover(pop) {
+        if (!pop || pop.dataset.lifted === '1') {
+            return;
+        }
+        pop.dataset.lifted = '1';
+        pop.classList.add('dashboard-cal-more-popover');
+        window.requestAnimationFrame(function () {
+            if (!pop.isConnected) {
+                return;
+            }
+            var rect = pop.getBoundingClientRect();
+            document.body.appendChild(pop);
+            pop.style.position = 'fixed';
+            pop.style.zIndex = '4000';
+            pop.style.margin = '0';
+            pop.style.width = Math.max(rect.width, 240) + 'px';
+            pop.style.left = rect.left + 'px';
+            pop.style.top = rect.top + 'px';
+            placeMorePopover(pop, rect.left, rect.top);
+            window.requestAnimationFrame(function () {
+                if (pop.isConnected) {
+                    placeMorePopover(pop, pop.getBoundingClientRect().left, pop.getBoundingClientRect().top);
+                }
+            });
+        });
+    }
+
+    function watchMorePopover(root) {
+        if (!root || typeof MutationObserver === 'undefined') {
+            return;
+        }
+        var observer = new MutationObserver(function () {
+            var pop = root.querySelector('.fc-more-popover');
+            if (pop) {
+                liftMorePopover(pop);
+            }
+        });
+        observer.observe(root, { childList: true, subtree: true });
+    }
+
     function initDashboardCalendar() {
         var el = calendarEl();
         if (!el) return;
@@ -452,6 +512,7 @@
             });
 
             calendar.render();
+            watchMorePopover(el);
             window.bookingFcCalendar = calendar;
             window.onBookingAppointmentChanged = function () {
                 calendar.refetchEvents();

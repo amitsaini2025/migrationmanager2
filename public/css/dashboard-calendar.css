@@ -255,6 +255,73 @@
     line-height: 1.15;
 }
 
+/* The +more list is moved onto the page so the calendar's overflow
+   does not clip it. Rows stay in normal flow instead of stacking. */
+.fc-more-popover.dashboard-cal-more-popover {
+    z-index: 4000;
+    width: 260px;
+    max-width: calc(100vw - 16px);
+    background: #fff;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgba(0, 87, 146, 0.18);
+    overflow: hidden;
+}
+
+.fc-more-popover.dashboard-cal-more-popover .fc-popover-header {
+    padding: 8px 10px;
+    background: #f4f7fc;
+}
+
+.fc-more-popover.dashboard-cal-more-popover .fc-popover-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 280px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.fc-more-popover.dashboard-cal-more-popover .fc-daygrid-event-harness,
+.fc-more-popover.dashboard-cal-more-popover .fc-daygrid-event-harness-abs {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    margin: 0 !important;
+    height: auto !important;
+    visibility: visible !important;
+}
+
+.fc-more-popover.dashboard-cal-more-popover .fc-event {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+    margin: 0;
+    padding: 3px 6px;
+    line-height: 1.3;
+    min-width: 0;
+}
+
+.fc-more-popover.dashboard-cal-more-popover .fc-daygrid-event-dot {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+.fc-more-popover.dashboard-cal-more-popover .fc-event-time {
+    flex: 0 0 auto;
+}
+
+.fc-more-popover.dashboard-cal-more-popover .fc-event-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
 .dashboard-calendar-container.fc .fc-daygrid-day-bottom {
     padding: 0 2px;
     font-size: 0.72em;

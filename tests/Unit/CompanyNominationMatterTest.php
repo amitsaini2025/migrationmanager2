@@ -17,6 +17,8 @@ class CompanyNominationMatterTest extends TestCase
         Assert::assertStringContainsString('nomination_client_matter_ids[', $blade);
         Assert::assertStringContainsString('Select matter(s) (optional)', $blade);
         Assert::assertStringContainsString('multiple="multiple"', $blade);
+        Assert::assertStringContainsString('nomination-matter-field', $blade);
+        Assert::assertStringContainsString('nomination-matter-dropdown', $blade);
         Assert::assertStringContainsString('buildNominationMatterSelectHtml', $blade);
         Assert::assertStringContainsString('window.companyActiveClientMatters', $blade);
         Assert::assertStringContainsString('reindexNominationMatterSelects', $blade);

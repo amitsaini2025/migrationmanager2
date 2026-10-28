@@ -17,6 +17,40 @@
     <link rel="stylesheet" href="{{ asset('css/address-autocomplete.css') }}">
     <link rel="stylesheet" href="{{asset('css/client-forms.css')}}">
     <link rel="stylesheet" href="{{asset('css/clients/edit-client-components.css')}}">
+    <style>
+        /* Nomination Matter multi-select: long labels need a full-width, taller control/dropdown */
+        .nomination-matter-field {
+            width: 100%;
+            max-width: 100%;
+        }
+        .nomination-matter-field .ts-wrapper {
+            width: 100% !important;
+            max-width: 100%;
+        }
+        .nomination-matter-field .ts-wrapper .ts-control {
+            min-height: 52px !important;
+            max-height: none !important;
+            flex-wrap: wrap !important;
+            align-items: flex-start !important;
+            padding: 8px 10px !important;
+        }
+        .nomination-matter-field .ts-wrapper .ts-control > .item {
+            white-space: normal !important;
+            line-height: 1.35 !important;
+            max-width: 100%;
+        }
+        .ts-dropdown.nomination-matter-dropdown {
+            min-width: min(720px, 92vw) !important;
+            width: max(100%, min(720px, 92vw)) !important;
+            max-height: 360px !important;
+        }
+        .ts-dropdown.nomination-matter-dropdown .option {
+            white-space: normal !important;
+            line-height: 1.4 !important;
+            padding-top: 8px !important;
+            padding-bottom: 8px !important;
+        }
+    </style>
 @endpush
 
 @section('content')
@@ -889,44 +923,44 @@
                                                 <label class="sr-only">Name (not in system)</label>
                                                 <input type="text" name="nomination_person_names[]" value="{{ $nom->nominated_person_name ?? '' }}" placeholder="Not in system - enter name only">
                                             </div>
-                                            <div style="flex:1;min-width:220px;">
-                                                <label>Matter</label>
-                                                <select name="nomination_client_matter_ids[{{ $idx }}][]" class="form-control nomination-matter-select mm-select-multiple" multiple="multiple" data-placeholder="Select matter(s) (optional)" style="width:100%;">
-                                                    @php
-                                                        $selectedMatterIds = collect();
-                                                        if ($nom instanceof \App\Models\CompanyNomination) {
-                                                            if ($nom->relationLoaded('clientMatters') && $nom->clientMatters->isNotEmpty()) {
-                                                                $selectedMatterIds = $nom->clientMatters->pluck('id');
-                                                            } elseif (! empty($nom->client_matter_id)) {
-                                                                $selectedMatterIds = collect([(int) $nom->client_matter_id]);
-                                                            }
-                                                        } elseif (! empty($nom->client_matter_id)) {
-                                                            $selectedMatterIds = collect([(int) $nom->client_matter_id]);
-                                                        }
-                                                        $selectedMatterIds = $selectedMatterIds->map(fn ($id) => (int) $id)->unique()->values();
-                                                        $matterOptions = $activeClientMattersForNomination;
-                                                        foreach ($selectedMatterIds as $selectedMatterId) {
-                                                            if (! $matterOptions->contains('id', (int) $selectedMatterId)) {
-                                                                $savedMatter = null;
-                                                                if ($nom instanceof \App\Models\CompanyNomination && $nom->relationLoaded('clientMatters')) {
-                                                                    $savedMatter = $nom->clientMatters->firstWhere('id', (int) $selectedMatterId);
-                                                                }
-                                                                if (! $savedMatter && $nom instanceof \App\Models\CompanyNomination && $nom->relationLoaded('clientMatter') && $nom->clientMatter && (int) $nom->clientMatter->id === (int) $selectedMatterId) {
-                                                                    $savedMatter = $nom->clientMatter;
-                                                                }
-                                                                if ($savedMatter) {
-                                                                    $matterOptions = $matterOptions->push($savedMatter);
-                                                                }
-                                                            }
-                                                        }
-                                                    @endphp
-                                                    @foreach($matterOptions as $clientMatterOption)
-                                                        <option value="{{ $clientMatterOption->id }}" {{ $selectedMatterIds->contains((int) $clientMatterOption->id) ? 'selected' : '' }}>{{ $clientMatterOption->dropdownLabel() }}</option>
-                                                    @endforeach
-                                                </select>
-                                                <small class="form-text text-muted">You can select more than one matter</small>
-                                            </div>
                                         </div>
+                                    </div>
+                                    <div class="form-group nomination-matter-field" style="margin-bottom:10px;">
+                                        <label>Matter</label>
+                                        <select name="nomination_client_matter_ids[{{ $idx }}][]" class="form-control nomination-matter-select mm-select-multiple" multiple="multiple" data-placeholder="Select matter(s) (optional)" style="width:100%;">
+                                            @php
+                                                $selectedMatterIds = collect();
+                                                if ($nom instanceof \App\Models\CompanyNomination) {
+                                                    if ($nom->relationLoaded('clientMatters') && $nom->clientMatters->isNotEmpty()) {
+                                                        $selectedMatterIds = $nom->clientMatters->pluck('id');
+                                                    } elseif (! empty($nom->client_matter_id)) {
+                                                        $selectedMatterIds = collect([(int) $nom->client_matter_id]);
+                                                    }
+                                                } elseif (! empty($nom->client_matter_id)) {
+                                                    $selectedMatterIds = collect([(int) $nom->client_matter_id]);
+                                                }
+                                                $selectedMatterIds = $selectedMatterIds->map(fn ($id) => (int) $id)->unique()->values();
+                                                $matterOptions = $activeClientMattersForNomination;
+                                                foreach ($selectedMatterIds as $selectedMatterId) {
+                                                    if (! $matterOptions->contains('id', (int) $selectedMatterId)) {
+                                                        $savedMatter = null;
+                                                        if ($nom instanceof \App\Models\CompanyNomination && $nom->relationLoaded('clientMatters')) {
+                                                            $savedMatter = $nom->clientMatters->firstWhere('id', (int) $selectedMatterId);
+                                                        }
+                                                        if (! $savedMatter && $nom instanceof \App\Models\CompanyNomination && $nom->relationLoaded('clientMatter') && $nom->clientMatter && (int) $nom->clientMatter->id === (int) $selectedMatterId) {
+                                                            $savedMatter = $nom->clientMatter;
+                                                        }
+                                                        if ($savedMatter) {
+                                                            $matterOptions = $matterOptions->push($savedMatter);
+                                                        }
+                                                    }
+                                                }
+                                            @endphp
+                                            @foreach($matterOptions as $clientMatterOption)
+                                                <option value="{{ $clientMatterOption->id }}" {{ $selectedMatterIds->contains((int) $clientMatterOption->id) ? 'selected' : '' }}>{{ $clientMatterOption->dropdownLabel() }}</option>
+                                            @endforeach
+                                        </select>
+                                        <small class="form-text text-muted">You can select more than one matter</small>
                                     </div>
                                     <div class="content-grid">
                                         <div class="form-group"><label>TRN</label><input type="text" name="nomination_trns[]" value="{{ $nom->trn ?? '' }}" placeholder="TRN"></div>
@@ -1222,7 +1256,8 @@
                 multiple: true,
                 closeOnSelect: false,
                 allowClear: true,
-                placeholder: $(this).data('placeholder') || 'Select matter(s) (optional)'
+                placeholder: $(this).data('placeholder') || 'Select matter(s) (optional)',
+                dropdownCssClass: 'nomination-matter-dropdown'
             });
         });
     }
@@ -1307,7 +1342,7 @@
         rowIndex = typeof rowIndex === 'number' ? rowIndex : 0;
         selectedIds = Array.isArray(selectedIds) ? selectedIds.map(String) : [];
         var matters = window.companyActiveClientMatters || [];
-        var html = '<div style="flex:1;min-width:220px;"><label>Matter</label><select name="nomination_client_matter_ids[' + rowIndex + '][]" class="form-control nomination-matter-select mm-select-multiple" multiple="multiple" data-placeholder="Select matter(s) (optional)" style="width:100%;">';
+        var html = '<div class="form-group nomination-matter-field" style="margin-bottom:10px;"><label>Matter</label><select name="nomination_client_matter_ids[' + rowIndex + '][]" class="form-control nomination-matter-select mm-select-multiple" multiple="multiple" data-placeholder="Select matter(s) (optional)" style="width:100%;">';
         matters.forEach(function(m) {
             var sel = selectedIds.indexOf(String(m.id)) !== -1 ? ' selected' : '';
             html += '<option value="' + m.id + '"' + sel + '>' + (m.label || '') + '</option>';
@@ -1331,8 +1366,8 @@
             '<div style="display:flex;gap:15px;align-items:flex-end;flex-wrap:wrap;">' +
             '<div style="flex:1;min-width:200px;"><select name="nomination_nominated_client_ids[]" class="nomination-person-select form-control" data-placeholder="Search client/lead..." style="width:100%;"></select></div>' +
             '<span style="align-self:center;padding-bottom:8px;">OR</span><div style="flex:1;min-width:200px;"><label class="sr-only">Name (not in system)</label><input type="text" name="nomination_person_names[]" placeholder="Not in system - enter name only"></div>' +
-            buildNominationMatterSelectHtml(rowIndex, []) +
             '</div></div>' +
+            buildNominationMatterSelectHtml(rowIndex, []) +
             '<div class="content-grid"><div class="form-group"><label>TRN</label><input type="text" name="nomination_trns[]" placeholder="TRN"></div>' +
             '<div class="form-group"><label>Status</label><input type="text" name="nomination_statuses[]" placeholder="Status"></div>' +
             '<div class="form-group"><label>Nomination Date</label><input type="date" name="nomination_dates[]"></div>' +

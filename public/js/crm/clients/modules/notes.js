@@ -186,7 +186,7 @@
                         var interval = setInterval(function() {
                             tries++;
                             var $sel = $('#create_note #mobileNumber');
-                            if ($sel.length && $sel.find('option').length > 1) {
+                            if ($sel.length && $sel.find('option').length >= 1) {
                                 $sel.val(savedPhone);
                                 if ($sel.val() !== savedPhone) {
                                     var esc = $('<div/>').text(savedPhone).html();

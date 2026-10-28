@@ -729,7 +729,7 @@ use App\Http\Controllers\Controller;
 @if(($activeTab ?? '') !== 'activityfeed')
 <script src="{{ URL::asset('js/crm/clients/modules/references.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/send-to-client.js') }}"></script>
-<script src="{{ URL::asset('js/crm/clients/modules/notes.js') }}"></script>
+<script src="{{ URL::asset('js/crm/clients/modules/notes.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/modules/notes.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/checklist.js') }}?v={{ file_exists(public_path('js/crm/clients/modules/checklist.js')) ? filemtime(public_path('js/crm/clients/modules/checklist.js')) : 1 }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/documents.js') }}?v={{ file_exists(public_path('js/crm/clients/modules/documents.js')) ? filemtime(public_path('js/crm/clients/modules/documents.js')) : 1 }}"></script>
 <script src="{{ URL::asset('js/crm/clients/bulk-download-documents.js') }}?v={{ file_exists(public_path('js/crm/clients/bulk-download-documents.js')) ? filemtime(public_path('js/crm/clients/bulk-download-documents.js')) : 1 }}"></script>

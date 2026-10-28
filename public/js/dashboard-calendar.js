@@ -398,6 +398,9 @@
                 timeZone: tz,
                 firstDay: 1,
                 height: '100%',
+                // Only the weeks that belong to the month. A blank sixth week
+                // made the grid taller than the card and turned on the scroller.
+                fixedWeekCount: false,
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
@@ -405,7 +408,9 @@
                 },
                 navLinks: true,
                 nowIndicator: true,
-                dayMaxEvents: 3,
+                // Fit events to the day cell. Extras open in the +more popover
+                // instead of stretching the row and scrolling the month.
+                dayMaxEventRows: true,
                 eventTimeFormat: {
                     hour: 'numeric',
                     minute: '2-digit',

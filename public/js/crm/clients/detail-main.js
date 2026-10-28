@@ -7281,15 +7281,37 @@ success: function(response) {
 
                         var obj = safeParseJsonResponse(response);
                         if (!obj) return;
-                        var contactlist = '<option value="">Select Contact</option>';
 
-                        $.each(obj.clientContacts, function(index, subArray) {
-
-                            contactlist += '<option value="'+subArray.phone+'">'+subArray.phone+'</option>';
-
+                        var contacts = [];
+                        var seenPhones = {};
+                        $.each(obj.clientContacts || [], function(index, subArray) {
+                            if (!subArray) {
+                                return;
+                            }
+                            var phone = subArray.phone != null ? String(subArray.phone).trim() : '';
+                            if (phone === '' || seenPhones[phone]) {
+                                return;
+                            }
+                            seenPhones[phone] = true;
+                            contacts.push(phone);
                         });
 
-                        $('#mobileNumber').append(contactlist);
+                        var $mobileSelect = $form.find('select[name="mobileNumber"]');
+                        if (!$mobileSelect.length) {
+                            return;
+                        }
+                        $mobileSelect.empty();
+                        // One number on the file is already the number to use. Ask only when there are several.
+                        if (contacts.length !== 1) {
+                            $mobileSelect.append($('<option>', { value: '', text: 'Select Contact' }));
+                        }
+                        $.each(contacts, function(index, phone) {
+                            var $option = $('<option>', { value: phone, text: phone });
+                            if (contacts.length === 1) {
+                                $option.prop('selected', true);
+                            }
+                            $mobileSelect.append($option);
+                        });
 
                     },
 

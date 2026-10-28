@@ -8,7 +8,7 @@
 <?php
 use App\Http\Controllers\Controller;
 ?>
-<div class="crm-container" data-client-id="{{ $fetchedData->id }}">
+<div class="crm-container{{ !empty($profileOnly) ? ' profile-only-file' : '' }}" data-client-id="{{ $fetchedData->id }}">
     <!-- Collapsed Toggle Button (shown when sidebar is collapsed) -->
     <button id="collapsed-toggle" class="collapsed-toggle-btn" title="Show Sidebar">
         â˜°
@@ -166,14 +166,17 @@ use App\Http\Controllers\Controller;
                     @icon('fa-user')
                     <span>Personal Details</span>
                 </button>
+                @if(empty($profileOnly))
                 <button class="client-nav-button" data-tab="activityfeed">
                     @icon('fa-history')
                     <span>Activity</span>
                 </button>
+                @endif
                 <button class="client-nav-button" data-tab="noteterm">
                     @icon('fa-sticky-note')
                     <span>Notes</span>
                 </button>
+                @if(empty($profileOnly))
                 <button class="client-nav-button" data-tab="personaldocuments">
                     @icon('fa-folder-open')
                     <span>Personal Documents</span>
@@ -208,6 +211,7 @@ use App\Http\Controllers\Controller;
                     @icon('fa-globe')
                     <span>Client Portal</span>
                 </button>
+                @endif
                 <?php
                 // Get last updated date for the client record
                 if (isset($fetchedData->updated_at) && $fetchedData->updated_at) {
@@ -228,14 +232,17 @@ use App\Http\Controllers\Controller;
                     @icon('fa-user')
                     <span>Personal Details</span>
                 </button>
+                @if(empty($profileOnly))
                 <button class="client-nav-button" data-tab="activityfeed">
                     @icon('fa-history')
                     <span>Activity</span>
                 </button>
+                @endif
                 <button class="client-nav-button" data-tab="noteterm">
                     @icon('fa-sticky-note')
                     <span>Notes</span>
                 </button>
+                @if(empty($profileOnly))
                 <button class="client-nav-button" data-tab="personaldocuments">
                     @icon('fa-folder-open')
                     <span>Personal Documents</span>
@@ -244,6 +251,7 @@ use App\Http\Controllers\Controller;
                     @icon('fa-tasks')
                     <span>Checklists</span>
                 </button>
+                @endif
             <?php
             }
             ?>
@@ -254,6 +262,7 @@ use App\Http\Controllers\Controller;
         <div class="server-error">
             @include('../Elements/flash-message')
         </div>
+        @include('crm.partials.profile-only-banner')
         <div class="custom-error-msg">
         </div>
         <!-- Main Content Container with Vertical Tabs -->
@@ -262,15 +271,18 @@ use App\Http\Controllers\Controller;
             <div class="tab-content" id="tab-content">
             {{-- Always a stub: personaldetails-tab.js fetches the fragment, including default /personaldetails. --}}
             @include('crm.clients.tabs.personal_details_lazy')
-            
+
+            @if(empty($profileOnly))
             @include('crm.clients.tabs.activityfeed_tab')
+            @endif
             
             @if(($activeTab ?? '') === 'noteterm')
                 @include('crm.clients.tabs.notes')
             @else
                 @include('crm.clients.tabs.notes_lazy')
             @endif
-            
+
+            @if(empty($profileOnly))
             @if(($activeTab ?? '') === 'personaldocuments')
                 @include('crm.clients.tabs.personal_documents')
             @else
@@ -317,13 +329,16 @@ use App\Http\Controllers\Controller;
             @else
                 @include('crm.clients.tabs.not_used_documents_lazy')
             @endif
+            @endif
             
             </div>
         </div>
     </main>
 
     <!-- Activity Feed (Personal Details, Activity nav, etc.) -->
+    @if(empty($profileOnly))
     @include('crm.clients.tabs.activity_feed')
+    @endif
 </div>
 
 {{-- Compose/SMS/notes/add-edit/management: lightweight ID stubs; HTML fetched on first open. Check-in stays in the layout. --}}

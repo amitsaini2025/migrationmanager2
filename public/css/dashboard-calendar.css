@@ -304,11 +304,17 @@
     padding: 3px 6px;
     line-height: 1.3;
     min-width: 0;
+    border-radius: 3px;
+    border-width: 0;
 }
 
 .fc-more-popover.dashboard-cal-more-popover .fc-daygrid-event-dot {
-    flex: 0 0 auto;
-    margin: 0;
+    display: none;
+}
+
+.fc-more-popover.dashboard-cal-more-popover .fc-event-time,
+.fc-more-popover.dashboard-cal-more-popover .fc-event-title {
+    color: inherit;
 }
 
 .fc-more-popover.dashboard-cal-more-popover .fc-event-time {
@@ -353,33 +359,54 @@
     border-width: 0;
 }
 
-.dashboard-calendar-container .fc-event.event-status-awaiting_confirmation {
+.dashboard-calendar-container .fc-event.event-status-awaiting_confirmation,
+.fc-more-popover .fc-event.event-status-awaiting_confirmation {
     background-color: #fd7e14 !important;
     border-color: #fd7e14 !important;
     color: #fff !important;
 }
 
-.dashboard-calendar-container .fc-event.event-status-pending {
+.dashboard-calendar-container .fc-event.event-status-pending,
+.fc-more-popover .fc-event.event-status-pending {
     background-color: #ffc107 !important;
     border-color: #ffc107 !important;
     color: #1a2c40 !important;
 }
 
-.dashboard-calendar-container .fc-event.event-status-paid {
+.dashboard-calendar-container .fc-event.event-status-paid,
+.fc-more-popover .fc-event.event-status-paid,
+.dashboard-calendar-container .fc-event.event-status-rescheduled,
+.fc-more-popover .fc-event.event-status-rescheduled {
     background-color: #007bff !important;
     border-color: #007bff !important;
     color: #fff !important;
 }
 
-.dashboard-calendar-container .fc-event.event-status-confirmed {
+.dashboard-calendar-container .fc-event.event-status-confirmed,
+.fc-more-popover .fc-event.event-status-confirmed {
     background-color: #28a745 !important;
     border-color: #28a745 !important;
     color: #fff !important;
 }
 
-.dashboard-calendar-container .fc-event.event-status-completed {
+.dashboard-calendar-container .fc-event.event-status-completed,
+.fc-more-popover .fc-event.event-status-completed {
     background-color: #17a2b8 !important;
     border-color: #17a2b8 !important;
+    color: #fff !important;
+}
+
+.dashboard-calendar-container .fc-event.event-status-cancelled,
+.fc-more-popover .fc-event.event-status-cancelled {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: #fff !important;
+}
+
+.dashboard-calendar-container .fc-event.event-status-no_show,
+.fc-more-popover .fc-event.event-status-no_show {
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
     color: #fff !important;
 }
 

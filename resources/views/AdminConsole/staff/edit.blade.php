@@ -184,6 +184,15 @@
                                     </label>
                                     <small class="text-muted d-block mt-1">Super Admin or access approver. Turning off revokes active quick and pending supervisor grants immediately.</small>
                                 </div>
+                                <div class="form-group">
+                                    <label class="d-flex align-items-center mb-0">
+                                        <input type="hidden" name="profile_access_enabled" value="0">
+                                        <input type="checkbox" name="profile_access_enabled" value="1" class="mr-2"
+                                            @if(old('profile_access_enabled', $fetchedData->profile_access_enabled ?? true)) checked @endif>
+                                        <span>Profile access enabled</span>
+                                    </label>
+                                    <small class="text-muted d-block mt-1">On by default. They can open any client or lead profile, see personal details, and add notes. Other sections stay closed until they are allocated or request full access. Uncheck to turn this off for this person.</small>
+                                </div>
                                 @endif
 
                                 <div class="form-group">

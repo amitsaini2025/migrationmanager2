@@ -11,9 +11,11 @@ use App\Models\Note;
 use App\Models\Staff;
 use App\Services\StaffWorkloadService;
 use App\Support\NoteDescriptionHtml;
+use App\Support\StaffClientVisibility;
 // use App\Models\OnlineForm; // REMOVED: OnlineForm model has been deleted
 use App\Traits\LogsClientActivity;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +54,15 @@ class ClientNotesController extends Controller
         // dd($request->all());
         $response = []; // Initialize response array
         $isUpdate = isset($request->noteid) && $request->noteid != '';
+        $noteClientId = (int) ($request->input('client_id') ?: $request->input('lead_id'));
+        if ($isUpdate) {
+            $noteClientId = (int) (Note::query()->whereKey((int) $request->noteid)->value('client_id') ?? $noteClientId);
+            if ($denied = $this->rejectUnlessFullFileAccess($noteClientId)) {
+                return $denied;
+            }
+        } elseif ($denied = $this->rejectUnlessProfileView($noteClientId)) {
+            return $denied;
+        }
         $changedFields = [];
         $oldNote = null;
 
@@ -265,6 +276,10 @@ class ClientNotesController extends Controller
             ->whereNull('unique_group_id')
             ->first();
 
+        if ($note && ($denied = $this->rejectUnlessFullFileAccess((int) $note->client_id))) {
+            return $denied;
+        }
+
         if ($note) {
             $note->updated_at = $carbonDateTime; // Carbon instance
             $saved = $note->save();
@@ -292,6 +307,10 @@ class ClientNotesController extends Controller
     public function getnotedetail(Request $request)
     {
         $note_id = $request->note_id; // dd($note_id);
+        $noteClientId = (int) (Note::query()->whereKey((int) $note_id)->value('client_id') ?? 0);
+        if ($denied = $this->rejectUnlessProfileView($noteClientId)) {
+            return $denied;
+        }
         if (Note::where('id', $note_id)->exists()) {
             $data = Note::select('title', 'description', 'task_group', 'mobile_number')->where('id', $note_id)->first();
             $response['status'] = true;
@@ -311,6 +330,10 @@ class ClientNotesController extends Controller
     public function viewnotedetail(Request $request)
     {
         $note_id = $request->note_id;
+        $noteClientId = (int) (Note::query()->whereKey((int) $note_id)->value('client_id') ?? 0);
+        if ($denied = $this->rejectUnlessProfileView($noteClientId)) {
+            return $denied;
+        }
         if (Note::where('id', $note_id)->exists()) {
             $data = Note::select('title', 'description', 'user_id', 'updated_at')->where('id', $note_id)->first();
             $admin = Admin::where('id', $data->user_id)->first();
@@ -355,6 +378,9 @@ class ClientNotesController extends Controller
     public function getnotes(Request $request)
     {
         $client_id = $request->clientid;
+        if ($denied = $this->rejectUnlessProfileView((int) $client_id)) {
+            return $denied;
+        }
         $type = $request->type;
         $task_group = $request->task_group;
         // if($task_group == ''){
@@ -466,6 +492,10 @@ class ClientNotesController extends Controller
     public function deletenote(Request $request)
     {
         $note_id = $request->note_id;
+        $existingNote = Note::query()->whereKey((int) $note_id)->first(['id', 'client_id']);
+        if ($existingNote && ($denied = $this->rejectUnlessFullFileAccess((int) $existingNote->client_id))) {
+            return $denied;
+        }
         if (Note::where('id', $note_id)->exists()) {
             $data = Note::select('client_id', 'title', 'description', 'task_group', 'type', 'mobile_number')->where('id', $note_id)->first();
             $res = DB::table('notes')->where('id', @$note_id)->delete();
@@ -513,6 +543,10 @@ class ClientNotesController extends Controller
 
         $note = $noteId ? Note::find($noteId) : null;
 
+        if ($note && ($denied = $this->rejectUnlessFullFileAccess((int) $note->client_id))) {
+            return $denied;
+        }
+
         if (! $note) {
             return response()->json(['status' => false, 'message' => 'Record not found']);
         }
@@ -551,5 +585,23 @@ class ClientNotesController extends Controller
     {
         // Online form functionality disabled - OnlineForm model has been removed
         return redirect()->back()->with('error', 'Online form functionality has been disabled - OnlineForm model has been removed');
+    }
+
+    private function rejectUnlessProfileView(int $clientId): ?JsonResponse
+    {
+        if ($clientId > 0 && StaffClientVisibility::canViewClientProfile($clientId)) {
+            return null;
+        }
+
+        return response()->json(StaffClientVisibility::unauthorizedPayload(), 403);
+    }
+
+    private function rejectUnlessFullFileAccess(int $clientId): ?JsonResponse
+    {
+        if ($clientId > 0 && StaffClientVisibility::canAccessClientOrLead($clientId)) {
+            return null;
+        }
+
+        return response()->json(StaffClientVisibility::unauthorizedPayload(), 403);
     }
 }

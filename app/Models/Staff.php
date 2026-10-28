@@ -58,6 +58,7 @@ class Staff extends Authenticatable
         'service_token',
         'token_generated_at',
         'quick_access_enabled',
+        'profile_access_enabled',
         'grant_super_admin_access',
     ];
 
@@ -77,6 +78,7 @@ class Staff extends Authenticatable
         'show_dashboard_per' => 'integer',
         'is_migration_agent' => 'integer',
         'quick_access_enabled' => 'boolean',
+        'profile_access_enabled' => 'boolean',
         'grant_super_admin_access' => 'boolean',
         'token_generated_at' => 'datetime',
         'created_at' => 'datetime',

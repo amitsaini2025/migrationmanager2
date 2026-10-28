@@ -5,7 +5,7 @@
  * Falls back to $default if the parsed list is empty (e.g. empty or invalid env value).
  */
 $intList = static function (string $envKey, string $envDefault, array $hardDefault): array {
-    $raw      = env($envKey, $envDefault);
+    $raw = env($envKey, $envDefault);
     $filtered = array_values(array_filter(
         array_map('intval', explode(',', (string) $raw)),
         static fn (int $v) => $v > 0
@@ -41,15 +41,23 @@ return [
     'exempt_staff_ids' => $exempt_staff_ids,
 
     'quick_reason_options' => [
-        'calling'    => 'Calling / Reception',
-        'cover'      => 'Covering Absent Colleague',
-        'urgent'     => 'Urgent Client Follow-up',
+        'calling' => 'Calling / Reception',
+        'cover' => 'Covering Absent Colleague',
+        'urgent' => 'Urgent Client Follow-up',
         'admin_task' => 'Administrative Task',
     ],
 
     // Roles restricted to quick access only (supervisor path hard-blocked).
     // Falls back to [14] (Calling Team) if env is misconfigured.
     'quick_access_only_role_ids' => $intList('CRM_ACCESS_QUICK_ONLY_ROLE_IDS', '14', [14]),
+
+    // When true, every staff member may open a client/lead profile and add notes without a full-file grant,
+    // unless profile_access_enabled is turned off on that staff record.
+    // When false, only profile_only_role_ids (Calling Team) keep that standing access.
+    'profile_access_for_all' => filter_var(env('CRM_ACCESS_PROFILE_FOR_ALL', true), FILTER_VALIDATE_BOOLEAN),
+
+    // Used only when profile_access_for_all is false. Falls back to [14] (Calling Team).
+    'profile_only_role_ids' => $intList('CRM_ACCESS_PROFILE_ONLY_ROLE_IDS', '14', [14]),
 
     'quick_grant_minutes' => max(1, (int) env('CRM_ACCESS_QUICK_GRANT_MINUTES', 15)),
 

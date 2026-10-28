@@ -140,6 +140,11 @@ class StaffController extends Controller
                     $obj->quick_access_enabled = $request->boolean('quick_access_enabled');
                 }
             }
+            $obj->profile_access_enabled = true;
+            $profileActor = Auth::user();
+            if ($profileActor instanceof Staff && app(CrmAccessService::class)->canManageStaffQuickAccess($profileActor)) {
+                $obj->profile_access_enabled = $request->boolean('profile_access_enabled');
+            }
             $obj->office_id = @$requestData['office'];
             $obj->default_calendar_type = $this->normalizedDefaultCalendarType($requestData['default_calendar_type'] ?? null);
             $obj->team = @$requestData['team'];
@@ -302,6 +307,7 @@ class StaffController extends Controller
 
             if ($actor instanceof Staff && $crmAccess->canManageStaffQuickAccess($actor)) {
                 $obj->quick_access_enabled = $request->boolean('quick_access_enabled');
+                $obj->profile_access_enabled = $request->boolean('profile_access_enabled');
             }
 
             if ($isSuperAdminActor) {

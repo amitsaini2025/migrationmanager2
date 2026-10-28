@@ -4673,30 +4673,45 @@ trait ClientCrmFollowups
             $targetRecord = Admin::query()
                 ->where('id', (int) $id)
                 ->whereIn('type', ['client', 'lead'])
-                ->first(['id', 'type', 'first_name', 'last_name', 'client_id']);
+                ->first(['id', 'type', 'first_name', 'last_name', 'client_id', 'is_company']);
 
-            if (! StaffClientVisibility::canAccessClientOrLead((int) $id, Auth::user())) {
-                $displayName = trim((string) (($targetRecord->first_name ?? '').' '.($targetRecord->last_name ?? '')));
-                if ($displayName === '') {
-                    $displayName = (string) ($targetRecord->client_id ?? ('#'.(int) $id));
+            $viewer = Auth::user();
+            $profileOnly = false;
+            if (! StaffClientVisibility::canAccessClientOrLead((int) $id, $viewer)) {
+                if (StaffClientVisibility::canViewClientProfile((int) $id, $viewer)) {
+                    $profileOnly = true;
+                    $requestedTab = strtolower((string) ($tab ?? ''));
+                    if ($requestedTab !== '' && ! StaffClientVisibility::allowsProfileOnlyTab($requestedTab)) {
+                        return redirect()->route('clients.detail', [
+                            'client_id' => $encodeId,
+                            'tab' => ! empty($targetRecord->is_company) ? 'companydetails' : 'personaldetails',
+                        ]);
+                    }
+                } else {
+                    $displayName = trim((string) (($targetRecord->first_name ?? '').' '.($targetRecord->last_name ?? '')));
+                    if ($displayName === '') {
+                        $displayName = (string) ($targetRecord->client_id ?? ('#'.(int) $id));
+                    }
+
+                    $accessModalPayload = [
+                        'id' => $encodeId.'/Client',
+                        'cid' => (int) $id,
+                        'name' => $displayName,
+                        'record_type' => (string) ($targetRecord->type ?? 'client'),
+                        'redirect_to' => route('clients.detail', [
+                            'client_id' => $encodeId,
+                            'client_unique_matter_ref_no' => $id1,
+                            'tab' => $tab,
+                        ]),
+                    ];
+
+                    return view('crm.access.detail-gate', [
+                        'crossAccessAutoOpen' => $accessModalPayload,
+                    ]);
                 }
-
-                $accessModalPayload = [
-                    'id' => $encodeId.'/Client',
-                    'cid' => (int) $id,
-                    'name' => $displayName,
-                    'record_type' => (string) ($targetRecord->type ?? 'client'),
-                    'redirect_to' => route('clients.detail', [
-                        'client_id' => $encodeId,
-                        'client_unique_matter_ref_no' => $id1,
-                        'tab' => $tab,
-                    ]),
-                ];
-
-                return view('crm.access.detail-gate', [
-                    'crossAccessAutoOpen' => $accessModalPayload,
-                ]);
             }
+
+            view()->share('profileOnly', $profileOnly);
 
             // Set default tab if not provided
             $activeTab = $tab ?? 'personaldetails';
@@ -5196,7 +5211,7 @@ trait ClientCrmFollowups
             $client_unique_matter_ref_no = null;
         }
 
-        if (! StaffClientVisibility::canAccessClientOrLead((int) $id, Auth::user())) {
+        if (! StaffClientVisibility::canViewClientProfile((int) $id, Auth::user())) {
             abort(403);
         }
 
@@ -5204,6 +5219,8 @@ trait ClientCrmFollowups
         if (! $fetchedData) {
             abort(404);
         }
+
+        view()->share('profileOnly', ! StaffClientVisibility::canAccessClientOrLead((int) $id, Auth::user()));
 
         $clientNotes = Note::where('client_id', (int) $id)
             ->whereNull('assigned_to')
@@ -5239,7 +5256,7 @@ trait ClientCrmFollowups
             $client_unique_matter_ref_no = null;
         }
 
-        if (! StaffClientVisibility::canAccessClientOrLead((int) $id, Auth::user())) {
+        if (! StaffClientVisibility::canViewClientProfile((int) $id, Auth::user())) {
             abort(403);
         }
 
@@ -5248,6 +5265,8 @@ trait ClientCrmFollowups
         if (! $fetchedData) {
             abort(404);
         }
+
+        view()->share('profileOnly', ! StaffClientVisibility::canAccessClientOrLead((int) $id, Auth::user()));
 
         $clientContacts = ClientContact::where('client_id', (int) $id)->get();
         $emails = ClientEmail::where('client_id', (int) $id)->get() ?? [];

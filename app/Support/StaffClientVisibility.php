@@ -5,6 +5,8 @@ namespace App\Support;
 use App\Models\Admin;
 use App\Models\BookingAppointment;
 use App\Models\ClientAccessGrant;
+use App\Models\Document;
+use App\Models\Lead;
 use App\Models\Staff;
 use App\Services\CrmAccess\CrmAccessService;
 use Carbon\Carbon;
@@ -116,6 +118,86 @@ final class StaffClientVisibility
     }
 
     /**
+     * Calling Team when standing profile access is limited to configured roles.
+     */
+    public static function isProfileOnlyRole(?Authenticatable $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return in_array((int) ($user->role ?? 0), config('crm_access.profile_only_role_ids', [14]), true);
+    }
+
+    /**
+     * Standing profile access: view personal or company details and add notes, without the rest of the file.
+     * On for every staff member unless turned off on the staff record, or the global switch is off.
+     */
+    public static function hasStandingProfileAccess(?Authenticatable $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        $enabled = $user->profile_access_enabled ?? true;
+        if ($enabled === false || $enabled === 0 || $enabled === '0') {
+            return false;
+        }
+
+        if ((bool) config('crm_access.profile_access_for_all', true)) {
+            return true;
+        }
+
+        return self::isProfileOnlyRole($user);
+    }
+
+    /**
+     * Tabs a profile-only viewer may open. Everything else needs full file access.
+     *
+     * @return list<string>
+     */
+    public static function profileOnlyTabSlugs(): array
+    {
+        return ['personaldetails', 'companydetails', 'noteterm'];
+    }
+
+    public static function allowsProfileOnlyTab(?string $slug): bool
+    {
+        if ($slug === null || $slug === '') {
+            return false;
+        }
+
+        return in_array(strtolower($slug), self::profileOnlyTabSlugs(), true);
+    }
+
+    /**
+     * Full file access, or profile-only role viewing a client/lead that is not super-admin locked.
+     */
+    public static function canViewClientProfile(int $adminId, ?Authenticatable $user = null): bool
+    {
+        $user = $user ?? Auth::user();
+
+        if (self::canAccessClientOrLead($adminId, $user)) {
+            return true;
+        }
+
+        if (! $user || ! self::hasStandingProfileAccess($user) || $adminId <= 0) {
+            return false;
+        }
+
+        $row = Admin::query()
+            ->where('id', $adminId)
+            ->whereIn('type', ['client', 'lead'])
+            ->first(['id', 'type', 'client_id']);
+
+        if (! $row) {
+            return false;
+        }
+
+        return ! self::isSuperAdminOnlyLockedClient($row->type ?? null, $row->client_id ?? null);
+    }
+
+    /**
      * @return array{show_quick: bool, show_supervisor: bool}
      */
     public static function crossAccessUiFlags(?Authenticatable $user): array
@@ -136,6 +218,30 @@ final class StaffClientVisibility
     }
 
     /**
+     * Profile-only roles may open the record (not locked) without full-file access.
+     * Super-admin-locked files stay locked. Full access still hides the request buttons.
+     *
+     * @param  array<string, mixed>  $item
+     * @return array<string, mixed>
+     */
+    private static function applySearchAccessFlags(array $item, bool $canFull, ?Authenticatable $user): array
+    {
+        $cid = (int) ($item['cid'] ?? 0);
+        $profileOnly = ! $canFull
+            && $cid > 0
+            && self::hasStandingProfileAccess($user)
+            && self::canViewClientProfile($cid, $user);
+
+        $item['locked'] = ! $canFull && ! $profileOnly;
+        $item['profile_only'] = $profileOnly;
+        $item['access_ui'] = ($canFull || $profileOnly)
+            ? ['show_quick' => false, 'show_supervisor' => false]
+            : self::crossAccessUiFlags($user);
+
+        return $item;
+    }
+
+    /**
      * @param  array<string, mixed>  $item  Must include 'cid'
      * @return array<string, mixed>
      */
@@ -152,13 +258,9 @@ final class StaffClientVisibility
         }
 
         $can = self::canAccessClientOrLead($cid, $user);
-        $item['locked'] = ! $can;
         $item['record_type'] = $recordType;
-        $item['access_ui'] = $can
-            ? ['show_quick' => false, 'show_supervisor' => false]
-            : self::crossAccessUiFlags($user);
 
-        return $item;
+        return self::applySearchAccessFlags($item, $can, $user);
     }
 
     /**
@@ -190,11 +292,8 @@ final class StaffClientVisibility
                 continue;
             }
             $can = $accessMap[$cid] ?? false;
-            $item['locked'] = ! $can;
             $item['record_type'] = $recordType;
-            $item['access_ui'] = $can
-                ? ['show_quick' => false, 'show_supervisor' => false]
-                : self::crossAccessUiFlags($user);
+            $item = self::applySearchAccessFlags($item, $can, $user);
         }
         unset($item);
 
@@ -295,7 +394,7 @@ final class StaffClientVisibility
     }
 
     /**
-     * @param  \Illuminate\Database\Query\Builder|\Illuminate\Database\Eloquent\Builder  $query
+     * @param  \Illuminate\Database\Query\Builder|Builder  $query
      */
     public static function restrictMatterListToAllocatedClients($query, string $cmAlias = 'cm', string $adAlias = 'ad'): void
     {
@@ -312,18 +411,18 @@ final class StaffClientVisibility
             $q->whereExists(function ($sub) use ($staffId, $cmAlias) {
                 $sub->select(DB::raw('1'))
                     ->from('client_matters')
-                    ->whereColumn('client_matters.client_id', $cmAlias . '.client_id');
+                    ->whereColumn('client_matters.client_id', $cmAlias.'.client_id');
                 self::whereClientMatterRowAssignedToStaff($sub, $staffId);
-            })->orWhere($adAlias . '.user_id', $staffId)
-              ->orWhereExists(function ($sub) use ($staffId, $cmAlias) {
-                  $sub->select(DB::raw('1'))
-                      ->from('client_access_grants')
-                      ->whereColumn('client_access_grants.admin_id', $cmAlias . '.client_id')
-                      ->where('client_access_grants.staff_id', $staffId)
-                      ->where('client_access_grants.status', 'active')
-                      ->whereNotNull('client_access_grants.ends_at')
-                      ->where('client_access_grants.ends_at', '>', Carbon::now('UTC'));
-              });
+            })->orWhere($adAlias.'.user_id', $staffId)
+                ->orWhereExists(function ($sub) use ($staffId, $cmAlias) {
+                    $sub->select(DB::raw('1'))
+                        ->from('client_access_grants')
+                        ->whereColumn('client_access_grants.admin_id', $cmAlias.'.client_id')
+                        ->where('client_access_grants.staff_id', $staffId)
+                        ->where('client_access_grants.status', 'active')
+                        ->whereNotNull('client_access_grants.ends_at')
+                        ->where('client_access_grants.ends_at', '>', Carbon::now('UTC'));
+                });
         });
     }
 
@@ -366,7 +465,7 @@ final class StaffClientVisibility
     }
 
     /**
-     * @param  \Illuminate\Database\Eloquent\Builder<\App\Models\Admin>|\Illuminate\Database\Query\Builder  $query
+     * @param  Builder<Admin>|\Illuminate\Database\Query\Builder  $query
      */
     public static function excludeSuperAdminOnlyLockedClientsFromAdminQuery($query, ?Authenticatable $viewer = null): void
     {
@@ -397,7 +496,7 @@ final class StaffClientVisibility
     }
 
     /**
-     * @param  \Illuminate\Database\Query\Builder|\Illuminate\Database\Eloquent\Builder  $query
+     * @param  \Illuminate\Database\Query\Builder|Builder  $query
      */
     public static function applyExcludeSuperAdminOnlyLockedClientsOnAdminJoin($query, string $adminsAlias, ?Authenticatable $viewer = null): void
     {
@@ -429,7 +528,7 @@ final class StaffClientVisibility
     }
 
     /**
-     * @param  Builder<\App\Models\Lead>  $query
+     * @param  Builder<Lead>  $query
      */
     public static function restrictLeadListQuery(Builder $query): void
     {
@@ -452,15 +551,15 @@ final class StaffClientVisibility
                         ->whereColumn('client_matters.client_id', 'admins.id');
                     self::whereClientMatterRowAssignedToStaff($sub, $staffId);
                 })->orWhere('admins.user_id', $staffId)
-                  ->orWhereExists(function ($sub) use ($staffId) {
-                      $sub->select(DB::raw('1'))
-                          ->from('client_access_grants')
-                          ->whereColumn('client_access_grants.admin_id', 'admins.id')
-                          ->where('client_access_grants.staff_id', $staffId)
-                          ->where('client_access_grants.status', 'active')
-                          ->whereNotNull('client_access_grants.ends_at')
-                          ->where('client_access_grants.ends_at', '>', Carbon::now('UTC'));
-                  });
+                    ->orWhereExists(function ($sub) use ($staffId) {
+                        $sub->select(DB::raw('1'))
+                            ->from('client_access_grants')
+                            ->whereColumn('client_access_grants.admin_id', 'admins.id')
+                            ->where('client_access_grants.staff_id', $staffId)
+                            ->where('client_access_grants.status', 'active')
+                            ->whereNotNull('client_access_grants.ends_at')
+                            ->where('client_access_grants.ends_at', '>', Carbon::now('UTC'));
+                    });
             });
 
             return;
@@ -473,26 +572,26 @@ final class StaffClientVisibility
         $column = $query->getModel()->qualifyColumn('user_id');
         $query->where(function (Builder $q) use ($column, $staffId) {
             $q->where($column, $staffId)
-              ->orWhereExists(function ($sub) use ($staffId) {
-                  $sub->select(DB::raw('1'))
-                      ->from('client_matters')
-                      ->whereColumn('client_matters.client_id', 'admins.id');
-                  self::whereClientMatterRowAssignedToStaff($sub, $staffId);
-              })
-              ->orWhereExists(function ($sub) use ($staffId) {
-                  $sub->select(DB::raw('1'))
-                      ->from('client_access_grants')
-                      ->whereColumn('client_access_grants.admin_id', 'admins.id')
-                      ->where('client_access_grants.staff_id', $staffId)
-                      ->where('client_access_grants.status', 'active')
-                      ->whereNotNull('client_access_grants.ends_at')
-                      ->where('client_access_grants.ends_at', '>', Carbon::now('UTC'));
-              });
+                ->orWhereExists(function ($sub) use ($staffId) {
+                    $sub->select(DB::raw('1'))
+                        ->from('client_matters')
+                        ->whereColumn('client_matters.client_id', 'admins.id');
+                    self::whereClientMatterRowAssignedToStaff($sub, $staffId);
+                })
+                ->orWhereExists(function ($sub) use ($staffId) {
+                    $sub->select(DB::raw('1'))
+                        ->from('client_access_grants')
+                        ->whereColumn('client_access_grants.admin_id', 'admins.id')
+                        ->where('client_access_grants.staff_id', $staffId)
+                        ->where('client_access_grants.status', 'active')
+                        ->whereNotNull('client_access_grants.ends_at')
+                        ->where('client_access_grants.ends_at', '>', Carbon::now('UTC'));
+                });
         });
     }
 
     /**
-     * @param  Builder<\App\Models\Admin>  $query
+     * @param  Builder<Admin>  $query
      */
     public static function restrictAdminEloquentQuery(Builder $query): void
     {
@@ -519,15 +618,15 @@ final class StaffClientVisibility
                 self::whereClientMatterRowAssignedToStaff($sub, $staffId);
             })->orWhere('admins.user_id', $staffId)
               // OR has an active cross-access grant
-              ->orWhereExists(function ($sub) use ($staffId) {
-                  $sub->select(DB::raw('1'))
-                      ->from('client_access_grants')
-                      ->whereColumn('client_access_grants.admin_id', 'admins.id')
-                      ->where('client_access_grants.staff_id', $staffId)
-                      ->where('client_access_grants.status', 'active')
-                      ->whereNotNull('client_access_grants.ends_at')
-                      ->where('client_access_grants.ends_at', '>', Carbon::now('UTC'));
-              });
+                ->orWhereExists(function ($sub) use ($staffId) {
+                    $sub->select(DB::raw('1'))
+                        ->from('client_access_grants')
+                        ->whereColumn('client_access_grants.admin_id', 'admins.id')
+                        ->where('client_access_grants.staff_id', $staffId)
+                        ->where('client_access_grants.status', 'active')
+                        ->whereNotNull('client_access_grants.ends_at')
+                        ->where('client_access_grants.ends_at', '>', Carbon::now('UTC'));
+                });
         });
     }
 
@@ -612,7 +711,7 @@ final class StaffClientVisibility
      * Uses the model's own table name (via qualifyColumn) so callers that join the documents
      * table under an alias, or that use a different primary table, still get correct SQL.
      *
-     * @param  Builder<\App\Models\Document>  $query
+     * @param  Builder<Document>  $query
      */
     public static function restrictDocumentEloquentQuery(Builder $query, ?Authenticatable $user = null): void
     {
@@ -627,8 +726,8 @@ final class StaffClientVisibility
         }
 
         $staffId = (int) $user->id;
-        $model   = $query->getModel();
-        $table   = $model->getTable();
+        $model = $query->getModel();
+        $table = $model->getTable();
 
         $query->where(function (Builder $outer) use ($staffId, $table) {
             $outer->where(function (Builder $q) use ($table) {
@@ -667,14 +766,15 @@ final class StaffClientVisibility
     /**
      * Limit booking appointment listings to clients the viewer may access (linked CRM client_id).
      *
-     * Rows with no linked client remain visible (public / unlinked bookings).
+     * Calling Team (quick-access-only roles) see the full calendar. Rows with no linked client
+     * remain visible (public / unlinked bookings).
      *
-     * @param  Builder<\App\Models\BookingAppointment>  $query
+     * @param  Builder<BookingAppointment>  $query
      */
     public static function restrictBookingAppointmentEloquentQuery(Builder $query, ?Authenticatable $user = null): void
     {
         $user = $user ?? Auth::user();
-        if (! $user || self::isExemptFromAllocation($user)) {
+        if (! $user || self::isExemptFromAllocation($user) || self::isQuickAccessOnly($user)) {
             return;
         }
 
@@ -684,7 +784,7 @@ final class StaffClientVisibility
         }
 
         $staffId = (int) $user->id;
-        $table   = $query->getModel()->getTable();
+        $table = $query->getModel()->getTable();
 
         $query->where(function (Builder $outer) use ($staffId, $table) {
             $outer->whereNull("{$table}.client_id")
@@ -739,7 +839,6 @@ final class StaffClientVisibility
     }
 
     /**
-     * @param  \App\Models\Admin  $row
      * @param  array<int, bool>|null  $allocatingClientIdFlip  When non-null, replaces per-call EXISTS for allocation (client_id => true)
      */
     private static function userMaySeeByAllocation(int $adminId, Authenticatable $user, Admin $row, ?array $allocatingClientIdFlip = null): bool
@@ -816,7 +915,7 @@ final class StaffClientVisibility
     /**
      * For whereExists subqueries after ->from('client_matters') (table name must be `client_matters`, not aliased).
      *
-     * @param  \Illuminate\Database\Query\Builder|\Illuminate\Database\Eloquent\Builder  $sub
+     * @param  \Illuminate\Database\Query\Builder|Builder  $sub
      */
     private static function whereClientMatterRowAssignedToStaff($sub, int $staffId): void
     {

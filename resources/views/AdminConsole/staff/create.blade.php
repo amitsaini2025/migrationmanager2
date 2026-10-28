@@ -181,6 +181,15 @@
                                     </label>
                                     <small class="text-muted d-block mt-1">Super Admin or access approver. Enabling grants this staff member the ability to request cross-access.</small>
                                 </div>
+                                <div class="form-group">
+                                    <label class="d-flex align-items-center mb-0">
+                                        <input type="hidden" name="profile_access_enabled" value="0">
+                                        <input type="checkbox" name="profile_access_enabled" value="1" class="mr-2"
+                                            @if(old('profile_access_enabled', true)) checked @endif>
+                                        <span>Profile access enabled</span>
+                                    </label>
+                                    <small class="text-muted d-block mt-1">On by default. They can open any client or lead profile, see personal details, and add notes. Uncheck to turn this off.</small>
+                                </div>
                                 @endif
 
                                 <div class="form-group">

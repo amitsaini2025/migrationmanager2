@@ -8,13 +8,13 @@ use PHPUnit\Framework\TestCase;
 
 class StaffPersonalCalendarFeedServiceTest extends TestCase
 {
-    public function test_unknown_type_falls_back_to_employer_sponsored(): void
+    public function test_unknown_type_falls_back_to_jrp(): void
     {
         $service = new StaffPersonalCalendarFeedService;
 
-        $this->assertSame('paid', $service->normalizeCalendarType(null));
-        $this->assertSame('paid', $service->normalizeCalendarType('nope'));
-        $this->assertSame('paid', StaffPersonalCalendarFeedService::DEFAULT_TYPE);
+        $this->assertSame('jrp', $service->normalizeCalendarType(null));
+        $this->assertSame('jrp', $service->normalizeCalendarType('nope'));
+        $this->assertSame('jrp', StaffPersonalCalendarFeedService::DEFAULT_TYPE);
     }
 
     public function test_known_calendar_types_are_accepted(): void
@@ -28,6 +28,16 @@ class StaffPersonalCalendarFeedServiceTest extends TestCase
         $this->assertSame('tourist', $service->normalizeCalendarType('tourist'));
     }
 
+    public function test_retired_paid_type_resolves_to_jrp_for_ui(): void
+    {
+        $service = new StaffPersonalCalendarFeedService;
+
+        $this->assertSame('jrp', $service->resolveForUi('paid'));
+        $this->assertSame('jrp', $service->resolveForUi(null));
+        $this->assertSame('education', $service->resolveForUi('education'));
+        $this->assertNull($service->optionalCalendarType('paid'));
+    }
+
     public function test_staff_email_selects_named_calendar(): void
     {
         $service = new StaffPersonalCalendarFeedService;
@@ -37,7 +47,7 @@ class StaffPersonalCalendarFeedServiceTest extends TestCase
 
         $this->assertSame('ajay', $service->defaultTypeForStaff($ajay));
         $this->assertSame('tourist', $service->defaultTypeForStaff($vijay));
-        $this->assertSame('paid', $service->defaultTypeForStaff($arun));
+        $this->assertSame('jrp', $service->defaultTypeForStaff($arun));
     }
 
     public function test_staff_first_name_selects_named_calendar_when_email_does_not_match(): void
@@ -46,19 +56,33 @@ class StaffPersonalCalendarFeedServiceTest extends TestCase
         $ajay = new Staff(['email' => 'office@bansalcrm.com', 'first_name' => 'Ajay']);
 
         $this->assertSame('ajay', $service->defaultTypeForStaff($ajay));
-        $this->assertSame('paid', $service->defaultTypeForStaff(null));
-        $this->assertSame('paid', $service->defaultTypeForStaff(new Staff(['email' => 'sam@bansalcrm.com', 'first_name' => 'Sam'])));
+        $this->assertSame('jrp', $service->defaultTypeForStaff(null));
+        $this->assertSame('jrp', $service->defaultTypeForStaff(new Staff(['email' => 'sam@bansalcrm.com', 'first_name' => 'Sam'])));
     }
 
-    public function test_booking_calendar_options_exclude_retired_paid_calendar(): void
+    public function test_staff_with_retired_paid_default_falls_back_to_jrp(): void
+    {
+        $service = new StaffPersonalCalendarFeedService;
+        $staff = new Staff([
+            'email' => 'sam@bansalcrm.com',
+            'first_name' => 'Sam',
+            'default_calendar_type' => 'paid',
+        ]);
+
+        $this->assertSame('jrp', $service->defaultTypeForStaff($staff));
+    }
+
+    public function test_dashboard_and_booking_calendar_options_exclude_retired_paid_calendar(): void
     {
         $service = new StaffPersonalCalendarFeedService;
         $bookingKeys = collect($service->bookingCalendarTypeOptions())->pluck('key')->all();
         $dashboardKeys = collect($service->calendarTypeOptions())->pluck('key')->all();
 
         $this->assertNotContains('paid', $bookingKeys);
-        $this->assertContains('paid', $dashboardKeys);
+        $this->assertNotContains('paid', $dashboardKeys);
         $this->assertContains('jrp', $bookingKeys);
+        $this->assertContains('jrp', $dashboardKeys);
+        $this->assertSame($bookingKeys, $dashboardKeys);
     }
 
     public function test_admin_console_default_calendar_is_used_when_set(): void

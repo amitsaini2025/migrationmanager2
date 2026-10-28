@@ -137,7 +137,7 @@ class DashboardController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        $type = $this->personalCalendarFeed->normalizeCalendarType($request->input('type'));
+        $type = $this->personalCalendarFeed->resolveForUi($request->input('type'));
         $rows = $this->personalCalendarFeed->appointmentsForType($type, $request);
         $events = array_map(
             fn (array $row) => $this->personalCalendarFeed->toFullCalendarEvent($row),

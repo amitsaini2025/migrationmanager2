@@ -87,7 +87,9 @@
 								<p class="form-control-plaintext">
 									@php
 										$defaultCal = $fetchedData->default_calendar_type ?? '';
-										$calLabels = \App\Services\StaffPersonalCalendarFeedService::CALENDAR_TYPES;
+										$calLabels = collect(app(\App\Services\StaffPersonalCalendarFeedService::class)->calendarTypeOptions())
+											->pluck('label', 'key')
+											->all();
 									@endphp
 									{{ $defaultCal !== '' && isset($calLabels[$defaultCal]) ? $calLabels[$defaultCal] : 'Automatic' }}
 								</p>

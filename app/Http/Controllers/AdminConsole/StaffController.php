@@ -119,7 +119,7 @@ class StaffController extends Controller
                 'phone' => 'required',
                 'role' => 'required',
                 'office' => 'required',
-                'default_calendar_type' => 'nullable|in:'.implode(',', array_keys(StaffPersonalCalendarFeedService::CALENDAR_TYPES)),
+                'default_calendar_type' => 'nullable|in:'.implode(',', array_column($this->calendarFeed->calendarTypeOptions(), 'key')),
             ]);
 
             $obj = new Staff;
@@ -243,7 +243,7 @@ class StaffController extends Controller
                 'first_name' => 'required|max:255',
                 'last_name' => 'required|max:255',
                 'phone' => 'required|max:255',
-                'default_calendar_type' => 'nullable|in:'.implode(',', array_keys(StaffPersonalCalendarFeedService::CALENDAR_TYPES)),
+                'default_calendar_type' => 'nullable|in:'.implode(',', array_column($this->calendarFeed->calendarTypeOptions(), 'key')),
             ]);
 
             $obj = Staff::find($id);

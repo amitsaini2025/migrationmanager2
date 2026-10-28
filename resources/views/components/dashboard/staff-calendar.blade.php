@@ -2,7 +2,7 @@
     'stats' => ['today' => 0, 'this_week' => 0, 'upcoming' => 0],
     'timezone' => config('app.timezone'),
     'calendarTypes' => [],
-    'defaultType' => 'paid',
+    'defaultType' => 'jrp',
 ])
 
 @php

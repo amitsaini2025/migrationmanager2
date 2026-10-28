@@ -6,7 +6,7 @@
     'use strict';
 
     const CALENDAR_EL_ID = 'staffDashboardCalendar';
-    const DEFAULT_TYPE = 'paid';
+    const DEFAULT_TYPE = 'jrp';
     const EVENTS_API = window.dashboardRoutes?.calendarEvents || '/dashboard/calendar-events';
 
     function calendarEl() {

@@ -29,7 +29,7 @@
             :stats="$calendarStats ?? ['today' => 0, 'this_week' => 0, 'upcoming' => 0]"
             :timezone="config('app.timezone')"
             :calendar-types="$calendarTypes ?? []"
-            :default-type="$defaultCalendarType ?? 'paid'"
+            :default-type="$defaultCalendarType ?? 'jrp'"
         />
 
         @include('crm.partials.access-approvals-dashboard')

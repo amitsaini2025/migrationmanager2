@@ -23,16 +23,16 @@ Both calendars read **website bookings** (`booking_appointments`) filtered by co
 
 Shared keys (`StaffPersonalCalendarFeedService::CALENDAR_TYPES`):
 
-| Key | Label |
-|---|---|
-| `paid` | Employer Sponsored |
-| `jrp` | JRP |
-| `education` | Education |
-| `tourist` | Vijay |
-| `adelaide` | Adelaide |
-| `adelaide_education` | Adelaide Education |
-| `ajay` | Ajay |
-| `arun` | Arun |
+| Key | Label | UI |
+|---|---|---|
+| `paid` | Employer Sponsored | **Retired** (kept for legacy consultants/data only) |
+| `jrp` | JRP | Dashboard + booking (system default) |
+| `education` | Education | Dashboard + booking |
+| `tourist` | Vijay | Dashboard + booking |
+| `adelaide` | Adelaide | Dashboard + booking |
+| `adelaide_education` | Adelaide Education | Dashboard + booking |
+| `ajay` | Ajay | Dashboard + booking |
+| `arun` | Arun | Dashboard + booking |
 
 ---
 
@@ -40,13 +40,13 @@ Shared keys (`StaffPersonalCalendarFeedService::CALENDAR_TYPES`):
 
 Resolved by `StaffPersonalCalendarFeedService::defaultTypeForStaff()` in this order:
 
-1. **Admin Console** `staff.default_calendar_type` if set  
+1. **Admin Console** `staff.default_calendar_type` if set (retired types such as `paid` are ignored)  
 2. Else **name/email hint** (`STAFF_CALENDAR_HINTS`):  
    - Ajay → `ajay`  
    - Vijay → `tourist`  
    - Shubham / Yadwinder → `jrp`  
-   - Arun → `paid` (Employer Sponsored, not Arun Calendar)  
-3. Else **Employer Sponsored** (`paid`)
+   - Arun → `jrp` (Employer Sponsored UI retired)  
+3. Else **JRP** (`jrp`)
 
 If Admin Console is left on **Automatic**, step 1 is skipped.
 
@@ -143,7 +143,7 @@ Outline action buttons in the appointment modal use darker text on tinted backgr
 1. Run migration for `default_calendar_type` on the target DB  
 2. Hard-refresh `/dashboard` (Ctrl+F5) so calendar JS/CSS reload  
 3. As Ajay (no Admin override): primary pill should be **Ajay**  
-4. As a normal staff user with Automatic: primary should be **Employer Sponsored** unless a name/email hint matches  
+4. As a normal staff user with Automatic: primary should be **JRP** unless a name/email hint matches  
 5. Set a default in Admin Console → Staff → Edit → confirm dashboard opens that calendar  
 6. Click a grid event and a list row → modal opens (not a new tab)  
 7. Confirm status badge is on the right; no status legend under the filters  

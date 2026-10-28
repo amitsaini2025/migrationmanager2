@@ -22,15 +22,11 @@ use Illuminate\Support\Str;
  */
 class StaffPersonalCalendarFeedService
 {
-    public const DEFAULT_TYPE = 'paid';
+    public const DEFAULT_TYPE = 'jrp';
 
     /**
-     * Same types as BookingAppointmentsController::calendar().
-     *
-     * @var array<string, string>
-     */
-    /**
-     * Retired from the full booking calendar UI (/booking/calendar/{type}) but kept for dashboard feeds.
+     * Retired from dashboard + booking calendar UIs. Key kept in CALENDAR_TYPES so
+     * existing consultants/appointments and normalizeCalendarType() still work.
      *
      * @var list<string>
      */
@@ -49,7 +45,7 @@ class StaffPersonalCalendarFeedService
 
     /**
      * Email local-part / first-name hints for the staff member's home calendar.
-     * Arun Kumar's operational calendar is Employer Sponsored, not "Arun Calendar".
+     * Employer Sponsored (`paid`) is retired from UI; Arun falls back to JRP.
      *
      * @var array<string, string>
      */
@@ -59,7 +55,7 @@ class StaffPersonalCalendarFeedService
         'shubham' => 'jrp',
         'education' => 'education',
         'adelaide' => 'adelaide',
-        'arun' => 'paid',
+        'arun' => 'jrp',
         'tourist' => 'tourist',
     ];
 
@@ -68,6 +64,20 @@ class StaffPersonalCalendarFeedService
         $type = strtolower(trim((string) $type));
 
         return array_key_exists($type, self::CALENDAR_TYPES) ? $type : self::DEFAULT_TYPE;
+    }
+
+    /**
+     * Calendar type safe for dashboard / booking switchers (retired types → DEFAULT_TYPE).
+     */
+    public function resolveForUi(?string $type): string
+    {
+        $type = $this->normalizeCalendarType($type);
+
+        if (in_array($type, self::RETIRED_BOOKING_CALENDAR_TYPES, true)) {
+            return self::DEFAULT_TYPE;
+        }
+
+        return $type;
     }
 
     public function labelForType(string $type): string
@@ -84,12 +94,20 @@ class StaffPersonalCalendarFeedService
             return null;
         }
 
-        return array_key_exists($type, self::CALENDAR_TYPES) ? $type : null;
+        if (! array_key_exists($type, self::CALENDAR_TYPES)) {
+            return null;
+        }
+
+        if (in_array($type, self::RETIRED_BOOKING_CALENDAR_TYPES, true)) {
+            return null;
+        }
+
+        return $type;
     }
 
     /**
      * Home calendar for a logged-in staff member.
-     * Admin Console default wins when set; otherwise name/email hints; else Employer Sponsored.
+     * Admin Console default wins when set; otherwise name/email hints; else JRP.
      */
     public function defaultTypeForStaff(?Staff $staff): string
     {
@@ -105,23 +123,25 @@ class StaffPersonalCalendarFeedService
         $email = strtolower(trim((string) $staff->email));
         $local = $email !== '' ? Str::before($email, '@') : '';
         if ($local !== '' && isset(self::STAFF_CALENDAR_HINTS[$local])) {
-            return self::STAFF_CALENDAR_HINTS[$local];
+            return $this->resolveForUi(self::STAFF_CALENDAR_HINTS[$local]);
         }
 
         $first = strtolower(trim((string) $staff->first_name));
         if ($first !== '' && isset(self::STAFF_CALENDAR_HINTS[$first])) {
-            return self::STAFF_CALENDAR_HINTS[$first];
+            return $this->resolveForUi(self::STAFF_CALENDAR_HINTS[$first]);
         }
 
         return self::DEFAULT_TYPE;
     }
 
     /**
+     * Calendar types on the CRM dashboard switcher (excludes retired types).
+     *
      * @return list<array{key: string, label: string}>
      */
     public function calendarTypeOptions(): array
     {
-        return $this->calendarTypeOptionsForKeys(array_keys(self::CALENDAR_TYPES));
+        return $this->bookingCalendarTypeOptions();
     }
 
     /**

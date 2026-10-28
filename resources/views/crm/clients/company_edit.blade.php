@@ -841,7 +841,7 @@
                             <div class="summary-grid">
                                 @foreach($company->nominations as $nom)
                                 @php
-                                    $nomMatterLabel = $nom->clientMatter ? $nom->clientMatter->dropdownLabel() : null;
+                                    $nomMatterLabel = $nom->clientMatterLabels()->implode(', ') ?: null;
                                     $nomineeDisplay = $nom->nominatedClient
                                         ? trim($nom->nominatedClient->first_name.' '.$nom->nominatedClient->last_name)
                                         : ($nom->nominated_person_name ?? 'N/A');
@@ -889,26 +889,42 @@
                                                 <label class="sr-only">Name (not in system)</label>
                                                 <input type="text" name="nomination_person_names[]" value="{{ $nom->nominated_person_name ?? '' }}" placeholder="Not in system - enter name only">
                                             </div>
-                                            <div style="flex:1;min-width:200px;">
+                                            <div style="flex:1;min-width:220px;">
                                                 <label>Matter</label>
-                                                <select name="nomination_client_matter_ids[]" class="form-control nomination-matter-select" style="width:100%;">
-                                                    <option value="">Select matter (optional)</option>
+                                                <select name="nomination_client_matter_ids[{{ $idx }}][]" class="form-control nomination-matter-select mm-select-multiple" multiple="multiple" data-placeholder="Select matter(s) (optional)" style="width:100%;">
                                                     @php
-                                                        $selectedMatterId = $nom->client_matter_id ?? null;
+                                                        $selectedMatterIds = collect();
+                                                        if ($nom instanceof \App\Models\CompanyNomination) {
+                                                            if ($nom->relationLoaded('clientMatters') && $nom->clientMatters->isNotEmpty()) {
+                                                                $selectedMatterIds = $nom->clientMatters->pluck('id');
+                                                            } elseif (! empty($nom->client_matter_id)) {
+                                                                $selectedMatterIds = collect([(int) $nom->client_matter_id]);
+                                                            }
+                                                        } elseif (! empty($nom->client_matter_id)) {
+                                                            $selectedMatterIds = collect([(int) $nom->client_matter_id]);
+                                                        }
+                                                        $selectedMatterIds = $selectedMatterIds->map(fn ($id) => (int) $id)->unique()->values();
                                                         $matterOptions = $activeClientMattersForNomination;
-                                                        if ($selectedMatterId && ! $matterOptions->contains('id', (int) $selectedMatterId)) {
-                                                            $savedMatter = ($nom instanceof \App\Models\CompanyNomination && $nom->relationLoaded('clientMatter') && $nom->clientMatter)
-                                                                ? $nom->clientMatter
-                                                                : null;
-                                                            if ($savedMatter) {
-                                                                $matterOptions = $matterOptions->push($savedMatter);
+                                                        foreach ($selectedMatterIds as $selectedMatterId) {
+                                                            if (! $matterOptions->contains('id', (int) $selectedMatterId)) {
+                                                                $savedMatter = null;
+                                                                if ($nom instanceof \App\Models\CompanyNomination && $nom->relationLoaded('clientMatters')) {
+                                                                    $savedMatter = $nom->clientMatters->firstWhere('id', (int) $selectedMatterId);
+                                                                }
+                                                                if (! $savedMatter && $nom instanceof \App\Models\CompanyNomination && $nom->relationLoaded('clientMatter') && $nom->clientMatter && (int) $nom->clientMatter->id === (int) $selectedMatterId) {
+                                                                    $savedMatter = $nom->clientMatter;
+                                                                }
+                                                                if ($savedMatter) {
+                                                                    $matterOptions = $matterOptions->push($savedMatter);
+                                                                }
                                                             }
                                                         }
                                                     @endphp
                                                     @foreach($matterOptions as $clientMatterOption)
-                                                        <option value="{{ $clientMatterOption->id }}" {{ (int) ($selectedMatterId ?? 0) === (int) $clientMatterOption->id ? 'selected' : '' }}>{{ $clientMatterOption->dropdownLabel() }}</option>
+                                                        <option value="{{ $clientMatterOption->id }}" {{ $selectedMatterIds->contains((int) $clientMatterOption->id) ? 'selected' : '' }}>{{ $clientMatterOption->dropdownLabel() }}</option>
                                                     @endforeach
                                                 </select>
+                                                <small class="form-text text-muted">You can select more than one matter</small>
                                             </div>
                                         </div>
                                     </div>
@@ -1182,6 +1198,7 @@
                 });
             }
         });
+        initNominationMatterSelects($('#nominationsContainer'));
         // Init mmSelect for director person search (existing rows)
         $('.director-person-select').each(function() {
             if (!$(this).hasClass('mm-select-initialized')) {
@@ -1192,6 +1209,29 @@
             }
         });
     });
+
+    function initNominationMatterSelects($scope) {
+        if (typeof $.fn.mmSelect !== 'function') {
+            return;
+        }
+        ($scope || $(document)).find('.nomination-matter-select').each(function() {
+            if ($(this).hasClass('mm-select-initialized')) {
+                return;
+            }
+            $(this).mmSelect({
+                multiple: true,
+                closeOnSelect: false,
+                allowClear: true,
+                placeholder: $(this).data('placeholder') || 'Select matter(s) (optional)'
+            });
+        });
+    }
+
+    function reindexNominationMatterSelects() {
+        $('#nominationsContainer .nomination-row').each(function(i) {
+            $(this).find('.nomination-matter-select').attr('name', 'nomination_client_matter_ids[' + i + '][]');
+        });
+    }
 
     function addTradingName() {
         const container = $('#tradingNamesList');
@@ -1263,20 +1303,22 @@
         $('#directorsContainer .director-row').each(function(i) { $(this).find('input[name="director_primary"]').val(i); });
     }
 
-    function buildNominationMatterSelectHtml(selectedId) {
-        selectedId = selectedId || '';
+    function buildNominationMatterSelectHtml(rowIndex, selectedIds) {
+        rowIndex = typeof rowIndex === 'number' ? rowIndex : 0;
+        selectedIds = Array.isArray(selectedIds) ? selectedIds.map(String) : [];
         var matters = window.companyActiveClientMatters || [];
-        var html = '<div style="flex:1;min-width:200px;"><label>Matter</label><select name="nomination_client_matter_ids[]" class="form-control nomination-matter-select" style="width:100%;"><option value="">Select matter (optional)</option>';
+        var html = '<div style="flex:1;min-width:220px;"><label>Matter</label><select name="nomination_client_matter_ids[' + rowIndex + '][]" class="form-control nomination-matter-select mm-select-multiple" multiple="multiple" data-placeholder="Select matter(s) (optional)" style="width:100%;">';
         matters.forEach(function(m) {
-            var sel = String(m.id) === String(selectedId) ? ' selected' : '';
+            var sel = selectedIds.indexOf(String(m.id)) !== -1 ? ' selected' : '';
             html += '<option value="' + m.id + '"' + sel + '>' + (m.label || '') + '</option>';
         });
-        html += '</select></div>';
+        html += '</select><small class="form-text text-muted">You can select more than one matter</small></div>';
         return html;
     }
 
     function addNominationRow() {
         const container = $('#nominationsContainer');
+        const rowIndex = container.find('.nomination-row').length;
         const row = '<div class="nomination-row repeatable-section" style="border:1px solid #dee2e6;padding:15px;margin-bottom:15px;border-radius:6px;">' +
             '<input type="hidden" name="nomination_ids[]" value="">' +
             '<div class="content-grid" style="margin-bottom:10px;">' +
@@ -1289,7 +1331,7 @@
             '<div style="display:flex;gap:15px;align-items:flex-end;flex-wrap:wrap;">' +
             '<div style="flex:1;min-width:200px;"><select name="nomination_nominated_client_ids[]" class="nomination-person-select form-control" data-placeholder="Search client/lead..." style="width:100%;"></select></div>' +
             '<span style="align-self:center;padding-bottom:8px;">OR</span><div style="flex:1;min-width:200px;"><label class="sr-only">Name (not in system)</label><input type="text" name="nomination_person_names[]" placeholder="Not in system - enter name only"></div>' +
-            buildNominationMatterSelectHtml('') +
+            buildNominationMatterSelectHtml(rowIndex, []) +
             '</div></div>' +
             '<div class="content-grid"><div class="form-group"><label>TRN</label><input type="text" name="nomination_trns[]" placeholder="TRN"></div>' +
             '<div class="form-group"><label>Status</label><input type="text" name="nomination_statuses[]" placeholder="Status"></div>' +
@@ -1303,11 +1345,14 @@
                 minimumInputLength: 2, allowClear: true, placeholder: 'Search client/lead...'
             });
         }
+        initNominationMatterSelects(container.find('.nomination-row').last());
+        reindexNominationMatterSelects();
     }
     function removeNominationRow(btn) {
         const container = $('#nominationsContainer');
         if (container.find('.nomination-row').length <= 1) return;
         $(btn).closest('.nomination-row').remove();
+        reindexNominationMatterSelects();
     }
 
     function reindexSponsorshipRows() {
@@ -1414,7 +1459,10 @@
     function saveWorkforceInfo() { saveSection('workforce', function() { toggleEditMode('workforce'); }); }
     function saveOperationsInfo() { saveSection('operations', function() { toggleEditMode('operations'); }); }
     function saveTrainingInfo() { saveSection('training', function() { toggleEditMode('training'); }); }
-    function saveNominationsInfo() { saveSection('nominations', function() { toggleEditMode('nominations'); }); }
+    function saveNominationsInfo() {
+        reindexNominationMatterSelects();
+        saveSection('nominations', function() { toggleEditMode('nominations'); });
+    }
     </script>
     @endpush
 @endsection

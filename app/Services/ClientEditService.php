@@ -98,6 +98,7 @@ class ClientEditService
                 'company.directors.directorClient',
                 'company.nominations.nominatedClient',
                 'company.nominations.clientMatter.matter',
+                'company.nominations.clientMatters.matter',
                 'company.sponsorships',
                 'company.financials',
             ]);

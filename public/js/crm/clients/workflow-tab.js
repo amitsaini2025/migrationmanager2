@@ -1804,6 +1804,20 @@
         });
     }
 
+    /**
+     * Confirm copy for Advance. Names the next stage when known so staff
+     * do not click through Lodged → Immi Request (and similar) blindly.
+     * Falls back to the legacy generic message when the name is missing.
+     */
+    function workflowAdvanceConfirmMessage(nextStageName) {
+        var name = (nextStageName || '').trim();
+        if (!name) {
+            return 'Are you sure you want to proceed to the next stage?';
+        }
+
+        return 'Are you sure you want to move to "' + name + '"?';
+    }
+
     function bindWorkflowTabHandlers() {
         if (initialized) {
             return;
@@ -1841,7 +1855,7 @@
                     return;
                 }
 
-                if (!confirm('Are you sure you want to proceed to the next stage?')) return;
+                if (!confirm(workflowAdvanceConfirmMessage(cpNextStageName))) return;
                 proceedWorkflowTabAfterFileNote(cpMatterId, cpNextStageName, clientPortalNextBtn, portalScope);
                 return;
             }
@@ -1865,7 +1879,7 @@
                     return;
                 }
 
-                if (!confirm('Are you sure you want to proceed to the next stage?')) return;
+                if (!confirm(workflowAdvanceConfirmMessage(nextStageName))) return;
                 proceedWorkflowTabAfterFileNote(matterId, nextStageName, nextBtn, workflowTab);
                 return;
             }

@@ -19,6 +19,10 @@ class NomineeNominationsVisibilityTest extends TestCase
             '[$visibleNomineeNominations, $openableEmployerAdminIds] = $this->visibleNomineeNominationsForViewer',
             $trait
         );
+        Assert::assertStringContainsString(
+            'StaffClientVisibility::canViewClientProfile($companyAdminId, $user)',
+            $trait
+        );
         Assert::assertStringContainsString("return [\$nominations, array_map('intval', array_keys(\$openableIds))];", $trait);
 
         $blade = file_get_contents($this->projectPath('resources/views/crm/clients/tabs/personal_details.blade.php'));

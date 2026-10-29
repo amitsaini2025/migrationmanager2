@@ -5239,7 +5239,8 @@ trait ClientCrmFollowups
 
     /**
      * Nominations listing this client as nominee. Shown whenever the viewer can open this client.
-     * Employer company profile links remain gated via the returned admin id list.
+     * Employer profile links use canViewClientProfile (same bar as opening a company from search),
+     * not full-file canAccessClientOrLead.
      *
      * @return array{0: Collection<int, CompanyNomination>, 1: list<int>}
      */
@@ -5259,7 +5260,7 @@ trait ClientCrmFollowups
                 continue;
             }
 
-            if (StaffClientVisibility::canAccessClientOrLead($companyAdminId, $user)) {
+            if (StaffClientVisibility::canViewClientProfile($companyAdminId, $user)) {
                 $openableIds[$companyAdminId] = true;
             }
         }

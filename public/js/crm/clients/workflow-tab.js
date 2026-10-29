@@ -1480,6 +1480,8 @@
         return ensureWorkflowTabLoaded(true).then(function() {
             ensureStageNavBackButtonVisible();
             initWorkflowV2StageNavigation();
+            return refreshSidebarMatterStatus();
+        }).then(function() {
             refreshActivityFeedIfVisible();
         });
     }

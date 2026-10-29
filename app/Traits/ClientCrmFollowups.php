@@ -19,6 +19,7 @@ use App\Models\ClientTestScore;
 use App\Models\ClientTravelInformation;
 use App\Models\ClientVisaCountry;
 use App\Models\Company;
+use App\Models\CompanyNomination;
 use App\Models\Document;
 use App\Models\EmailLog;
 use App\Models\EmailLogAttachment;
@@ -57,6 +58,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -4814,17 +4816,12 @@ trait ClientCrmFollowups
                 $officeCountryCode = '+61';
                 $notPickedCallSmsDefault = $this->notPickedCallSmsDefaultForClient($fetchedData);
 
-                // Employer nominations: only list companies this staff may open (cross-access / allocation).
-                $visibleNomineeNominations = $fetchedData->companyNominationsAsNominee
-                    ->filter(function ($n) {
-                        $companyAdminId = $n->company?->admin_id;
-                        if ($companyAdminId === null) {
-                            return true;
-                        }
-
-                        return StaffClientVisibility::canAccessClientOrLead((int) $companyAdminId, Auth::user());
-                    })
-                    ->values();
+                // Employer nominations for this client (viewer already cleared client access).
+                // Company profile deep-links stay gated via openableEmployerAdminIds in the view.
+                [$visibleNomineeNominations, $openableEmployerAdminIds] = $this->visibleNomineeNominationsForViewer(
+                    $fetchedData,
+                    Auth::user()
+                );
 
                 $assignableStaff = collect();
                 $leadStageLabels = [];
@@ -4882,7 +4879,7 @@ trait ClientCrmFollowups
                     'fetchedData',
                     'encodeId', 'id1', 'activeTab', 'isEoiMatter',
                     'staffName', 'matterNumber', 'officePhone', 'officeCountryCode',
-                    'visibleNomineeNominations', 'notPickedCallSmsDefault',
+                    'visibleNomineeNominations', 'openableEmployerAdminIds', 'notPickedCallSmsDefault',
                     'assignableStaff', 'leadStageLabels', 'showGoogleReviewReminderModal',
                     'googleReviewTemplateId',
                     'primaryContactCompaniesForClient'
@@ -5241,6 +5238,36 @@ trait ClientCrmFollowups
     }
 
     /**
+     * Nominations listing this client as nominee. Shown whenever the viewer can open this client.
+     * Employer company profile links remain gated via the returned admin id list.
+     *
+     * @return array{0: Collection<int, CompanyNomination>, 1: list<int>}
+     */
+    protected function visibleNomineeNominationsForViewer(Admin $fetchedData, $user): array
+    {
+        if (! Schema::hasTable('company_nominations')) {
+            return [collect(), []];
+        }
+
+        $fetchedData->loadMissing('companyNominationsAsNominee.company');
+        $nominations = $fetchedData->companyNominationsAsNominee->values();
+
+        $openableIds = [];
+        foreach ($nominations as $nomination) {
+            $companyAdminId = (int) ($nomination->company?->admin_id ?? 0);
+            if ($companyAdminId <= 0 || isset($openableIds[$companyAdminId])) {
+                continue;
+            }
+
+            if (StaffClientVisibility::canAccessClientOrLead($companyAdminId, $user)) {
+                $openableIds[$companyAdminId] = true;
+            }
+        }
+
+        return [$nominations, array_map('intval', array_keys($openableIds))];
+    }
+
+    /**
      * Lightweight HTML fragment for the Personal Details tab only (lazy-load).
      * Client detail always ships the stub; this fills it on boot (default tab) or click.
      */
@@ -5282,19 +5309,10 @@ trait ClientCrmFollowups
                 ->get() ?? [];
         }
 
-        $visibleNomineeNominations = collect();
-        if (Schema::hasTable('company_nominations')) {
-            $visibleNomineeNominations = $fetchedData->companyNominationsAsNominee
-                ->filter(function ($n) {
-                    $companyAdminId = $n->company?->admin_id;
-                    if ($companyAdminId === null) {
-                        return true;
-                    }
-
-                    return StaffClientVisibility::canAccessClientOrLead((int) $companyAdminId, Auth::user());
-                })
-                ->values();
-        }
+        [$visibleNomineeNominations, $openableEmployerAdminIds] = $this->visibleNomineeNominationsForViewer(
+            $fetchedData,
+            Auth::user()
+        );
 
         $primaryContactCompaniesForClient = collect();
         if (Schema::hasTable('companies')) {
@@ -5345,6 +5363,7 @@ trait ClientCrmFollowups
             'detailVerificationStatuses' => $detailVerificationStatuses,
             'clientFamilyDetails' => $clientFamilyDetails,
             'visibleNomineeNominations' => $visibleNomineeNominations,
+            'openableEmployerAdminIds' => $openableEmployerAdminIds,
             'primaryContactCompaniesForClient' => $primaryContactCompaniesForClient,
             'assignableStaff' => $assignableStaff,
             'leadStageLabels' => $leadStageLabels,

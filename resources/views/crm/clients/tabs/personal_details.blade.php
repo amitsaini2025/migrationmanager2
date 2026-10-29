@@ -277,23 +277,26 @@
 
                     @php
                         $nomineeNominationsList = $visibleNomineeNominations ?? collect();
+                        $openableEmployerAdminIds = $openableEmployerAdminIds ?? [];
                     @endphp
                     @if($nomineeNominationsList->isNotEmpty())
                     <div class="card">
                         <h3>@icon('fa-user-check') Nominated by employer</h3>
                         <p style="margin: 0 0 12px 0; color: #6c757d; font-size: 0.9rem;">
-                            This client is listed as a nominated employee on the following company record(s). Only employers you are allowed to open are shown.
+                            This client is listed as a nominated employee on the following company record(s). Employer profile links are shown only for companies you are allowed to open.
                         </p>
                         @foreach($nomineeNominationsList as $nomRow)
                             @php
                                 $nomCompany = $nomRow->company;
                                 $companyAdminId = $nomCompany?->admin_id;
+                                $canOpenEmployer = $companyAdminId
+                                    && in_array((int) $companyAdminId, $openableEmployerAdminIds, true);
                             @endphp
                             <div style="padding-bottom: 14px; margin-bottom: 14px; {{ !$loop->last ? 'border-bottom: 1px dotted #dee2e6;' : '' }}">
                                 <div class="field-group">
                                     <span class="field-label">Company</span>
                                     <span class="field-value">
-                                        @if($nomCompany && $companyAdminId)
+                                        @if($nomCompany && $canOpenEmployer)
                                             <a href="{{ route('clients.detail', base64_encode(convert_uuencode($companyAdminId))) }}"
                                                style="color: #007bff; text-decoration: none;"
                                                title="Open company profile">

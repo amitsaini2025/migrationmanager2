@@ -589,7 +589,7 @@ class ClientNotesController extends Controller
 
     private function rejectUnlessProfileView(int $clientId): ?JsonResponse
     {
-        if ($clientId > 0 && StaffClientVisibility::canViewClientProfile($clientId)) {
+        if ($clientId > 0 && StaffClientVisibility::canAccessClientOrLead($clientId)) {
             return null;
         }
 

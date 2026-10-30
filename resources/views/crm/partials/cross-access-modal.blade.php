@@ -30,7 +30,8 @@
                 <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             </div>
             <div class="modal-body">
-                <p class="text-muted mb-2" id="crmCrossAccessRecordLabel"></p>
+                <p class="mb-1" id="crmCrossAccessRecordLabel"></p>
+                <p class="text-muted mb-2" id="crmCrossAccessHint"></p>
                 <input type="hidden" id="crmCrossAccessAdminId" value="">
                 <input type="hidden" id="crmCrossAccessRecordType" value="">
                 <input type="hidden" id="crmCrossAccessNavId" value="">
@@ -122,6 +123,16 @@
                 var showReason = !!(ui.show_quick || ui.show_supervisor);
                 document.getElementById('crmCrossAccessReasonWrap').classList.toggle('d-none', !showReason);
                 document.getElementById('crmCrossAccessNoteWrap').classList.toggle('d-none', ui.quick_only_role || !ui.show_supervisor);
+                var hint = document.getElementById('crmCrossAccessHint');
+                if (ui.show_quick && ui.show_supervisor) {
+                    hint.textContent = '15-minute access is enabled. You can open this record now, or request longer access.';
+                } else if (ui.show_quick) {
+                    hint.textContent = '15-minute access is enabled. You can open this record now.';
+                } else if (ui.show_supervisor) {
+                    hint.textContent = '15-minute access is not enabled for your account. Request access instead.';
+                } else {
+                    hint.textContent = '15-minute access is not enabled for your account, so this file stays closed.';
+                }
                 if (cb) cb(meta);
             })
             .catch(function () { showModalMsg('Could not load form options.', true); });
@@ -129,7 +140,9 @@
 
     window.openCrmAccessModal = function (repo) {
         document.getElementById('crmCrossAccessMsg').classList.add('d-none');
-        document.getElementById('crmCrossAccessRecordLabel').textContent = (repo.name || '') + ' — ' + (repo.record_type || '') + ' #' + (repo.cid || '');
+        var recordName = repo.name || 'this record';
+        document.getElementById('crmCrossAccessRecordLabel').textContent = 'You do not have authority to open ' + recordName + '.';
+        document.getElementById('crmCrossAccessHint').textContent = '';
         document.getElementById('crmCrossAccessAdminId').value = repo.cid || '';
         document.getElementById('crmCrossAccessRecordType').value = repo.record_type || 'client';
         document.getElementById('crmCrossAccessNavId').value = repo.id || '';

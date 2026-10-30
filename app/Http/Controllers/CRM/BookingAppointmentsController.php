@@ -64,7 +64,6 @@ class BookingAppointmentsController extends Controller
     public function index(Request $request)
     {
         $query = BookingAppointment::with(['client', 'consultant']);
-        StaffClientVisibility::restrictBookingAppointmentEloquentQuery($query);
 
         // Apply filters
         if ($request->filled('status')) {
@@ -141,7 +140,6 @@ class BookingAppointmentsController extends Controller
             ->values();
 
         $statsBase = BookingAppointment::query();
-        StaffClientVisibility::restrictBookingAppointmentEloquentQuery($statsBase);
 
         // Calculate statistics (same visibility as list)
         $stats = [
@@ -162,7 +160,6 @@ class BookingAppointmentsController extends Controller
     public function getAppointments(Request $request)
     {
         $query = BookingAppointment::with(['client', 'consultant']);
-        StaffClientVisibility::restrictBookingAppointmentEloquentQuery($query);
 
         // Filter by calendar type (consultant type)
         if ($request->filled('type')) {
@@ -311,7 +308,6 @@ class BookingAppointmentsController extends Controller
     public function show(int $id)
     {
         $appointment = BookingAppointment::with(['client', 'consultant', 'assignedBy'])->findOrFail($id);
-        $this->assertBookingAppointmentAccess($appointment);
         $consultants = AppointmentConsultant::active()->shownInFilter()->get();
         $latestClientMatter = null;
 
@@ -361,7 +357,6 @@ class BookingAppointmentsController extends Controller
             })
             ->where('appointment_datetime', '>', Carbon::now(config('app.timezone')))
             ->orderBy('appointment_datetime');
-        StaffClientVisibility::restrictBookingAppointmentEloquentQuery($appointmentsQuery);
         $appointments = $appointmentsQuery->get();
 
         $calendarTitle = match ($type) {
@@ -376,12 +371,9 @@ class BookingAppointmentsController extends Controller
         };
 
         $calendarStatsBase = function () use ($type) {
-            $q = BookingAppointment::query()->whereHas('consultant', function ($q2) use ($type) {
+            return BookingAppointment::query()->whereHas('consultant', function ($q2) use ($type) {
                 $q2->where('calendar_type', $type);
             });
-            StaffClientVisibility::restrictBookingAppointmentEloquentQuery($q);
-
-            return $q;
         };
 
         // Calculate statistics for this calendar type (same visibility as calendar events)
@@ -1332,7 +1324,6 @@ class BookingAppointmentsController extends Controller
         $successRate = $totalAttempts > 0 ? round(($totalSyncs / $totalAttempts) * 100) : 100;
 
         $syncStatsApptBase = BookingAppointment::query();
-        StaffClientVisibility::restrictBookingAppointmentEloquentQuery($syncStatsApptBase);
 
         $stats = [
             'total_synced' => (clone $syncStatsApptBase)->count(),
@@ -1468,7 +1459,6 @@ class BookingAppointmentsController extends Controller
     public function syncStats()
     {
         $appt24 = BookingAppointment::query()->where('created_at', '>=', now()->subDay());
-        StaffClientVisibility::restrictBookingAppointmentEloquentQuery($appt24);
 
         $stats = [
             'today' => [
@@ -1496,7 +1486,6 @@ class BookingAppointmentsController extends Controller
     public function export(Request $request)
     {
         $query = BookingAppointment::with(['client', 'consultant']);
-        StaffClientVisibility::restrictBookingAppointmentEloquentQuery($query);
 
         // Apply same filters as index
         if ($request->filled('status')) {

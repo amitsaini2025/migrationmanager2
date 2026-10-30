@@ -130,7 +130,7 @@ class LeadController extends Controller
     protected function buildLeadListQuery(Request $request)
     {
         $query = Lead::where('is_archived', 0);
-        StaffClientVisibility::restrictLeadListQuery($query);
+        StaffClientVisibility::applyClientLeadDirectoryScope($query);
 
         $query->when($request->filled('client_id'), function ($q) use ($request) {
             return $q->where('client_id', $request->input('client_id'));
@@ -222,7 +222,7 @@ class LeadController extends Controller
     /**
      * Whether the staff role may load the lead list query.
      * Full-access roles; optional extras; assigned-only roles (PA, Calling, etc.);
-     * or client module keys (20–23). Row-level rules: StaffClientVisibility::restrictLeadListQuery.
+     * or client module keys (20–23). The list shows every lead; opening a file still checks access.
      *
      * @param  array<int|string, mixed>  $module_access
      */
@@ -897,6 +897,7 @@ class LeadController extends Controller
             return Redirect::to('/dashboard')->with('error', config('constants.unauthorized'));
         }
 
+        $encodedId = (string) $id;
         $id = $this->decodeString($id);
 
         if (! $id) {
@@ -904,7 +905,24 @@ class LeadController extends Controller
         }
 
         if (! StaffClientVisibility::canAccessClientOrLead((int) $id, Auth::user())) {
-            return Redirect::to('/leads')->with('error', config('constants.unauthorized'));
+            $targetRecord = Admin::query()
+                ->where('id', (int) $id)
+                ->whereIn('type', ['client', 'lead'])
+                ->first(['id', 'type', 'first_name', 'last_name', 'client_id']);
+            $displayName = trim((string) (($targetRecord->first_name ?? '').' '.($targetRecord->last_name ?? '')));
+            if ($displayName === '') {
+                $displayName = (string) ($targetRecord->client_id ?? ('#'.(int) $id));
+            }
+
+            return view('crm.access.detail-gate', [
+                'crossAccessAutoOpen' => [
+                    'id' => $encodedId.'/Client',
+                    'cid' => (int) $id,
+                    'name' => $displayName,
+                    'record_type' => (string) ($targetRecord->type ?? 'lead'),
+                    'redirect_to' => route('clients.detail', ['client_id' => $encodedId]),
+                ],
+            ]);
         }
 
         // Using Lead model - automatically handles filtering

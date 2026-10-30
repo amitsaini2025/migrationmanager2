@@ -10,6 +10,7 @@ use App\Models\Lead;
 use App\Models\Staff;
 use App\Services\CrmAccess\CrmAccessService;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -218,23 +219,16 @@ final class StaffClientVisibility
     }
 
     /**
-     * Profile-only roles may open the record (not locked) without full-file access.
-     * Super-admin-locked files stay locked. Full access still hides the request buttons.
+     * Search rows the viewer cannot open stay locked and offer 15-minute or supervisor access.
      *
      * @param  array<string, mixed>  $item
      * @return array<string, mixed>
      */
     private static function applySearchAccessFlags(array $item, bool $canFull, ?Authenticatable $user): array
     {
-        $cid = (int) ($item['cid'] ?? 0);
-        $profileOnly = ! $canFull
-            && $cid > 0
-            && self::hasStandingProfileAccess($user)
-            && self::canViewClientProfile($cid, $user);
-
-        $item['locked'] = ! $canFull && ! $profileOnly;
-        $item['profile_only'] = $profileOnly;
-        $item['access_ui'] = ($canFull || $profileOnly)
+        $item['locked'] = ! $canFull;
+        $item['profile_only'] = false;
+        $item['access_ui'] = $canFull
             ? ['show_quick' => false, 'show_supervisor' => false]
             : self::crossAccessUiFlags($user);
 
@@ -591,6 +585,21 @@ final class StaffClientVisibility
     }
 
     /**
+     * Client and lead directories (lists, search pickers) show every record so staff
+     * can see that it exists. Opening the file still uses canAccessClientOrLead.
+     * Super-admin-only locked client files stay hidden.
+     *
+     * @param  Builder<Admin>|Builder<Lead>  $query
+     */
+    public static function applyClientLeadDirectoryScope(Builder $query): void
+    {
+        self::excludeSuperAdminOnlyLockedClientsFromAdminQuery($query);
+    }
+
+    /**
+     * Content queries (email matching, sheets, merge) stay allocated-only.
+     * Directory pages use applyClientLeadDirectoryScope instead.
+     *
      * @param  Builder<Admin>  $query
      */
     public static function restrictAdminEloquentQuery(Builder $query): void
@@ -628,6 +637,73 @@ final class StaffClientVisibility
                         ->where('client_access_grants.ends_at', '>', Carbon::now('UTC'));
                 });
         });
+    }
+
+    /**
+     * When a 15-minute quick grant is the only reason this file stays open, the moment that access ends.
+     * Null when the viewer still has the file after every active grant (allocation, or a longer grant).
+     */
+    public static function quickAccessEndsAt(int $adminId, ?Authenticatable $user = null): ?CarbonInterface
+    {
+        $user = $user ?? Auth::user();
+        if (! $user instanceof Staff || (int) ($user->status ?? 0) !== 1 || self::isExemptFromAllocation($user)) {
+            return null;
+        }
+
+        $row = Admin::query()
+            ->where('id', $adminId)
+            ->whereIn('type', ['client', 'lead'])
+            ->first(['id', 'type', 'user_id', 'client_id']);
+
+        if (! $row || self::isSuperAdminOnlyLockedClient($row->type ?? null, $row->client_id ?? null)) {
+            return null;
+        }
+
+        $grants = ClientAccessGrant::query()
+            ->where('staff_id', (int) $user->id)
+            ->where('admin_id', $adminId)
+            ->where('status', 'active')
+            ->whereNotNull('ends_at')
+            ->where('ends_at', '>', Carbon::now('UTC'))
+            ->get(['grant_type', 'ends_at']);
+
+        return self::quickGrantCountdownEndsAt($grants, self::userMaySeeByAllocation($adminId, $user, $row));
+    }
+
+    /**
+     * Latest end time when every grant that lasts that long is a quick grant.
+     *
+     * @param  iterable<int, ClientAccessGrant>  $activeGrants
+     */
+    public static function quickGrantCountdownEndsAt(iterable $activeGrants, bool $keepsAccessWithoutGrant): ?CarbonInterface
+    {
+        if ($keepsAccessWithoutGrant) {
+            return null;
+        }
+
+        $latestEnd = null;
+        foreach ($activeGrants as $grant) {
+            $endsAt = $grant->ends_at;
+            if (! $endsAt instanceof CarbonInterface) {
+                continue;
+            }
+            if ($latestEnd === null || $endsAt->greaterThan($latestEnd)) {
+                $latestEnd = $endsAt;
+            }
+        }
+
+        if (! $latestEnd instanceof CarbonInterface) {
+            return null;
+        }
+
+        foreach ($activeGrants as $grant) {
+            $endsAt = $grant->ends_at;
+            if ($endsAt instanceof CarbonInterface && $endsAt->equalTo($latestEnd) && (string) $grant->grant_type !== 'quick') {
+                return null;
+            }
+        }
+
+        return $latestEnd->copy();
     }
 
     public static function canAccessClientOrLead(int $adminId, ?Authenticatable $user = null): bool
@@ -764,10 +840,11 @@ final class StaffClientVisibility
     }
 
     /**
-     * Limit booking appointment listings to clients the viewer may access (linked CRM client_id).
+     * Limit booking appointment edits to clients the viewer may open.
      *
-     * Calling Team (quick-access-only roles) see the full calendar. Rows with no linked client
-     * remain visible (public / unlinked bookings).
+     * Calendar and list reads do not use this filter: every appointment is visible.
+     * Calling Team (quick-access-only roles) and exempt staff may still edit any row.
+     * Rows with no linked client remain editable (public / unlinked bookings).
      *
      * @param  Builder<BookingAppointment>  $query
      */
@@ -818,8 +895,8 @@ final class StaffClientVisibility
     }
 
     /**
-     * Abort 403 unless this booking row would pass restrictBookingAppointmentEloquentQuery (same rule as calendar/list API).
-     * Keeps write access aligned with what the user can see on the booking calendar.
+     * Abort 403 unless this booking row is one the viewer may change (allocation, grant, or exempt).
+     * Calendar and list reads show every appointment. Changes stay on this check.
      */
     public static function abortUnlessMayAccessBookingAppointment(BookingAppointment $appointment, ?Authenticatable $user = null): void
     {

@@ -263,6 +263,7 @@ use App\Http\Controllers\Controller;
             @include('../Elements/flash-message')
         </div>
         @include('crm.partials.profile-only-banner')
+        @include('crm.partials.quick-access-timer')
         <div class="custom-error-msg">
         </div>
         <!-- Main Content Container with Vertical Tabs -->

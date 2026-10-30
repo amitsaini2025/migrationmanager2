@@ -5,14 +5,15 @@ namespace App\Traits;
 use App\Models\Admin;
 use App\Support\StaffClientVisibility;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 
 trait ClientQueries
 {
     /**
      * Get base query for clients
      *
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @return Builder
      */
     protected function getBaseClientQuery()
     {
@@ -20,7 +21,7 @@ trait ClientQueries
             ->where('type', '=', 'client')
             ->whereNull('is_deleted');
 
-        StaffClientVisibility::restrictAdminEloquentQuery($query);
+        StaffClientVisibility::applyClientLeadDirectoryScope($query);
 
         return $query;
     }
@@ -28,7 +29,7 @@ trait ClientQueries
     /**
      * Get empty client query (for no access scenarios)
      *
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @return Builder
      */
     protected function getEmptyClientQuery()
     {
@@ -38,9 +39,9 @@ trait ClientQueries
     /**
      * Apply search filters to client query
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @param  Builder  $query
+     * @param  Request  $request
+     * @return Builder
      */
     protected function applyClientFilters($query, $request)
     {
@@ -63,9 +64,9 @@ trait ClientQueries
             if ($name != '') {
                 $nameLower = strtolower($name);
                 $query->where(function ($q) use ($nameLower) {
-                    $q->whereRaw('LOWER(first_name) LIKE ?', ['%' . $nameLower . '%'])
-                      ->orWhereRaw('LOWER(last_name) LIKE ?', ['%' . $nameLower . '%'])
-                      ->orWhereRaw("LOWER(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?", ['%' . $nameLower . '%']);
+                    $q->whereRaw('LOWER(first_name) LIKE ?', ['%'.$nameLower.'%'])
+                        ->orWhereRaw('LOWER(last_name) LIKE ?', ['%'.$nameLower.'%'])
+                        ->orWhereRaw("LOWER(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?", ['%'.$nameLower.'%']);
                 });
             }
         }
@@ -76,9 +77,9 @@ trait ClientQueries
                 // For universal email (demo@gmail.com), also search for timestamped versions
                 if ($email === 'demo@gmail.com') {
                     $emailLower = strtolower($email);
-                    $query->where(function($q) use ($email, $emailLower) {
+                    $query->where(function ($q) use ($emailLower) {
                         $q->whereRaw('LOWER(email) = ?', [$emailLower])
-                          ->orWhereRaw('LOWER(email) LIKE ?', ['demo_%@gmail.com']);
+                            ->orWhereRaw('LOWER(email) LIKE ?', ['demo_%@gmail.com']);
                     });
                 } else {
                     $query->where('email', $email);
@@ -92,18 +93,18 @@ trait ClientQueries
                 // For universal phone (4444444444), also search for timestamped versions
                 if ($phone === '4444444444') {
                     $query->where(function ($q) use ($phone) {
-                        $q->where(function($phoneQuery) use ($phone) {
+                        $q->where(function ($phoneQuery) use ($phone) {
                             $phoneQuery->where('phone', $phone)
-                                      ->orWhere('phone', 'LIKE', $phone . '_%');
+                                ->orWhere('phone', 'LIKE', $phone.'_%');
                         })
-                        ->orWhere('country_code', 'LIKE', '%' . $phone . '%')
-                        ->orWhereRaw("(COALESCE(country_code, '') || COALESCE(phone, '')) LIKE ?", ["%{$phone}%"]);
+                            ->orWhere('country_code', 'LIKE', '%'.$phone.'%')
+                            ->orWhereRaw("(COALESCE(country_code, '') || COALESCE(phone, '')) LIKE ?", ["%{$phone}%"]);
                     });
                 } else {
                     $query->where(function ($q) use ($phone) {
-                        $q->where('phone', 'LIKE', '%' . $phone . '%')
-                          ->orWhere('country_code', 'LIKE', '%' . $phone . '%')
-                          ->orWhereRaw("(COALESCE(country_code, '') || COALESCE(phone, '')) LIKE ?", ["%{$phone}%"]);
+                        $q->where('phone', 'LIKE', '%'.$phone.'%')
+                            ->orWhere('country_code', 'LIKE', '%'.$phone.'%')
+                            ->orWhereRaw("(COALESCE(country_code, '') || COALESCE(phone, '')) LIKE ?", ["%{$phone}%"]);
                     });
                 }
             }
@@ -134,9 +135,9 @@ trait ClientQueries
     /**
      * Apply search filters to archived clients/leads list.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @param  Builder  $query
+     * @param  Request  $request
+     * @return Builder
      */
     protected function applyArchivedListFilters($query, $request)
     {
@@ -145,10 +146,10 @@ trait ClientQueries
             if ($name !== '') {
                 $nameLower = strtolower($name);
                 $query->where(function ($q) use ($nameLower) {
-                    $q->whereRaw('LOWER(first_name) LIKE ?', ['%' . $nameLower . '%'])
-                        ->orWhereRaw('LOWER(last_name) LIKE ?', ['%' . $nameLower . '%'])
-                        ->orWhereRaw("LOWER(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?", ['%' . $nameLower . '%'])
-                        ->orWhereRaw('LOWER(email) LIKE ?', ['%' . $nameLower . '%']);
+                    $q->whereRaw('LOWER(first_name) LIKE ?', ['%'.$nameLower.'%'])
+                        ->orWhereRaw('LOWER(last_name) LIKE ?', ['%'.$nameLower.'%'])
+                        ->orWhereRaw("LOWER(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?", ['%'.$nameLower.'%'])
+                        ->orWhereRaw('LOWER(email) LIKE ?', ['%'.$nameLower.'%']);
                 });
             }
         }
@@ -161,14 +162,14 @@ trait ClientQueries
                 if ($clientId !== '') {
                     $q->where(function ($sub) use ($clientId) {
                         $sub->where('type', 'client')
-                            ->where('client_id', 'LIKE', '%' . $clientId . '%');
+                            ->where('client_id', 'LIKE', '%'.$clientId.'%');
                     });
                 }
                 if ($leadId !== '') {
                     $method = $clientId !== '' ? 'orWhere' : 'where';
                     $q->{$method}(function ($sub) use ($leadId) {
                         $sub->where('type', 'lead')
-                            ->where('client_id', 'LIKE', '%' . $leadId . '%');
+                            ->where('client_id', 'LIKE', '%'.$leadId.'%');
                     });
                 }
             });
@@ -196,7 +197,7 @@ trait ClientQueries
     {
         $quickRange = $request->input('quick_date_range');
 
-        if (!empty($quickRange)) {
+        if (! empty($quickRange)) {
             $range = $this->getQuickDateRangeBounds($quickRange);
             if ($range[0] && $range[1]) {
                 return $range;
@@ -279,6 +280,7 @@ trait ClientQueries
         foreach ($formats as $format) {
             try {
                 $date = Carbon::createFromFormat($format, $value);
+
                 return $endOfDay ? $date->endOfDay() : $date->startOfDay();
             } catch (\Throwable $th) {
                 continue;
@@ -288,4 +290,3 @@ trait ClientQueries
         return null;
     }
 }
-

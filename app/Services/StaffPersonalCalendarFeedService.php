@@ -6,7 +6,6 @@ use App\Models\Admin;
 use App\Models\BookingAppointment;
 use App\Models\Staff;
 use App\Support\BookingAppointmentStatus;
-use App\Support\StaffClientVisibility;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
@@ -193,7 +192,6 @@ class StaffPersonalCalendarFeedService
         });
         $query->whereNotIn('status', ['cancelled', 'no_show']);
 
-        StaffClientVisibility::restrictBookingAppointmentEloquentQuery($query);
         $this->applyDatetimeWindow($query, 'appointment_datetime', $request);
 
         return $query->orderBy('appointment_datetime')->get()
@@ -221,7 +219,6 @@ class StaffPersonalCalendarFeedService
             $q->where('calendar_type', $calendarType);
         });
         $base->whereNotIn('status', ['cancelled', 'no_show']);
-        StaffClientVisibility::restrictBookingAppointmentEloquentQuery($base);
         $base->where('appointment_datetime', '>=', $today);
 
         return [

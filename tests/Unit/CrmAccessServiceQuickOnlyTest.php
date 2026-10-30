@@ -2,11 +2,14 @@
 
 namespace Tests\Unit;
 
+use App\Models\Admin;
+use App\Models\BookingAppointment;
 use App\Models\ClientAccessGrant;
 use App\Models\Staff;
 use App\Services\CrmAccess\CrmAccessDeniedException;
 use App\Services\CrmAccess\CrmAccessService;
 use App\Support\StaffClientVisibility;
+use Carbon\Carbon;
 use Tests\TestCase;
 
 class CrmAccessServiceQuickOnlyTest extends TestCase
@@ -441,5 +444,93 @@ class CrmAccessServiceQuickOnlyTest extends TestCase
         $this->assertFalse(StaffClientVisibility::hasStandingProfileAccess($agent));
         $this->assertTrue(StaffClientVisibility::hasStandingProfileAccess($calling));
         $this->assertFalse(StaffClientVisibility::hasStandingProfileAccess($callingOff));
+    }
+
+    public function test_quick_grant_countdown_uses_the_quick_grant_end_when_access_depends_on_it(): void
+    {
+        $ends = Carbon::parse('2026-10-30 02:15:00', 'UTC');
+        $grant = new ClientAccessGrant([
+            'grant_type' => 'quick',
+            'ends_at' => $ends,
+        ]);
+
+        $deadline = StaffClientVisibility::quickGrantCountdownEndsAt([$grant], false);
+
+        $this->assertNotNull($deadline);
+        $this->assertTrue($deadline->equalTo($grant->ends_at));
+    }
+
+    public function test_quick_grant_countdown_is_hidden_when_the_file_stays_open_without_the_grant(): void
+    {
+        $grant = new ClientAccessGrant([
+            'grant_type' => 'quick',
+            'ends_at' => Carbon::parse('2026-10-30 02:15:00', 'UTC'),
+        ]);
+
+        $this->assertNull(StaffClientVisibility::quickGrantCountdownEndsAt([$grant], true));
+    }
+
+    public function test_quick_grant_countdown_is_hidden_when_a_longer_grant_keeps_the_file_open(): void
+    {
+        $grants = [
+            new ClientAccessGrant([
+                'grant_type' => 'quick',
+                'ends_at' => Carbon::parse('2026-10-30 02:15:00', 'UTC'),
+            ]),
+            new ClientAccessGrant([
+                'grant_type' => 'supervisor_approved',
+                'ends_at' => Carbon::parse('2026-10-31 02:00:00', 'UTC'),
+            ]),
+        ];
+
+        $this->assertNull(StaffClientVisibility::quickGrantCountdownEndsAt($grants, false));
+    }
+
+    public function test_quick_access_timer_includes_the_one_minute_save_warning(): void
+    {
+        $html = view('crm.partials.quick-access-timer', [
+            'quickAccessEndsAt' => '2026-10-30T02:15:00+00:00',
+        ])->render();
+
+        $this->assertStringContainsString('Save your work', $html);
+        $this->assertStringContainsString('turns off in one minute', $html);
+        $this->assertStringContainsString('2026-10-30T02:15:00+00:00', $html);
+    }
+
+    public function test_quick_access_timer_is_absent_without_an_end_time(): void
+    {
+        $html = view('crm.partials.quick-access-timer', [
+            'quickAccessEndsAt' => null,
+        ])->render();
+
+        $this->assertStringNotContainsString('crm-quick-access-timer', $html);
+    }
+
+    public function test_directory_lists_every_client_while_opening_stays_allocated(): void
+    {
+        config([
+            'crm_access.strict_allocation' => true,
+            'crm_access.exempt_staff_ids' => [],
+            'crm_access.exempt_role_ids' => [1, 17],
+        ]);
+
+        $agent = new Staff;
+        $agent->id = 16001;
+        $agent->role = 16;
+        $agent->status = 1;
+        $this->actingAs($agent, 'admin');
+
+        $directory = Admin::query();
+        StaffClientVisibility::applyClientLeadDirectoryScope($directory);
+
+        $restricted = Admin::query();
+        StaffClientVisibility::restrictAdminEloquentQuery($restricted);
+
+        $bookingEdits = BookingAppointment::query();
+        StaffClientVisibility::restrictBookingAppointmentEloquentQuery($bookingEdits, $agent);
+
+        $this->assertStringNotContainsString('client_access_grants', $directory->toSql());
+        $this->assertStringContainsString('client_access_grants', $restricted->toSql());
+        $this->assertStringContainsString('client_access_grants', $bookingEdits->toSql());
     }
 }

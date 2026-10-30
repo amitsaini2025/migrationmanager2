@@ -687,7 +687,7 @@ class ClientPersonalDetailsController extends Controller
                         ->orWhereRaw('LOWER(client_id) LIKE ?', ['%'.$queryStr.'%']);
                 });
 
-            StaffClientVisibility::restrictAdminEloquentQuery($allClients);
+            StaffClientVisibility::applyClientLeadDirectoryScope($allClients);
 
             $allClients = $allClients->get();
 

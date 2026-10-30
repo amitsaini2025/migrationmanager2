@@ -133,6 +133,8 @@ class ClientEditFieldComponentTest extends TestCase
         Assert::assertStringContainsString("class=\"dates date-picker\"", $js);
         Assert::assertStringContainsString("class=\"expiry_dates date-picker\"", $js);
         Assert::assertStringContainsString("sectionType === 'occupationInfo'", $js);
+        Assert::assertStringContainsString("sectionType === 'qualificationsInfo'", $js);
+        Assert::assertStringContainsString("$('#qualificationsInfoEdit .date-picker')", $js);
         Assert::assertStringContainsString('function parseOccupationDateValue(', $js);
         Assert::assertStringContainsString('function setOccupationDateFieldValue(', $js);
         Assert::assertStringContainsString('function handleExpiryDateCalculation(', $js);

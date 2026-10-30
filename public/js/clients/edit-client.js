@@ -2419,6 +2419,20 @@ window.toggleEditMode = function(sectionType) {
             setTimeout(function() {
                 initializeDatepickers();
             }, 100);
+        } else if (sectionType === 'qualificationsInfo') {
+            // Destroy + recreate after edit view is visible so values/calendar sync
+            // (these .date-picker fields were first initialized while display:none).
+            setTimeout(function() {
+                $('#qualificationsInfoEdit .date-picker').each(function() {
+                    const $input = $(this);
+                    const fp = this._flatpickr || $input.data('flatpickr');
+                    if (fp && typeof fp.destroy === 'function') {
+                        fp.destroy();
+                    }
+                    $input.removeData('flatpickr');
+                });
+                initializeDatepickers();
+            }, 100);
         } else if (sectionType === 'emailAddresses') {
             // Start email verification polling when opening email section
             console.log('📧 Opening email section - starting verification polling');

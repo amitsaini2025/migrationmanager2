@@ -382,6 +382,77 @@ class StaffFileTimeServiceTest extends TestCase
         $this->assertSame($url, $summary['still_open'][0]['url']);
         $this->assertSame(['JANE0000010-APC_8'], array_column($summary['still_open'], 'ref'));
         $this->assertContains('JANE0000010-APC_9', $summary['opened']);
+        $this->assertSame([], $summary['access_requests']['quick']);
+        $this->assertSame([], $summary['access_requests']['day']);
+        $this->assertStringContainsString("— Access requests —\n15 min access\n(none)\n1 day access\n(none)", $summary['text']);
+    }
+
+    #[Test]
+    public function copy_summary_lists_same_day_quick_and_one_day_access_requests_with_matters(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-15 16:00:00', 'Australia/Melbourne'));
+        $this->insertStaff(1);
+        $this->insertClient(10);
+        $this->insertMatter(5, 10, '485_1');
+        $this->insertMatter(6, 10, 'APC_8');
+
+        Schema::table('admins', function (Blueprint $table) {
+            $table->string('client_id')->nullable();
+        });
+        DB::table('admins')->where('id', 10)->update(['client_id' => 'JANE0000010']);
+
+        DB::table('admins')->insert([
+            'id' => 11,
+            'type' => 'lead',
+            'first_name' => 'Sam',
+            'last_name' => 'Lead',
+            'client_id' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Schema::create('client_access_grants', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('staff_id');
+            $table->unsignedBigInteger('admin_id');
+            $table->string('record_type', 10);
+            $table->string('grant_type', 20);
+            $table->string('access_type', 20);
+            $table->string('status', 20)->default('pending');
+            $table->string('quick_reason_code', 50)->nullable();
+            $table->timestamp('requested_at')->nullable();
+            $table->timestamps();
+        });
+
+        $this->insertAccessGrant(1, 10, 'client', 'quick', 'active', 'calling', now());
+        $this->insertAccessGrant(1, 11, 'lead', 'supervisor_approved', 'pending', 'urgent', now());
+        $this->insertAccessGrant(1, 10, 'client', 'quick', 'active', 'cover', now()->subDay());
+        $this->insertAccessGrant(2, 10, 'client', 'supervisor_approved', 'pending', 'admin_task', now());
+
+        $crmEvents = $this->createStub(StaffDayCrmEventsService::class);
+        $crmEvents->method('forStaff')->willReturn(['items' => [], 'more' => 0]);
+        $hours = $this->createStub(StaffDayHoursService::class);
+        $hours->method('forStaff')->willReturn(['label' => '1h']);
+
+        $summary = $this->service->copySummary(1, $crmEvents, $hours);
+
+        $this->assertSame([
+            'Jane Client (JANE0000010) · JANE0000010-485_1, JANE0000010-APC_8 · Calling / Reception · active',
+        ], $summary['access_requests']['quick']);
+        $this->assertSame([
+            'Sam Lead (lead) · Urgent Client Follow-up · pending',
+        ], $summary['access_requests']['day']);
+        $this->assertStringContainsString('— Access requests —', $summary['text']);
+        $this->assertStringContainsString(
+            "15 min access\nJane Client (JANE0000010) · JANE0000010-485_1, JANE0000010-APC_8 · Calling / Reception · active",
+            $summary['text']
+        );
+        $this->assertStringContainsString(
+            "1 day access\nSam Lead (lead) · Urgent Client Follow-up · pending",
+            $summary['text']
+        );
+        $this->assertStringNotContainsString('Covering Absent Colleague', $summary['text']);
+        $this->assertStringNotContainsString('Administrative Task', $summary['text']);
     }
 
     #[Test]
@@ -630,6 +701,29 @@ class StaffFileTimeServiceTest extends TestCase
             'last_name' => 'Client',
             'created_at' => now(),
             'updated_at' => now(),
+        ]);
+    }
+
+    private function insertAccessGrant(
+        int $staffId,
+        int $adminId,
+        string $recordType,
+        string $grantType,
+        string $status,
+        string $reasonCode,
+        Carbon $requestedAt,
+    ): void {
+        DB::table('client_access_grants')->insert([
+            'staff_id' => $staffId,
+            'admin_id' => $adminId,
+            'record_type' => $recordType,
+            'grant_type' => $grantType,
+            'access_type' => $grantType,
+            'status' => $status,
+            'quick_reason_code' => $reasonCode,
+            'requested_at' => $requestedAt,
+            'created_at' => $requestedAt,
+            'updated_at' => $requestedAt,
         ]);
     }
 

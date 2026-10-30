@@ -3,10 +3,12 @@
 namespace App\Services;
 
 use App\Models\ActivitiesLog;
+use App\Models\ClientAccessGrant;
 use App\Models\ClientMatter;
 use App\Models\Staff;
 use App\Models\StaffFileTimeEntry;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -327,6 +329,7 @@ class StaffFileTimeService
      *     auto: list<string>,
      *     opened: list<string>,
      *     still_open: list<array<string, mixed>>,
+     *     access_requests: array{quick: list<string>, day: list<string>},
      *     text: string
      * }
      */
@@ -342,7 +345,7 @@ class StaffFileTimeService
         $name = $staff
             ? trim(($staff->first_name ?? '').' '.($staff->last_name ?? ''))
             : 'Staff';
-        [$start] = $this->workloadService->dayBounds($day);
+        [$start, $end] = $this->workloadService->dayBounds($day);
         $dateLabel = $start->format('l, j M Y');
 
         $limit = $crmLimit ?? StaffDayCrmEventsService::LIST_CAP;
@@ -514,6 +517,23 @@ class StaffFileTimeService
             }
         }
 
+        $accessRequests = $this->accessRequestLines($staffId, $start, $end);
+
+        $lines[] = '';
+        $lines[] = '— Access requests —';
+        $lines[] = '15 min access';
+        if ($accessRequests['quick'] === []) {
+            $lines[] = '(none)';
+        } else {
+            array_push($lines, ...$accessRequests['quick']);
+        }
+        $lines[] = '1 day access';
+        if ($accessRequests['day'] === []) {
+            $lines[] = '(none)';
+        } else {
+            array_push($lines, ...$accessRequests['day']);
+        }
+
         return [
             'hours_label' => $hoursPayload['label'] ?? '—',
             'crm_events' => $events['items'],
@@ -524,8 +544,96 @@ class StaffFileTimeService
             'auto' => $autoLines,
             'opened' => $openedRefs,
             'still_open' => $stillOpen,
+            'access_requests' => $accessRequests,
             'text' => implode("\n", $lines),
         ];
+    }
+
+    /**
+     * 15-minute (quick) and 1-day (supervisor) access requests this staff made today.
+     * A grant covers the client record, so every matter on that file is listed.
+     *
+     * @return array{quick: list<string>, day: list<string>}
+     */
+    protected function accessRequestLines(int $staffId, Carbon $start, Carbon $end): array
+    {
+        $empty = ['quick' => [], 'day' => []];
+        if (! Schema::hasTable('client_access_grants')) {
+            return $empty;
+        }
+
+        $grants = ClientAccessGrant::query()
+            ->with([
+                'admin:id,client_id,first_name,last_name,type',
+                'admin.clientMatters' => function (HasMany $query): void {
+                    $query->select('id', 'client_id', 'client_unique_matter_no')->orderBy('id');
+                },
+            ])
+            ->where('staff_id', $staffId)
+            ->whereIn('grant_type', ['quick', 'supervisor_approved'])
+            ->whereBetween('requested_at', [$start, $end])
+            ->orderBy('requested_at')
+            ->orderBy('id')
+            ->get();
+
+        if ($grants->isEmpty()) {
+            return $empty;
+        }
+
+        $reasons = config('crm_access.quick_reason_options', []);
+        $quick = [];
+        $day = [];
+
+        foreach ($grants as $grant) {
+            $line = $this->accessGrantLine($grant, is_array($reasons) ? $reasons : []);
+            if ($grant->grant_type === 'quick') {
+                $quick[] = $line;
+            } else {
+                $day[] = $line;
+            }
+        }
+
+        return ['quick' => $quick, 'day' => $day];
+    }
+
+    /**
+     * @param  array<string, string>  $reasons
+     */
+    protected function accessGrantLine(ClientAccessGrant $grant, array $reasons): string
+    {
+        $admin = $grant->admin;
+        $name = $admin ? trim(($admin->first_name ?? '').' '.($admin->last_name ?? '')) : '';
+        $code = $admin ? trim((string) ($admin->client_id ?? '')) : '';
+        $who = $name !== '' ? $name : ($code !== '' ? $code : 'Record #'.$grant->admin_id);
+        if ($name !== '' && $code !== '') {
+            $who .= ' ('.$code.')';
+        }
+        if ((string) $grant->record_type === 'lead') {
+            $who .= ' (lead)';
+        }
+
+        $matterRefs = [];
+        foreach ($admin?->clientMatters ?? [] as $matter) {
+            $matterNo = trim((string) ($matter->client_unique_matter_no ?? ''));
+            if ($matterNo === '') {
+                continue;
+            }
+            $matterRefs[] = $code !== '' ? $code.'-'.$matterNo : $matterNo;
+        }
+
+        $reasonCode = (string) ($grant->quick_reason_code ?? '');
+        $reason = $reasonCode !== '' ? (string) ($reasons[$reasonCode] ?? $reasonCode) : '';
+
+        $parts = [$who];
+        if ($matterRefs !== []) {
+            $parts[] = implode(', ', $matterRefs);
+        }
+        if ($reason !== '') {
+            $parts[] = $reason;
+        }
+        $parts[] = (string) $grant->status;
+
+        return implode(' · ', $parts);
     }
 
     /**

@@ -70,22 +70,41 @@
     gap: 8px;
 }
 
-.my-day-add-btn {
+button.my-day-add-btn {
+    position: relative;
+    box-sizing: border-box;
     width: 32px;
     height: 32px;
+    min-width: 32px;
+    flex: 0 0 32px;
+    padding: 0;
     border-radius: 50%;
     border: 1px solid var(--my-day-brand);
     background: var(--my-day-brand);
-    color: #fff;
-    font-size: 1.25rem;
-    line-height: 1;
+    color: transparent;
+    font-size: 0;
+    line-height: 0;
     cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
 }
-.my-day-add-btn:hover {
+button.my-day-add-btn::before,
+button.my-day-add-btn::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    background: #fff;
+    border-radius: 1px;
+    transform: translate(-50%, -50%);
+}
+button.my-day-add-btn::before {
+    width: 12px;
+    height: 2px;
+}
+button.my-day-add-btn::after {
+    width: 2px;
+    height: 12px;
+}
+button.my-day-add-btn:hover {
     background: var(--my-day-brand-lite);
     border-color: var(--my-day-brand-lite);
 }

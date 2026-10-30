@@ -124,6 +124,14 @@ class DashboardWorkloadMarkupTest extends TestCase
         $this->assertStringNotContainsString('In progress', $myDay);
         $this->assertStringNotContainsString('Parked', $myDay);
         $this->assertStringNotContainsString('Done today', $myDay);
+        $approvals = file_get_contents(resource_path('views/crm/partials/access-approvals-dashboard.blade.php'));
+        $this->assertNotFalse($approvals);
+        $this->assertStringContainsString('data-dash-section="access-approvals"', $approvals);
+        $this->assertStringContainsString('data-dash-toggle', $approvals);
+        $this->assertStringContainsString('data-dash-body', $approvals);
+        $this->assertStringContainsString('aria-controls="crm-access-dashboard-mini-queue"', $approvals);
+        $this->assertStringContainsString('.access-approvals-header > [data-dash-toggle]', $myDayJs);
+
         $this->assertStringContainsString('workloadDrilldownModal', $blade);
         $this->assertStringNotContainsString('Active Matters', $blade);
         $this->assertStringNotContainsString('Urgent Notes Deadlines', $blade);

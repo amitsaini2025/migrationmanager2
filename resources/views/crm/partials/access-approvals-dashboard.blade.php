@@ -11,20 +11,23 @@
         : 0;
 @endphp
 @if($dashCrmAccessIsApprover)
-<section class="access-approvals-dashboard focus-container" style="margin-bottom: 1.5rem;">
+<section class="access-approvals-dashboard focus-container" data-dash-section="access-approvals" style="margin-bottom: 1.5rem;">
     <div class="focus-header access-approvals-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
-        <h3 style="margin: 0;">
-            @icon('shield-user', ['aria-hidden' => 'true'])
-            Access approvals
-            @if($dashCrmAccessPending > 0)
-                <span class="badge badge-access-pending ml-1" id="crm-access-approvals-count">{{ $dashCrmAccessPending }}</span>
-            @endif
-        </h3>
+        <button type="button" class="dash-section-toggle" data-dash-toggle aria-expanded="true" aria-controls="crm-access-dashboard-mini-queue">
+            <span class="dash-section-chevron" aria-hidden="true"></span>
+            <h3 style="margin: 0;">
+                @icon('shield-user', ['aria-hidden' => 'true'])
+                Access approvals
+                @if($dashCrmAccessPending > 0)
+                    <span class="badge badge-access-pending ml-1" id="crm-access-approvals-count">{{ $dashCrmAccessPending }}</span>
+                @endif
+            </h3>
+        </button>
         <a href="{{ route('crm.access.queue') }}" class="btn btn-sm btn-outline-secondary">
             @icon('inbox', ['class' => 'mr-1', 'aria-hidden' => 'true']) Full access queue
         </a>
     </div>
-    <div id="crm-access-dashboard-mini-queue" class="access-approvals-queue px-1 py-2" style="min-height: 2rem;">Loading…</div>
+    <div id="crm-access-dashboard-mini-queue" class="access-approvals-queue px-1 py-2" data-dash-body style="min-height: 2rem;">Loading…</div>
 </section>
 @push('scripts')
 @php

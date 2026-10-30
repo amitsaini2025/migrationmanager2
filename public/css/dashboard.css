@@ -493,6 +493,15 @@ body[data-crm-layout="dashboard"] .main-footer {
     border-left: 4px solid var(--primary-color);
 }
 
+.access-approvals-header .dash-section-toggle {
+    flex: 1 1 auto;
+    align-items: center;
+}
+
+.access-approvals-dashboard .dash-section-toggle h3 {
+    margin-bottom: 0;
+}
+
 .access-approvals-dashboard h3 {
     color: var(--text-color);
 }

@@ -1387,7 +1387,7 @@
 
     function sectionParts(section) {
         return {
-            toggle: section.querySelector(':scope > [data-dash-toggle], :scope > .my-day-head > [data-dash-toggle], :scope > .workload-strip-header > [data-dash-toggle]'),
+            toggle: section.querySelector(':scope > [data-dash-toggle], :scope > .my-day-head > [data-dash-toggle], :scope > .workload-strip-header > [data-dash-toggle], :scope > .access-approvals-header > [data-dash-toggle]'),
             body: section.querySelector(':scope > [data-dash-body]')
         };
     }

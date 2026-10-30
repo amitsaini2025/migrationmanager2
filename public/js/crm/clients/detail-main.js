@@ -1452,7 +1452,7 @@ $(document).ready(function() {
 
 
 
-    // Change Matter Assignee: fetch current assignees, then open modal so Tom Select initializes with correct values
+    // Change Matter Assignee: wait for lazy extra modal HTML, fetch assignees, then open so Tom Select inits with values
 
     $(document).delegate('.changeMatterAssignee', 'click', function(e){
 
@@ -1471,8 +1471,6 @@ $(document).ready(function() {
             return;
 
         }
-
-        $('#selectedMatterLM').val(matterId);
 
         var fetchUrl = (window.ClientDetailConfig && window.ClientDetailConfig.urls && window.ClientDetailConfig.urls.fetchClientMatterAssignee) || '/clients/fetchClientMatterAssignee';
 
@@ -1498,67 +1496,91 @@ $(document).ready(function() {
 
         }
 
-        $.ajax({
+        // Modal lives in the lazy extra pack — same pattern as Form 956 (ensure before fill).
 
-            type: 'post',
+        function ensureChangeMatterAssigneeModalReady() {
 
-            url: fetchUrl,
+            if (typeof window.ensureClientDetailModal === 'function') {
 
-            data: { _token: $('meta[name="csrf-token"]').attr('content'), client_matter_id: matterId },
+                return window.ensureClientDetailModal('changeMatterAssigneeModal');
 
-            success: function(res){
+            }
 
-                var info = (typeof res === 'string' ? (function(){ try { return JSON.parse(res); } catch(e){ return {}; } })() : res) || {};
+            return Promise.resolve();
 
-                if (info.status === false) {
+        }
 
-                    var msg = info.message || 'Could not load this matter.';
+        ensureChangeMatterAssigneeModalReady().then(function() {
 
-                    if (typeof iziToast !== 'undefined' && iziToast.warning) {
+            $('#selectedMatterLM').val(matterId);
 
-                        iziToast.warning({ title: 'Matter', message: msg, position: 'topRight' });
+            $.ajax({
 
-                    } else {
+                type: 'post',
 
-                        alert(msg);
+                url: fetchUrl,
+
+                data: { _token: $('meta[name="csrf-token"]').attr('content'), client_matter_id: matterId },
+
+                success: function(res){
+
+                    var info = (typeof res === 'string' ? (function(){ try { return JSON.parse(res); } catch(e){ return {}; } })() : res) || {};
+
+                    if (info.status === false) {
+
+                        var msg = info.message || 'Could not load this matter.';
+
+                        if (typeof iziToast !== 'undefined' && iziToast.warning) {
+
+                            iziToast.warning({ title: 'Matter', message: msg, position: 'topRight' });
+
+                        } else {
+
+                            alert(msg);
+
+                        }
+
+                        return;
 
                     }
 
-                    return;
+                    var raw = info.matter_info;
+
+                    var m = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+
+                    destroyChangeMatterAssigneeMmSelect();
+
+                    $('#change_sel_migration_agent_id').val(m.sel_migration_agent ? String(m.sel_migration_agent) : '');
+
+                    $('#change_sel_person_responsible_id').val(m.sel_person_responsible ? String(m.sel_person_responsible) : '');
+
+                    $('#change_sel_person_assisting_id').val(m.sel_person_assisting ? String(m.sel_person_assisting) : '');
+
+                    $('#change_office_id').val(m.office_id ? String(m.office_id) : '');
+
+                    $('#changeMatterAssigneeModal').modal('show');
+
+                },
+
+                error: function() {
+
+                    if (typeof iziToast !== 'undefined' && iziToast.error) {
+
+                        iziToast.error({ title: 'Error', message: 'Could not load assignees for this matter. Please try again.', position: 'topRight' });
+
+                    } else {
+
+                        alert('Could not load assignees for this matter. Please try again.');
+
+                    }
 
                 }
 
-                var raw = info.matter_info;
+            });
 
-                var m = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+        }).catch(function() {
 
-                destroyChangeMatterAssigneeMmSelect();
-
-                $('#change_sel_migration_agent_id').val(m.sel_migration_agent ? String(m.sel_migration_agent) : '');
-
-                $('#change_sel_person_responsible_id').val(m.sel_person_responsible ? String(m.sel_person_responsible) : '');
-
-                $('#change_sel_person_assisting_id').val(m.sel_person_assisting ? String(m.sel_person_assisting) : '');
-
-                $('#change_office_id').val(m.office_id ? String(m.office_id) : '');
-
-                $('#changeMatterAssigneeModal').modal('show');
-
-            },
-
-            error: function() {
-
-                if (typeof iziToast !== 'undefined' && iziToast.error) {
-
-                    iziToast.error({ title: 'Error', message: 'Could not load assignees for this matter. Please try again.', position: 'topRight' });
-
-                } else {
-
-                    alert('Could not load assignees for this matter. Please try again.');
-
-                }
-
-            }
+            // lazy-modals.js already toasts on pack load failure
 
         });
 

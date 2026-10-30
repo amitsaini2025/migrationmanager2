@@ -79,18 +79,22 @@
         
         <div class="form-group">
             <label>Assessment Date</label>
-            <input type="date" 
-                   name="dates[{{ $index }}]" 
-                   class="dates" 
-                   value="{{ $occupation && $occupation->dates ? date('Y-m-d', strtotime($occupation->dates)) : old("dates.$index") }}">
+            <input type="text"
+                   name="dates[{{ $index }}]"
+                   class="dates date-picker"
+                   placeholder="dd/mm/yyyy"
+                   autocomplete="off"
+                   value="{{ $occupation && $occupation->dates ? date('d/m/Y', strtotime($occupation->dates)) : old("dates.$index") }}">
         </div>
         
         <div class="form-group">
             <label>Expiry Date</label>
-            <input type="date" 
-                   name="expiry_dates[{{ $index }}]" 
-                   class="expiry_dates" 
-                   value="{{ $occupation && $occupation->expiry_dates ? date('Y-m-d', strtotime($occupation->expiry_dates)) : old("expiry_dates.$index") }}">
+            <input type="text"
+                   name="expiry_dates[{{ $index }}]"
+                   class="expiry_dates date-picker"
+                   placeholder="dd/mm/yyyy"
+                   autocomplete="off"
+                   value="{{ $occupation && $occupation->expiry_dates ? date('d/m/Y', strtotime($occupation->expiry_dates)) : old("expiry_dates.$index") }}">
         </div>
         
         <div class="form-group">

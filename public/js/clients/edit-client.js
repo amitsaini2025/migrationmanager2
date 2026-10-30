@@ -1356,20 +1356,27 @@ function addAnotherAddress() {
         // Fallback: Re-initialize everything (less efficient but works)
         initAddressAutocomplete();
     } else {
-        // Last resort: Just initialize Flatpickr manually
+        // Last resort: Just initialize Flatpickr manually (same limits + flexible parse as initializeDatepickers)
         if (typeof flatpickr !== 'undefined' && newWrapper) {
             $(newWrapper).find('.date-picker').each(function() {
                 if (!$(this).data('flatpickr')) {
                     const isPastOnly = $(this).hasClass('date-picker-past-only');
-                    flatpickr(this, {
+                    const maxDateObj = isPastOnly ? 'today' : new Date(new Date().getFullYear() + 50, 11, 31);
+                    const fp = flatpickr(this, {
                         dateFormat: 'd/m/Y',
                         allowInput: true,
                         clickOpens: true,
-                        maxDate: isPastOnly ? 'today' : undefined,
+                        minDate: '01/01/1000',
+                        maxDate: maxDateObj,
                         locale: {
                             firstDayOfWeek: 1
+                        },
+                        parseDate: function(datestr, format) {
+                            return parseFlexibleDobDate(datestr) || undefined;
                         }
                     });
+                    $(this).data('flatpickr', fp);
+                    bindFlexibleDatePaste(this);
                 }
             });
         }
@@ -1634,8 +1641,31 @@ function isAddressDateField(element) {
     return /^address_(start|end)_date(\[|$)/.test(name);
 }
 
+/**
+ * Flexible typed/pasted dates for all client-edit Flatpickr fields (.date-picker).
+ * Passport/visa/address helpers remain for section-specific checks; min/max and
+ * date-picker-past-only limits are still enforced separately.
+ */
 function supportsFlexibleDateParse(element) {
+    if (!element) {
+        return false;
+    }
+
+    if (element.classList.contains('date-picker')) {
+        return true;
+    }
+
     return isPassportOrVisaDateField(element) || isAddressDateField(element);
+}
+
+function attachFlexibleParseDate(fp) {
+    if (!fp || !fp.config) {
+        return;
+    }
+
+    fp.config.parseDate = function(datestr, format) {
+        return parseFlexibleDobDate(datestr) || undefined;
+    };
 }
 
 function isDateWithinPickerLimits(fp, parsed) {
@@ -2023,7 +2053,7 @@ function initializeDatepickers() {
 
         if (!$this.data('flatpickr')) {
             // Past-only fields (address, travel, employment, passport issue, visa grant): maxDate = today
-            // Other fields (passport expiry, visa expiry): allow future
+            // Other fields (passport expiry, visa expiry, quals, etc.): allow future
             const maxDateObj = isPastOnly ? 'today' : new Date(new Date().getFullYear() + 50, 11, 31);
             const config = {
                 dateFormat: 'd/m/Y',
@@ -2050,6 +2080,9 @@ function initializeDatepickers() {
 
             const fp = flatpickr(element, config);
             $this.data('flatpickr', fp);
+        } else if (enableFlexiblePaste) {
+            // Re-init path: keep existing min/max instance, only ensure flexible parse is attached
+            attachFlexibleParseDate(element._flatpickr || $this.data('flatpickr'));
         }
 
         if (enableFlexiblePaste) {
@@ -2381,6 +2414,10 @@ window.toggleEditMode = function(sectionType) {
             setTimeout(function() {
                 initializeDatepickers();
                 syncCurrentExperienceIndicators();
+            }, 100);
+        } else if (sectionType === 'occupationInfo') {
+            setTimeout(function() {
+                initializeDatepickers();
             }, 100);
         } else if (sectionType === 'emailAddresses') {
             // Start email verification polling when opening email section
@@ -6071,11 +6108,11 @@ function addOccupationRow() {
                 </div>
                 <div class="form-group">
                     <label>Assessment Date</label>
-                    <input type="date" name="dates[${index}]" class="dates">
+                    <input type="text" name="dates[${index}]" class="dates date-picker" placeholder="dd/mm/yyyy" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label>Expiry Date</label>
-                    <input type="date" name="expiry_dates[${index}]" class="expiry_dates">
+                    <input type="text" name="expiry_dates[${index}]" class="expiry_dates date-picker" placeholder="dd/mm/yyyy" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label>Reference No</label>
@@ -6093,16 +6130,10 @@ function addOccupationRow() {
     
     // Initialize autocomplete for nominated occupation
     initializeOccupationAutocomplete();
-    
-    // Initialize expiry date calculation for the new row (native date inputs)
-    const newRow = container.lastElementChild;
-    const assessmentDateInput = newRow.querySelector('.dates');
-    if (assessmentDateInput) {
-        // Add event listener for native date input
-        assessmentDateInput.addEventListener('change', function() {
-            console.log('New row date change event triggered:', this.value);
-            handleExpiryDateCalculation(this);
-        });
+
+    // Flatpickr + flexible typed/pasted dates (same as other client-edit date fields)
+    if (typeof initializeDatepickers === 'function') {
+        initializeDatepickers();
     }
 }
 
@@ -6125,42 +6156,25 @@ async function saveOccupationInfo() {
     const formData = new FormData(form);
     formData.append('section', 'occupation');
     
-    // Convert date formats from YYYY-MM-DD (native date input) to DD/MM/YYYY (backend format)
-    // Get all date input fields and convert them
+    // Normalize occupation dates to DD/MM/YYYY for backend (Flatpickr already uses this;
+    // still accept legacy YYYY-MM-DD or flexible typed values if present).
     const assessmentDateInputs = form.querySelectorAll('input[name^="dates["]');
     const expiryDateInputs = form.querySelectorAll('input[name^="expiry_dates["]');
-    
-    console.log('Found assessment date inputs:', assessmentDateInputs.length);
-    console.log('Found expiry date inputs:', expiryDateInputs.length);
-    
+
     // Clear existing date fields from FormData
     for (let [key, value] of formData.entries()) {
         if (key.startsWith('dates[') || key.startsWith('expiry_dates[')) {
             formData.delete(key);
         }
     }
-    
-    // Add converted assessment dates
+
     assessmentDateInputs.forEach((input, index) => {
-        const originalValue = input.value;
-        const convertedDate = convertDateForBackend(originalValue);
-        formData.append(`dates[${index}]`, convertedDate);
-        console.log(`Converted assessment date ${index}: ${originalValue} -> ${convertedDate}`);
+        formData.append(`dates[${index}]`, convertDateForBackend(input.value));
     });
-    
-    // Add converted expiry dates
+
     expiryDateInputs.forEach((input, index) => {
-        const originalValue = input.value;
-        const convertedDate = convertDateForBackend(originalValue);
-        formData.append(`expiry_dates[${index}]`, convertedDate);
-        console.log(`Converted expiry date ${index}: ${originalValue} -> ${convertedDate}`);
+        formData.append(`expiry_dates[${index}]`, convertDateForBackend(input.value));
     });
-    
-    // Debug: Log all form data being sent
-    console.log('Form data being sent:');
-    for (let [key, value] of formData.entries()) {
-        console.log(`${key}: ${value}`);
-    }
     
     try {
         const response = await fetch('/clients/save-section', {
@@ -6687,11 +6701,7 @@ function fillOccupationData(row, occupationData) {
         const validityYears = occupationData.assessment_validity_years || 3;
         const expiryDate = calculateExpiryDate(assessmentDateInput.value, validityYears);
         if (expiryDate) {
-            // Convert dd/mm/yyyy to YYYY-MM-DD for HTML date input
-            const [day, month, year] = expiryDate.split('/');
-            const htmlDateFormat = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-            
-            expiryDateInput.value = htmlDateFormat;
+            setOccupationDateFieldValue(expiryDateInput, expiryDate);
             expiryDateInput.classList.add('from-database');
         }
     }
@@ -6731,59 +6741,113 @@ function getListBadgeColor(list) {
     return colors[list] || 'secondary';
 }
 
-// Calculate expiry date
+function formatOccupationDateDmy(date) {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
+}
+
+/**
+ * Parse occupation assessment/expiry values from Flatpickr (d/m/Y), legacy native (Y-m-d),
+ * or flexible typed/pasted text.
+ */
+function parseOccupationDateValue(dateValue) {
+    if (!dateValue) {
+        return null;
+    }
+
+    if (dateValue instanceof Date && !isNaN(dateValue.getTime())) {
+        const copy = new Date(dateValue.getTime());
+        copy.setHours(0, 0, 0, 0);
+        return copy;
+    }
+
+    if (typeof dateValue !== 'string') {
+        return null;
+    }
+
+    const trimmed = dateValue.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    if (typeof parseFlexibleDobDate === 'function') {
+        const flexible = parseFlexibleDobDate(trimmed);
+        if (flexible) {
+            return flexible;
+        }
+    }
+
+    const iso = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (iso) {
+        return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+    }
+
+    return null;
+}
+
+function setOccupationDateFieldValue(input, dmyValue) {
+    if (!input || !dmyValue) {
+        return;
+    }
+
+    const fp = input._flatpickr || (typeof $ !== 'undefined' ? $(input).data('flatpickr') : null);
+    if (fp) {
+        // false = do not re-trigger change (avoids recursive expiry calc)
+        fp.setDate(dmyValue, false);
+        return;
+    }
+
+    input.value = dmyValue;
+}
+
+// Calculate expiry date (returns dd/mm/yyyy)
 function calculateExpiryDate(assessmentDateValue, validityYears) {
     try {
-        if (!assessmentDateValue) return null;
-        
-        // assessmentDateValue is in YYYY-MM-DD format from HTML date input
-        const assessmentDate = new Date(assessmentDateValue);
-        if (isNaN(assessmentDate.getTime())) return null;
-        
-        // Add validity years
-        const expiryDate = new Date(assessmentDate);
+        const assessmentDate = parseOccupationDateValue(assessmentDateValue);
+        if (!assessmentDate) {
+            return null;
+        }
+
+        const expiryDate = new Date(assessmentDate.getTime());
         expiryDate.setFullYear(expiryDate.getFullYear() + validityYears);
-        
-        // Return in dd/mm/yyyy format as expected by PHP backend
-        const day = String(expiryDate.getDate()).padStart(2, '0');
-        const month = String(expiryDate.getMonth() + 1).padStart(2, '0');
-        const year = expiryDate.getFullYear();
-        
-        return `${day}/${month}/${year}`;
+
+        return formatOccupationDateDmy(expiryDate);
     } catch (error) {
         console.error('Error calculating expiry date:', error);
         return null;
     }
 }
 
-// Convert date from YYYY-MM-DD (native date input) to DD/MM/YYYY (backend format)
+// Normalize occupation dates to DD/MM/YYYY for the backend
 function convertDateForBackend(dateValue) {
-    console.log('convertDateForBackend called with:', dateValue);
-    
     if (!dateValue) {
-        console.log('No date value provided, returning empty string');
         return '';
     }
-    
+
     try {
-        // Parse YYYY-MM-DD format
-        const date = new Date(dateValue);
-        if (isNaN(date.getTime())) {
-            console.log('Invalid date, returning original value:', dateValue);
-            return dateValue; // Return original if invalid
+        const trimmed = String(dateValue).trim();
+        if (!trimmed) {
+            return '';
         }
-        
-        // Format as DD/MM/YYYY
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        const converted = `${day}/${month}/${year}`;
-        
-        console.log('Date conversion successful:', dateValue, '->', converted);
-        return converted;
+
+        // Already backend / Flatpickr format
+        const dmy = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (dmy) {
+            return `${dmy[1].padStart(2, '0')}/${dmy[2].padStart(2, '0')}/${dmy[3]}`;
+        }
+
+        const parsed = parseOccupationDateValue(trimmed);
+        if (parsed) {
+            return formatOccupationDateDmy(parsed);
+        }
+
+        return trimmed;
     } catch (error) {
         console.error('Error converting date for backend:', error);
-        return dateValue; // Return original if conversion fails
+        return dateValue;
     }
 }
 
@@ -6865,23 +6929,17 @@ function handleExpiryDateCalculation(assessmentDateInput) {
         console.log('Calculated expiry date:', expiryDate);
         
         if (expiryDate) {
-            // Convert dd/mm/yyyy to YYYY-MM-DD for HTML date input
-            const [day, month, year] = expiryDate.split('/');
-            const htmlDateFormat = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-            
-            expiryDateInput.value = htmlDateFormat;
+            setOccupationDateFieldValue(expiryDateInput, expiryDate);
             expiryDateInput.classList.add('from-database');
-            console.log('Expiry date set successfully:', htmlDateFormat);
+            console.log('Expiry date set successfully:', expiryDate);
         }
     }
 }
 
-// Update expiry date when assessment date changes (native date inputs)
+// Update expiry date when assessment date changes (Flatpickr / typed / pasted)
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle change events for native date inputs
     document.addEventListener('change', function(e) {
         if (e.target.classList.contains('dates')) {
-            console.log('Date change event triggered:', e.target.value);
             handleExpiryDateCalculation(e.target);
         }
     });

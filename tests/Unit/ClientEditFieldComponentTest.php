@@ -106,6 +106,39 @@ class ClientEditFieldComponentTest extends TestCase
         Assert::assertStringContainsString("const maxDateObj = isPastOnly ? 'today' : new Date(new Date().getFullYear() + 50, 11, 31);", $js);
     }
 
+    public function test_edit_client_js_enables_flexible_parse_for_all_date_picker_fields(): void
+    {
+        $js = $this->viewContents('public/js/clients/edit-client.js');
+
+        Assert::assertStringContainsString("element.classList.contains('date-picker')", $js);
+        Assert::assertStringContainsString('function attachFlexibleParseDate(', $js);
+        Assert::assertStringContainsString('attachFlexibleParseDate(element._flatpickr || $this.data(\'flatpickr\'))', $js);
+        Assert::assertStringContainsString('function isDateWithinPickerLimits(', $js);
+        // Past-only and future-allowed maxDate logic must remain unchanged.
+        Assert::assertStringContainsString("const maxDateObj = isPastOnly ? 'today' : new Date(new Date().getFullYear() + 50, 11, 31);", $js);
+        Assert::assertStringContainsString('bindFlexibleDatePaste(element)', $js);
+    }
+
+    public function test_occupation_assessment_and_expiry_use_flatpickr_date_picker(): void
+    {
+        $js = $this->viewContents('public/js/clients/edit-client.js');
+        $occupationField = $this->viewContents('resources/views/components/client-edit/occupation-field.blade.php');
+
+        Assert::assertStringContainsString('class="dates date-picker"', $occupationField);
+        Assert::assertStringContainsString('class="expiry_dates date-picker"', $occupationField);
+        Assert::assertStringContainsString("date('d/m/Y', strtotime(\$occupation->dates))", $occupationField);
+        Assert::assertStringContainsString("date('d/m/Y', strtotime(\$occupation->expiry_dates))", $occupationField);
+        Assert::assertStringNotContainsString('type="date"', $occupationField);
+
+        Assert::assertStringContainsString("class=\"dates date-picker\"", $js);
+        Assert::assertStringContainsString("class=\"expiry_dates date-picker\"", $js);
+        Assert::assertStringContainsString("sectionType === 'occupationInfo'", $js);
+        Assert::assertStringContainsString('function parseOccupationDateValue(', $js);
+        Assert::assertStringContainsString('function setOccupationDateFieldValue(', $js);
+        Assert::assertStringContainsString('function handleExpiryDateCalculation(', $js);
+        Assert::assertStringContainsString('setOccupationDateFieldValue(expiryDateInput, expiryDate)', $js);
+    }
+
     public function test_client_edit_views_pass_visa_types_json_once(): void
     {
         $edit = $this->viewContents('resources/views/crm/clients/edit.blade.php');

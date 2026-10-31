@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\ClientMatter;
 use App\Models\Staff;
+use App\Support\ArtAppealSubject;
 use App\Support\CurrentVisaExpiry;
 use App\Support\StaffClientVisibility;
 use App\Support\VisaSheetCategory;
@@ -142,9 +143,7 @@ class VisaTypeSheetController extends Controller
         $showRefusedVisaType = $this->hasRefusedVisaTypeFeature($config);
         $refusedVisaTypeFromMatter = $showRefusedVisaType && VisaSheetCategory::derivesFromMatter($config);
         $refusedVisaTypeOptions = $showRefusedVisaType ? $this->getRefusedVisaTypeOptions($config) : [];
-        $refusedVisaTypeGroups = $showRefusedVisaType && is_array($config['refused_visa_type_groups'] ?? null)
-            ? $config['refused_visa_type_groups']
-            : [];
+        $refusedVisaTypeGroups = $showRefusedVisaType ? $this->getRefusedVisaTypeGroups($config) : [];
         $refusedVisaTypeLabel = $showRefusedVisaType ? $this->getRefusedVisaTypeLabel($config) : '';
         $refusedVisaTypeSuggestRules = $showRefusedVisaType ? $this->getRefusedVisaTypeSuggestRules($config) : [];
         $refusedVisaTypeSheetEditable = $showRefusedVisaType
@@ -188,14 +187,37 @@ class VisaTypeSheetController extends Controller
             && Schema::hasColumn('client_matter_references', 'refused_visa_type');
     }
 
+    protected function usesArtAppealSubject(array $config): bool
+    {
+        return ($config['reference_type'] ?? '') === ArtAppealSubject::REFERENCE_TYPE;
+    }
+
     /**
      * @return array<string, string>
      */
     protected function getRefusedVisaTypeOptions(array $config): array
     {
+        if ($this->usesArtAppealSubject($config)) {
+            return ArtAppealSubject::sheetOptions();
+        }
+
         $options = $config['refused_visa_type_options'] ?? [];
 
         return is_array($options) ? $options : [];
+    }
+
+    /**
+     * @return array<string, array<string, string>>
+     */
+    protected function getRefusedVisaTypeGroups(array $config): array
+    {
+        if ($this->usesArtAppealSubject($config)) {
+            return ArtAppealSubject::sheetGroups();
+        }
+
+        $groups = $config['refused_visa_type_groups'] ?? [];
+
+        return is_array($groups) ? $groups : [];
     }
 
     protected function getRefusedVisaTypeLabel(array $config): string

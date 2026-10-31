@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\ClientMatterReference;
-use App\Support\ArtAppealSubject;
 
 /**
  * Visa type sheet configuration.
@@ -99,8 +98,8 @@ return [
         'has_refused_visa_type' => true,
         'refused_visa_type_sheet_editable' => false,
         'refused_visa_type_label' => 'Refused For',
-        'refused_visa_type_options' => ArtAppealSubject::sheetOptions(),
-        'refused_visa_type_groups' => ArtAppealSubject::sheetGroups(),
+        'refused_visa_type_options' => [],
+        'refused_visa_type_groups' => [],
         'refused_visa_type_suggest' => [],
     ],
 

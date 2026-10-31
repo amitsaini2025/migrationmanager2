@@ -3,12 +3,15 @@
 namespace App\Support;
 
 use App\Models\ClientMatterReference;
+use App\Models\Matter;
 
 /**
  * Visa or company matter recorded when an ART or EmpART catalogue file is opened.
  *
  * ART is a person file. EmpART is a company file. The choice is stored on the
  * ART sheet column refused_visa_type. Blank historical rows are left blank.
+ * Both lists are the active matters catalogue. A person file lists personal
+ * matters. A company file lists company matters. The ART file itself is left out.
  */
 final class ArtAppealSubject
 {
@@ -17,6 +20,16 @@ final class ArtAppealSubject
     public const COMPANY = 'company';
 
     public const REFERENCE_TYPE = 'art-matters';
+
+    /**
+     * @var array<string, string>|null
+     */
+    private static ?array $personCatalogueOverride = null;
+
+    /**
+     * @var array<string, string>|null
+     */
+    private static ?array $companyCatalogueOverride = null;
 
     public static function kindFromNick(?string $nick): ?string
     {
@@ -28,39 +41,93 @@ final class ArtAppealSubject
     }
 
     /**
+     * Tests pin this list so they do not query the matters catalogue.
+     *
+     * @param  array<string, string>|null  $options
+     */
+    public static function setPersonCatalogueForTests(?array $options): void
+    {
+        self::$personCatalogueOverride = $options;
+    }
+
+    /**
+     * @param  array<string, string>|null  $options
+     */
+    public static function setCompanyCatalogueForTests(?array $options): void
+    {
+        self::$companyCatalogueOverride = $options;
+    }
+
+    /**
+     * Active personal matters. The person ART catalogue row is omitted.
+     *
      * @return array<string, string>
      */
     public static function personOptions(): array
     {
-        return [
-            'student' => 'Student 500',
-            'visitor' => 'Visitor 600',
-            'tr' => '485',
-            'partner' => 'Partner',
-            'pr' => 'PR (189/190/491)',
-            'employer-sponsored' => '482, 494, 186 or 407',
-            'parent' => 'Parent',
-            'other' => 'Other',
-        ];
+        return self::$personCatalogueOverride ?? self::optionsFromMatters(
+            Matter::query()
+                ->where('status', 1)
+                ->forPersonalSubjectSelection()
+                ->orderBy('title')
+                ->get(['id', 'title', 'nick_name'])
+        );
     }
 
     /**
+     * Active company matters. The company ART catalogue row is omitted.
+     *
      * @return array<string, string>
      */
     public static function companyOptions(): array
     {
-        return [
-            'sbs' => 'Standard Business Sponsorship',
-            'nomination-core-skills' => 'Nomination (Core Skills)',
-            'ens' => 'Employer Nomination Scheme',
-            'regional-ens' => 'Regional Employer Nomination',
-            'tas' => 'Temporary Activities Sponsorship',
-            'training-nomination' => 'Training Nomination',
-        ];
+        return self::$companyCatalogueOverride ?? self::optionsFromMatters(
+            Matter::query()
+                ->where('status', 1)
+                ->where('is_for_company', true)
+                ->orderBy('title')
+                ->get(['id', 'title', 'nick_name'])
+        );
     }
 
     /**
-     * Stored values from the previous mixed list. Shown so those rows keep a label
+     * @param  iterable<int, mixed>  $matters
+     * @return array<string, string>
+     */
+    public static function optionsFromMatters(iterable $matters): array
+    {
+        $rows = [];
+        foreach ($matters as $matter) {
+            $id = (int) (is_array($matter) ? ($matter['id'] ?? 0) : ($matter->id ?? 0));
+            $title = trim((string) (is_array($matter) ? ($matter['title'] ?? '') : ($matter->title ?? '')));
+            $nick = trim((string) (is_array($matter) ? ($matter['nick_name'] ?? '') : ($matter->nick_name ?? '')));
+            if ($id < 1 || $title === '' || in_array(strtolower($nick), ['art', 'empart'], true)) {
+                continue;
+            }
+            $rows[] = ['key' => 'matter:'.$id, 'title' => $title, 'nick' => $nick];
+        }
+
+        $titleCounts = [];
+        foreach ($rows as $row) {
+            $titleCounts[$row['title']] = ($titleCounts[$row['title']] ?? 0) + 1;
+        }
+
+        $options = [];
+        foreach ($rows as $row) {
+            $label = $row['title'];
+            if (($titleCounts[$row['title']] ?? 0) > 1 && $row['nick'] !== '') {
+                $label .= ' ('.$row['nick'].')';
+            }
+            $options[$row['key']] = $label;
+        }
+
+        asort($options, SORT_NATURAL | SORT_FLAG_CASE);
+
+        return $options;
+    }
+
+    /**
+     * Stored values from the previous short lists. Shown so those rows keep a label
      * and can be changed on the client file. Not offered when a new matter is saved.
      *
      * @return array<string, string>
@@ -70,6 +137,20 @@ final class ArtAppealSubject
         return [
             'nomination' => 'Nomination',
             '407' => '407 Training Visa',
+            'student' => 'Student 500',
+            'visitor' => 'Visitor 600',
+            'tr' => '485',
+            'partner' => 'Partner',
+            'pr' => 'PR (189/190/491)',
+            'employer-sponsored' => '482, 494, 186 or 407',
+            'parent' => 'Parent',
+            'other' => 'Other',
+            'sbs' => 'Standard Business Sponsorship',
+            'nomination-core-skills' => 'Nomination (Core Skills)',
+            'ens' => 'Employer Nomination Scheme',
+            'regional-ens' => 'Regional Employer Nomination',
+            'tas' => 'Temporary Activities Sponsorship',
+            'training-nomination' => 'Training Nomination',
         ];
     }
 

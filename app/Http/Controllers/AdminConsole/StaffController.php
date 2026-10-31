@@ -256,7 +256,7 @@ class StaffController extends Controller
             $isSuperAdminActor = $actor instanceof Staff && (int) ($actor->role ?? 0) === 1;
 
             if (! $isSuperAdminActor && $request->has('grant_super_admin_access')) {
-                return redirect()->back()->withInput()->with('error', 'Only Superadmin role user can provide this access.');
+                return redirect()->back()->withInput()->with('error', 'Only a Super Admin can grant elevated CRM access.');
             }
 
             $prevQuickEnabled = (bool) ($obj->quick_access_enabled ?? false);

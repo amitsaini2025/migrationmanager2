@@ -8,6 +8,7 @@ use App\Models\ClientMatter;
 use App\Models\Staff;
 use App\Support\CurrentVisaExpiry;
 use App\Support\StaffClientVisibility;
+use App\Support\VisaSheetCategory;
 use App\Traits\ClientAuthorization;
 use App\Traits\LogsClientActivity;
 use Carbon\Carbon;
@@ -139,6 +140,7 @@ class VisaTypeSheetController extends Controller
         $activeFilterCount = $this->countActiveFilters($request, $config);
         $showSponsorColumns = $this->isSponsorSheet($config);
         $showRefusedVisaType = $this->hasRefusedVisaTypeFeature($config);
+        $refusedVisaTypeFromMatter = $showRefusedVisaType && VisaSheetCategory::derivesFromMatter($config);
         $refusedVisaTypeOptions = $showRefusedVisaType ? $this->getRefusedVisaTypeOptions($config) : [];
         $refusedVisaTypeLabel = $showRefusedVisaType ? $this->getRefusedVisaTypeLabel($config) : '';
         $refusedVisaTypeSuggestRules = $showRefusedVisaType ? $this->getRefusedVisaTypeSuggestRules($config) : [];
@@ -158,6 +160,7 @@ class VisaTypeSheetController extends Controller
             'setupRequired',
             'showSponsorColumns',
             'showRefusedVisaType',
+            'refusedVisaTypeFromMatter',
             'refusedVisaTypeOptions',
             'refusedVisaTypeLabel',
             'refusedVisaTypeSuggestRules'
@@ -430,7 +433,7 @@ class VisaTypeSheetController extends Controller
             "{$refAlias}.checklist_sent_at",
             "{$refAlias}.is_pinned",
             $this->verifiedByNameSelect($refAlias),
-            $this->refusedVisaTypeSelectColumn($config, $refAlias),
+            $this->refusedVisaTypeSelectColumn($config, $refAlias, 'm.title', 'm.nick_name'),
             DB::raw("COALESCE(cm.{$checklistCol}, 'active') as tr_checklist_status"),
             DB::raw($checklistBlockFeeSelect),
             DB::raw('cm.created_at as sheet_row_created_at'),
@@ -445,7 +448,9 @@ class VisaTypeSheetController extends Controller
         $clientRows = $clientQuery->get();
 
         $leadRows = collect();
+        $streamFromMatter = VisaSheetCategory::derivesFromMatter($config);
         $skipLeadsForRefusedFilter = $this->hasRefusedVisaTypeFeature($config)
+            && ! $streamFromMatter
             && $request->filled('refused_visa_type');
         if ($leadRefTable && Schema::hasTable($leadRefTable) && ! $skipLeadsForRefusedFilter) {
             $matterIds = DB::table(DB::raw('matters as m'))->whereRaw($matterCondition)->pluck('id');
@@ -487,7 +492,9 @@ class VisaTypeSheetController extends Controller
                     'lr.checklist_sent_at',
                     DB::raw('false as is_pinned'),
                     DB::raw('NULL as verified_by_name'),
-                    DB::raw('NULL as refused_visa_type'),
+                    $streamFromMatter
+                        ? $this->refusedVisaTypeSelectColumn($config, 'lr', 'm.title', 'm.nick_name')
+                        : DB::raw('NULL as refused_visa_type'),
                     DB::raw("'active' as tr_checklist_status"),
                     DB::raw($leadBlockFeeSql),
                     'lr.created_at as sheet_row_created_at',
@@ -516,6 +523,15 @@ class VisaTypeSheetController extends Controller
                 if ($request->filled('matter_type')) {
                     $val = $request->input('matter_type');
                     $leadQuery->whereRaw('LOWER(m.title) LIKE ?', ['%'.strtolower($val).'%']);
+                }
+                if ($streamFromMatter && $request->filled('refused_visa_type')) {
+                    $refusedType = (string) $request->input('refused_visa_type');
+                    if (in_array($refusedType, $this->allowedRefusedVisaTypeKeys($config), true)) {
+                        $leadQuery->whereRaw(
+                            VisaSheetCategory::sqlCase('m.title', 'm.nick_name', $this->getRefusedVisaTypeSuggestRules($config)).' = ?',
+                            [$refusedType]
+                        );
+                    }
                 }
                 $leadRows = $leadQuery->get();
             }
@@ -714,7 +730,7 @@ class VisaTypeSheetController extends Controller
                 "{$refAlias}.checklist_sent_at",
                 "{$refAlias}.is_pinned",
                 $this->verifiedByNameSelect($refAlias),
-                $this->refusedVisaTypeSelectColumn($config, $refAlias),
+                $this->refusedVisaTypeSelectColumn($config, $refAlias, 'latest_matter.matter_title', 'latest_matter.matter_nick'),
                 'latest_matter.checklist_status as tr_checklist_status',
                 'latest_matter.decision_outcome',
                 'latest_matter.decision_note'
@@ -858,7 +874,16 @@ class VisaTypeSheetController extends Controller
         if ($this->hasRefusedVisaTypeFeature($config) && $request->filled('refused_visa_type')) {
             $refusedType = (string) $request->input('refused_visa_type');
             if (in_array($refusedType, $this->allowedRefusedVisaTypeKeys($config), true)) {
-                $query->where("{$refAlias}.refused_visa_type", $refusedType);
+                if (VisaSheetCategory::derivesFromMatter($config)) {
+                    $titleExpr = $matterAlias === 'latest_matter' ? 'latest_matter.matter_title' : 'm.title';
+                    $nickExpr = $matterAlias === 'latest_matter' ? 'latest_matter.matter_nick' : 'm.nick_name';
+                    $query->whereRaw(
+                        VisaSheetCategory::sqlCase($titleExpr, $nickExpr, $this->getRefusedVisaTypeSuggestRules($config)).' = ?',
+                        [$refusedType]
+                    );
+                } else {
+                    $query->where("{$refAlias}.refused_visa_type", $refusedType);
+                }
             }
         }
         if ($request->filled('search')) {
@@ -1335,14 +1360,21 @@ class VisaTypeSheetController extends Controller
 
     /**
      * SELECT fragment for refused_visa_type when sheet config enables the feature.
+     * Sheets that derive the category from the matter ignore the stored column.
      */
-    protected function refusedVisaTypeSelectColumn(array $config, string $refAlias): Expression|string
+    protected function refusedVisaTypeSelectColumn(array $config, string $refAlias, string $titleExpr = 'm.title', string $nickExpr = 'm.nick_name'): Expression|string
     {
-        if ($this->hasRefusedVisaTypeFeature($config)) {
-            return "{$refAlias}.refused_visa_type";
+        if (! $this->hasRefusedVisaTypeFeature($config)) {
+            return DB::raw('NULL as refused_visa_type');
         }
 
-        return DB::raw('NULL as refused_visa_type');
+        if (VisaSheetCategory::derivesFromMatter($config)) {
+            $case = VisaSheetCategory::sqlCase($titleExpr, $nickExpr, $this->getRefusedVisaTypeSuggestRules($config));
+
+            return DB::raw($case.' as refused_visa_type');
+        }
+
+        return "{$refAlias}.refused_visa_type";
     }
 
     protected function calculatePaymentsForMatter($clientId, $matterInternalId): array
@@ -1729,7 +1761,7 @@ class VisaTypeSheetController extends Controller
         }
 
         $config = $this->getVisaTypeConfig($visaType);
-        if (! $config || ! $this->hasRefusedVisaTypeFeature($config)) {
+        if (! $config || ! $this->hasRefusedVisaTypeFeature($config) || VisaSheetCategory::derivesFromMatter($config)) {
             return response()->json(['success' => false, 'message' => 'Not available for this sheet'], 404);
         }
 

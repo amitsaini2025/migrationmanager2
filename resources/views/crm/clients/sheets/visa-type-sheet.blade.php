@@ -740,9 +740,18 @@
                                                 @endif
                                                 @if($showRefusedVisaType)
                                                 <td onclick="event.stopPropagation();" class="refused-visa-type-cell frozen-col frozen-col-3 frozen-col-last">
-                                                    @if(! $isLead && ! empty($matterId))
+                                                    @php
+                                                        $currentRefused = $row->refused_visa_type ?? '';
+                                                        $refusedLabel = ($refusedVisaTypeOptions ?? [])[$currentRefused] ?? '';
+                                                    @endphp
+                                                    @if($refusedVisaTypeFromMatter ?? false)
+                                                        @if($refusedLabel !== '')
+                                                            {{ $refusedLabel }}
+                                                        @else
+                                                            <span class="text-muted">—</span>
+                                                        @endif
+                                                    @elseif(! $isLead && ! empty($matterId))
                                                         @php
-                                                            $currentRefused = $row->refused_visa_type ?? '';
                                                             $matterTitleForSuggest = $row->matter_title ?? '';
                                                         @endphp
                                                         <select class="form-control form-control-sm refused-visa-type-select"

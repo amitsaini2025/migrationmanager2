@@ -203,12 +203,12 @@
                                         <input type="checkbox" name="grant_super_admin_access" value="1" class="mr-2"
                                             @if(old('grant_super_admin_access', $fetchedData->grant_super_admin_access ?? false)) checked @endif
                                             @if(!$_isSuperAdminActor) disabled @endif>
-                                        <span>Do u want this user to grant Super admin access level?</span>
+                                        <span>Elevated CRM access</span>
                                     </label>
                                     @if($_isSuperAdminActor)
-                                        <small class="text-muted d-block mt-1">Unchecked by default. When enabled, this user gets the same elevated CRM access currently granted through configured approver staff IDs.</small>
+                                        <small class="text-muted d-block mt-1">Unchecked by default. They can open clients and leads without being allocated, approve access requests, and manage Quick access and Profile access. This does not change their role or open Admin Console.</small>
                                     @else
-                                        <small class="text-muted d-block mt-1">Only Superadmin role user can provide this access.</small>
+                                        <small class="text-muted d-block mt-1">Only a Super Admin can turn this on.</small>
                                     @endif
                                 </div>
 
@@ -366,8 +366,8 @@ $(document).ready(function() {
         $grantSuperAdminAccess.on('change', function() {
             var isChecked = $(this).is(':checked');
             var message = isChecked
-                ? 'Are you sure you want to grant Super admin access level to this user?'
-                : 'Are you sure you want to remove Super admin access level from this user?';
+                ? 'Are you sure you want to grant elevated CRM access to this user?'
+                : 'Are you sure you want to remove elevated CRM access from this user?';
 
             if (!window.confirm(message)) {
                 $(this).prop('checked', !isChecked);

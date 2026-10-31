@@ -47,16 +47,21 @@ return [
         'checklist_convert_to_client_stage' => 'Cost Agreement, form 956 and First email Sent',
 
         'has_refused_visa_type' => true,
+        'refused_visa_type_from_matter' => true,
         'refused_visa_type_label' => 'TR Stream',
         'refused_visa_type_options' => [
             'post-vocational' => 'Post-Vocational',
             'post-higher' => 'Post-Higher',
             'second-post-higher' => 'Second Post-Higher',
+            'subsequent' => 'Subsequent Entrant',
         ],
+        // First match wins. "second post higher" must stay above "post higher".
+        // Do not match the word "graduate": every 485 title contains it.
         'refused_visa_type_suggest' => [
-            'second-post-higher' => ['second post-higher', 'second post higher', '2nd post-higher'],
-            'post-vocational' => ['post-vocational', 'post vocational', 'vocational', 'tvg'],
-            'post-higher' => ['post-higher', 'post higher', 'graduate', 'pt'],
+            'second-post-higher' => ['second post-higher', 'second post higher', '2nd post-higher', '485sph'],
+            'subsequent' => ['subsequent'],
+            'post-vocational' => ['post-vocational', 'post vocational', 'vocational', '485v'],
+            'post-higher' => ['post-study', 'post study', 'post-higher', 'post higher', '485ps'],
         ],
     ],
 

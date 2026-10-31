@@ -56,18 +56,18 @@ final class VisaSheetCategory
             if (! is_string($key) || ! is_array($needles)) {
                 continue;
             }
-            $likes = [];
+            $checks = [];
             foreach ($needles as $needle) {
                 $needle = strtolower(trim((string) $needle));
                 if ($needle === '') {
                     continue;
                 }
-                $likes[] = $haystack." LIKE '%".self::likeEscape($needle)."%' ESCAPE '\\\\'";
+                $checks[] = 'STRPOS('.$haystack.', '.self::quote($needle).') > 0';
             }
-            if ($likes === []) {
+            if ($checks === []) {
                 continue;
             }
-            $whens[] = 'WHEN '.implode(' OR ', $likes).' THEN '.self::quote($key);
+            $whens[] = 'WHEN '.implode(' OR ', $checks).' THEN '.self::quote($key);
         }
 
         if ($whens === []) {
@@ -89,15 +89,5 @@ final class VisaSheetCategory
     private static function quote(string $value): string
     {
         return "'".str_replace("'", "''", $value)."'";
-    }
-
-    private static function likeEscape(string $value): string
-    {
-        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], self::quoteInner($value));
-    }
-
-    private static function quoteInner(string $value): string
-    {
-        return str_replace("'", "''", $value);
     }
 }

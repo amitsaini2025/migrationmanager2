@@ -56,7 +56,8 @@ class VisaSheetCategoryTest extends TestCase
         $this->assertStringContainsString('post-study', $sql);
         $this->assertStringContainsString('post study', $sql);
         $this->assertStringNotContainsString('graduate', $sql);
-        $this->assertStringContainsString("ESCAPE '\\\\'", $sql);
+        $this->assertStringContainsString('STRPOS(', $sql);
+        $this->assertStringNotContainsString('ESCAPE', $sql);
     }
 
     #[Test]

@@ -13,7 +13,7 @@ use App\Models\EmailLogAttachment;
 use App\Models\PersonalDocumentType;
 use App\Models\VisaDocumentType;
 use App\Support\DocumentStoredFilename;
-use App\Support\EmailAttachmentFilename;
+use App\Support\EmailAttachmentStorageMap;
 use App\Traits\LogsClientActivity;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -253,32 +253,7 @@ class EmailUploadController extends Controller
             return [];
         }
 
-        $decoded = json_decode((string) $request->input('attachment_storage'), true);
-        if (! is_array($decoded)) {
-            return [];
-        }
-
-        $map = [];
-        foreach ($decoded as $item) {
-            if (! is_array($item)) {
-                continue;
-            }
-            $key = $item['original_filename'] ?? $item['filename'] ?? null;
-            if (! is_string($key) || $key === '') {
-                continue;
-            }
-
-            // Exact key (legacy / identical preview+parse names)
-            $map[$key] = $item;
-
-            // Normalized key so preview vs full-parse naming drift still matches
-            $normalized = EmailAttachmentFilename::normalizeKey($key);
-            if ($normalized !== '') {
-                $map[$normalized] = $item;
-            }
-        }
-
-        return $map;
+        return EmailAttachmentStorageMap::fromJson((string) $request->input('attachment_storage'));
     }
 
     /**
@@ -287,16 +262,22 @@ class EmailUploadController extends Controller
      */
     protected function resolveAttachmentStorageConfig(array $storageMap, string $originalFilename): ?array
     {
-        if ($originalFilename !== '' && isset($storageMap[$originalFilename]) && is_array($storageMap[$originalFilename])) {
-            return $storageMap[$originalFilename];
-        }
+        return EmailAttachmentStorageMap::resolve($storageMap, $originalFilename);
+    }
 
-        $normalized = EmailAttachmentFilename::normalizeKey($originalFilename);
-        if ($normalized !== '' && isset($storageMap[$normalized]) && is_array($storageMap[$normalized])) {
-            return $storageMap[$normalized];
+    /**
+     * @param  array<int, string>  $warnings
+     */
+    protected function mergeDocumentCopyWarnings(array &$warnings, array $incoming): void
+    {
+        foreach ($incoming as $warning) {
+            if (! is_string($warning) || $warning === '') {
+                continue;
+            }
+            if (! in_array($warning, $warnings, true)) {
+                $warnings[] = $warning;
+            }
         }
-
-        return null;
     }
 
     protected function sanitizeAttachmentDisplayName(string $name): string
@@ -539,6 +520,7 @@ class EmailUploadController extends Controller
             $failedCount = 0;
             $errors = [];
             $savedDocumentCategories = [];
+            $documentCopyWarnings = [];
 
             foreach ($request->file('email_files') as $file) {
                 try {
@@ -548,6 +530,9 @@ class EmailUploadController extends Controller
                         $uploadedCount++;
                         if (! empty($result['saved_document_categories'])) {
                             $this->mergeSavedDocumentCategories($savedDocumentCategories, $result['saved_document_categories']);
+                        }
+                        if (! empty($result['document_copy_warnings'])) {
+                            $this->mergeDocumentCopyWarnings($documentCopyWarnings, $result['document_copy_warnings']);
                         }
                     } else {
                         $failedCount++;
@@ -600,6 +585,10 @@ class EmailUploadController extends Controller
                 $status = false;
             }
 
+            if ($uploadedCount > 0 && $documentCopyWarnings !== []) {
+                $message .= '. Email saved, but some attachments were not copied to Documents';
+            }
+
             // Return response with proper status
             return response()->json([
                 'status' => $status,
@@ -609,6 +598,7 @@ class EmailUploadController extends Controller
                 'errors' => $errors,
                 'total_files' => $uploadedCount + $failedCount,
                 'saved_document_categories' => array_values($savedDocumentCategories),
+                'document_copy_warnings' => array_values($documentCopyWarnings),
             ], $status ? 200 : 400);
 
         } catch (\Exception $e) {
@@ -683,6 +673,7 @@ class EmailUploadController extends Controller
             $failedCount = 0;
             $errors = [];
             $savedDocumentCategories = [];
+            $documentCopyWarnings = [];
 
             foreach ($request->file('email_files') as $file) {
                 try {
@@ -692,6 +683,9 @@ class EmailUploadController extends Controller
                         $uploadedCount++;
                         if (! empty($result['saved_document_categories'])) {
                             $this->mergeSavedDocumentCategories($savedDocumentCategories, $result['saved_document_categories']);
+                        }
+                        if (! empty($result['document_copy_warnings'])) {
+                            $this->mergeDocumentCopyWarnings($documentCopyWarnings, $result['document_copy_warnings']);
                         }
                     } else {
                         $failedCount++;
@@ -744,6 +738,10 @@ class EmailUploadController extends Controller
                 $status = false;
             }
 
+            if ($uploadedCount > 0 && $documentCopyWarnings !== []) {
+                $message .= '. Email saved, but some attachments were not copied to Documents';
+            }
+
             return response()->json([
                 'status' => $status,
                 'message' => $message,
@@ -752,6 +750,7 @@ class EmailUploadController extends Controller
                 'errors' => $errors,
                 'total_files' => $uploadedCount + $failedCount,
                 'saved_document_categories' => array_values($savedDocumentCategories),
+                'document_copy_warnings' => array_values($documentCopyWarnings),
             ], $status ? 200 : 400);
 
         } catch (\Exception $e) {
@@ -884,6 +883,7 @@ class EmailUploadController extends Controller
     protected function processEmailFile($file, $clientId, $clientUniqueId, $mailType, $request)
     {
         $savedDocumentCategories = [];
+        $documentCopyWarnings = [];
 
         try {
             $fileName = $file->getClientOriginalName();
@@ -1105,7 +1105,10 @@ class EmailUploadController extends Controller
 
                 $storageMap = $this->parseAttachmentStorageMap($request);
                 $matterIdForDocs = $document->client_matter_id ?? null;
-                $attachmentStorageReviewed = $request->has('attachment_storage');
+                $attachmentStorageReviewed = EmailAttachmentStorageMap::isReviewedList(
+                    $request->has('attachment_storage'),
+                    $storageMap
+                );
 
                 foreach ($parsedData['attachments'] as $attachmentData) {
                     if (! empty($attachmentData['is_inline'])) {
@@ -1117,6 +1120,7 @@ class EmailUploadController extends Controller
                         $storageConfig = $this->resolveAttachmentStorageConfig($storageMap, $originalFilename);
 
                         // Reviewed list from the modal: omitted filenames were removed by the user.
+                        // Empty map still counts as reviewed (user removed every row).
                         if ($attachmentStorageReviewed && $storageConfig === null) {
                             continue;
                         }
@@ -1131,7 +1135,7 @@ class EmailUploadController extends Controller
                             $attachmentData['display_name'] = $extension ? ($stem.'.'.$extension) : $stem;
                         }
 
-                        $categoryInfo = $this->saveAttachment(
+                        $saveResult = $this->saveAttachment(
                             $mailReport->id,
                             $attachmentData,
                             $clientUniqueId,
@@ -1140,6 +1144,12 @@ class EmailUploadController extends Controller
                             (int) $clientId,
                             $matterIdForDocs
                         );
+
+                        $categoryInfo = is_array($saveResult) ? ($saveResult['saved_category'] ?? null) : null;
+                        $copyWarning = is_array($saveResult) ? ($saveResult['document_copy_warning'] ?? null) : null;
+                        if (is_string($copyWarning) && $copyWarning !== '') {
+                            $documentCopyWarnings[] = $copyWarning;
+                        }
 
                         if (is_array($categoryInfo) && ! empty($categoryInfo['category_id'])) {
                             $categoryKey = ($categoryInfo['doc_type'] ?? '').'|'.$categoryInfo['category_id'].'|'.($categoryInfo['client_matter_id'] ?? '');
@@ -1221,6 +1231,7 @@ class EmailUploadController extends Controller
                 'document_id' => $document->id,
                 'email_log_id' => $mailReport->id,
                 'saved_document_categories' => array_values($savedDocumentCategories),
+                'document_copy_warnings' => array_values(array_unique($documentCopyWarnings)),
             ];
 
         } catch (QueryException $e) {
@@ -1445,11 +1456,12 @@ class EmailUploadController extends Controller
     }
 
     /**
-     * Save attachment to database and S3
+     * Save attachment to database and S3.
      *
      * @param  int  $mailReportId
      * @param  array  $attachmentData
      * @param  string  $clientUniqueId
+     * @return array{saved_category: ?array<string, mixed>, document_copy_warning: ?string}
      */
     protected function saveAttachment(
         $mailReportId,
@@ -1459,12 +1471,15 @@ class EmailUploadController extends Controller
         $request = null,
         $clientId = null,
         $matterId = null
-    ): ?array {
+    ): array {
         $s3Path = null;
         $s3Key = null;
         $fileSize = $attachmentData['file_size'] ?? $attachmentData['size'] ?? 0;
         $displayName = $attachmentData['display_name'] ?? ($attachmentData['filename'] ?? 'unknown');
         $savedCategory = null;
+        $documentCopyWarning = null;
+        $wantsDocumentCopy = is_array($storageConfig)
+            && EmailAttachmentStorageMap::requestsDocumentCopy($storageConfig);
 
         try {
             // Check for both 'content' and 'data' keys (Python service uses 'data')
@@ -1551,6 +1566,9 @@ class EmailUploadController extends Controller
                             'category_id' => $storageConfig['category_id'] ?? null,
                             'doc_type' => $storageConfig['doc_type'] ?? null,
                         ]);
+                        if ($wantsDocumentCopy) {
+                            $documentCopyWarning = 'Could not copy "'.($attachmentData['filename'] ?? 'attachment').'" to Documents; kept on the email only.';
+                        }
                     }
                 } catch (\Exception $documentException) {
                     // Do not lose the file: keep email upload working if Visa/Personal copy fails.
@@ -1560,7 +1578,12 @@ class EmailUploadController extends Controller
                         'category_id' => $storageConfig['category_id'] ?? null,
                         'doc_type' => $storageConfig['doc_type'] ?? null,
                     ]);
+                    if ($wantsDocumentCopy) {
+                        $documentCopyWarning = 'Could not copy "'.($attachmentData['filename'] ?? 'attachment').'" to Documents; kept on the email only.';
+                    }
                 }
+            } elseif ($wantsDocumentCopy && $decodedData === null) {
+                $documentCopyWarning = 'Could not copy "'.($attachmentData['filename'] ?? 'attachment').'" to Documents (missing file data); kept on the email only.';
             }
 
             if ($decodedData !== null && ! $storedAsDocument) {
@@ -1627,9 +1650,15 @@ class EmailUploadController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'attachment' => $attachmentData['filename'] ?? 'unknown',
             ]);
+            if ($wantsDocumentCopy && $documentCopyWarning === null) {
+                $documentCopyWarning = 'Could not copy "'.($attachmentData['filename'] ?? 'attachment').'" to Documents; kept on the email only.';
+            }
         }
 
-        return $savedCategory;
+        return [
+            'saved_category' => $savedCategory,
+            'document_copy_warning' => $documentCopyWarning,
+        ];
     }
 
     /**

@@ -118,17 +118,30 @@
             if (!emailName) {
                 return;
             }
-            if (!map[emailName]) {
-                map[emailName] = [];
-            }
-            map[emailName].push({
+            const entry = {
                 original_filename: item.original_filename,
                 filename: item.filename,
                 file_name: item.file_name,
                 storage_type: item.storage_type,
                 category_id: item.category_id,
                 doc_type: item.doc_type
-            });
+            };
+            if (!map[emailName]) {
+                map[emailName] = [];
+            }
+            map[emailName].push(entry);
+
+            // Also index sanitized upload names so WAF-safe rename still finds prefs.
+            const deps = getDeps();
+            if (typeof deps.sanitizeUploadFilename === 'function') {
+                const safeName = deps.sanitizeUploadFilename(emailName);
+                if (safeName && safeName !== emailName) {
+                    if (!map[safeName]) {
+                        map[safeName] = [];
+                    }
+                    map[safeName].push(entry);
+                }
+            }
         });
         return map;
     }
@@ -459,6 +472,11 @@
                 let globalCategoryId = 0;
                 let globalDocType = null;
                 if (!usePerEmailCategories) {
+                    // Disabled <select> still exposes .value in JS, but re-enable so
+                    // the chosen Visa/Personal category is never lost before read.
+                    if (saveToDocsCheckbox && saveToDocsCheckbox.checked && categorySelect) {
+                        categorySelect.disabled = false;
+                    }
                     const saveToDocs = saveToDocsCheckbox && saveToDocsCheckbox.checked;
                     const globalSelection = categorySelect ? parseCategoryOptionValue(categorySelect.value) : { categoryId: 0, docType: null };
                     if (saveToDocs && !categorySelectionIsValid(globalSelection)) {
@@ -514,7 +532,11 @@
                         storage_type: storageType,
                         category_id: categoryId
                     };
-                    if (docType) {
+                    // Always send doc_type with document copies so Visa Forms
+                    // never falls back to personal on the server.
+                    if (storageType === 'documents') {
+                        entry.doc_type = docType || 'personal';
+                    } else if (docType) {
                         entry.doc_type = docType;
                     }
                     if (emailFilename) {

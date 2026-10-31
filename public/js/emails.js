@@ -998,8 +998,29 @@
             failed: failedCount + extraFailed,
             duplicateError: duplicateError,
             errors: errors,
-            saved_document_categories: Array.isArray(result.saved_document_categories) ? result.saved_document_categories : []
+            saved_document_categories: Array.isArray(result.saved_document_categories) ? result.saved_document_categories : [],
+            document_copy_warnings: Array.isArray(result.document_copy_warnings) ? result.document_copy_warnings : []
         };
+    }
+
+    function resolveAttachmentStorageForFile(file, attachmentStorageByEmail, fallbackStorageList) {
+        if (attachmentStorageByEmail === null || attachmentStorageByEmail === undefined) {
+            return null;
+        }
+        const byName = attachmentStorageByEmail[file.name];
+        if (Array.isArray(byName) && byName.length > 0) {
+            return byName;
+        }
+        const safeName = sanitizeUploadFilename(file.name);
+        const bySafeName = attachmentStorageByEmail[safeName];
+        if (Array.isArray(bySafeName) && bySafeName.length > 0) {
+            return bySafeName;
+        }
+        // Single-email upload: never drop modal prefs because of a key mismatch.
+        if (Array.isArray(fallbackStorageList) && fallbackStorageList.length > 0) {
+            return fallbackStorageList;
+        }
+        return [];
     }
 
     function registerEmailUploadFlowDeps() {
@@ -1008,7 +1029,8 @@
             getMatterId: getMatterId,
             getCsrfToken: getCsrfToken,
             escapeHtml: escapeHtml,
-            formatFileSize: formatFileSize
+            formatFileSize: formatFileSize,
+            sanitizeUploadFilename: sanitizeUploadFilename
         };
     }
 
@@ -1052,6 +1074,8 @@
         let overlayHideDelay = 900;
         const savedDocumentCategories = {};
         let attachmentStorageByEmail = null;
+        let modalStorageList = null;
+        const documentCopyWarnings = [];
 
         if (typeof flow.showEmailUploadLoading === 'function') {
             flow.showEmailUploadLoading(
@@ -1093,8 +1117,9 @@
                         overlayHideDelay = 0;
                         return;
                     }
+                    modalStorageList = Array.isArray(modalResult) ? modalResult : [];
                     if (typeof flow.groupAttachmentStorageByEmail === 'function') {
-                        attachmentStorageByEmail = flow.groupAttachmentStorageByEmail(modalResult);
+                        attachmentStorageByEmail = flow.groupAttachmentStorageByEmail(modalStorageList);
                     }
                     if (typeof flow.showEmailUploadLoading === 'function') {
                         flow.showEmailUploadLoading(
@@ -1124,13 +1149,16 @@
                 }
 
                 try {
+                    const storageForFile = resolveAttachmentStorageForFile(
+                        file,
+                        attachmentStorageByEmail,
+                        files.length === 1 ? modalStorageList : null
+                    );
                     const fileResult = await processSingleEmailUpload(
                         file,
                         i,
                         files.length,
-                        attachmentStorageByEmail !== null
-                            ? (attachmentStorageByEmail[file.name] || [])
-                            : null,
+                        storageForFile,
                         flow
                     );
 
@@ -1138,6 +1166,11 @@
                     failedTotal += fileResult.failed || 0;
                     rejectedTotal += fileResult.rejected || 0;
                     mergeSavedDocumentCategories(savedDocumentCategories, fileResult.saved_document_categories);
+                    (fileResult.document_copy_warnings || []).forEach(function(warning) {
+                        if (warning && documentCopyWarnings.indexOf(warning) === -1) {
+                            documentCopyWarnings.push(warning);
+                        }
+                    });
                 } catch (fileError) {
                     failedTotal += 1;
                     console.error('Upload error for ' + file.name + ':', fileError);
@@ -1160,6 +1193,12 @@
                     'Successfully uploaded ' + uploadedTotal + ' email' + (uploadedTotal > 1 ? 's' : ''),
                     'success'
                 );
+                if (documentCopyWarnings.length > 0) {
+                    showNotification(
+                        'Email saved, but some attachments were not copied to Documents. Check Visa/Personal Documents or retry the copy.',
+                        'error'
+                    );
+                }
                 if (typeof flow.updateEmailUploadLoading === 'function') {
                     flow.updateEmailUploadLoading('Upload complete', 'All emails uploaded successfully.', '', 100);
                 }
@@ -1178,6 +1217,12 @@
                     uploadedTotal + ' uploaded, ' + (failedTotal + rejectedTotal) + ' skipped/failed',
                     'error'
                 );
+                if (documentCopyWarnings.length > 0) {
+                    showNotification(
+                        'Some attachments were not copied to Documents.',
+                        'error'
+                    );
+                }
                 loadEmails({ forceReload: true });
                 refreshSavedDocumentCategories(savedDocumentCategories);
             } else if (rejectedTotal > 0 && failedTotal === 0) {

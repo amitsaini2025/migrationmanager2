@@ -323,20 +323,25 @@
                                 <label>Move to:</label>
                                 <select id="moveTargetType" class="form-control" style="margin-bottom: 15px;">
                                     <option value="">-- Select Destination --</option>
+                                    @if($companyDocumentsOnlyGeneral)
+                                    <option value="personal">Company Documents</option>
+                                    <option value="nomination">File Documents</option>
+                                    @else
                                     <option value="personal">Personal Documents</option>
                                     <option value="visa">Visa Documents</option>
+                                    @endif
                                 </select>
                             </div>
                             
-                            <!-- For Personal Documents: Show Categories -->
+                            <!-- For Personal/Company Documents: Show Categories -->
                             <div class="form-group" id="movePersonalCategoryContainer" style="display: none;">
-                                <label>Select Personal Category:</label>
+                                <label>{{ $companyDocumentsOnlyGeneral ? 'Select Company Category:' : 'Select Personal Category:' }}</label>
                                 <select id="movePersonalCategoryId" class="form-control">
                                     <option value="">-- Select Category --</option>
                                 </select>
                             </div>
                             
-                            <!-- For Visa Documents: Show Matters first, then Categories -->
+                            <!-- For Visa Documents: Show Matters first, then Categories (person clients only) -->
                             <div class="form-group" id="moveVisaMatterContainer" style="display: none;">
                                 <label>Select Visa Matter:</label>
                                 <select id="moveVisaMatterId" class="form-control" style="margin-bottom: 15px;">
@@ -350,6 +355,15 @@
                                     <option value="">-- Select Category --</option>
                                 </select>
                             </div>
+
+                            @if($companyDocumentsOnlyGeneral)
+                            <div class="form-group" id="moveNominationCategoryContainer" style="display: none;">
+                                <label>Select File Document Category:</label>
+                                <select id="moveNominationCategoryId" class="form-control">
+                                    <option value="">-- Select Category --</option>
+                                </select>
+                            </div>
+                            @endif
                             
                             <div id="moveDocumentError" class="alert alert-danger" style="display: none; margin-top: 10px;"></div>
                         </div>
@@ -1013,6 +1027,7 @@
                 // ============================================================================
                 let currentMoveDocumentId = null;
                 let currentMoveDocumentType = null;
+                const isCompanyDocumentsMoveUi = {{ $companyDocumentsOnlyGeneral ? 'true' : 'false' }};
 
                 function openMoveDocumentModal(documentId, currentType) {
                     currentMoveDocumentId = documentId;
@@ -1023,9 +1038,11 @@
                     $('#movePersonalCategoryContainer').hide();
                     $('#moveVisaMatterContainer').hide();
                     $('#moveVisaCategoryContainer').hide();
+                    $('#moveNominationCategoryContainer').hide();
                     $('#movePersonalCategoryId').empty().append('<option value="">-- Select Category --</option>');
                     $('#moveVisaMatterId').empty().append('<option value="">-- Select Matter --</option>');
                     $('#moveVisaCategoryId').empty().append('<option value="">-- Select Category --</option>');
+                    $('#moveNominationCategoryId').empty().append('<option value="">-- Select Category --</option>');
                     $('#moveDocumentError').hide();
                     
                     // Show modal
@@ -1040,6 +1057,7 @@
                     $('#movePersonalCategoryContainer').hide();
                     $('#moveVisaMatterContainer').hide();
                     $('#moveVisaCategoryContainer').hide();
+                    $('#moveNominationCategoryContainer').hide();
                     $('#moveDocumentError').hide();
                     
                     if (!targetType) {
@@ -1047,9 +1065,9 @@
                     }
                     
                     if (targetType === 'personal') {
-                        // Load personal document categories
+                        // Load personal/company document categories from this tab
                         const categories = [];
-                        $('.subtab2-button').each(function() {
+                        $('#personaldocuments-tab .subtab2-button').each(function() {
                             const catId = $(this).data('subtab2');
                             const catTitle = $(this).text().trim();
                             if (catId && catTitle) {
@@ -1063,8 +1081,8 @@
                         });
                         $('#movePersonalCategoryContainer').show();
                         
-                    } else if (targetType === 'visa') {
-                        // Load visa matters first
+                    } else if (targetType === 'visa' && !isCompanyDocumentsMoveUi) {
+                        // Load visa matters first (person clients only)
                         const clientId = '<?= $clientId ?? "" ?>';
                         if (!clientId) {
                             $('#moveDocumentError').text('Error: Client ID not found').show();
@@ -1097,6 +1115,44 @@
                                 $('#moveVisaMatterId').empty().append('<option value="">Error loading matters</option>');
                             }
                         });
+                    } else if (targetType === 'nomination' && isCompanyDocumentsMoveUi) {
+                        const categories = [];
+                        $('#nominationdocuments-tab .subtab6-button').each(function() {
+                            const catId = $(this).data('subtab6');
+                            const catTitle = $(this).text().trim();
+                            if (catId && catTitle) {
+                                categories.push({ id: catId, title: catTitle });
+                            }
+                        });
+                        const finishNominationCats = function(cats) {
+                            $('#moveNominationCategoryId').empty().append('<option value="">-- Select Category --</option>');
+                            if (cats.length > 0) {
+                                cats.forEach(cat => {
+                                    $('#moveNominationCategoryId').append(`<option value="${cat.id}">${cat.title}</option>`);
+                                });
+                            } else {
+                                $('#moveNominationCategoryId').append('<option value="">No categories found</option>');
+                            }
+                            $('#moveNominationCategoryContainer').show();
+                        };
+                        if (categories.length > 0) {
+                            finishNominationCats(categories);
+                        } else if (typeof window.ClientDetailConfig !== 'undefined' && window.ClientDetailConfig.clientId) {
+                            const matterId = $('#sel_matter_id_client_detail').val() || '';
+                            $.get('{{ URL::to('/get-nomination-categories') }}', {
+                                client_id: window.ClientDetailConfig.clientId,
+                                matter_id: matterId
+                            }).done(function(data) {
+                                const cats = (data || []).map(function(c) {
+                                    return { id: c.id, title: c.title };
+                                });
+                                finishNominationCats(cats);
+                            }).fail(function() {
+                                finishNominationCats([]);
+                            });
+                        } else {
+                            finishNominationCats([]);
+                        }
                     }
                 });
 
@@ -1155,10 +1211,12 @@
                     if (targetType === 'personal') {
                         targetId = $('#movePersonalCategoryId').val();
                         if (!targetId) {
-                            $error.text('Please select a personal category').show();
+                            $error.text(isCompanyDocumentsMoveUi
+                                ? 'Please select a company category'
+                                : 'Please select a personal category').show();
                             return;
                         }
-                    } else if (targetType === 'visa') {
+                    } else if (targetType === 'visa' && !isCompanyDocumentsMoveUi) {
                         const matterIdForMove = $('#moveVisaMatterId').val();
                         if (!matterIdForMove) {
                             $error.text('Please select a visa matter').show();
@@ -1169,6 +1227,15 @@
                             $error.text('Please select a visa category').show();
                             return;
                         }
+                    } else if (targetType === 'nomination' && isCompanyDocumentsMoveUi) {
+                        targetId = $('#moveNominationCategoryId').val();
+                        if (!targetId) {
+                            $error.text('Please select a file document category').show();
+                            return;
+                        }
+                    } else {
+                        $error.text('Please select a valid destination').show();
+                        return;
                     }
                     
                     // Disable button and show loading

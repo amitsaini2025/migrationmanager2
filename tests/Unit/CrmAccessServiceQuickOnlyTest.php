@@ -495,6 +495,8 @@ class CrmAccessServiceQuickOnlyTest extends TestCase
         $this->assertStringContainsString('Save your work', $html);
         $this->assertStringContainsString('turns off in one minute', $html);
         $this->assertStringContainsString('2026-10-30T02:15:00+00:00', $html);
+        // Must stay below .main-topbar (1000) so topbar global search results are not covered.
+        $this->assertMatchesRegularExpression('/#crm-quick-access-timer\s*\{[^}]*z-index:\s*900/s', $html);
     }
 
     public function test_quick_access_timer_is_absent_without_an_end_time(): void

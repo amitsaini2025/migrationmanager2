@@ -1113,24 +1113,16 @@
                                 <label>Move to:</label>
                                 <select id="moveNominationTargetType" class="form-control" style="margin-bottom: 15px;">
                                     <option value="">-- Select Destination --</option>
-                                    <option value="personal">Personal Documents</option>
-                                    <option value="visa">Visa Documents</option>
+                                    {{-- Company-only tab: destinations match sidebar (Company / File Documents). --}}
+                                    <option value="personal">Company Documents</option>
                                     <option value="nomination">File Documents</option>
                                 </select>
                             </div>
                             
-                            <!-- For Personal Documents: Show Categories -->
+                            <!-- For Company Documents: Show Categories (backend target_type remains personal) -->
                             <div class="form-group" id="moveNominationPersonalCategoryContainer" style="display: none;">
-                                <label>Select Personal Category:</label>
+                                <label>Select Company Category:</label>
                                 <select id="moveNominationPersonalCategoryId" class="form-control">
-                                    <option value="">-- Select Category --</option>
-                                </select>
-                            </div>
-                            
-                            <!-- For Visa Documents: Show Categories (like Personal Documents) -->
-                            <div class="form-group" id="moveNominationVisaCategoryContainer" style="display: none;">
-                                <label>Select Visa Category:</label>
-                                <select id="moveNominationVisaCategoryId" class="form-control">
                                     <option value="">-- Select Category --</option>
                                 </select>
                             </div>
@@ -1291,10 +1283,8 @@
                     // Reset modal
                     $('#moveNominationTargetType').val('');
                     $('#moveNominationPersonalCategoryContainer').hide();
-                    $('#moveNominationVisaCategoryContainer').hide();
                     $('#moveNominationNominationCategoryContainer').hide();
                     $('#moveNominationPersonalCategoryId').empty().append('<option value="">-- Select Category --</option>');
-                    $('#moveNominationVisaCategoryId').empty().append('<option value="">-- Select Category --</option>');
                     $('#moveNominationNominationCategoryId').empty().append('<option value="">-- Select Category --</option>');
                     $('#moveNominationDocumentError').hide();
                     
@@ -1302,13 +1292,12 @@
                     $('#moveNominationDocumentModal').modal('show');
                 }
 
-                // Handle target type change for visa documents
+                // Handle target type change for file documents (company)
                 $(document).on('change', '#moveNominationTargetType', function() {
                     const targetType = $(this).val();
                     
                     // Hide all containers first
                     $('#moveNominationPersonalCategoryContainer').hide();
-                    $('#moveNominationVisaCategoryContainer').hide();
                     $('#moveNominationNominationCategoryContainer').hide();
                     $('#moveNominationDocumentError').hide();
                     
@@ -1317,9 +1306,9 @@
                     }
                     
                     if (targetType === 'personal') {
-                        // Load personal document categories from DOM (like personal tab)
+                        // Company Documents categories (personaldocuments-tab on company detail)
                         const categories = [];
-                        $('.subtab2-button').each(function() {
+                        $('#personaldocuments-tab .subtab2-button').each(function() {
                             const catId = $(this).data('subtab2');
                             const catTitle = $(this).text().trim();
                             if (catId && catTitle) {
@@ -1337,44 +1326,6 @@
                         }
                         $('#moveNominationPersonalCategoryContainer').show();
                         
-                    } else if (targetType === 'visa') {
-                        const categories = [];
-                        $('#visadocuments-tab .subtab6-button').each(function() {
-                            const catId = $(this).data('subtab6');
-                            const catTitle = $(this).text().trim();
-                            if (catId && catTitle) {
-                                categories.push({ id: catId, title: catTitle });
-                            }
-                        });
-                        const finishVisaCats = function(cats) {
-                            $('#moveNominationVisaCategoryId').empty().append('<option value="">-- Select Category --</option>');
-                            if (cats.length > 0) {
-                                cats.forEach(cat => {
-                                    $('#moveNominationVisaCategoryId').append(`<option value="${cat.id}">${cat.title}</option>`);
-                                });
-                            } else {
-                                $('#moveNominationVisaCategoryId').append('<option value="">No categories found</option>');
-                            }
-                            $('#moveNominationVisaCategoryContainer').show();
-                        };
-                        if (categories.length > 0) {
-                            finishVisaCats(categories);
-                        } else if (typeof window.ClientDetailConfig !== 'undefined' && window.ClientDetailConfig.clientId) {
-                            const matterId = $('#sel_matter_id_client_detail').val() || '';
-                            $.get('{{ URL::to('/get-visa-categories') }}', {
-                                client_id: window.ClientDetailConfig.clientId,
-                                matter_id: matterId
-                            }).done(function(data) {
-                                const cats = (data || []).map(function(c) {
-                                    return { id: c.id, title: c.title };
-                                });
-                                finishVisaCats(cats);
-                            }).fail(function() {
-                                finishVisaCats([]);
-                            });
-                        } else {
-                            finishVisaCats([]);
-                        }
                     } else if (targetType === 'nomination') {
                         const categories = [];
                         $('#nominationdocuments-tab .subtab6-button').each(function() {
@@ -1473,21 +1424,18 @@
                     if (targetType === 'personal') {
                         targetId = $('#moveNominationPersonalCategoryId').val();
                         if (!targetId) {
-                            $error.text('Please select a personal category').show();
-                            return;
-                        }
-                    } else if (targetType === 'visa') {
-                        targetId = $('#moveNominationVisaCategoryId').val();
-                        if (!targetId) {
-                            $error.text('Please select a visa category').show();
+                            $error.text('Please select a company category').show();
                             return;
                         }
                     } else if (targetType === 'nomination') {
                         targetId = $('#moveNominationNominationCategoryId').val();
                         if (!targetId) {
-                            $error.text('Please select a nomination category').show();
+                            $error.text('Please select a file document category').show();
                             return;
                         }
+                    } else {
+                        $error.text('Please select a valid destination').show();
+                        return;
                     }
                     
                     // Disable button and show loading

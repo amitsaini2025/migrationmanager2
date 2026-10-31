@@ -13,7 +13,9 @@
         #crm-quick-access-timer {
             position: sticky;
             top: 0;
-            z-index: 1040;
+            /* Keep below .main-topbar (1000) so global search .ts-dropdown stays above this bar.
+               Keep above page content/footer (800). Do not use Bootstrap modal-backdrop (1040). */
+            z-index: 900;
         }
         #crm-quick-access-timer.is-ending {
             background-color: #fff3cd;

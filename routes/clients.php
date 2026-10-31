@@ -127,6 +127,7 @@ Route::post('/clients/action/store', [ClientsController::class, 'actionStore']);
 Route::post('/clients/followup/retagfollowup', [ClientsController::class, 'retagfollowup']);
 Route::get('/clients/changetype/{id}/{type}', [ClientsController::class, 'changetype']);
 Route::post('/clients/convert-lead-only', [ClientsController::class, 'convertLeadOnly'])->name('clients.convertLeadOnly');
+Route::post('/clients/art-appeal-subject', [ClientsController::class, 'saveArtAppealSubject'])->name('clients.art-appeal-subject');
 Route::get('/document/download/pdf/{id}', [ClientsController::class, 'downloadpdf']);
 Route::get('/clients/removetag', [ClientsController::class, 'removetag']);
 Route::get('/clients/detail/{client_id}/{client_unique_matter_ref_no?}/{tab?}', [ClientsController::class, 'detail'])->name('clients.detail');

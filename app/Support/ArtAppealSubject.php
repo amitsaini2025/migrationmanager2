@@ -121,6 +121,37 @@ final class ArtAppealSubject
             : 'Choose the visa this ART is about.';
     }
 
+    /**
+     * Options for the client file. Keeps an older stored value visible so it can be changed.
+     *
+     * @return array<string, string>
+     */
+    public static function detailOptions(?string $kind, ?string $current): array
+    {
+        $options = self::optionsForKind($kind);
+        $current = trim((string) $current);
+        if ($current !== '' && ! array_key_exists($current, $options)) {
+            $options = [$current => self::sheetOptions()[$current] ?? $current] + $options;
+        }
+
+        return $options;
+    }
+
+    public static function rejectionForDetail(?string $nick, ?string $currentStored, mixed $value): ?string
+    {
+        $kind = self::kindFromNick($nick);
+        if ($kind === null) {
+            return 'This matter is not an ART file.';
+        }
+
+        $selected = trim((string) $value);
+        if ($selected !== '' && array_key_exists($selected, self::detailOptions($kind, $currentStored))) {
+            return null;
+        }
+
+        return self::rejectionForNick($nick, $selected);
+    }
+
     public static function remember(int $clientId, int $clientMatterId, string $value, ?int $userId): void
     {
         $reference = ClientMatterReference::query()

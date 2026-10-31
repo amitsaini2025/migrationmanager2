@@ -97,6 +97,7 @@ return [
         'checklist_convert_to_client_stage' => 'Cost Agreement, form 956 and First email Sent',
 
         'has_refused_visa_type' => true,
+        'refused_visa_type_sheet_editable' => false,
         'refused_visa_type_label' => 'Refused For',
         'refused_visa_type_options' => ArtAppealSubject::sheetOptions(),
         'refused_visa_type_groups' => ArtAppealSubject::sheetGroups(),

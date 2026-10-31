@@ -11,6 +11,7 @@ use App\Models\ClientContact;
 use App\Models\ClientEmail;
 use App\Models\ClientExperience;
 use App\Models\ClientMatter;
+use App\Models\ClientMatterReference;
 use App\Models\ClientOccupation;
 use App\Models\ClientPassportInformation;
 use App\Models\ClientQualification;
@@ -4512,6 +4513,55 @@ trait ClientCrmFollowups
         }
     }
 
+    public function saveArtAppealSubject(Request $request): JsonResponse
+    {
+        if (! $this->hasModuleAccess('20')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $clientId = (int) $request->input('client_id', 0);
+        $matterId = (int) $request->input('client_matter_id', 0);
+        if ($clientId <= 0 || $matterId <= 0) {
+            return response()->json(['success' => false, 'message' => 'Missing required parameters'], 400);
+        }
+
+        if (! StaffClientVisibility::canAccessClientOrLead($clientId, Auth::user())) {
+            return response()->json(['success' => false, 'message' => config('constants.unauthorized')], 403);
+        }
+
+        $row = DB::table('client_matters as cm')
+            ->join('matters as m', 'm.id', '=', 'cm.sel_matter_id')
+            ->where('cm.id', $matterId)
+            ->where('cm.client_id', $clientId)
+            ->select('cm.id', 'm.nick_name')
+            ->first();
+
+        if (! $row) {
+            return response()->json(['success' => false, 'message' => 'Matter not found'], 404);
+        }
+
+        $current = ClientMatterReference::query()
+            ->where('type', ArtAppealSubject::REFERENCE_TYPE)
+            ->where('client_id', $clientId)
+            ->where('client_matter_id', $matterId)
+            ->value('refused_visa_type');
+
+        $error = ArtAppealSubject::rejectionForDetail($row->nick_name, $current, $request->input('refused_visa_type'));
+        if ($error !== null) {
+            return response()->json(['success' => false, 'message' => $error], 422);
+        }
+
+        $value = trim((string) $request->input('refused_visa_type'));
+        ArtAppealSubject::remember($clientId, $matterId, $value, Auth::id() ? (int) Auth::id() : null);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Refused for saved',
+            'refused_visa_type' => $value,
+            'refused_visa_type_label' => ArtAppealSubject::sheetOptions()[$value] ?? $value,
+        ]);
+    }
+
     /**
      * Resolve matter dropdown, header ref, workflow stage, and references once for client detail.
      */
@@ -4529,6 +4579,7 @@ trait ClientCrmFollowups
                 'client_matters.department_reference',
                 'client_matters.other_reference',
                 'matters.title',
+                'matters.nick_name',
                 'workflow_stages.name as workflow_stage_name'
             )
             ->where('client_matters.client_id', $clientId)
@@ -4586,6 +4637,17 @@ trait ClientCrmFollowups
             $selected ? (int) $selected->matter_status : null,
             $selected?->workflow_stage_name
         );
+        $artAppealKind = ArtAppealSubject::kindFromNick($selected->nick_name ?? null);
+        $artAppealCurrent = null;
+        $artAppealOptions = [];
+        if ($artAppealKind !== null && $selected) {
+            $artAppealCurrent = ClientMatterReference::query()
+                ->where('type', ArtAppealSubject::REFERENCE_TYPE)
+                ->where('client_id', $clientId)
+                ->where('client_matter_id', (int) $selected->id)
+                ->value('refused_visa_type');
+            $artAppealOptions = ArtAppealSubject::detailOptions($artAppealKind, $artAppealCurrent);
+        }
 
         $isMatterIdInUrl = $matterRefNo !== null
             && $matterRefNo !== ''
@@ -4602,6 +4664,9 @@ trait ClientCrmFollowups
             'showMatterDropdown' => $showMatterDropdown,
             'isMatterIdInUrl' => $isMatterIdInUrl,
             'validTabNames' => $validTabNames,
+            'artAppealKind' => $artAppealKind,
+            'artAppealCurrent' => $artAppealCurrent,
+            'artAppealOptions' => $artAppealOptions,
         ];
     }
 

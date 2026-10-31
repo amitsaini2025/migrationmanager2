@@ -754,7 +754,7 @@
                                                         $currentRefused = $row->refused_visa_type ?? '';
                                                         $refusedLabel = ($refusedVisaTypeOptions ?? [])[$currentRefused] ?? '';
                                                     @endphp
-                                                    @if($refusedVisaTypeFromMatter ?? false)
+                                                    @if(($refusedVisaTypeFromMatter ?? false) || ! ($refusedVisaTypeSheetEditable ?? true))
                                                         @if($refusedLabel !== '')
                                                             {{ $refusedLabel }}
                                                         @else

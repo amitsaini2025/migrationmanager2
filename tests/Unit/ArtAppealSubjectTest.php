@@ -60,4 +60,23 @@ class ArtAppealSubjectTest extends TestCase
         $this->assertSame('Nomination', $options['nomination']);
         $this->assertSame('Student 500', $options['student']);
     }
+
+    #[Test]
+    public function client_file_keeps_an_older_value_visible_and_rejects_the_other_list(): void
+    {
+        $options = ArtAppealSubject::detailOptions(ArtAppealSubject::COMPANY, 'nomination');
+
+        $this->assertSame('Nomination', $options['nomination']);
+        $this->assertArrayHasKey('sbs', $options);
+        $this->assertNull(ArtAppealSubject::rejectionForDetail('EmpART', 'nomination', 'nomination'));
+        $this->assertNull(ArtAppealSubject::rejectionForDetail('EmpART', 'nomination', 'sbs'));
+        $this->assertSame(
+            'Choose the company matter this ART is about.',
+            ArtAppealSubject::rejectionForDetail('EmpART', null, 'student')
+        );
+        $this->assertSame(
+            'This matter is not an ART file.',
+            ArtAppealSubject::rejectionForDetail('SBS', null, 'sbs')
+        );
+    }
 }

@@ -147,6 +147,8 @@ class VisaTypeSheetController extends Controller
             : [];
         $refusedVisaTypeLabel = $showRefusedVisaType ? $this->getRefusedVisaTypeLabel($config) : '';
         $refusedVisaTypeSuggestRules = $showRefusedVisaType ? $this->getRefusedVisaTypeSuggestRules($config) : [];
+        $refusedVisaTypeSheetEditable = $showRefusedVisaType
+            && ($config['refused_visa_type_sheet_editable'] ?? true) !== false;
 
         return view('crm.clients.sheets.visa-type-sheet', compact(
             'rows',
@@ -167,7 +169,8 @@ class VisaTypeSheetController extends Controller
             'refusedVisaTypeOptions',
             'refusedVisaTypeGroups',
             'refusedVisaTypeLabel',
-            'refusedVisaTypeSuggestRules'
+            'refusedVisaTypeSuggestRules',
+            'refusedVisaTypeSheetEditable'
         ));
     }
 

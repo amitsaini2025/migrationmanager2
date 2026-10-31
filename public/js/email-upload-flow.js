@@ -293,14 +293,34 @@
                 if (!categorySelect) {
                     return;
                 }
-                categorySelect.disabled = true;
+                const previousValue = categorySelect.value;
                 categorySelect.innerHTML = buildDocumentCategoryOptionsHtml(categories);
+                if (previousValue) {
+                    categorySelect.value = previousValue;
+                }
+                // Keep in sync with checkbox — do not force-disable after async category load.
+                categorySelect.disabled = !(saveToDocsCheckbox && saveToDocsCheckbox.checked);
             }
 
             function renderPerEmailDestination(categories) {
                 if (!perEmailDestination) {
                     return;
                 }
+
+                // Preserve checkbox/category choices across async category reloads.
+                const previousPrefs = {};
+                emailGroups.forEach(function(group) {
+                    const checkbox = perEmailDestination.querySelector('.attachment-email-save-docs[data-email-key="' + group.key + '"]');
+                    const select = perEmailDestination.querySelector('.attachment-email-category[data-email-key="' + group.key + '"]');
+                    if (!checkbox && !select) {
+                        return;
+                    }
+                    previousPrefs[group.key] = {
+                        checked: !!(checkbox && checkbox.checked),
+                        value: select ? select.value : ''
+                    };
+                });
+
                 const categoryOptionsHtml = buildDocumentCategoryOptionsHtml(categories);
                 perEmailDestination.innerHTML = emailGroups.map(function(group) {
                     return '<div class="attachment-storage-email-group" data-email-key="' + escapeHtml(group.key) + '">' +
@@ -316,12 +336,24 @@
                         '</div></div>';
                 }).join('');
 
+                perEmailToggleHandlers.length = 0;
                 perEmailDestination.querySelectorAll('.attachment-email-save-docs').forEach(function(checkbox) {
+                    const key = checkbox.getAttribute('data-email-key');
+                    const select = perEmailDestination.querySelector('.attachment-email-category[data-email-key="' + key + '"]');
+                    const prev = previousPrefs[key];
+                    if (prev && prev.checked) {
+                        checkbox.checked = true;
+                    }
+                    if (select) {
+                        if (prev && prev.value) {
+                            select.value = prev.value;
+                        }
+                        select.disabled = !checkbox.checked;
+                    }
                     function onToggle() {
-                        const key = checkbox.getAttribute('data-email-key');
-                        const select = perEmailDestination.querySelector('.attachment-email-category[data-email-key="' + key + '"]');
-                        if (select) {
-                            select.disabled = !checkbox.checked;
+                        const selectEl = perEmailDestination.querySelector('.attachment-email-category[data-email-key="' + key + '"]');
+                        if (selectEl) {
+                            selectEl.disabled = !checkbox.checked;
                         }
                     }
                     checkbox.addEventListener('change', onToggle);
@@ -415,6 +447,13 @@
                 resolve(null);
             }
 
+            function requireDocumentCategoryMessage(detail) {
+                const message = detail
+                    ? ('Select a document category for "' + detail + '" to save copies to Documents.')
+                    : 'Select a document category to save copies to Documents.';
+                window.alert(message);
+            }
+
             function onConfirm() {
                 let globalStorageType = 'email';
                 let globalCategoryId = 0;
@@ -422,11 +461,36 @@
                 if (!usePerEmailCategories) {
                     const saveToDocs = saveToDocsCheckbox && saveToDocsCheckbox.checked;
                     const globalSelection = categorySelect ? parseCategoryOptionValue(categorySelect.value) : { categoryId: 0, docType: null };
+                    if (saveToDocs && !categorySelectionIsValid(globalSelection)) {
+                        if (categorySelect) {
+                            categorySelect.disabled = false;
+                            categorySelect.focus();
+                        }
+                        requireDocumentCategoryMessage('');
+                        return;
+                    }
                     globalCategoryId = globalSelection.categoryId;
                     globalDocType = globalSelection.docType;
                     globalStorageType = (saveToDocs && categorySelectionIsValid(globalSelection)) ? 'documents' : 'email';
                 }
                 const perEmailPrefs = usePerEmailCategories ? getPerEmailStoragePrefs() : {};
+                if (usePerEmailCategories) {
+                    for (let i = 0; i < emailGroups.length; i++) {
+                        const group = emailGroups[i];
+                        const pref = perEmailPrefs[group.key];
+                        if (pref && pref.saveToDocs && pref.storageType !== 'documents') {
+                            const select = perEmailDestination
+                                ? perEmailDestination.querySelector('.attachment-email-category[data-email-key="' + group.key + '"]')
+                                : null;
+                            if (select) {
+                                select.disabled = false;
+                                select.focus();
+                            }
+                            requireDocumentCategoryMessage(group.name);
+                            return;
+                        }
+                    }
+                }
                 const rows = body.querySelectorAll('tr[data-original-filename]');
                 const storageList = [];
                 rows.forEach(function(row) {

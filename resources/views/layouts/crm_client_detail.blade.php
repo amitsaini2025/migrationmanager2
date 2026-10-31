@@ -588,8 +588,10 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         }
         
+        /* Height is refined at runtime by adjustClientSidebarNavHeight() so the menu
+           fills leftover viewport space without clipping .sidebar-header. */
         .client-sidebar-nav {
-            flex: 1 1 auto;
+            flex: 1 1 0%;
             min-height: 0;
             overflow-x: hidden;
             overflow-y: auto;

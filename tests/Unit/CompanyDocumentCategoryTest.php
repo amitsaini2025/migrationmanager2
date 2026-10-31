@@ -41,6 +41,25 @@ class CompanyDocumentCategoryTest extends TestCase
     }
 
     #[Test]
+    public function company_move_document_destinations_use_company_and_file_labels(): void
+    {
+        $personalDocumentsBlade = file_get_contents(base_path('resources/views/crm/clients/tabs/personal_documents.blade.php'));
+        Assert::assertNotFalse($personalDocumentsBlade);
+        Assert::assertStringContainsString('@if($companyDocumentsOnlyGeneral)', $personalDocumentsBlade);
+        Assert::assertStringContainsString('<option value="personal">Company Documents</option>', $personalDocumentsBlade);
+        Assert::assertStringContainsString('<option value="nomination">File Documents</option>', $personalDocumentsBlade);
+        Assert::assertStringContainsString('<option value="personal">Personal Documents</option>', $personalDocumentsBlade);
+        Assert::assertStringContainsString('<option value="visa">Visa Documents</option>', $personalDocumentsBlade);
+
+        $nominationDocumentsBlade = file_get_contents(base_path('resources/views/crm/companies/tabs/nomination_documents.blade.php'));
+        Assert::assertNotFalse($nominationDocumentsBlade);
+        Assert::assertStringContainsString('<option value="personal">Company Documents</option>', $nominationDocumentsBlade);
+        Assert::assertStringContainsString('<option value="nomination">File Documents</option>', $nominationDocumentsBlade);
+        Assert::assertStringNotContainsString('<option value="personal">Personal Documents</option>', $nominationDocumentsBlade);
+        Assert::assertStringNotContainsString('<option value="visa">Visa Documents</option>', $nominationDocumentsBlade);
+    }
+
+    #[Test]
     public function add_personal_category_endpoint_saves_company_type_when_requested(): void
     {
         $staff = Staff::query()->create([

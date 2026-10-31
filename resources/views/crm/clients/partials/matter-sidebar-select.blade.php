@@ -28,9 +28,11 @@
 @endphp
 <div class="sidebar-art-appeal" style="margin-top: 10px;">
     <div style="font-size: 0.75rem; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Refused for</div>
-    <div id="art_appeal_subject_saved" @if($artAppealLabel === '') style="display:none;" @endif>
-        <div id="art_appeal_subject_label" style="font-size: 0.9rem; color: #111827; margin-bottom: 6px;">{{ $artAppealLabel }}</div>
-        <button type="button" class="btn btn-sm btn-outline-secondary" id="art_appeal_subject_edit">Edit</button>
+    <div id="art_appeal_subject_saved" style="display:{{ $artAppealLabel === '' ? 'none' : 'flex' }}; align-items:flex-start; gap:6px;">
+        <div id="art_appeal_subject_label" style="font-size: 0.9rem; color: #111827; line-height: 1.3;">{{ $artAppealLabel }}</div>
+        <button type="button" id="art_appeal_subject_edit" title="Edit" aria-label="Edit refused for" style="border:0; background:transparent; padding:0; color:#4b5563; line-height:1.3; cursor:pointer;">
+            @icon('fa-pencil-alt')
+        </button>
     </div>
     <div id="art_appeal_subject_editor" @if($artAppealLabel !== '') style="display:none;" @endif>
         <select id="art_appeal_subject_detail" class="form-control form-control-sm">
@@ -57,7 +59,7 @@ $(function () {
 
     function showSaved(label) {
         $label.text(label);
-        $saved.show();
+        $saved.css('display', 'flex');
         $editor.hide();
         $cancel.show();
         $select.data('saved-value', $select.val());
@@ -74,7 +76,7 @@ $(function () {
         $msg.text('');
         $select.val($select.data('saved-value') || '');
         $editor.hide();
-        $saved.show();
+        $saved.css('display', 'flex');
     });
 
     $('#art_appeal_subject_save').on('click', function () {

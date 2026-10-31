@@ -100,15 +100,16 @@
                                 <select class="form-control mm-select" name="matter_id_select" id="sel_matter_id">
                                     <option value="">Select Matter</option>
                                     @php
-                                        $matterQuery = \App\Models\Matter::select('id','title')->where('status',1)
+                                        $matterQuery = \App\Models\Matter::select('id','title','nick_name')->where('status',1)
                                             ->forClientType((bool) (isset($fetchedData) && $fetchedData->is_company));
                                         $matterList = $matterQuery->get();
                                     @endphp
                                     @foreach($matterList as $matterlist)
-                                        <option value="{{$matterlist->id}}">{{@$matterlist->title}}</option>
+                                        <option value="{{$matterlist->id}}" data-art-kind="{{ \App\Support\ArtAppealSubject::kindFromNick($matterlist->nick_name) ?? '' }}">{{@$matterlist->title}}</option>
                                     @endforeach
                                 </select>
                             </div>
+                            @include('crm.clients.partials.art-appeal-subject-field', ['wrapId' => 'art_appeal_subject_convert_wrap', 'fieldId' => 'refused_visa_type_convert'])
                         </div>
 
 						<div class="col-9 col-md-9 col-lg-9 text-right">

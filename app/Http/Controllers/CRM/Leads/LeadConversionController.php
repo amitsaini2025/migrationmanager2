@@ -1,17 +1,19 @@
 <?php
+
 namespace App\Http\Controllers\CRM\Leads;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Admin;
-use App\Models\Lead;
 use App\Models\ClientMatter;
+use App\Models\Lead;
 use App\Models\Matter;
+use App\Support\ArtAppealSubject;
 use App\Support\StaffClientVisibility;
 use App\Support\WorkflowAssignment;
+use App\Support\WorkflowStageChecklistSync;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class LeadConversionController extends Controller
 {
@@ -32,11 +34,11 @@ class LeadConversionController extends Controller
     public function convertSingleLead(Request $request)
     {
         $requestData = $request->all();
-        
+
         $leadId = $this->decodeString($requestData['lead_id']);
         $lead = Lead::withArchived()->find($leadId);
-        
-        if(!$lead) {
+
+        if (! $lead) {
             return redirect()->back()->with('error', 'Lead not found');
         }
 
@@ -44,27 +46,39 @@ class LeadConversionController extends Controller
             return redirect()->back()->with('error', config('constants.unauthorized'));
         }
 
+        $matterIdSingle = isset($requestData['matter_id']) ? (int) $requestData['matter_id'] : 0;
+        $willCreateMatter = $matterIdSingle > 0 && isset($requestData['migration_agent']);
+        $catalogueMatter = $willCreateMatter ? Matter::query()->find($matterIdSingle) : null;
+        $artAppealKind = ArtAppealSubject::kindFromNick($catalogueMatter?->nick_name);
+        if ($artAppealKind !== null) {
+            $artAppealError = ArtAppealSubject::rejectionForNick($catalogueMatter?->nick_name, $request->input('refused_visa_type'));
+            if ($artAppealError !== null) {
+                return redirect()->back()->with('error', $artAppealError);
+            }
+        }
+
         // Start transaction
         DB::beginTransaction();
-        
+
         try {
             // Convert lead to client using Lead model method
             $client = $lead->convertToClient();
-            
+
             // Update user_id if provided
-            if(isset($requestData['user_id'])) {
+            if (isset($requestData['user_id'])) {
                 $client->user_id = $requestData['user_id'];
                 $client->save();
             }
 
             // Create matter if matter data is provided
-            if(isset($requestData['matter_id']) && isset($requestData['migration_agent'])) {
+            if (isset($requestData['matter_id']) && isset($requestData['migration_agent'])) {
                 $matterIdSingle = (int) $requestData['matter_id'];
                 if (! Matter::allowedForClientIsCompany($matterIdSingle, (bool) $client->is_company)) {
                     DB::rollback();
+
                     return redirect()->back()->with('error', 'This matter type is not valid for this client record.');
                 }
-                $matter = new ClientMatter();
+                $matter = new ClientMatter;
                 $matter->user_id = $requestData['user_id'] ?? Auth::user()->id;
                 $matter->client_id = $client->id;
                 $matter->sel_migration_agent = $requestData['migration_agent'];
@@ -78,17 +92,17 @@ class LeadConversionController extends Controller
                     ->where('sel_matter_id', $requestData['matter_id'])
                     ->where('client_id', $client->id)
                     ->count();
-                    
+
                 $client_matters_current_no = $client_matters_cnt_per_client + 1;
-                
+
                 if ((int) $requestData['matter_id'] === 1) {
-                    $matter->client_unique_matter_no = 'GN_' . $client_matters_current_no;
+                    $matter->client_unique_matter_no = 'GN_'.$client_matters_current_no;
                 } else {
                     $matterInfo = Matter::select('nick_name')->where('id', '=', $requestData['matter_id'])->first();
                     $prefix = ($matterInfo && $matterInfo->nick_name) ? $matterInfo->nick_name : 'Matter';
-                    $matter->client_unique_matter_no = $prefix . '_' . $client_matters_current_no;
+                    $matter->client_unique_matter_no = $prefix.'_'.$client_matters_current_no;
                 }
-                
+
                 $matterType = Matter::find($requestData['matter_id']);
                 $workflowId = WorkflowAssignment::resolveWorkflowIdForNewClientMatter($matterType);
                 $firstStageId = WorkflowAssignment::firstStageIdForWorkflow($workflowId);
@@ -97,16 +111,26 @@ class LeadConversionController extends Controller
                 $matter->matter_status = 1; // Active by default
                 $matter->save();
 
-                \App\Support\WorkflowStageChecklistSync::ensureSeededForMatter($matter);
+                if ($artAppealKind !== null) {
+                    ArtAppealSubject::remember(
+                        (int) $client->id,
+                        (int) $matter->id,
+                        trim((string) $request->input('refused_visa_type')),
+                        Auth::id() ? (int) Auth::id() : null
+                    );
+                }
+
+                WorkflowStageChecklistSync::ensureSeededForMatter($matter);
             }
 
             DB::commit();
-            
+
             return redirect()->back()->with('success', 'Lead converted to client successfully');
-            
+
         } catch (\Exception $e) {
             DB::rollback();
-            return redirect()->back()->with('error', 'Failed to convert lead: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Failed to convert lead: '.$e->getMessage());
         }
     }
 
@@ -120,10 +144,10 @@ class LeadConversionController extends Controller
         if (Auth::user()->role != 1) {
             return redirect()->back()->with('error', 'Only super admin can perform bulk conversions');
         }
-        
+
         $requestData = $request->all();
-        
-        if(!isset($requestData['lead_ids'])) {
+
+        if (! isset($requestData['lead_ids'])) {
             return redirect()->back()->with('error', 'No leads selected');
         }
 
@@ -131,21 +155,21 @@ class LeadConversionController extends Controller
         $convertedCount = 0;
         $errors = [];
 
-        foreach($leadIds as $leadId) {
+        foreach ($leadIds as $leadId) {
             try {
                 $lead = Lead::withArchived()->find($leadId);
-                if($lead) {
+                if ($lead) {
                     $lead->convertToClient();
                     $convertedCount++;
                 }
             } catch (\Exception $e) {
-                $errors[] = "Lead ID {$leadId}: " . $e->getMessage();
+                $errors[] = "Lead ID {$leadId}: ".$e->getMessage();
             }
         }
 
         $message = "Successfully converted {$convertedCount} leads to clients";
-        if(!empty($errors)) {
-            $message .= ". Errors: " . implode(', ', $errors);
+        if (! empty($errors)) {
+            $message .= '. Errors: '.implode(', ', $errors);
         }
 
         return redirect()->back()->with('success', $message);
@@ -161,7 +185,7 @@ class LeadConversionController extends Controller
         if (Auth::user()->role != 1) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
-        
+
         $totalLeads = Lead::count();
         $totalClients = Admin::where('type', 'client')->count();
         $convertedThisMonth = Admin::where('type', 'client')
@@ -174,18 +198,19 @@ class LeadConversionController extends Controller
             'total_leads' => $totalLeads,
             'total_clients' => $totalClients,
             'converted_this_month' => $convertedThisMonth,
-            'conversion_rate' => $totalLeads > 0 ? round(($totalClients / ($totalLeads + $totalClients)) * 100, 2) : 0
+            'conversion_rate' => $totalLeads > 0 ? round(($totalClients / ($totalLeads + $totalClients)) * 100, 2) : 0,
         ];
     }
 
     /**
      * Decode string helper method - overrides parent method
      */
-    public function decodeString($string = NULL)
+    public function decodeString($string = null)
     {
         if (base64_encode(base64_decode($string, true)) === $string) {
             return convert_uudecode(base64_decode($string));
         }
+
         return $string;
     }
 }

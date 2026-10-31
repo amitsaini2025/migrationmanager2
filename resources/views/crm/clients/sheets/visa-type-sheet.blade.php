@@ -577,9 +577,19 @@
                                     <label>{{ $refusedVisaTypeLabel ?? 'Category' }}</label>
                                     <select name="refused_visa_type" class="form-control">
                                         <option value="">All</option>
-                                        @foreach($refusedVisaTypeOptions ?? [] as $val => $lbl)
-                                            <option value="{{ $val }}" {{ request('refused_visa_type') == $val ? 'selected' : '' }}>{{ $lbl }}</option>
-                                        @endforeach
+                                        @if(!empty($refusedVisaTypeGroups))
+                                            @foreach($refusedVisaTypeGroups as $groupLabel => $groupOptions)
+                                                <optgroup label="{{ $groupLabel }}">
+                                                    @foreach($groupOptions as $val => $lbl)
+                                                        <option value="{{ $val }}" {{ request('refused_visa_type') == $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                                                    @endforeach
+                                                </optgroup>
+                                            @endforeach
+                                        @else
+                                            @foreach($refusedVisaTypeOptions ?? [] as $val => $lbl)
+                                                <option value="{{ $val }}" {{ request('refused_visa_type') == $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                                            @endforeach
+                                        @endif
                                     </select>
                                 </div>
                                 @endif
@@ -761,9 +771,28 @@
                                                                 data-matter-title="{{ e($matterTitleForSuggest) }}"
                                                                 title="{{ $refusedVisaTypeLabel ?? 'Category' }}">
                                                             <option value="">— Select —</option>
-                                                            @foreach($refusedVisaTypeOptions ?? [] as $val => $lbl)
-                                                                <option value="{{ $val }}" {{ $currentRefused === $val ? 'selected' : '' }}>{{ $lbl }}</option>
-                                                            @endforeach
+                                                            @if(!empty($refusedVisaTypeGroups))
+                                                                @php
+                                                                    $refusedGroupKeys = [];
+                                                                    foreach ($refusedVisaTypeGroups as $groupOptions) {
+                                                                        $refusedGroupKeys = array_merge($refusedGroupKeys, array_keys($groupOptions));
+                                                                    }
+                                                                @endphp
+                                                                @if($currentRefused !== '' && ! in_array($currentRefused, $refusedGroupKeys, true))
+                                                                    <option value="{{ $currentRefused }}" selected>{{ ($refusedVisaTypeOptions ?? [])[$currentRefused] ?? $currentRefused }}</option>
+                                                                @endif
+                                                                @foreach($refusedVisaTypeGroups as $groupLabel => $groupOptions)
+                                                                    <optgroup label="{{ $groupLabel }}">
+                                                                        @foreach($groupOptions as $val => $lbl)
+                                                                            <option value="{{ $val }}" {{ $currentRefused === $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                                                                        @endforeach
+                                                                    </optgroup>
+                                                                @endforeach
+                                                            @else
+                                                                @foreach($refusedVisaTypeOptions ?? [] as $val => $lbl)
+                                                                    <option value="{{ $val }}" {{ $currentRefused === $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                                                                @endforeach
+                                                            @endif
                                                         </select>
                                                         <small class="refused-visa-suggest-hint text-muted" style="display:none;"></small>
                                                     @else

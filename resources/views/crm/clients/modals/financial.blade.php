@@ -623,16 +623,17 @@
                                 <select data-valid="required" class="form-control mm-select" name="matter_id" id="sel_matter_id_lead">
                                     <option value="">Select Matter</option>
                                     @php
-                                        $leadCostMatterQuery = \App\Models\Matter::select('id', 'title')->where('status', 1)
+                                        $leadCostMatterQuery = \App\Models\Matter::select('id', 'title', 'nick_name')->where('status', 1)
                                             ->forClientType((bool) (isset($fetchedData) && $fetchedData->is_company));
                                         $leadCostMatterList = $leadCostMatterQuery->get();
                                     @endphp
                                     @foreach($leadCostMatterList as $matterlist)
-                                        <option value="{{$matterlist->id}}">{{@$matterlist->title}}</option>
+                                        <option value="{{$matterlist->id}}" data-art-kind="{{ \App\Support\ArtAppealSubject::kindFromNick($matterlist->nick_name) ?? '' }}">{{@$matterlist->title}}</option>
                                     @endforeach
                                 </select>
                             </div>
                         </div>
+                        @include('crm.clients.partials.art-appeal-subject-field', ['wrapId' => 'art_appeal_subject_lead_wrap', 'fieldId' => 'refused_visa_type_lead'])
 					</div>
 
 					<div class="accordion-body collapse show" id="primary_info" data-parent="#accordion">

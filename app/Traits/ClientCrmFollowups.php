@@ -43,6 +43,7 @@ use App\Services\MatterEmailBodyCleanupService;
 use App\Services\Sms\UnifiedSmsManager;
 use App\Services\StaffWorkloadService;
 use App\Support\ActionTaskGroup;
+use App\Support\ArtAppealSubject;
 use App\Support\ClientDetailAccountTab;
 use App\Support\ClientDetailChecklistsTab;
 use App\Support\ClientDetailTabs;
@@ -1659,6 +1660,14 @@ trait ClientCrmFollowups
                     if (! Matter::allowedForClientIsCompany($matterIdChangetype, (bool) $obj->is_company)) {
                         return Redirect::to('/clients/detail/'.base64_encode(convert_uuencode(@$id)))->with('error', 'This matter type is not valid for this client record.');
                     }
+                    $catalogueMatter = Matter::query()->find($matterIdChangetype);
+                    $artAppealKind = ArtAppealSubject::kindFromNick($catalogueMatter?->nick_name);
+                    if ($artAppealKind !== null) {
+                        $artAppealError = ArtAppealSubject::rejectionForNick($catalogueMatter?->nick_name, $request->input('refused_visa_type'));
+                        if ($artAppealError !== null) {
+                            return Redirect::to('/clients/detail/'.base64_encode(convert_uuencode(@$id)))->with('error', $artAppealError);
+                        }
+                    }
 
                     $obj->type = $slug;
                     $obj->user_id = $formUserId;
@@ -1699,6 +1708,14 @@ trait ClientCrmFollowups
                     $matter->workflow_stage_id = $firstStageId;
                     $matter->matter_status = 1; // Active by default
                     $matter->save();
+                    if ($artAppealKind !== null) {
+                        ArtAppealSubject::remember(
+                            (int) $id,
+                            (int) $matter->id,
+                            trim((string) $request->input('refused_visa_type')),
+                            Auth::id() ? (int) Auth::id() : null
+                        );
+                    }
                     WorkflowStageChecklistSync::ensureSeededForMatter($matter);
                     Log::info('ConvertLeadToClient: matter saved', ['matter_id' => $matter->id]);
 

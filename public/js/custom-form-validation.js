@@ -1268,6 +1268,11 @@ function customValidate(formName, savetype = '')
                     }
 
 					else if(formName == 'costAssignmentformlead'){
+						var leadCostForm = document.getElementById('costAssignmentformlead');
+						if (artAppealSubjectBlocked(leadCostForm)) {
+							$('.popuploader').hide();
+							return false;
+						}
 						var client_id = $('#costAssignmentformlead input[name="client_id"]').val();
 						var myform = document.getElementById('costAssignmentformlead');
 						var fd = new FormData(myform);
@@ -3079,6 +3084,10 @@ function customValidate(formName, savetype = '')
 						var matterHidden = document.getElementById('convert_matter_id_final');
 						var matterVal = (generalCheckbox && generalCheckbox.checked) ? '1' : (matterSelect ? (matterSelect.value || '').trim() : '');
 						console.log('[ConvertLeadToClient] Matter resolution', { generalCheckboxChecked: !!(generalCheckbox && generalCheckbox.checked), matterSelectValue: matterSelect ? matterSelect.value : null, matterVal: matterVal });
+						if (artAppealSubjectBlocked(formEl)) {
+							$('.popuploader').hide();
+							return false;
+						}
 						if (!matterVal) {
 							console.warn('[ConvertLeadToClient] Matter required but empty, showing error');
 							$(".custom-error").remove();
@@ -3659,3 +3668,94 @@ function mmBindRedTagsToggle($list, clientId) {
 		}
 	});
 }
+
+function artAppealSubjectCatalog() {
+	var el = document.getElementById('art-appeal-subject-options');
+	if (!el) {
+		return { person: {}, company: {} };
+	}
+	try {
+		var parsed = JSON.parse(el.textContent || '{}');
+		return {
+			person: parsed.person || {},
+			company: parsed.company || {}
+		};
+	} catch (e) {
+		return { person: {}, company: {} };
+	}
+}
+
+function syncArtAppealSubject(form) {
+	if (!form) {
+		return;
+	}
+	var wrap = form.querySelector('.art-appeal-subject-wrap');
+	if (!wrap) {
+		return;
+	}
+	var select = wrap.querySelector('select');
+	var hint = wrap.querySelector('.art-appeal-subject-hint');
+	var general = form.querySelector('#general_matter_checkbox_new');
+	var matter = form.querySelector('#sel_matter_id, #sel_matter_id_lead');
+	var kind = '';
+	if (!(general && general.checked) && matter) {
+		var selected = matter.options[matter.selectedIndex];
+		kind = selected ? (selected.getAttribute('data-art-kind') || '') : '';
+	}
+	if (kind !== 'person' && kind !== 'company') {
+		wrap.style.display = 'none';
+		if (select) {
+			select.disabled = true;
+			select.value = '';
+		}
+		return;
+	}
+	var options = artAppealSubjectCatalog()[kind] || {};
+	var current = select ? select.value : '';
+	if (select) {
+		select.innerHTML = '<option value="">Select</option>';
+		Object.keys(options).forEach(function (key) {
+			var option = document.createElement('option');
+			option.value = key;
+			option.textContent = options[key];
+			select.appendChild(option);
+		});
+		if (current && Object.prototype.hasOwnProperty.call(options, current)) {
+			select.value = current;
+		}
+		select.disabled = false;
+	}
+	if (hint) {
+		hint.textContent = kind === 'company'
+			? 'Which company matter is this ART about?'
+			: 'Which visa is this ART about?';
+	}
+	wrap.style.display = '';
+}
+
+function artAppealSubjectBlocked(form) {
+	if (!form) {
+		return false;
+	}
+	syncArtAppealSubject(form);
+	var wrap = form.querySelector('.art-appeal-subject-wrap');
+	var select = wrap ? wrap.querySelector('select') : null;
+	if (!wrap || wrap.style.display === 'none' || !select || select.disabled) {
+		if (select) {
+			$(select).siblings('.custom-error').remove();
+		}
+		return false;
+	}
+	if (select.value) {
+		$(select).siblings('.custom-error').remove();
+		return false;
+	}
+	$('.custom-error').remove();
+	$(select).after("<span class='custom-error' role='alert'>" + requiredError + "</span>");
+	return true;
+}
+
+$(document).on('change', '#sel_matter_id, #sel_matter_id_lead, #general_matter_checkbox_new', function () {
+	var form = this.form || $(this).closest('form')[0];
+	syncArtAppealSubject(form);
+});

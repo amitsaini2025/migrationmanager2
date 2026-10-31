@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\ClientMatterReference;
+use App\Support\ArtAppealSubject;
 
 /**
  * Visa type sheet configuration.
@@ -97,31 +98,9 @@ return [
 
         'has_refused_visa_type' => true,
         'refused_visa_type_label' => 'Refused For',
-        'refused_visa_type_options' => [
-            'student' => 'Student Visa (500)',
-            'visitor' => 'Visitor Visa (600)',
-            'tr' => 'Temp Resident (485)',
-            'partner' => 'Partner Visa',
-            'pr' => 'PR Application (189/190/491)',
-            'employer-sponsored' => 'Employer Sponsored (482/494/186)',
-            '407' => '407 Training Visa',
-            'sbs' => 'SBS Sponsorship',
-            'nomination' => 'Nomination',
-            'parent' => 'Parent Visa',
-            'other' => 'Other',
-        ],
-        'refused_visa_type_suggest' => [
-            'student' => ['student', '500', 'sse'],
-            'visitor' => ['visitor', 'tourist', '600', 'vbv', 'vvd'],
-            'tr' => ['485', 'tvg', 'temp resident', 'temporary graduate', 'post study'],
-            'partner' => ['partner', '820', '801', '309', '100'],
-            'pr' => ['189', '190', '191', '491', 'permanent', 'skilled independent'],
-            'employer-sponsored' => ['482', '494', '186', 'employer sponsored'],
-            '407' => ['407', 'training visa'],
-            'sbs' => ['sbs', 'standard business sponsor', 'sponsorship approval'],
-            'nomination' => ['nomination', 'nominated person'],
-            'parent' => ['parent', '103', '143', '804', '870', 'contributory parent'],
-        ],
+        'refused_visa_type_options' => ArtAppealSubject::sheetOptions(),
+        'refused_visa_type_groups' => ArtAppealSubject::sheetGroups(),
+        'refused_visa_type_suggest' => [],
     ],
 
     'visitor' => [

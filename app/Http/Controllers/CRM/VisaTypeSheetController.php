@@ -142,6 +142,9 @@ class VisaTypeSheetController extends Controller
         $showRefusedVisaType = $this->hasRefusedVisaTypeFeature($config);
         $refusedVisaTypeFromMatter = $showRefusedVisaType && VisaSheetCategory::derivesFromMatter($config);
         $refusedVisaTypeOptions = $showRefusedVisaType ? $this->getRefusedVisaTypeOptions($config) : [];
+        $refusedVisaTypeGroups = $showRefusedVisaType && is_array($config['refused_visa_type_groups'] ?? null)
+            ? $config['refused_visa_type_groups']
+            : [];
         $refusedVisaTypeLabel = $showRefusedVisaType ? $this->getRefusedVisaTypeLabel($config) : '';
         $refusedVisaTypeSuggestRules = $showRefusedVisaType ? $this->getRefusedVisaTypeSuggestRules($config) : [];
 
@@ -162,6 +165,7 @@ class VisaTypeSheetController extends Controller
             'showRefusedVisaType',
             'refusedVisaTypeFromMatter',
             'refusedVisaTypeOptions',
+            'refusedVisaTypeGroups',
             'refusedVisaTypeLabel',
             'refusedVisaTypeSuggestRules'
         ));

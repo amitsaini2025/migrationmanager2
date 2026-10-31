@@ -23,25 +23,11 @@ use App\Http\Controllers\Controller;
             </button>
             <div class="client-info">
                 <h3 class="client-id">
-                    <?php
-                    if($id1) { //if client unique reference id is present in url
-                        $matter_info_arr = \App\Models\ClientMatter::select('client_unique_matter_no')->where('client_id',$fetchedData->id)->where('client_unique_matter_no',$id1)->first();
-                    ?>
-                        {{$fetchedData->client_id}}-{{$matter_info_arr ? $matter_info_arr->client_unique_matter_no : 'N/A'}}
-                    <?php
-                    } else {
-                        $matter_cnt = \App\Models\ClientMatter::select('id')->where('client_id',$fetchedData->id)->where('matter_status',1)->count();
-                        if($matter_cnt >0){
-                            $matter_info_arr = \App\Models\ClientMatter::select('client_unique_matter_no')->where('client_id',$fetchedData->id)->where('matter_status',1)->orderBy('id', 'desc')->first();
-                        ?>
-                            {{$fetchedData->client_id}}-{{$matter_info_arr ? $matter_info_arr->client_unique_matter_no : 'N/A'}}
-                        <?php
-                        } else {
-                        ?>
-                            {{$fetchedData->client_id}}
-                        <?php
-                        }
-                    } ?>
+                    @if(!empty($matter_info_arr->client_unique_matter_no))
+                        {{$fetchedData->client_id}}-{{$matter_info_arr->client_unique_matter_no}}
+                    @else
+                        {{$fetchedData->client_id}}
+                    @endif
                 </h3>
                 {{-- Company Display --}}
                 <p class="client-name">
@@ -87,186 +73,14 @@ use App\Http\Controllers\Controller;
             </div>
             @endif
             
-            <!-- Matter Selection Dropdown in Sidebar -->
-            <div class="sidebar-matter-selection">
-                <?php
-                $assign_info_arr = \App\Models\Admin::select('type')->where('id',@$fetchedData->id)->first();
-                ?>
-                @if($assign_info_arr->type)
-                    <?php 
-                    if($id1)
-                    {
-                        //if client_unique_matter_no is present in url
-                        $matter_cnt = DB::table('client_matters')
-                        ->select('client_matters.id')
-                        ->where('client_matters.client_id',@$fetchedData->id)
-                        ->where('client_matters.client_unique_matter_no',$id1)
-                        ->where('client_matters.matter_status',1)
-                        ->whereNotNull('client_matters.sel_matter_id')
-                        ->count();  
-                        if( $matter_cnt >0 )
-                        {
-                            // Fetch all matters, but we'll sort them in Blade to prioritize the URL matter
-                            $matter_list_arr = DB::table('client_matters')
-                            ->leftJoin('matters', 'client_matters.sel_matter_id', '=', 'matters.id')
-                            ->select('client_matters.id','client_matters.client_unique_matter_no','matters.title','client_matters.sel_matter_id')
-                            ->where('client_matters.client_id',@$fetchedData->id)
-                            ->where('client_matters.matter_status',1)
-                            ->get();
-                            $clientmatter_info_arr = \App\Models\ClientMatter::select('id')->where('client_id',$fetchedData->id)->where('client_unique_matter_no',$id1)->first();
-                            $latestClientMatterId = $clientmatter_info_arr ? $clientmatter_info_arr->id : null;
+            @include('crm.clients.partials.matter-sidebar-select')
 
-                            // Convert matter_list_arr to an array for sorting
-                            $matter_list_arr = $matter_list_arr->toArray();
-                            // Sort matters: URL matter ($id1) comes first, others follow
-                            usort($matter_list_arr, function($a, $b) use ($id1) {
-                                if ($a->client_unique_matter_no == $id1 && $b->client_unique_matter_no != $id1) {
-                                    return -1; // $a (URL matter) comes first
-                                } elseif ($a->client_unique_matter_no != $id1 && $b->client_unique_matter_no == $id1) {
-                                    return 1; // $b (URL matter) comes first
-                                }
-                                return 0; // Maintain original order for other matters
-                            });
-                            ?>
-                            <select name="matter_id" id="sel_matter_id_client_detail" class="form-control mm-select visa-dropdown" data-valid="required">
-                                <option value="">Select Matters</option>
-                                @foreach($matter_list_arr as $matterlist)
-                                    @php
-                                        // If sel_matter_id is 1 or title is null, use "General Matter"
-                                        $matterName = 'General Matter';
-                                        if ($matterlist->sel_matter_id != 1 && !empty($matterlist->title)) {
-                                            $matterName = $matterlist->title;
-                                        }
-                                    @endphp
-                                    <option value="{{$matterlist->id}}" {{ $matterlist->id == $latestClientMatterId ? 'selected' : '' }} data-clientuniquematterno="{{@$matterlist->client_unique_matter_no}}" data-sel-matter-id="{{@$matterlist->sel_matter_id}}">{{$matterName}}({{@$matterlist->client_unique_matter_no}})</option>
-                                @endforeach
-                            </select>
-                        <?php
-                        }  
-                        else 
-                        {
-                            $matter_cnt = DB::table('client_matters')
-                            ->select('client_matters.id')
-                            ->where('client_matters.client_id',@$fetchedData->id)
-                            ->where('client_matters.matter_status',1)
-                            ->whereNotNull('client_matters.sel_matter_id')
-                            ->count();
-                            if( $matter_cnt >0 )
-                            {
-                                $matter_list_arr = DB::table('client_matters')
-                                ->leftJoin('matters', 'client_matters.sel_matter_id', '=', 'matters.id')
-                                ->select('client_matters.id','client_matters.client_unique_matter_no','matters.title','client_matters.sel_matter_id')
-                                ->where('client_matters.client_id',@$fetchedData->id)
-                                ->where('client_matters.matter_status',1)
-                                ->orderBy('client_matters.created_at', 'desc')
-                                ->get();
-                                $latestClientMatter = \App\Models\ClientMatter::where('client_id',$fetchedData->id)->where('matter_status',1)->latest()->first();
-                                $latestClientMatterId = $latestClientMatter ? $latestClientMatter->id : null;
-                                ?>
-                                <select name="matter_id" id="sel_matter_id_client_detail" class="form-control mm-select visa-dropdown" data-valid="required">
-                                    <option value="">Select Matters</option>
-                                    @foreach($matter_list_arr as $matterlist)
-                                        @php
-                                            // If sel_matter_id is 1 or title is null, use "General Matter"
-                                            $matterName = 'General Matter';
-                                            if ($matterlist->sel_matter_id != 1 && !empty($matterlist->title)) {
-                                                $matterName = $matterlist->title;
-                                            }
-                                        @endphp
-                                        <option value="{{$matterlist->id}}" {{ $matterlist->id == $latestClientMatterId ? 'selected' : '' }} data-clientuniquematterno="{{@$matterlist->client_unique_matter_no}}" data-sel-matter-id="{{@$matterlist->sel_matter_id}}">{{$matterName}}({{@$matterlist->client_unique_matter_no}})</option>
-                                    @endforeach
-                                </select>
-                            <?php
-                            }
-                        } 
-                    }
-                    else
-                    {
-                        $matter_cnt = DB::table('client_matters')
-                        ->select('client_matters.id')
-                        ->where('client_matters.client_id',@$fetchedData->id)
-                        ->where('client_matters.matter_status',1)
-                        ->whereNotNull('client_matters.sel_matter_id')
-                        ->count();
-                        if( $matter_cnt >0 )
-                        {
-                            $matter_list_arr = DB::table('client_matters')
-                            ->leftJoin('matters', 'client_matters.sel_matter_id', '=', 'matters.id')
-                            ->select('client_matters.id','client_matters.client_unique_matter_no','matters.title','client_matters.sel_matter_id')
-                            ->where('client_matters.client_id',@$fetchedData->id)
-                            ->where('client_matters.matter_status',1)
-                            ->orderBy('client_matters.created_at', 'desc')
-                            ->get();
-                            $latestClientMatter = \App\Models\ClientMatter::where('client_id',$fetchedData->id)->where('matter_status',1)->latest()->first();
-                            $latestClientMatterId = $latestClientMatter ? $latestClientMatter->id : null;
-                            ?>
-                            <select name="matter_id" id="sel_matter_id_client_detail" class="form-control mm-select visa-dropdown" data-valid="required">
-                                <option value="">Select Matters</option>
-                                @foreach($matter_list_arr as $matterlist)
-                                    @php
-                                        // If sel_matter_id is 1 or title is null, use "General Matter"
-                                        $matterName = 'General Matter';
-                                        if ($matterlist->sel_matter_id != 1 && !empty($matterlist->title)) {
-                                            $matterName = $matterlist->title;
-                                        }
-                                    @endphp
-                                    <option value="{{$matterlist->id}}" {{ $matterlist->id == $latestClientMatterId ? 'selected' : '' }} data-clientuniquematterno="{{@$matterlist->client_unique_matter_no}}" data-sel-matter-id="{{@$matterlist->sel_matter_id}}">{{$matterName}}({{@$matterlist->client_unique_matter_no}})</option>
-                                @endforeach
-                            </select>
-                        <?php
-                        }
-                    }
-                    ?>
-                @endif
-            </div>
-            
-            <div class="matter-status-badge">
-                <?php
-                // Get the current workflow stage for this client matter
-                $workflow_stage_arr = null;
-                
-                if ($id1) {
-                    // If client unique reference id is present in url
-                    $workflow_stage_arr = DB::table('client_matters')
-                        ->join('workflow_stages', 'client_matters.workflow_stage_id', '=', 'workflow_stages.id')
-                        ->select('workflow_stages.name')
-                        ->where('client_id', $fetchedData->id)
-                        ->where('client_unique_matter_no', $id1)
-                        ->first();
-                } else {
-                    // Get the most recent active matter
-                    $clientMatterInfo = DB::table('client_matters')
-                        ->select('client_unique_matter_no')
-                        ->where('client_id', $fetchedData->id)
-                        ->where('matter_status', 1)
-                        ->orderBy('id', 'desc')
-                        ->first();
-
-                    if ($clientMatterInfo) {
-                        $workflow_stage_arr = DB::table('client_matters')
-                            ->join('workflow_stages', 'client_matters.workflow_stage_id', '=', 'workflow_stages.id')
-                            ->select('workflow_stages.name')
-                            ->where('client_id', $fetchedData->id)
-                            ->where('client_unique_matter_no', $clientMatterInfo->client_unique_matter_no)
-                            ->first();
-                    }
-                }
-
-                // Display the workflow stage name or default to N/A
-                if ($workflow_stage_arr && $workflow_stage_arr->name) {
-                    echo $workflow_stage_arr->name;
-                } else {
-                    echo "N/A";
-                }
-                ?>
-            </div>
-            
             <!-- Matter References Section -->
             <div class="sidebar-references">
                 <div class="sidebar-references-label" style="font-size: 0.75rem; font-weight: 600; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Reference</div>
                 <?php
-                // Load reference values - SAME LOGIC AS ACCOUNTS TAB
-                $matter__ref_info_arr = [];
+                // Load reference values when the shared matter context did not.
+                if (empty($matter__ref_info_arr)) {
                 if($id1) {
                     // If client unique reference id is present in url
                     $matter__ref_info_arr = \App\Models\ClientMatter::select('department_reference','other_reference')
@@ -279,9 +93,10 @@ use App\Http\Controllers\Controller;
                         $matter__ref_info_arr = \App\Models\ClientMatter::select('department_reference','other_reference')
                             ->where('client_id', $fetchedData->id)
                             ->where('matter_status', 1)
-                            ->orderBy('id', 'desc')
-                            ->first();
+                        ->orderBy('id', 'desc')
+                        ->first();
                     }
+                }
                 }
                 ?>
                 
@@ -336,7 +151,7 @@ use App\Http\Controllers\Controller;
         </div>
         <nav class="client-sidebar-nav">
             <?php
-            $matter_cnt = \App\Models\ClientMatter::select('id')->where('client_id',$fetchedData->id)->where('matter_status',1)->count();
+            $matter_cnt = \App\Models\ClientMatter::select('id')->where('client_id',$fetchedData->id)->whereNotNull('sel_matter_id')->count();
             
             // Valid tab names that should NOT be treated as matter IDs
             $validTabNames = ['companydetails', 'activityfeed', 'noteterm', 'personaldocuments', 'visadocuments', 'nominationdocuments',
@@ -470,7 +285,7 @@ use App\Http\Controllers\Controller;
             // only panes for visible tabs are included (prevents duplicates)
             $matter_cnt = \App\Models\ClientMatter::select('id')
                 ->where('client_id',$fetchedData->id)
-                ->where('matter_status',1)
+                ->whereNotNull('sel_matter_id')
                 ->count();
             ?>
             @if((isset($id1) && $id1 != "") || $matter_cnt > 0)

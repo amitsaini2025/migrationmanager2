@@ -76,7 +76,7 @@ class FrontDeskCheckInController extends Controller
         /** @var Staff $user */
         $user = Auth::guard('admin')->user();
         $visible = $matches->filter(function (Admin $a) use ($user) {
-            return StaffClientVisibility::canAccessClientOrLead((int) $a->id, $user);
+            return $this->referenceIsVisible($a, $user);
         })->values();
 
         $data = $visible->map(fn (Admin $a) => $this->lookup->formatForWizard($a))->values();
@@ -100,7 +100,10 @@ class FrontDeskCheckInController extends Controller
         $request->validate(['admin_id' => 'required|integer|min:1']);
 
         $adminId = (int) $request->input('admin_id');
-        $this->ensureCrmRecordAccess($adminId);
+        $record = Admin::query()->where('id', $adminId)->whereIn('type', ['client', 'lead'])->first(['id', 'type', 'client_id']);
+        if ($record && ! $this->referenceIsVisible($record, Auth::guard('admin')->user())) {
+            return response()->json(['error' => 'Unauthorised'], 403);
+        }
 
         $appts = $this->appointments->getTodaysAppointments($adminId);
 
@@ -160,7 +163,13 @@ class FrontDeskCheckInController extends Controller
                     'errors' => ['admin_id' => ['Invalid or deleted record.']],
                 ], 422);
             }
-            $this->ensureCrmRecordAccess($adminId);
+            $record = Admin::query()->where('id', $adminId)->where('type', $adminType)->first(['id', 'type', 'client_id']);
+            if ($record && ! $this->referenceIsVisible($record, Auth::guard('admin')->user())) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have authority to use this client or lead.',
+                ], 403);
+            }
         }
 
         // "Other" reason requires notes
@@ -448,5 +457,17 @@ class FrontDeskCheckInController extends Controller
         $user = Auth::guard('admin')->user();
 
         return $user instanceof Staff && $user->canAccessFrontDeskCheckIn();
+    }
+
+    /**
+     * Front desk can see every client and lead reference. Super-admin-only files stay hidden.
+     */
+    private function referenceIsVisible(Admin $record, mixed $user): bool
+    {
+        if (! StaffClientVisibility::isSuperAdminOnlyLockedClient($record->type ?? null, $record->client_id ?? null)) {
+            return true;
+        }
+
+        return (int) ($user->role ?? 0) === 1;
     }
 }

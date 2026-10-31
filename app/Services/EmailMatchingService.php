@@ -11,18 +11,23 @@ use Illuminate\Support\Facades\Log;
 /**
  * Suggests client+matter assignments for unattached .msg files.
  *
- * All queries start from Admin::query() + restrictAdminEloquentQuery() so staff
- * visibility rules are always enforced. Never starts from ClientMatter::query() or
+ * Suggestions list every client and lead reference. Opening or changing the file
+ * still requires authority. Never starts from ClientMatter::query() or
  * ClientEmail::query() as the root.
  */
 class EmailMatchingService
 {
-    private const CONFIDENCE_MATTER_REF  = 92;
-    private const CONFIDENCE_CLIENT_REF  = 88;
+    private const CONFIDENCE_MATTER_REF = 92;
+
+    private const CONFIDENCE_CLIENT_REF = 88;
+
     private const CONFIDENCE_EMAIL_MATCH = 85;
-    private const CONFIDENCE_BOOST       = 5;
-    private const CONFIDENCE_CAP         = 99;
-    private const HIGH_CONFIDENCE        = 80;
+
+    private const CONFIDENCE_BOOST = 5;
+
+    private const CONFIDENCE_CAP = 99;
+
+    private const HIGH_CONFIDENCE = 80;
 
     /** Matter ref: NICK_N  e.g. PSA_1, GN_2, EMPLOYER_SPONSORED_1 */
     private const MATTER_REF_PATTERN = '/\b([A-Z][A-Z0-9]*_\d{1,5})\b/i';
@@ -48,8 +53,8 @@ class EmailMatchingService
     /**
      * Return up to 5 ranked suggestions for a single parsed email.
      *
-     * @param  array                    $parsed  Python /email/parse response
-     * @param  Authenticatable|null     $user    Authenticated staff (for visibility)
+     * @param  array  $parsed  Python /email/parse response
+     * @param  Authenticatable|null  $user  Authenticated staff (for visibility)
      * @return array{
      *   suggestions: list<array{
      *     client_id: int,
@@ -69,7 +74,7 @@ class EmailMatchingService
         $subject = (string) ($parsed['subject'] ?? '');
         $snippet = mb_substr((string) ($parsed['text_content'] ?? ''), 0, 500);
         $senderEmail = strtolower(trim((string) ($parsed['sender_email'] ?? '')));
-        $recipients  = array_map(
+        $recipients = array_map(
             fn (string $r) => strtolower(trim($r)),
             (array) ($parsed['recipients'] ?? [])
         );
@@ -108,7 +113,7 @@ class EmailMatchingService
             Log::warning('EmailMatchingService: email-address match failed', ['error' => $e->getMessage()]);
         }
 
-        $merged      = $this->mergeAndBoost($allResults);
+        $merged = $this->mergeAndBoost($allResults);
         $suggestions = array_slice(
             array_values(array_filter($merged, fn ($s) => $s['client_matter_id'] > 0)),
             0,
@@ -116,8 +121,8 @@ class EmailMatchingService
         );
 
         return [
-            'suggestions'          => $suggestions,
-            'suggested_mail_type'  => $this->detectMailType($senderEmail),
+            'suggestions' => $suggestions,
+            'suggested_mail_type' => $this->detectMailType($senderEmail),
         ];
     }
 
@@ -135,7 +140,7 @@ class EmailMatchingService
 
     private function matchByMatterRef(string $subject, string $snippet, ?Authenticatable $user): array
     {
-        $text = $subject . ' ' . $snippet;
+        $text = $subject.' '.$snippet;
         preg_match_all(self::MATTER_REF_PATTERN, $text, $matches);
         $refs = array_unique(array_map('strtoupper', $matches[1] ?? []));
 
@@ -164,10 +169,10 @@ class EmailMatchingService
                     'client_matters.id as client_matter_id',
                     'client_matters.client_unique_matter_no as matter_no',
                     'matters.title as matter_title',
-                    DB::raw("NULL as company_name")
+                    DB::raw('NULL as company_name')
                 );
 
-            StaffClientVisibility::restrictAdminEloquentQuery($query);
+            StaffClientVisibility::applyClientLeadDirectoryScope($query);
 
             foreach ($query->get() as $row) {
                 $results[] = $this->buildSuggestion($row, self::CONFIDENCE_MATTER_REF, ["Matter ref: {$ref}"]);
@@ -179,7 +184,7 @@ class EmailMatchingService
 
     private function matchByClientRef(string $subject, string $snippet, ?Authenticatable $user): array
     {
-        $text = $subject . ' ' . $snippet;
+        $text = $subject.' '.$snippet;
         preg_match_all(self::CLIENT_REF_PATTERN, $text, $matches);
         $refs = array_unique($matches[1] ?? []);
 
@@ -192,7 +197,7 @@ class EmailMatchingService
             $query = Admin::query()
                 ->leftJoin('client_matters', function ($join) {
                     $join->on('client_matters.client_id', '=', 'admins.id')
-                         ->where('client_matters.matter_status', 1);
+                        ->where('client_matters.matter_status', 1);
                 })
                 ->leftJoin('matters', 'matters.id', '=', 'client_matters.sel_matter_id')
                 ->leftJoin('companies', 'companies.admin_id', '=', 'admins.id')
@@ -211,10 +216,10 @@ class EmailMatchingService
                     'client_matters.id as client_matter_id',
                     'client_matters.client_unique_matter_no as matter_no',
                     'matters.title as matter_title',
-                    DB::raw("NULL as company_name")
+                    DB::raw('NULL as company_name')
                 );
 
-            StaffClientVisibility::restrictAdminEloquentQuery($query);
+            StaffClientVisibility::applyClientLeadDirectoryScope($query);
 
             foreach ($query->get() as $row) {
                 $results[] = $this->buildSuggestion($row, self::CONFIDENCE_CLIENT_REF, ["Client ref: {$ref}"]);
@@ -237,7 +242,7 @@ class EmailMatchingService
             $query = Admin::query()
                 ->leftJoin('client_matters', function ($join) {
                     $join->on('client_matters.client_id', '=', 'admins.id')
-                         ->where('client_matters.matter_status', 1);
+                        ->where('client_matters.matter_status', 1);
                 })
                 ->leftJoin('matters', 'matters.id', '=', 'client_matters.sel_matter_id')
                 ->leftJoin('companies', 'companies.admin_id', '=', 'admins.id')
@@ -256,10 +261,10 @@ class EmailMatchingService
                     'client_matters.id as client_matter_id',
                     'client_matters.client_unique_matter_no as matter_no',
                     'matters.title as matter_title',
-                    DB::raw("NULL as company_name")
+                    DB::raw('NULL as company_name')
                 );
 
-            StaffClientVisibility::restrictAdminEloquentQuery($query);
+            StaffClientVisibility::applyClientLeadDirectoryScope($query);
 
             foreach ($query->get() as $row) {
                 $results[] = $this->buildSuggestion($row, self::CONFIDENCE_EMAIL_MATCH, ["Email: {$email}"]);
@@ -270,7 +275,7 @@ class EmailMatchingService
                 ->join('client_emails', 'client_emails.admin_id', '=', 'admins.id')
                 ->leftJoin('client_matters', function ($join) {
                     $join->on('client_matters.client_id', '=', 'admins.id')
-                         ->where('client_matters.matter_status', 1);
+                        ->where('client_matters.matter_status', 1);
                 })
                 ->leftJoin('matters', 'matters.id', '=', 'client_matters.sel_matter_id')
                 ->leftJoin('companies', 'companies.admin_id', '=', 'admins.id')
@@ -289,10 +294,10 @@ class EmailMatchingService
                     'client_matters.id as client_matter_id',
                     'client_matters.client_unique_matter_no as matter_no',
                     'matters.title as matter_title',
-                    DB::raw("NULL as company_name")
+                    DB::raw('NULL as company_name')
                 );
 
-            StaffClientVisibility::restrictAdminEloquentQuery($query2);
+            StaffClientVisibility::applyClientLeadDirectoryScope($query2);
 
             foreach ($query2->get() as $row) {
                 $results[] = $this->buildSuggestion($row, self::CONFIDENCE_EMAIL_MATCH, ["Secondary email: {$email}"]);
@@ -308,23 +313,23 @@ class EmailMatchingService
 
     private function buildSuggestion(object $row, int $confidence, array $signals): array
     {
-        $clientName = trim(($row->first_name ?? '') . ' ' . ($row->last_name ?? ''));
+        $clientName = trim(($row->first_name ?? '').' '.($row->last_name ?? ''));
         $matterTitle = ($row->matter_title && $row->matter_title !== 'General') ? $row->matter_title : 'General Matter';
-        $matterNo    = $row->matter_no ?? '';
+        $matterNo = $row->matter_no ?? '';
         $matterDisplay = $matterNo
             ? "{$matterTitle} ({$matterNo})"
             : $matterTitle;
 
         return [
-            'client_id'        => (int) $row->client_id,
-            'client_name'      => $clientName,
+            'client_id' => (int) $row->client_id,
+            'client_name' => $clientName,
             'client_reference' => (string) ($row->client_reference ?? ''),
-            'record_type'      => (string) ($row->record_type ?? 'client'),
+            'record_type' => (string) ($row->record_type ?? 'client'),
             'client_matter_id' => (int) ($row->client_matter_id ?? 0),
-            'matter_no'        => $matterNo,
-            'matter_display'   => $matterDisplay,
-            'confidence'       => $confidence,
-            'match_signals'    => $signals,
+            'matter_no' => $matterNo,
+            'matter_display' => $matterDisplay,
+            'confidence' => $confidence,
+            'match_signals' => $signals,
         ];
     }
 
@@ -338,7 +343,7 @@ class EmailMatchingService
         $merged = [];
 
         foreach ($allResults as $result) {
-            $key = $result['client_id'] . ':' . $result['client_matter_id'];
+            $key = $result['client_id'].':'.$result['client_matter_id'];
 
             if (! isset($merged[$key])) {
                 $merged[$key] = $result;
@@ -385,11 +390,12 @@ class EmailMatchingService
         $email = strtolower($email);
         foreach ($this->companyDomains as $domain) {
             // Normalise: strip leading '@' if present, then check "@domain" presence
-            $domain = '@' . ltrim(strtolower($domain), '@');
+            $domain = '@'.ltrim(strtolower($domain), '@');
             if (str_contains($email, $domain)) {
                 return true;
             }
         }
+
         return false;
     }
 }

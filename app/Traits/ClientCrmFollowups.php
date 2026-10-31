@@ -46,6 +46,7 @@ use App\Support\ActionTaskGroup;
 use App\Support\ClientDetailAccountTab;
 use App\Support\ClientDetailChecklistsTab;
 use App\Support\ClientDetailTabs;
+use App\Support\ClientMatterSidebarStatus;
 use App\Support\NoteDescriptionHtml;
 use App\Support\StaffClientVisibility;
 use App\Support\WorkflowAssignment;
@@ -497,10 +498,10 @@ trait ClientCrmFollowups
         };
 
         $leadBuilder = $applySearch(Admin::query()->where('type', 'lead'));
-        StaffClientVisibility::restrictLeadListQuery($leadBuilder);
+        StaffClientVisibility::applyClientLeadDirectoryScope($leadBuilder);
 
         $clientBuilder = $applySearch(Admin::query()->where('type', 'client'));
-        StaffClientVisibility::restrictAdminEloquentQuery($clientBuilder);
+        StaffClientVisibility::applyClientLeadDirectoryScope($clientBuilder);
 
         $mapRecord = function (Admin $person) {
             $fullName = trim($person->first_name.' '.$person->last_name);
@@ -4499,136 +4500,88 @@ trait ClientCrmFollowups
      */
     protected function buildClientDetailMatterContext(int $clientId, ?string $matterRefNo, array $validTabNames): array
     {
-        $matterCount = ClientMatter::where('client_id', $clientId)
-            ->where('matter_status', 1)
-            ->count();
-
-        $matterListQuery = DB::table('client_matters')
+        $matterListArr = DB::table('client_matters')
             ->leftJoin('matters', 'client_matters.sel_matter_id', '=', 'matters.id')
+            ->leftJoin('workflow_stages', 'client_matters.workflow_stage_id', '=', 'workflow_stages.id')
             ->select(
                 'client_matters.id',
                 'client_matters.client_unique_matter_no',
+                'client_matters.sel_matter_id',
+                'client_matters.matter_status',
+                'client_matters.created_at',
+                'client_matters.department_reference',
+                'client_matters.other_reference',
                 'matters.title',
-                'client_matters.sel_matter_id'
+                'workflow_stages.name as workflow_stage_name'
             )
             ->where('client_matters.client_id', $clientId)
-            ->where('client_matters.matter_status', 1)
-            ->whereNotNull('client_matters.sel_matter_id');
+            ->whereNotNull('client_matters.sel_matter_id')
+            ->orderByDesc('client_matters.created_at')
+            ->get()
+            ->all();
 
-        $matterListArr = $matterListQuery->orderBy('client_matters.created_at', 'desc')->get()->all();
-
-        $showMatterDropdown = false;
-        $latestClientMatterId = null;
-
-        if ($matterRefNo) {
-            $urlMatterCount = DB::table('client_matters')
-                ->where('client_id', $clientId)
-                ->where('client_unique_matter_no', $matterRefNo)
-                ->where('matter_status', 1)
-                ->whereNotNull('sel_matter_id')
-                ->count();
-
-            if ($urlMatterCount > 0) {
-                $showMatterDropdown = true;
-                usort($matterListArr, function ($a, $b) use ($matterRefNo) {
-                    if ($a->client_unique_matter_no == $matterRefNo && $b->client_unique_matter_no != $matterRefNo) {
-                        return -1;
-                    }
-                    if ($a->client_unique_matter_no != $matterRefNo && $b->client_unique_matter_no == $matterRefNo) {
-                        return 1;
-                    }
-
-                    return 0;
-                });
-                $urlMatter = ClientMatter::select('id')
-                    ->where('client_id', $clientId)
-                    ->where('client_unique_matter_no', $matterRefNo)
-                    ->first();
-                $latestClientMatterId = $urlMatter ? $urlMatter->id : null;
-            } elseif (count($matterListArr) > 0) {
-                $showMatterDropdown = true;
-                $latestClientMatter = ClientMatter::where('client_id', $clientId)
-                    ->where('matter_status', 1)
-                    ->latest()
-                    ->first();
-                $latestClientMatterId = $latestClientMatter ? $latestClientMatter->id : null;
+        usort($matterListArr, function ($a, $b) {
+            $rank = ClientMatterSidebarStatus::sortRank((int) $a->matter_status, $a->workflow_stage_name ?? null)
+                <=> ClientMatterSidebarStatus::sortRank((int) $b->matter_status, $b->workflow_stage_name ?? null);
+            if ($rank !== 0) {
+                return $rank;
             }
-        } elseif (count($matterListArr) > 0) {
-            $showMatterDropdown = true;
-            $latestClientMatter = ClientMatter::where('client_id', $clientId)
-                ->where('matter_status', 1)
-                ->latest()
-                ->first();
-            $latestClientMatterId = $latestClientMatter ? $latestClientMatter->id : null;
-        }
 
+            return strcmp((string) ($b->created_at ?? ''), (string) ($a->created_at ?? ''));
+        });
+
+        $selected = null;
         if ($matterRefNo) {
-            $matterInfoArr = ClientMatter::select('client_unique_matter_no')
-                ->where('client_id', $clientId)
-                ->where('client_unique_matter_no', $matterRefNo)
-                ->first();
-        } elseif ($matterCount > 0) {
-            $matterInfoArr = ClientMatter::select('client_unique_matter_no')
-                ->where('client_id', $clientId)
-                ->where('matter_status', 1)
-                ->orderBy('id', 'desc')
-                ->first();
-        } else {
-            $matterInfoArr = null;
-        }
-
-        $workflowStageArr = null;
-        if ($matterRefNo) {
-            $workflowStageArr = DB::table('client_matters')
-                ->join('workflow_stages', 'client_matters.workflow_stage_id', '=', 'workflow_stages.id')
-                ->select('workflow_stages.name')
-                ->where('client_id', $clientId)
-                ->where('client_unique_matter_no', $matterRefNo)
-                ->first();
-        } else {
-            $clientMatterInfo = DB::table('client_matters')
-                ->select('client_unique_matter_no')
-                ->where('client_id', $clientId)
-                ->where('matter_status', 1)
-                ->orderBy('id', 'desc')
-                ->first();
-
-            if ($clientMatterInfo) {
-                $workflowStageArr = DB::table('client_matters')
-                    ->join('workflow_stages', 'client_matters.workflow_stage_id', '=', 'workflow_stages.id')
-                    ->select('workflow_stages.name')
-                    ->where('client_id', $clientId)
-                    ->where('client_unique_matter_no', $clientMatterInfo->client_unique_matter_no)
-                    ->first();
+            foreach ($matterListArr as $row) {
+                if ((string) $row->client_unique_matter_no === (string) $matterRefNo) {
+                    $selected = $row;
+                    break;
+                }
             }
         }
-
-        if ($matterRefNo) {
-            $matterRefInfoArr = ClientMatter::select('department_reference', 'other_reference')
-                ->where('client_id', $clientId)
-                ->where('client_unique_matter_no', $matterRefNo)
-                ->first();
-        } elseif ($matterCount > 0) {
-            $matterRefInfoArr = ClientMatter::select('department_reference', 'other_reference')
-                ->where('client_id', $clientId)
-                ->where('matter_status', 1)
-                ->orderBy('id', 'desc')
-                ->first();
-        } else {
-            $matterRefInfoArr = null;
+        if (! $selected) {
+            foreach ($matterListArr as $row) {
+                if ((int) $row->matter_status === 1) {
+                    $selected = $row;
+                    break;
+                }
+            }
         }
+        if (! $selected && $matterListArr !== []) {
+            $selected = $matterListArr[0];
+        }
+
+        $showMatterDropdown = $matterListArr !== [];
+        $latestClientMatterId = $selected ? (int) $selected->id : null;
+        $matterInfoArr = $selected
+            ? (object) ['client_unique_matter_no' => $selected->client_unique_matter_no]
+            : null;
+        $workflowStageArr = ($selected && ! empty($selected->workflow_stage_name))
+            ? (object) ['name' => $selected->workflow_stage_name]
+            : null;
+        $matterRefInfoArr = $selected
+            ? (object) [
+                'department_reference' => $selected->department_reference,
+                'other_reference' => $selected->other_reference,
+            ]
+            : null;
+        $matterStatusBadge = ClientMatterSidebarStatus::badge(
+            $selected ? (int) $selected->matter_status : null,
+            $selected?->workflow_stage_name
+        );
 
         $isMatterIdInUrl = $matterRefNo !== null
             && $matterRefNo !== ''
             && ! in_array(strtolower($matterRefNo), array_map('strtolower', $validTabNames), true);
 
         return [
-            'matter_cnt' => $matterCount,
+            'matter_cnt' => count($matterListArr),
             'matter_list_arr' => $matterListArr,
             'latestClientMatterId' => $latestClientMatterId,
             'matter_info_arr' => $matterInfoArr,
             'workflow_stage_arr' => $workflowStageArr,
             'matter__ref_info_arr' => $matterRefInfoArr,
+            'matter_status_badge' => $matterStatusBadge,
             'showMatterDropdown' => $showMatterDropdown,
             'isMatterIdInUrl' => $isMatterIdInUrl,
             'validTabNames' => $validTabNames,
@@ -4730,11 +4683,6 @@ trait ClientCrmFollowups
                     $clientContacts = ClientContact::where('client_id', $id)->get();
                     $emails = ClientEmail::where('client_id', $id)->get() ?? [];
 
-                    $matter_cnt = ClientMatter::select('id')
-                        ->where('client_id', $id)
-                        ->where('matter_status', 1)
-                        ->count();
-
                     // Get current admin user data for SMS templates
                     $currentAdmin = Auth::user();
                     $staffName = $currentAdmin->first_name.' '.$currentAdmin->last_name;
@@ -4745,13 +4693,14 @@ trait ClientCrmFollowups
 
                     $encodeId = base64_encode(convert_uuencode($id));
                     $activeTab = $tab ?? 'companydetails';
+                    $matterContext = $this->buildClientDetailMatterContext((int) $id, $id1, ClientDetailTabs::slugs());
 
-                    return view('crm.companies.detail', compact(
+                    return view('crm.companies.detail', array_merge(compact(
                         'fetchedData', 'clientAddresses', 'clientContacts', 'emails',
                         'encodeId', 'id1', 'activeTab',
                         'staffName', 'matterNumber', 'officePhone', 'officeCountryCode',
                         'notPickedCallSmsDefault'
-                    ));
+                    ), $matterContext));
                 }
 
                 // Personal-data tables belong to the Personal Details fragment only.

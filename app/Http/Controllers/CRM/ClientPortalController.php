@@ -4302,18 +4302,15 @@ class ClientPortalController extends Controller
 					}
 				}
 
-				// Build redirect URL: go to another active matter, or revert to lead view (no matter)
+				// Stay on this matter so the sidebar can show it as discontinued.
 				$encodeId = base64_encode(convert_uuencode($clientMatter->client_id));
-				$otherMatter = ClientMatter::where('client_id', $clientMatter->client_id)
-					->where('id', '!=', $matterId)
-					->where('matter_status', 1)
-					->orderBy('id', 'desc')
-					->first();
 				$redirectUrl = '/clients/detail/' . $encodeId;
-				if ($otherMatter) {
-					$redirectUrl .= '/' . $otherMatter->client_unique_matter_no . '/' . $currentTab;
-				} else {
-					$redirectUrl .= '/' . $currentTab;
+				if (! empty($clientMatter->client_unique_matter_no)) {
+					$redirectUrl .= '/' . $clientMatter->client_unique_matter_no;
+				}
+				$tab = trim((string) $currentTab);
+				if ($tab !== '' && \App\Support\ClientDetailTabs::isKnownSlug($tab)) {
+					$redirectUrl .= '/' . $tab;
 				}
 
 				return response()->json([

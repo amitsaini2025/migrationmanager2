@@ -64,15 +64,11 @@ class ClientDocumentsController extends Controller
 
     private function denyJsonUnlessStaffClientAccess(int $clientId): ?JsonResponse
     {
-        if (! StaffClientVisibility::isRestrictedPersonAssisting(Auth::user())) {
+        if ($clientId <= 0 || StaffClientVisibility::canAccessClientOrLead($clientId)) {
             return null;
         }
 
-        if ($clientId <= 0 || ! StaffClientVisibility::canAccessClientOrLead($clientId)) {
-            return response()->json(StaffClientVisibility::unauthorizedPayload(), 403);
-        }
-
-        return null;
+        return response()->json(StaffClientVisibility::unauthorizedPayload(), 403);
     }
 
     /**
@@ -80,18 +76,14 @@ class ClientDocumentsController extends Controller
      */
     private function blockEchoUnlessStaffClientAccess(int $clientId): bool
     {
-        if (! StaffClientVisibility::isRestrictedPersonAssisting(Auth::user())) {
+        if ($clientId <= 0 || StaffClientVisibility::canAccessClientOrLead($clientId)) {
             return false;
         }
 
-        if ($clientId <= 0 || ! StaffClientVisibility::canAccessClientOrLead($clientId)) {
-            header('Content-Type: application/json');
-            echo json_encode(StaffClientVisibility::unauthorizedPayload());
+        header('Content-Type: application/json');
+        echo json_encode(StaffClientVisibility::unauthorizedPayload());
 
-            return true;
-        }
-
-        return false;
+        return true;
     }
 
     /**

@@ -119,14 +119,7 @@ class ArtSheetController extends Controller
             ->join('admins', 'latest_art_matter.client_id', '=', 'admins.id')
             ->leftJoin('staff as agents', 'latest_art_matter.sel_migration_agent', '=', 'agents.id');
 
-        // Person Assisting role: rows where this staff is MA / PR / PA on the matter
-        if ($paId = StaffClientVisibility::personAssistingStaffIdOrNull(Auth::user())) {
-            $query->where(function ($q) use ($paId) {
-                $q->where('latest_art_matter.sel_migration_agent', $paId)
-                    ->orWhere('latest_art_matter.sel_person_responsible', $paId)
-                    ->orWhere('latest_art_matter.sel_person_assisting', $paId);
-            });
-        }
+        StaffClientVisibility::applyExcludeSuperAdminOnlyLockedClientsOnAdminJoin($query, 'admins');
 
         $query->select(
             'art.id as art_id',

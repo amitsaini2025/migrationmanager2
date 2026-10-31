@@ -74,11 +74,11 @@ class SearchContactsTool extends Tool
             $query->where('is_company', 1);
         }
 
-        StaffClientVisibility::restrictAdminEloquentQuery($query);
+        StaffClientVisibility::applyClientLeadDirectoryScope($query);
 
         $rows = $query
             ->orderByDesc('updated_at')
-            ->limit(min(50, max($limit * 3, $limit)))
+            ->limit($limit)
             ->get([
                 'id', 'type', 'first_name', 'last_name', 'email', 'phone', 'country_code',
                 'client_id', 'is_company', 'lead_status', 'followup_date', 'user_id', 'updated_at',
@@ -91,10 +91,6 @@ class SearchContactsTool extends Tool
 
         $results = [];
         foreach ($rows as $row) {
-            if (! ($accessMap[(int) $row->id] ?? false)) {
-                continue;
-            }
-
             $results[] = [
                 'id' => (int) $row->id,
                 'type' => $row->type,
@@ -104,6 +100,7 @@ class SearchContactsTool extends Tool
                 'phone' => trim(($row->country_code ? '+'.$row->country_code.' ' : '').($row->phone ?? '')),
                 'crm_ref' => $row->client_id,
                 'lead_status' => $row->lead_status,
+                'can_open' => (bool) ($accessMap[(int) $row->id] ?? false),
                 'company' => $row->company ? [
                     'name' => $row->company->company_name,
                     'abn' => $row->company->ABN_number,

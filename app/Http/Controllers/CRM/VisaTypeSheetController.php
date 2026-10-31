@@ -402,19 +402,7 @@ class VisaTypeSheetController extends Controller
             ->whereIn('admins.type', ['client', 'lead'])
             ->whereNull('admins.is_deleted');
 
-        // Person Assisting role: restrict to matters where they are MA / PR / PA,
-        // or leads allocated via admins.user_id (aligned with lead_matter_references branch).
-        if ($paId = StaffClientVisibility::personAssistingStaffIdOrNull(Auth::user())) {
-            $clientQuery->where(function ($q) use ($paId) {
-                $q->where(function ($q2) use ($paId) {
-                    $q2->where('cm.sel_migration_agent', $paId)
-                        ->orWhere('cm.sel_person_responsible', $paId)
-                        ->orWhere('cm.sel_person_assisting', $paId);
-                })->orWhere(function ($q2) use ($paId) {
-                    $q2->where('admins.type', 'lead')->where('admins.user_id', $paId);
-                });
-            });
-        }
+        StaffClientVisibility::applyExcludeSuperAdminOnlyLockedClientsOnAdminJoin($clientQuery, 'admins');
 
         $clientQuery->select(
             'cm.id as matter_internal_id',
@@ -472,47 +460,43 @@ class VisaTypeSheetController extends Controller
                     ->whereIn('lr.matter_id', $matterIds)
                     ->where('a.is_archived', 0)
                     ->where('a.type', 'lead')
-                    ->whereNull('a.is_deleted')
-                    ->select(
-                        DB::raw('NULL as matter_internal_id'),
-                        'lr.lead_id as client_id',
-                        'a.client_id as crm_ref',
-                        'a.first_name',
-                        'a.last_name',
-                        'a.dob',
-                        DB::raw('('.CurrentVisaExpiry::sql('a').') as visa_expiry'),
-                        DB::raw("CONCAT('Lead - ', COALESCE(m.title, '')) as client_unique_matter_no"),
-                        'm.title as matter_title',
-                        'lr.matter_id as sel_matter_id',
-                        DB::raw('NULL as deadline'),
-                        DB::raw('NULL as other_reference'),
-                        DB::raw('NULL as department_reference'),
-                        DB::raw('NULL as office_id'),
-                        DB::raw('NULL as assignee_id'),
-                        DB::raw("'' as assignee_name"),
-                        DB::raw('NULL as branch_name'),
-                        DB::raw("'Lead' as application_stage"),
-                        DB::raw('NULL as current_status'),
-                        DB::raw('NULL as payment_display_note'),
-                        DB::raw('NULL as sheet_comment_text'),
-                        'lr.checklist_sent_at',
-                        DB::raw('false as is_pinned'),
-                        DB::raw('NULL as verified_by_name'),
-                        DB::raw('NULL as refused_visa_type'),
-                        DB::raw("'active' as tr_checklist_status"),
-                        DB::raw($leadBlockFeeSql),
-                        'lr.created_at as sheet_row_created_at',
-                        'lr.id as lead_ref_row_id',
-                        DB::raw('1 as is_lead'),
-                        'm.nick_name as matter_nick'
-                    );
+                    ->whereNull('a.is_deleted');
+                StaffClientVisibility::applyExcludeSuperAdminOnlyLockedClientsOnAdminJoin($leadQuery, 'a');
+                $leadQuery->select(
+                    DB::raw('NULL as matter_internal_id'),
+                    'lr.lead_id as client_id',
+                    'a.client_id as crm_ref',
+                    'a.first_name',
+                    'a.last_name',
+                    'a.dob',
+                    DB::raw('('.CurrentVisaExpiry::sql('a').') as visa_expiry'),
+                    DB::raw("CONCAT('Lead - ', COALESCE(m.title, '')) as client_unique_matter_no"),
+                    'm.title as matter_title',
+                    'lr.matter_id as sel_matter_id',
+                    DB::raw('NULL as deadline'),
+                    DB::raw('NULL as other_reference'),
+                    DB::raw('NULL as department_reference'),
+                    DB::raw('NULL as office_id'),
+                    DB::raw('NULL as assignee_id'),
+                    DB::raw("'' as assignee_name"),
+                    DB::raw('NULL as branch_name'),
+                    DB::raw("'Lead' as application_stage"),
+                    DB::raw('NULL as current_status'),
+                    DB::raw('NULL as payment_display_note'),
+                    DB::raw('NULL as sheet_comment_text'),
+                    'lr.checklist_sent_at',
+                    DB::raw('false as is_pinned'),
+                    DB::raw('NULL as verified_by_name'),
+                    DB::raw('NULL as refused_visa_type'),
+                    DB::raw("'active' as tr_checklist_status"),
+                    DB::raw($leadBlockFeeSql),
+                    'lr.created_at as sheet_row_created_at',
+                    'lr.id as lead_ref_row_id',
+                    DB::raw('1 as is_lead'),
+                    'm.nick_name as matter_nick'
+                );
                 if ($this->isSponsorSheet($config)) {
                     $leadQuery->addSelect($this->sponsorSheetSelects('lr.lead_id', 'NULL'));
-                }
-
-                // Person Assisting: restrict leads to those assigned to them
-                if ($paId = StaffClientVisibility::personAssistingStaffIdOrNull(Auth::user())) {
-                    $leadQuery->where('a.user_id', $paId);
                 }
 
                 if ($request->filled('search')) {
@@ -739,17 +723,10 @@ class VisaTypeSheetController extends Controller
             ->whereIn('admins.type', ['client', 'lead'])
             ->whereNull('admins.is_deleted');
 
+        StaffClientVisibility::applyExcludeSuperAdminOnlyLockedClientsOnAdminJoin($query, 'admins');
+
         if ($this->isSponsorSheet($config)) {
             $query->addSelect($this->sponsorSheetSelects('latest_matter.client_id', 'latest_matter.matter_id'));
-        }
-
-        // Person Assisting role: restrict to matters where they are MA / PR / PA
-        if ($paId = StaffClientVisibility::personAssistingStaffIdOrNull(Auth::user())) {
-            $query->where(function ($q) use ($paId) {
-                $q->where('latest_matter.sel_migration_agent', $paId)
-                    ->orWhere('latest_matter.sel_person_responsible', $paId)
-                    ->orWhere('latest_matter.sel_person_assisting', $paId);
-            });
         }
 
         $this->applyTabFilter($query, $tab, $config);

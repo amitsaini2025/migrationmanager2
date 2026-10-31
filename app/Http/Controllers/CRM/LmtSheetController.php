@@ -222,16 +222,7 @@ class LmtSheetController extends Controller
             return false;
         }
 
-        $paId = StaffClientVisibility::personAssistingStaffIdOrNull(auth('admin')->user());
-        if ($paId === null) {
-            return true;
-        }
-
-        return in_array($paId, [
-            (int) $matter->sel_migration_agent,
-            (int) $matter->sel_person_responsible,
-            (int) $matter->sel_person_assisting,
-        ], true);
+        return StaffClientVisibility::canAccessClientOrLead((int) $matter->client_id);
     }
 
     /**
@@ -266,14 +257,6 @@ class LmtSheetController extends Controller
             })
             ->with(['client.company', 'matter:id,title,nick_name']);
 
-        if ($paId = StaffClientVisibility::personAssistingStaffIdOrNull(auth('admin')->user())) {
-            $query->where(function ($assigned) use ($paId) {
-                $assigned->where('sel_migration_agent', $paId)
-                    ->orWhere('sel_person_responsible', $paId)
-                    ->orWhere('sel_person_assisting', $paId);
-            });
-        }
-
         if ($search !== '') {
             $like = '%'.$search.'%';
             $query->where(function ($match) use ($like) {
@@ -300,7 +283,7 @@ class LmtSheetController extends Controller
             ->whereNull('is_deleted')
             ->whereIn('type', ['client', 'lead']);
 
-        StaffClientVisibility::restrictAdminEloquentQuery($query);
+        StaffClientVisibility::applyClientLeadDirectoryScope($query);
     }
 
     /**

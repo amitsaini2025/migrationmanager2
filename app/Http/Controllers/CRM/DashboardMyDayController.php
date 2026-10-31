@@ -214,12 +214,19 @@ class DashboardMyDayController extends Controller
             ->limit(24);
 
         $rows = $query->get()->filter(function (ClientMatter $matter) use ($staff) {
-            $clientId = (int) $matter->client_id;
+            $client = $matter->client;
+            if (! $client || (int) $matter->client_id <= 0) {
+                return false;
+            }
 
-            return $clientId > 0 && StaffClientVisibility::canAccessClientOrLead($clientId, $staff);
+            if (! StaffClientVisibility::isSuperAdminOnlyLockedClient($client->type ?? null, $client->client_id ?? null)) {
+                return true;
+            }
+
+            return (int) ($staff->role ?? 0) === 1;
         })->take(8)->values();
 
-        $results = $rows->map(function (ClientMatter $matter): array {
+        $results = $rows->map(function (ClientMatter $matter) use ($staff): array {
             $client = $matter->client;
             $clientName = $client
                 ? trim(($client->first_name ?? '').' '.($client->last_name ?? ''))
@@ -240,6 +247,7 @@ class DashboardMyDayController extends Controller
                 'client' => $clientName,
                 'matter' => $matterTitle,
                 'stage' => $stage,
+                'can_open' => StaffClientVisibility::canAccessClientOrLead((int) $matter->client_id, $staff),
             ];
         })->all();
 
@@ -247,7 +255,7 @@ class DashboardMyDayController extends Controller
             'success' => true,
             'results' => $results,
             'empty_hint' => $results === []
-                ? 'No accessible matters found. Create the matter on the client file first.'
+                ? 'No matters found.'
                 : null,
         ]);
     }

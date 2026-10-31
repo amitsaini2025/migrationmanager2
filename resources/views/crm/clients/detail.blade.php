@@ -75,35 +75,7 @@ use App\Http\Controllers\Controller;
             </div>
             @endif
             
-            <!-- Matter Selection Dropdown in Sidebar -->
-            <div class="sidebar-matter-selection">
-                @if($fetchedData->type)
-                    @if(!empty($showMatterDropdown) && !empty($matter_list_arr))
-                        <select name="matter_id" id="sel_matter_id_client_detail" class="form-control mm-select visa-dropdown" data-valid="required">
-                            <option value="">Select Matters</option>
-                            @foreach($matter_list_arr as $matterlist)
-                                @php
-                                    $matterName = 'General Matter';
-                                    if ($matterlist->sel_matter_id != 1 && !empty($matterlist->title)) {
-                                        $matterName = $matterlist->title;
-                                    }
-                                @endphp
-                                <option value="{{$matterlist->id}}" {{ $matterlist->id == ($latestClientMatterId ?? null) ? 'selected' : '' }} data-clientuniquematterno="{{@$matterlist->client_unique_matter_no}}" data-sel-matter-id="{{@$matterlist->sel_matter_id}}">{{$matterName}}({{@$matterlist->client_unique_matter_no}})</option>
-                            @endforeach
-                        </select>
-                    @endif
-                @endif
-            </div>
-            
-            <div class="matter-status-badge">
-                <?php
-                if ($workflow_stage_arr && $workflow_stage_arr->name) {
-                    echo $workflow_stage_arr->name;
-                } else {
-                    echo 'N/A';
-                }
-                ?>
-            </div>
+            @include('crm.clients.partials.matter-sidebar-select')
             
             <!-- Matter References Section -->
             <div class="sidebar-references">

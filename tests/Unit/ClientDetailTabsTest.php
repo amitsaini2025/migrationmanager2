@@ -189,7 +189,11 @@ class ClientDetailTabsTest extends TestCase
             Assert::assertStringContainsString("@include('".$include."')", $detail);
         }
 
-        Assert::assertStringContainsString('id="sel_matter_id_client_detail"', $detail);
+        Assert::assertStringContainsString("@include('crm.clients.partials.matter-sidebar-select')", $detail);
+        $matterSelect = file_get_contents($this->projectPath('resources/views/crm/clients/partials/matter-sidebar-select.blade.php'));
+        Assert::assertNotFalse($matterSelect);
+        Assert::assertStringContainsString('id="sel_matter_id_client_detail"', $matterSelect);
+        Assert::assertStringContainsString('matter-status-badge', $matterSelect);
         Assert::assertStringContainsString("(\$activeTab ?? '') === 'workflow'", $detail);
         Assert::assertStringContainsString("@include('crm.clients.tabs.workflow')", $detail);
         Assert::assertStringContainsString("@include('crm.clients.tabs.workflow_lazy')", $detail);
@@ -475,7 +479,7 @@ class ClientDetailTabsTest extends TestCase
         $js = file_get_contents($this->projectPath('public/js/crm/clients/workflow-tab.js'));
         Assert::assertNotFalse($js);
         Assert::assertStringContainsString("btn.closest('.workflow-v2-header')", $js);
-        Assert::assertStringContainsString("function setWorkflowAdvanceButtonVisible", $js);
+        Assert::assertStringContainsString('function setWorkflowAdvanceButtonVisible', $js);
 
         $portal = file_get_contents($this->projectPath('resources/views/crm/clients/tabs/client_portal.blade.php'));
         Assert::assertNotFalse($portal);

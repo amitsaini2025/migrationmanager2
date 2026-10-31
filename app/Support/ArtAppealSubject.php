@@ -61,7 +61,7 @@ final class ArtAppealSubject
 
     /**
      * Stored values from the previous mixed list. Shown so those rows keep a label
-     * and can be changed on the sheet. Not offered when a new matter is saved.
+     * and can be changed on the client file. Not offered when a new matter is saved.
      *
      * @return array<string, string>
      */

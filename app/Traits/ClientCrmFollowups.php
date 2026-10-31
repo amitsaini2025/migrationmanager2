@@ -4637,7 +4637,7 @@ trait ClientCrmFollowups
             $selected ? (int) $selected->matter_status : null,
             $selected?->workflow_stage_name
         );
-        $artAppealKind = ArtAppealSubject::kindFromNick($selected->nick_name ?? null);
+        $artAppealKind = ArtAppealSubject::kindFromNick($selected?->nick_name);
         $artAppealCurrent = null;
         $artAppealOptions = [];
         if ($artAppealKind !== null && $selected) {

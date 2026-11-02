@@ -129,7 +129,7 @@ class VisaTypeSheetController extends Controller
                 return $row;
             });
 
-            if ($this->shouldAttachRelatedEmployers($visaType, $config)) {
+            if ($this->shouldShowRelatedEmployerColumns($visaType, $config)) {
                 $this->attachRelatedEmployers($rows->getCollection());
             }
         }
@@ -140,6 +140,7 @@ class VisaTypeSheetController extends Controller
         $matterTypes = $this->getMatterTypesForVisaType($config);
         $activeFilterCount = $this->countActiveFilters($request, $config);
         $showSponsorColumns = $this->isSponsorSheet($config);
+        $showRelatedEmployerColumns = $this->shouldShowRelatedEmployerColumns($visaType, $config);
         $showRefusedVisaType = $this->hasRefusedVisaTypeFeature($config);
         $refusedVisaTypeFromMatter = $showRefusedVisaType && VisaSheetCategory::derivesFromMatter($config);
         $refusedVisaTypeOptions = $showRefusedVisaType ? $this->getRefusedVisaTypeOptions($config) : [];
@@ -163,6 +164,7 @@ class VisaTypeSheetController extends Controller
             'visaType',
             'setupRequired',
             'showSponsorColumns',
+            'showRelatedEmployerColumns',
             'showRefusedVisaType',
             'refusedVisaTypeFromMatter',
             'refusedVisaTypeOptions',
@@ -1318,15 +1320,16 @@ class VisaTypeSheetController extends Controller
     }
 
     /**
-     * Related Employer / File Status apply to non-sponsor sheets except Partner and Parents.
+     * Related Employer / File Status are hidden on TR, Visitor, Student, Partner, and Parents.
+     * Other non-sponsor sheets (e.g. PR, ART, Employer Sponsored applicants) still show them.
      */
-    protected function shouldAttachRelatedEmployers(string $visaType, array $config): bool
+    protected function shouldShowRelatedEmployerColumns(string $visaType, array $config): bool
     {
         if ($this->isSponsorSheet($config)) {
             return false;
         }
 
-        return ! in_array($visaType, ['partner', 'parents'], true);
+        return ! in_array($visaType, ['tr', 'visitor', 'student', 'partner', 'parents'], true);
     }
 
     /**

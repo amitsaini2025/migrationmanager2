@@ -441,9 +441,8 @@
     $sheetRouteParams = ['visaType' => $visaType];
     $showRefusedVisaType = (bool) ($showRefusedVisaType ?? false);
     $showSponsorColumns = (bool) ($showSponsorColumns ?? false);
-    // Related Employer / File Status stay on TR/Visitor/Student/etc.; hide only on Partner + Parents.
-    $showRelatedEmployerColumns = ! $showSponsorColumns
-        && ! in_array((string) $visaType, ['partner', 'parents'], true);
+    // Controller passes this; hidden on TR/Visitor/Student/Partner/Parents only.
+    $showRelatedEmployerColumns = (bool) ($showRelatedEmployerColumns ?? false);
     // Base = non-sponsor header count without related-employer columns.
     // Sponsor sheets add Company, Type, TRN, Nominee, Occupation, LMT (Approval End replaces Visa Expiry).
     $emptyColspan = $tab === 'checklist' ? 12 : ($tab === 'discontinue' ? 11 : 9);

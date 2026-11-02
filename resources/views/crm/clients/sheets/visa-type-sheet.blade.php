@@ -441,14 +441,19 @@
     $sheetRouteParams = ['visaType' => $visaType];
     $showRefusedVisaType = (bool) ($showRefusedVisaType ?? false);
     $showSponsorColumns = (bool) ($showSponsorColumns ?? false);
-    // Base = non-sponsor header count. Sponsor sheets add Company, Type, TRN, Nominee, Occupation, LMT
-    // (Approval End replaces Visa Expiry one-for-one).
+    // Related Employer / File Status stay on TR/Visitor/Student/etc.; hide only on Partner + Parents.
+    $showRelatedEmployerColumns = ! $showSponsorColumns
+        && ! in_array((string) $visaType, ['partner', 'parents'], true);
+    // Base = non-sponsor header count without related-employer columns.
+    // Sponsor sheets add Company, Type, TRN, Nominee, Occupation, LMT (Approval End replaces Visa Expiry).
     $emptyColspan = $tab === 'checklist' ? 12 : ($tab === 'discontinue' ? 11 : 9);
     if ($showRefusedVisaType) {
         $emptyColspan++;
     }
     if ($showSponsorColumns) {
         $emptyColspan += 6;
+    } elseif ($showRelatedEmployerColumns) {
+        $emptyColspan += 2;
     }
     $currentSort = request('sort');
     $currentDirection = request('direction', 'asc');
@@ -683,6 +688,10 @@
                                         <th>Outcome</th>
                                         <th>Decision Note</th>
                                         @endif
+                                        @if($showRelatedEmployerColumns)
+                                        <th>Related Employer</th>
+                                        <th>File Status</th>
+                                        @endif
                                         <th>Comment</th>
                                         @if($tab === 'checklist')
                                         <th>Status</th>
@@ -839,6 +848,33 @@
                                                 @if($tab === 'discontinue')
                                                 <td>{{ $row->decision_outcome ?? '—' }}</td>
                                                 <td class="comment-cell" title="{{ $row->decision_note ?? '' }}">{{ Str::limit($row->decision_note ?? '—', 50) }}</td>
+                                                @endif
+                                                @if($showRelatedEmployerColumns)
+                                                <td onclick="event.stopPropagation();">
+                                                    @forelse(($row->related_employers ?? []) as $employer)
+                                                        @php
+                                                            $employerName = trim((string) ($employer->company_name ?? ''));
+                                                            $employerAdminId = (int) ($employer->admin_id ?? 0);
+                                                        @endphp
+                                                        @if($employerAdminId > 0)
+                                                            <a href="{{ route('clients.detail', ['client_id' => base64_encode(convert_uuencode((string) $employerAdminId))]) }}" class="art-link">{{ $employerName !== '' ? $employerName : 'Company' }}</a>
+                                                        @else
+                                                            {{ $employerName !== '' ? $employerName : '—' }}
+                                                        @endif
+                                                        @if(! $loop->last)<br>@endif
+                                                    @empty
+                                                        —
+                                                    @endforelse
+                                                </td>
+                                                <td>
+                                                    @forelse(($row->related_employers ?? []) as $employer)
+                                                        @php $employerFileStatus = trim((string) ($employer->status ?? '')); @endphp
+                                                        {{ $employerFileStatus !== '' ? $employerFileStatus : '—' }}
+                                                        @if(! $loop->last)<br>@endif
+                                                    @empty
+                                                        —
+                                                    @endforelse
+                                                </td>
                                                 @endif
                                                 @php
                                                     $commentText = trim((string) ($row->sheet_comment_text ?? ''));

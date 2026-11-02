@@ -16,7 +16,6 @@ use Carbon\Carbon;
 use Illuminate\Database\Query\Expression;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -129,9 +128,6 @@ class VisaTypeSheetController extends Controller
                 return $row;
             });
 
-            if (! $this->isSponsorSheet($config)) {
-                $this->attachRelatedEmployers($rows->getCollection());
-            }
         }
 
         $branches = Branch::orderBy('office_name')->get(['id', 'office_name']);
@@ -1315,39 +1311,6 @@ class VisaTypeSheetController extends Controller
         $today = Carbon::today();
 
         return $date->greaterThanOrEqualTo($today) && $date->lessThanOrEqualTo($today->copy()->addDays($days));
-    }
-
-    /**
-     * Attach employer nominations for the clients on this page.
-     * One query for the page, keyed by the nominated client.
-     */
-    protected function attachRelatedEmployers(Collection $rows): void
-    {
-        if ($rows->isEmpty() || ! Schema::hasTable('company_nominations') || ! Schema::hasTable('companies')) {
-            return;
-        }
-
-        $clientIds = $rows->pluck('client_id')->filter()->unique()->values();
-        if ($clientIds->isEmpty()) {
-            return;
-        }
-
-        $grouped = DB::table('company_nominations as cn')
-            ->join('companies as c', 'c.id', '=', 'cn.company_id')
-            ->whereIn('cn.nominated_client_id', $clientIds->all())
-            ->orderBy('cn.sort_order')
-            ->orderByDesc('cn.id')
-            ->get([
-                'cn.nominated_client_id',
-                'c.company_name',
-                'c.admin_id',
-                'cn.status',
-            ])
-            ->groupBy('nominated_client_id');
-
-        foreach ($rows as $row) {
-            $row->related_employers = $grouped->get($row->client_id, collect())->values();
-        }
     }
 
     protected function countActiveFilters(Request $request, array $config = []): int

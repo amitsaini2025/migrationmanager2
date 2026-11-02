@@ -131,6 +131,52 @@ final class ClientDetailDocumentsTab
     }
 
     /**
+     * When a visa/nomination *_signed companion row is active, archive the unsigned
+     * parent (same as manual Not Used) so Forms/Visa lists show only the signed copy.
+     * No-op for other doc types, already-unused parents, *_signed rows, or missing companions.
+     */
+    public static function archiveUnsignedParentAfterSignedCompanion(Document $parent): bool
+    {
+        if (self::isUnused($parent)) {
+            return false;
+        }
+
+        $docType = strtolower(trim((string) ($parent->doc_type ?? '')));
+        if (! in_array($docType, ['visa', 'nomination'], true)) {
+            return false;
+        }
+
+        $baseChecklist = trim((string) str_replace("\0", '', (string) ($parent->checklist ?? '')));
+        if ($baseChecklist === '') {
+            $baseChecklist = 'Document';
+        }
+        if (str_ends_with($baseChecklist, '_signed')) {
+            return false;
+        }
+
+        $folder = trim((string) ($parent->folder_name ?? ''));
+        if ($folder === '' || ! $parent->client_id) {
+            return false;
+        }
+
+        $hasActiveCompanion = Document::query()
+            ->where('client_id', $parent->client_id)
+            ->where('folder_name', $parent->folder_name)
+            ->where('client_matter_id', $parent->client_matter_id)
+            ->where('checklist', $baseChecklist.'_signed')
+            ->whereNull('not_used_doc')
+            ->exists();
+
+        if (! $hasActiveCompanion) {
+            return false;
+        }
+
+        self::markUnused($parent);
+
+        return true;
+    }
+
+    /**
      * Always persists as dibp_receipt / general. Caller-supplied doc types are ignored.
      */
     public static function addChecklist(int $clientId, int $userId, string $checklist, ?int $matterId): Document

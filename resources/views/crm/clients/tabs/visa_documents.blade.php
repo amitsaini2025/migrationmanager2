@@ -195,6 +195,12 @@
                                                  $parentDocs = $documents->filter(fn($d) => !str_ends_with($d->checklist ?? '', '_signed'));
                                                  $signedByParent = $documents->filter(fn($d) => str_ends_with($d->checklist ?? '', '_signed'))
                                                     ->groupBy(fn($d) => ($d->folder_name ?? '') . '|' . ($d->client_matter_id ?? '') . '|' . substr($d->checklist ?? '', 0, -7));
+                                                 // Prefer signed copy: hide unsigned parent when an active *_signed companion exists (signed still shows via orphan path).
+                                                 $parentDocs = $parentDocs->reject(function ($d) use ($signedByParent) {
+                                                     $key = ($d->folder_name ?? '') . '|' . ($d->client_matter_id ?? '') . '|' . ($d->checklist ?? '');
+
+                                                     return $signedByParent->has($key) && $signedByParent->get($key)->isNotEmpty();
+                                                 })->values();
                                                  // Keys that still have an active (visible) parent row — signed docs under these are rendered in the main loop
                                                  $parentKeysWithActiveParent = $parentDocs->map(fn($d) => ($d->folder_name ?? '') . '|' . ($d->client_matter_id ?? '') . '|' . ($d->checklist ?? ''))->unique()->values();
                                                  // Signed groups with no active parent (parent moved to not used or deleted) — show signed rows standalone

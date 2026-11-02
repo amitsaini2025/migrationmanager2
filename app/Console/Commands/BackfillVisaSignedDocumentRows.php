@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Document;
+use App\Support\ClientDetailDocumentsTab;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * Creates missing visa/nomination "companion" rows (checklist = {parent}_signed) for parent documents
  * that are already status signed with signed_doc_link, mirroring PublicDocumentController.
+ * Also archives unsigned parents that already have an active *_signed companion.
  */
 class BackfillVisaSignedDocumentRows extends Command
 {
@@ -34,7 +36,7 @@ class BackfillVisaSignedDocumentRows extends Command
 
         $query = Document::query()
             ->whereRaw(
-                "LOWER(TRIM(COALESCE(doc_type, ''))) IN (".implode(',', array_fill(0, count($docTypes), '?')).")",
+                "LOWER(TRIM(COALESCE(doc_type, ''))) IN (".implode(',', array_fill(0, count($docTypes), '?')).')',
                 $docTypes
             )
             ->where('status', 'signed')
@@ -61,19 +63,19 @@ class BackfillVisaSignedDocumentRows extends Command
             if (str_ends_with($base, '_signed')) {
                 return false;
             }
-            $signedChecklist = $base . '_signed';
+            $signedChecklist = $base.'_signed';
             if ($this->activeSignedCopyExists($d, $signedChecklist)) {
                 return false;
             }
+
             return true;
         })->values();
 
         if ($parents->isEmpty()) {
             $this->info('No parent documents need a _signed companion row.');
-            return self::SUCCESS;
+        } else {
+            $this->info('Found '.$parents->count().' parent document(s) missing an active _signed row.');
         }
-
-        $this->info('Found '.$parents->count().' parent document(s) missing an active _signed row.');
 
         $created = 0;
         $failed = 0;
@@ -84,10 +86,10 @@ class BackfillVisaSignedDocumentRows extends Command
             if ($baseChecklist === '') {
                 $baseChecklist = 'Document';
             }
-            $signedChecklist = $baseChecklist . '_signed';
+            $signedChecklist = $baseChecklist.'_signed';
             $parentType = strtolower(trim((string) ($parent->doc_type ?? '')));
 
-            $this->line("- Parent id={$parent->id} doc_type={$parentType} checklist=".json_encode($parent->checklist)." -> ".json_encode($signedChecklist));
+            $this->line("- Parent id={$parent->id} doc_type={$parentType} checklist=".json_encode($parent->checklist).' -> '.json_encode($signedChecklist));
 
             if ($dryRun) {
                 continue;
@@ -101,6 +103,7 @@ class BackfillVisaSignedDocumentRows extends Command
                     $signedDoc = $this->buildSignedCopyModel($parent, $signedPdfUrl, $signedChecklist);
                     $signedDoc->save();
                     $created++;
+                    ClientDetailDocumentsTab::archiveUnsignedParentAfterSignedCompanion($parent->fresh() ?? $parent);
                     Log::info('Backfill created _signed companion row', [
                         'parent_id' => $parent->id,
                         'signed_id' => $signedDoc->id,
@@ -117,13 +120,73 @@ class BackfillVisaSignedDocumentRows extends Command
             }
         }
 
+        $archived = $this->archiveParentsThatAlreadyHaveSignedCompanions($docTypes, $ids, $dryRun);
+
         if ($dryRun) {
-            $this->info('Dry run finished. Re-run without --dry-run to insert.');
+            $this->info("Dry run finished. Would archive unsigned parents with companions: {$archived}. Re-run without --dry-run to apply.");
         } else {
-            $this->info("Done. Created: {$created}, failed: {$failed}.");
+            $this->info("Done. Created: {$created}, archived parents with existing companions: {$archived}, failed: {$failed}.");
         }
 
         return $failed > 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * @param  array<int, string>  $docTypes
+     * @param  array<int, int>  $ids
+     */
+    private function archiveParentsThatAlreadyHaveSignedCompanions(array $docTypes, array $ids, bool $dryRun): int
+    {
+        $query = Document::query()
+            ->whereRaw(
+                "LOWER(TRIM(COALESCE(doc_type, ''))) IN (".implode(',', array_fill(0, count($docTypes), '?')).')',
+                $docTypes
+            )
+            ->whereNull('not_used_doc')
+            ->whereNotNull('client_id');
+
+        if ($ids !== []) {
+            $query->whereIn('id', $ids);
+        }
+
+        $candidates = $query->orderBy('id')->get()->filter(function (Document $d) {
+            $folder = trim((string) ($d->folder_name ?? ''));
+            if ($folder === '') {
+                return false;
+            }
+            $base = trim((string) str_replace("\0", '', (string) ($d->checklist ?? '')));
+            if ($base === '') {
+                $base = 'Document';
+            }
+            if (str_ends_with($base, '_signed')) {
+                return false;
+            }
+
+            return $this->activeSignedCopyExists($d, $base.'_signed');
+        })->values();
+
+        if ($candidates->isEmpty()) {
+            $this->info('No unsigned parents need archiving for existing *_signed companions.');
+
+            return 0;
+        }
+
+        $this->info('Found '.$candidates->count().' unsigned parent(s) with an active *_signed companion to archive.');
+
+        $archived = 0;
+        foreach ($candidates as $parent) {
+            $this->line("- Archive parent id={$parent->id} checklist=".json_encode($parent->checklist));
+            if ($dryRun) {
+                $archived++;
+
+                continue;
+            }
+            if (ClientDetailDocumentsTab::archiveUnsignedParentAfterSignedCompanion($parent)) {
+                $archived++;
+            }
+        }
+
+        return $archived;
     }
 
     /**
@@ -142,6 +205,7 @@ class BackfillVisaSignedDocumentRows extends Command
                 $types[$part] = $part;
             }
         }
+
         return $types !== [] ? array_values($types) : ['visa'];
     }
 
@@ -163,6 +227,7 @@ class BackfillVisaSignedDocumentRows extends Command
                 }
             }
         }
+
         return array_values($ids);
     }
 
@@ -181,23 +246,23 @@ class BackfillVisaSignedDocumentRows extends Command
     {
         $parentKey = (string) ($document->myfile_key ?? '');
         $parentStem = preg_replace('/\.(pdf|PDF)$/', '', $document->file_name ?? 'document');
-        if ($parentKey !== '' && !preg_match('/^\d+_signed\.pdf$/i', $parentKey)) {
-            $signedKey = pathinfo($parentKey, PATHINFO_FILENAME) . '_signed.pdf';
+        if ($parentKey !== '' && ! preg_match('/^\d+_signed\.pdf$/i', $parentKey)) {
+            $signedKey = pathinfo($parentKey, PATHINFO_FILENAME).'_signed.pdf';
         } else {
-            $signedKey = $parentStem . '_signed.pdf';
+            $signedKey = $parentStem.'_signed.pdf';
         }
         $signedKey = preg_replace('/[^a-zA-Z0-9_\-\.\s\$]+/', '_', $signedKey);
         $signedKey = trim($signedKey);
         if ($signedKey === '' || strcasecmp($signedKey, '_signed.pdf') === 0 || strlen($signedKey) > 200) {
-            $signedKey = mb_substr(preg_replace('/[^a-zA-Z0-9_\-\.\s\$]+/', '_', $parentStem . '_signed.pdf'), 0, 200);
+            $signedKey = mb_substr(preg_replace('/[^a-zA-Z0-9_\-\.\s\$]+/', '_', $parentStem.'_signed.pdf'), 0, 200);
         }
         if ($signedKey === '' || strcasecmp($signedKey, '_signed.pdf') === 0) {
-            $signedKey = $document->id . '_signed.pdf';
+            $signedKey = $document->id.'_signed.pdf';
         }
 
-        $signedDoc = new Document();
+        $signedDoc = new Document;
         $signedDoc->checklist = $signedChecklist;
-        $signedDoc->file_name = preg_replace('/\.(pdf|PDF)$/', '', $document->file_name ?? 'document') . '_signed';
+        $signedDoc->file_name = preg_replace('/\.(pdf|PDF)$/', '', $document->file_name ?? 'document').'_signed';
         $signedDoc->filetype = 'pdf';
         $signedDoc->myfile = $signedPdfUrl;
         $signedDoc->myfile_key = $signedKey;

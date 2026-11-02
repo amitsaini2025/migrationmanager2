@@ -593,7 +593,7 @@
                                     <th class="sortable {{ request('sort') == 'marital_status' ? (request('direction') == 'asc' ? 'asc' : 'desc') : '' }}" data-sort="marital_status">Marital Status</th>
                                     <th>Partner Points</th>
                                     <th>State</th>
-                                    <th>ROI Status</th>
+                                    <th>EOI Status</th>
                                     <th class="sortable {{ request('sort') == 'deadline' ? (request('direction') == 'asc' ? 'asc' : 'desc') : '' }}" data-sort="deadline">Deadline</th>
                                     <th>Comments</th>
                                     <th class="sortable {{ request('sort') == 'submission_date' ? (request('direction') == 'asc' ? 'asc' : 'desc') : '' }}" data-sort="submission_date">Last EOI/ROI Sent</th>

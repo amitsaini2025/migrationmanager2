@@ -3,13 +3,21 @@
 namespace App\Http\Controllers\CRM;
 
 use App\Http\Controllers\Controller;
-use App\Models\Admin;
-use App\Models\ClientEoiReference;
+use App\Mail\EoiConfirmationMail;
 use App\Models\ActivitiesLog;
+use App\Models\Admin;
+use App\Models\AnzscoOccupation;
+use App\Models\ClientEoiReference;
+use App\Models\ClientExperience;
+use App\Models\ClientQualification;
+use App\Models\ClientSpouseDetail;
+use App\Models\ClientTestScore;
 use App\Models\Document;
 use App\Models\VisaDocumentType;
-use App\Services\PointsService;
 use App\Services\EmailConfigService;
+use App\Services\ExpireSubmittedEoisService;
+use App\Services\PointsService;
+use App\Services\SystemEmailLogService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,11 +25,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\EoiConfirmationMail;
-use App\Models\AnzscoOccupation;
+use Illuminate\Validation\Rule;
 
 class ClientEoiRoiController extends Controller
 {
@@ -29,8 +34,11 @@ class ClientEoiRoiController extends Controller
 
     protected EmailConfigService $emailConfigService;
 
-    public function __construct(PointsService $pointsService, EmailConfigService $emailConfigService)
-    {
+    public function __construct(
+        PointsService $pointsService,
+        EmailConfigService $emailConfigService,
+        protected ExpireSubmittedEoisService $expireSubmittedEois,
+    ) {
         $this->middleware('auth:admin');
         $this->pointsService = $pointsService;
         $this->emailConfigService = $emailConfigService;
@@ -38,7 +46,7 @@ class ClientEoiRoiController extends Controller
 
     /**
      * Display a listing of EOI/ROI records for a client
-     * 
+     *
      * GET /clients/{client}/eoi-roi
      */
     public function index(Admin $client): JsonResponse
@@ -46,6 +54,8 @@ class ClientEoiRoiController extends Controller
         try {
             // TODO: Implement AdminPolicy and re-enable authorization
             // $this->authorize('view', $client);
+
+            $this->expireSubmittedEois->expire();
 
             $eoiRecords = ClientEoiReference::where('client_id', $client->id)
                 ->with(['creator', 'updater', 'anzscoOccupation'])
@@ -74,7 +84,7 @@ class ClientEoiRoiController extends Controller
 
     /**
      * Show a specific EOI/ROI record
-     * 
+     *
      * GET /clients/{client}/eoi-roi/{eoiReference}
      */
     public function show(Admin $client, ClientEoiReference $eoiReference): JsonResponse
@@ -109,7 +119,7 @@ class ClientEoiRoiController extends Controller
 
     /**
      * Create or update an EOI/ROI record
-     * 
+     *
      * POST /clients/{client}/eoi-roi
      */
     public function upsert(Request $request, Admin $client): JsonResponse
@@ -135,7 +145,7 @@ class ClientEoiRoiController extends Controller
 
             // Check if updating or creating
             $eoiId = $request->input('id');
-            
+
             if ($eoiId) {
                 $eoi = ClientEoiReference::findOrFail($eoiId);
 
@@ -143,7 +153,7 @@ class ClientEoiRoiController extends Controller
                     return $response;
                 }
             } else {
-                $eoi = new ClientEoiReference();
+                $eoi = new ClientEoiReference;
                 $eoi->client_id = $client->id;
                 $eoi->admin_id = auth('admin')->id();
             }
@@ -162,7 +172,7 @@ class ClientEoiRoiController extends Controller
             $eoi->eoi_status = $validated['eoi_status'] ?? 'draft';
 
             // Handle password (will be encrypted by model mutator)
-            if (!empty($validated['eoi_password'])) {
+            if (! empty($validated['eoi_password'])) {
                 $eoi->EOI_password = $validated['eoi_password'];
             }
 
@@ -174,12 +184,12 @@ class ClientEoiRoiController extends Controller
             // Log activity
             $action = $eoiId ? 'updated' : 'created';
             $adminUser = auth('admin')->user();
-            $adminName = $adminUser ? ($adminUser->first_name . ' ' . $adminUser->last_name) : 'System';
+            $adminName = $adminUser ? ($adminUser->first_name.' '.$adminUser->last_name) : 'System';
             $this->logActivity(
                 $client->id,
-                "EOI Record " . ucfirst($action),
-                "EOI #" . $eoi->EOI_number . " was {$action} by " . $adminName,
-                'eoi_' . $action
+                'EOI Record '.ucfirst($action),
+                'EOI #'.$eoi->EOI_number." was {$action} by ".$adminName,
+                'eoi_'.$action
             );
 
             DB::commit();
@@ -191,7 +201,7 @@ class ClientEoiRoiController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Log::error('Error saving EOI record', [
                 'client_id' => $client->id,
                 'error' => $e->getMessage(),
@@ -200,14 +210,14 @@ class ClientEoiRoiController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to save EOI record: ' . $e->getMessage(),
+                'message' => 'Failed to save EOI record: '.$e->getMessage(),
             ], 500);
         }
     }
 
     /**
      * Delete an EOI/ROI record
-     * 
+     *
      * DELETE /clients/{client}/eoi-roi/{eoiReference}
      */
     public function destroy(Admin $client, ClientEoiReference $eoiReference): JsonResponse
@@ -231,8 +241,8 @@ class ClientEoiRoiController extends Controller
             // Log activity
             $this->logActivity(
                 $client->id,
-                "EOI Record Deleted",
-                "EOI #" . $eoiNumber . " was deleted by " . auth('admin')->user()->first_name . ' ' . auth('admin')->user()->last_name,
+                'EOI Record Deleted',
+                'EOI #'.$eoiNumber.' was deleted by '.auth('admin')->user()->first_name.' '.auth('admin')->user()->last_name,
                 'eoi_deleted'
             );
 
@@ -244,7 +254,7 @@ class ClientEoiRoiController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Log::error('Error deleting EOI record', [
                 'eoi_id' => $eoiReference->id,
                 'error' => $e->getMessage(),
@@ -259,7 +269,7 @@ class ClientEoiRoiController extends Controller
 
     /**
      * Calculate points for a client with optional subclass
-     * 
+     *
      * GET /clients/{client}/eoi-roi/calculate-points?subclass=190
      */
     public function calculatePoints(Request $request, Admin $client): JsonResponse
@@ -269,10 +279,10 @@ class ClientEoiRoiController extends Controller
             // $this->authorize('view', $client);
 
             // Load client relationships needed for points calculation (following existing codebase pattern)
-            $client->testScores = \App\Models\ClientTestScore::where('client_id', $client->id)->get();
-            $client->qualifications = \App\Models\ClientQualification::where('client_id', $client->id)->orderByRaw('finish_date DESC NULLS LAST')->get();
-            $client->experiences = \App\Models\ClientExperience::where('client_id', $client->id)->orderedForDisplay()->get();
-            $client->partner = \App\Models\ClientSpouseDetail::where('client_id', $client->id)->first();
+            $client->testScores = ClientTestScore::where('client_id', $client->id)->get();
+            $client->qualifications = ClientQualification::where('client_id', $client->id)->orderByRaw('finish_date DESC NULLS LAST')->get();
+            $client->experiences = ClientExperience::where('client_id', $client->id)->orderedForDisplay()->get();
+            $client->partner = ClientSpouseDetail::where('client_id', $client->id)->first();
 
             $subclass = $request->input('subclass');
             $monthsAhead = (int) ($request->input('months_ahead', 6));
@@ -292,14 +302,14 @@ class ClientEoiRoiController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to calculate points: ' . $e->getMessage(),
+                'message' => 'Failed to calculate points: '.$e->getMessage(),
             ], 500);
         }
     }
 
     /**
      * View the decrypted password for an EOI record (authorized viewing only)
-     * 
+     *
      * GET /clients/{client}/eoi-roi/{eoiReference}/reveal-password
      */
     public function revealPassword(Admin $client, ClientEoiReference $eoiReference): JsonResponse
@@ -341,7 +351,7 @@ class ClientEoiRoiController extends Controller
 
     /**
      * Staff verifies EOI details
-     * 
+     *
      * POST /clients/{client}/eoi-roi/{eoiReference}/verify
      */
     public function verifyByStaff(Admin $client, ClientEoiReference $eoiReference): JsonResponse
@@ -361,14 +371,14 @@ class ClientEoiRoiController extends Controller
             $eoiReference->save();
 
             $verifierName = auth('admin')->user()
-                ? trim((auth('admin')->user()->first_name ?? '') . ' ' . (auth('admin')->user()->last_name ?? ''))
+                ? trim((auth('admin')->user()->first_name ?? '').' '.(auth('admin')->user()->last_name ?? ''))
                 : null;
 
             // Log activity
             $this->logActivity(
                 $client->id,
                 'EOI Verified by Staff',
-                'EOI details verified by ' . ($verifierName ?: 'Staff') . ' for EOI #' . $eoiReference->EOI_number,
+                'EOI details verified by '.($verifierName ?: 'Staff').' for EOI #'.$eoiReference->EOI_number,
                 'eoi_verification'
             );
 
@@ -376,7 +386,7 @@ class ClientEoiRoiController extends Controller
                 'success' => true,
                 'message' => 'EOI details verified successfully. You can now send confirmation email to the client.',
                 'confirmation_date' => $eoiReference->confirmation_date->format('d/m/Y H:i'),
-                'checked_by' => $verifierName ?? 'Staff'
+                'checked_by' => $verifierName ?? 'Staff',
             ]);
 
         } catch (\Exception $e) {
@@ -384,13 +394,14 @@ class ClientEoiRoiController extends Controller
                 'eoi_id' => $eoiReference->id,
                 'error' => $e->getMessage(),
             ]);
+
             return response()->json(['success' => false, 'message' => 'Error verifying EOI details'], 500);
         }
     }
 
     /**
      * Send or resend confirmation email to client (UPDATED - with compose data)
-     * 
+     *
      * POST /clients/{client}/eoi-roi/{eoiReference}/send-email
      */
     public function sendConfirmationEmail(Admin $client, ClientEoiReference $eoiReference, Request $request): JsonResponse
@@ -411,7 +422,7 @@ class ClientEoiRoiController extends Controller
                 'document_ids' => 'nullable|array|max:10',
                 'document_ids.*' => 'integer|exists:documents,id',
             ]);
-            
+
             if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
@@ -421,31 +432,31 @@ class ClientEoiRoiController extends Controller
             }
 
             // Check if staff has verified first
-            if (!$eoiReference->staff_verified) {
+            if (! $eoiReference->staff_verified) {
                 return response()->json([
-                    'success' => false, 
-                    'message' => 'Please verify the EOI details first before sending to client.'
+                    'success' => false,
+                    'message' => 'Please verify the EOI details first before sending to client.',
                 ], 400);
             }
 
             // Check if client exists and has email
-            if (!$client->email) {
+            if (! $client->email) {
                 return response()->json([
-                    'success' => false, 
-                    'message' => 'Client email not found. Please update client email first.'
+                    'success' => false,
+                    'message' => 'Client email not found. Please update client email first.',
                 ], 400);
             }
 
-            $isResend = !empty($eoiReference->confirmation_email_sent_at);
-            
+            $isResend = ! empty($eoiReference->confirmation_email_sent_at);
+
             // Get subject from request or use default
-            $subject = $request->input('subject', 'Please Confirm Your EOI Details - ' . $eoiReference->EOI_number);
+            $subject = $request->input('subject', 'Please Confirm Your EOI Details - '.$eoiReference->EOI_number);
 
             // Generate unique token for confirmation (or use existing if resending)
-            if (!$isResend || empty($eoiReference->client_confirmation_token)) {
+            if (! $isResend || empty($eoiReference->client_confirmation_token)) {
                 $eoiReference->client_confirmation_token = Str::random(64);
             }
-            
+
             $eoiReference->confirmation_email_sent_at = Carbon::now();
             $eoiReference->client_confirmation_status = 'pending';
             $eoiReference->save();
@@ -453,18 +464,18 @@ class ClientEoiRoiController extends Controller
             // Get attachments from selected document IDs (NEW - replaces category-based logic)
             $documentIds = $request->input('document_ids', []);
             $attachmentsData = $this->buildAttachmentsFromIds($client, $documentIds);
-            
+
             // Check total attachment size
             if ($attachmentsData['total_size_mb'] > 25) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Total attachment size (' . $attachmentsData['total_size_mb'] . 'MB) exceeds 25MB limit.'
+                    'message' => 'Total attachment size ('.$attachmentsData['total_size_mb'].'MB) exceeds 25MB limit.',
                 ], 400);
             }
-            
+
             $attachments = $attachmentsData['attachments'];
             $attachmentLabels = $attachmentsData['labels'];
-            
+
             // Use custom body if provided, otherwise use default view
             $body = $request->input('body');
 
@@ -487,14 +498,14 @@ class ClientEoiRoiController extends Controller
                 );
             }
 
-            app(\App\Services\SystemEmailLogService::class)->logAndSendMailable([
-                'category'  => 'eoi',
+            app(SystemEmailLogService::class)->logAndSendMailable([
+                'category' => 'eoi',
                 'from_mail' => is_array($eoiFromConfig) ? ($eoiFromConfig['from_address'] ?? config('mail.from.address')) : config('mail.from.address'),
-                'to_mail'   => $client->email,
-                'subject'   => $subject,
-                'message'   => $body,
+                'to_mail' => $client->email,
+                'subject' => $subject,
+                'message' => $body,
                 'client_id' => $client->id,
-                'user_id'   => auth('admin')->id(),
+                'user_id' => auth('admin')->id(),
             ], $mail, $client->email, $eoiSend['mailer']);
 
             // Log activity
@@ -502,15 +513,15 @@ class ClientEoiRoiController extends Controller
             $this->logActivity(
                 $client->id,
                 "EOI Confirmation Email {$action}",
-                "Confirmation email {$action} to {$client->email} for EOI #{$eoiReference->EOI_number} with " . count($documentIds) . " attachment(s)",
+                "Confirmation email {$action} to {$client->email} for EOI #{$eoiReference->EOI_number} with ".count($documentIds).' attachment(s)',
                 'email'
             );
 
             return response()->json([
                 'success' => true,
-                'message' => "Confirmation email " . strtolower($action) . " successfully to {$client->email}",
+                'message' => 'Confirmation email '.strtolower($action)." successfully to {$client->email}",
                 'sent_at' => $eoiReference->confirmation_email_sent_at?->toIso8601String() ?? now()->toIso8601String(),
-                'attachment_count' => count($attachments)
+                'attachment_count' => count($attachments),
             ]);
 
         } catch (\Exception $e) {
@@ -519,13 +530,14 @@ class ClientEoiRoiController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return response()->json(['success' => false, 'message' => 'Error sending confirmation email: ' . $e->getMessage()], 500);
+
+            return response()->json(['success' => false, 'message' => 'Error sending confirmation email: '.$e->getMessage()], 500);
         }
     }
 
     /**
      * Resolve amendment request (mark as resolved)
-     * 
+     *
      * POST /clients/{client}/eoi-roi/{eoiReference}/resolve-amendment
      */
     public function resolveAmendment(Admin $client, ClientEoiReference $eoiReference): JsonResponse
@@ -553,8 +565,8 @@ class ClientEoiRoiController extends Controller
             $this->logActivity(
                 $client->id,
                 'EOI Amendment Resolved',
-                'Amendment request resolved by ' . auth('admin')->user()->first_name . ' ' . auth('admin')->user()->last_name . 
-                ' for EOI #' . $eoiReference->EOI_number,
+                'Amendment request resolved by '.auth('admin')->user()->first_name.' '.auth('admin')->user()->last_name.
+                ' for EOI #'.$eoiReference->EOI_number,
                 'eoi_amendment_resolved'
             );
 
@@ -568,20 +580,21 @@ class ClientEoiRoiController extends Controller
                 'eoi_id' => $eoiReference->id,
                 'error' => $e->getMessage(),
             ]);
+
             return response()->json(['success' => false, 'message' => 'Error resolving amendment'], 500);
         }
     }
 
     /**
      * Get visa documents for EOI email attachment selection (compose modal)
-     * 
+     *
      * GET /clients/{client}/eoi-roi/visa-documents?eoi_number=E012345
      */
     public function getVisaDocuments(Request $request, Admin $client): JsonResponse
     {
         try {
             $eoiNumber = $request->input('eoi_number');
-            
+
             // Get all visa documents for this client
             $documents = Document::where('client_id', $client->id)
                 ->where('doc_type', 'visa')
@@ -590,10 +603,10 @@ class ClientEoiRoiController extends Controller
                 ->whereNotNull('myfile')
                 ->orderBy('created_at', 'desc')
                 ->get();
-            
+
             $eoiReferences = [];
             $otherDocuments = [];
-            
+
             foreach ($documents as $doc) {
                 // Get category title from VisaDocumentType
                 $categoryTitle = 'Uncategorized';
@@ -603,7 +616,7 @@ class ClientEoiRoiController extends Controller
                         $categoryTitle = $visaDocType->title;
                     }
                 }
-                
+
                 // Calculate file size
                 $fileSizeMb = 0;
                 $s3Key = $this->getS3KeyFromUrl($doc->myfile, $doc->myfile_key, $client->id);
@@ -616,29 +629,29 @@ class ClientEoiRoiController extends Controller
                         Log::warning('Failed to get file size', ['doc_id' => $doc->id, 'error' => $e->getMessage()]);
                     }
                 }
-                
+
                 $docData = [
                     'id' => $doc->id,
-                    'file_name' => $doc->file_name ?: ('document_' . $doc->id),
+                    'file_name' => $doc->file_name ?: ('document_'.$doc->id),
                     'category' => $categoryTitle,
                     'file_size_mb' => $fileSizeMb,
                     'created_at' => $doc->created_at?->toIso8601String(),
                 ];
-                
+
                 // Check if document references the EOI number
                 $referencesEoi = false;
                 if ($eoiNumber) {
-                    $searchIn = strtolower($doc->file_name . ' ' . $categoryTitle);
+                    $searchIn = strtolower($doc->file_name.' '.$categoryTitle);
                     $referencesEoi = str_contains($searchIn, strtolower($eoiNumber));
                 }
-                
+
                 if ($referencesEoi) {
                     $eoiReferences[] = $docData;
                 } else {
                     $otherDocuments[] = $docData;
                 }
             }
-            
+
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -652,7 +665,7 @@ class ClientEoiRoiController extends Controller
                 'client_id' => $client->id,
                 'error' => $e->getMessage(),
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load visa documents',
@@ -662,7 +675,7 @@ class ClientEoiRoiController extends Controller
 
     /**
      * Get email preview for compose modal (subject + body with EOI data)
-     * 
+     *
      * GET /clients/{client}/eoi-roi/{eoiReference}/email-preview
      */
     public function getEmailPreview(Admin $client, ClientEoiReference $eoiReference): JsonResponse
@@ -673,31 +686,31 @@ class ClientEoiRoiController extends Controller
             }
 
             // Check client email exists
-            if (!$client->email) {
+            if (! $client->email) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Client email not found. Please add client email first.',
                 ], 400);
             }
-            
+
             // Generate subject
-            $subject = 'Please Confirm Your EOI Details - ' . $eoiReference->EOI_number;
-            
+            $subject = 'Please Confirm Your EOI Details - '.$eoiReference->EOI_number;
+
             // Generate or reuse token
             if (empty($eoiReference->client_confirmation_token)) {
                 $eoiReference->client_confirmation_token = Str::random(64);
                 $eoiReference->save();
             }
-            
+
             // Generate confirmation URLs (same as in EoiConfirmationMail)
             $confirmUrl = route('client.eoi.confirm', ['token' => $eoiReference->client_confirmation_token]);
             $amendUrl = route('client.eoi.amend', ['token' => $eoiReference->client_confirmation_token]);
-            
+
             // Get points data with warnings (same as used in actual sending)
             $pointsData = [
                 'warnings' => [], // Empty for now, can be populated if needed
             ];
-            
+
             // Render email body (same view used for actual sending)
             $bodyHtml = view('emails.eoi_confirmation', [
                 'eoiReference' => $eoiReference,
@@ -708,16 +721,16 @@ class ClientEoiRoiController extends Controller
                 'amendUrl' => $amendUrl,
                 'pointsData' => $pointsData,
             ])->render();
-            
+
             // Scope preview HTML so its "body" styles don't affect the page (modal injects this into DOM).
             // Replace body selector with a class used only inside the preview container; replace body tags with div.
             $bodyHtml = preg_replace('/\bbody\s*\{/', '.eoi-email-preview-scope {', $bodyHtml);
             $bodyHtml = preg_replace('/<body([^>]*)>/', '<div class="eoi-email-preview-scope"$1>', $bodyHtml);
             $bodyHtml = str_replace('</body>', '</div>', $bodyHtml);
-            
+
             // Strip HTML for plain text preview
             $bodyPlain = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $bodyHtml));
-            
+
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -725,7 +738,7 @@ class ClientEoiRoiController extends Controller
                     'body_html' => $bodyHtml,
                     'body_plain' => $bodyPlain,
                     'client_email' => $client->email,
-                    'client_name' => $client->first_name . ' ' . $client->last_name,
+                    'client_name' => $client->first_name.' '.$client->last_name,
                 ],
             ]);
         } catch (\Exception $e) {
@@ -733,7 +746,7 @@ class ClientEoiRoiController extends Controller
                 'eoi_id' => $eoiReference->id,
                 'error' => $e->getMessage(),
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to generate email preview',
@@ -743,9 +756,7 @@ class ClientEoiRoiController extends Controller
 
     /**
      * Build attachments from selected document IDs (replaces category-based logic for compose modal)
-     * 
-     * @param Admin $client
-     * @param array $documentIds
+     *
      * @return array{attachments: array, labels: array, total_size_mb: float}
      */
     protected function buildAttachmentsFromIds(Admin $client, array $documentIds): array
@@ -753,7 +764,7 @@ class ClientEoiRoiController extends Controller
         if (empty($documentIds)) {
             return ['attachments' => [], 'labels' => [], 'total_size_mb' => 0];
         }
-        
+
         // Fetch documents - validate they belong to this client
         $documents = Document::where('client_id', $client->id)
             ->where('doc_type', 'visa')
@@ -762,18 +773,18 @@ class ClientEoiRoiController extends Controller
             ->where('type', 'client')
             ->whereNotNull('myfile')
             ->get();
-        
+
         if ($documents->count() !== count($documentIds)) {
             Log::warning('Some document IDs invalid or not accessible', [
                 'requested' => $documentIds,
                 'found' => $documents->pluck('id')->toArray(),
             ]);
         }
-        
+
         $attachments = [];
         $labelsUsed = [];
         $totalSizeBytes = 0;
-        
+
         foreach ($documents as $doc) {
             // Get category title from VisaDocumentType
             $categoryTitle = 'Document';
@@ -783,31 +794,33 @@ class ClientEoiRoiController extends Controller
                     $categoryTitle = $visaDocType->title;
                 }
             }
-            
-            if (!in_array($categoryTitle, $labelsUsed, true)) {
+
+            if (! in_array($categoryTitle, $labelsUsed, true)) {
                 $labelsUsed[] = $categoryTitle;
             }
-            
+
             // Get S3 key
             $s3Key = $this->getS3KeyFromUrl($doc->myfile, $doc->myfile_key, $client->id);
             if (empty($s3Key)) {
                 continue;
             }
-            
+
             try {
-                if (!Storage::disk('s3')->exists($s3Key)) {
+                if (! Storage::disk('s3')->exists($s3Key)) {
                     Log::warning('EOI attachment: S3 file not found', ['key' => $s3Key, 'doc_id' => $doc->id]);
+
                     continue;
                 }
-                
+
                 $data = Storage::disk('s3')->get($s3Key);
                 $totalSizeBytes += strlen($data);
-                
+
             } catch (\Throwable $e) {
                 Log::warning('EOI attachment: failed to get S3 file', ['key' => $s3Key, 'error' => $e->getMessage()]);
+
                 continue;
             }
-            
+
             $ext = strtolower($doc->filetype ?? pathinfo($doc->myfile_key ?? '', PATHINFO_EXTENSION) ?: 'pdf');
             $mimeMap = [
                 'pdf' => 'application/pdf',
@@ -820,19 +833,19 @@ class ClientEoiRoiController extends Controller
                 'png' => 'image/png',
             ];
             $mime = $mimeMap[$ext] ?? 'application/octet-stream';
-            
-            $fileName = $doc->file_name ?: ('document_' . $doc->id);
-            $displayName = $categoryTitle . ' - ' . $fileName . (str_contains($fileName, '.') ? '' : '.' . $ext);
-            
+
+            $fileName = $doc->file_name ?: ('document_'.$doc->id);
+            $displayName = $categoryTitle.' - '.$fileName.(str_contains($fileName, '.') ? '' : '.'.$ext);
+
             $attachments[] = [
                 'data' => $data,
                 'name' => $displayName,
                 'mime' => $mime,
             ];
         }
-        
+
         $totalSizeMb = round($totalSizeBytes / 1048576, 2);
-        
+
         return [
             'attachments' => $attachments,
             'labels' => $labelsUsed,
@@ -842,23 +855,23 @@ class ClientEoiRoiController extends Controller
 
     /**
      * Helper to extract S3 key from document URL
-     * 
-     * @param string|null $myfile
-     * @param string|null $myfileKey
-     * @param int $clientId
-     * @return string|null
+     *
+     * @param  string|null  $myfile
+     * @param  string|null  $myfileKey
+     * @param  int  $clientId
      */
     protected function getS3KeyFromUrl($myfile, $myfileKey, $clientId): ?string
     {
-        if (!empty($myfile) && str_starts_with($myfile, 'http')) {
+        if (! empty($myfile) && str_starts_with($myfile, 'http')) {
             $path = parse_url($myfile, PHP_URL_PATH);
             if ($path) {
                 return ltrim(urldecode($path), '/');
             }
         }
-        if (!empty($myfileKey)) {
-            return $clientId . '/visa/' . $myfileKey;
+        if (! empty($myfileKey)) {
+            return $clientId.'/visa/'.$myfileKey;
         }
+
         return null;
     }
 
@@ -866,7 +879,7 @@ class ClientEoiRoiController extends Controller
      * Get visa documents from EOI Summary, Points Summary, ROI Draft categories for email attachment.
      * Prefers per-EOI categories (e.g. "EOI Summary - E0121253652") when present; otherwise uses
      * shared categories ("EOI Summary", "Points Summary", "ROI Draft").
-     * 
+     *
      * @deprecated This method is no longer used in the compose flow. Kept for backward compatibility.
      *
      * @return array{attachments: array<int, array{data: string, name: string, mime: string}>, labels: array<int, string>}
@@ -879,7 +892,7 @@ class ClientEoiRoiController extends Controller
         // For each base, prefer per-EOI category ("EOI Summary - E012...") if it exists, else shared ("EOI Summary")
         $categoryIds = [];
         foreach ($bases as $base) {
-            $perEoiTitle = $eoiNumber ? ($base . ' - ' . $eoiNumber) : null;
+            $perEoiTitle = $eoiNumber ? ($base.' - '.$eoiNumber) : null;
             $perEoi = $perEoiTitle ? VisaDocumentType::where('status', 1)->where('title', $perEoiTitle)
                 ->where(function ($q) use ($client) {
                     $q->whereNull('client_id')->orWhere('client_id', $client->id);
@@ -914,32 +927,34 @@ class ClientEoiRoiController extends Controller
 
         foreach ($documents as $doc) {
             $categoryTitle = $categories[$doc->folder_name] ?? 'Document';
-            if (!in_array($categoryTitle, $labelsUsed, true)) {
+            if (! in_array($categoryTitle, $labelsUsed, true)) {
                 $labelsUsed[] = $categoryTitle;
             }
 
             $s3Key = null;
-            if (!empty($doc->myfile) && (str_starts_with($doc->myfile, 'http'))) {
+            if (! empty($doc->myfile) && (str_starts_with($doc->myfile, 'http'))) {
                 $path = parse_url($doc->myfile, PHP_URL_PATH);
                 if ($path) {
                     $s3Key = ltrim(urldecode($path), '/');
                 }
             }
-            if (empty($s3Key) && !empty($doc->myfile_key)) {
-                $s3Key = $client->id . '/visa/' . $doc->myfile_key;
+            if (empty($s3Key) && ! empty($doc->myfile_key)) {
+                $s3Key = $client->id.'/visa/'.$doc->myfile_key;
             }
             if (empty($s3Key)) {
                 continue;
             }
 
             try {
-                if (!Storage::disk('s3')->exists($s3Key)) {
+                if (! Storage::disk('s3')->exists($s3Key)) {
                     Log::warning('EOI attachment: S3 file not found', ['key' => $s3Key, 'doc_id' => $doc->id]);
+
                     continue;
                 }
                 $data = Storage::disk('s3')->get($s3Key);
             } catch (\Throwable $e) {
                 Log::warning('EOI attachment: failed to get S3 file', ['key' => $s3Key, 'error' => $e->getMessage()]);
+
                 continue;
             }
 
@@ -956,8 +971,8 @@ class ClientEoiRoiController extends Controller
             ];
             $mime = $mimeMap[$ext] ?? 'application/octet-stream';
 
-            $fileName = $doc->file_name ?: ('document_' . $doc->id);
-            $displayName = $categoryTitle . ' - ' . $fileName . (str_contains($fileName, '.') ? '' : '.' . $ext);
+            $fileName = $doc->file_name ?: ('document_'.$doc->id);
+            $displayName = $categoryTitle.' - '.$fileName.(str_contains($fileName, '.') ? '' : '.'.$ext);
             $attachments[] = [
                 'data' => $data,
                 'name' => $displayName,
@@ -986,11 +1001,11 @@ class ClientEoiRoiController extends Controller
 
     /**
      * Log activity to activities_logs table
-     * 
-     * @param int $clientId
-     * @param string $subject
-     * @param string $description
-     * @param string $activityType
+     *
+     * @param  int  $clientId
+     * @param  string  $subject
+     * @param  string  $description
+     * @param  string  $activityType
      * @return void
      */
     protected function logActivity($clientId, $subject, $description, $activityType = 'note')
@@ -1033,7 +1048,7 @@ class ClientEoiRoiController extends Controller
             'eoi_nomination_date' => 'nullable|string',
             'eoi_roi' => 'nullable|string|max:100',
             'eoi_password' => 'nullable|string|max:50',
-            'eoi_status' => ['nullable', 'string', Rule::in(['draft', 'submitted', 'invited', 'nominated', 'rejected', 'withdrawn'])],
+            'eoi_status' => ['nullable', 'string', Rule::in(ClientEoiReference::statuses())],
         ], [
             'eoi_subclasses.*.in' => 'Each subclass must be 189, 190, 491, or 491-Family',
             'eoi_states.*.in' => 'Each state must be a valid Australian state/territory code',
@@ -1050,7 +1065,7 @@ class ClientEoiRoiController extends Controller
             return $eoi->anzsco_occupation_id;
         }
         $code = $this->extractAnzscoCodeFromOccupation($eoi->EOI_occupation);
-        if (!$code) {
+        if (! $code) {
             return null;
         }
         $occupation = AnzscoOccupation::active()->where('anzsco_code', $code)->first();
@@ -1063,7 +1078,7 @@ class ClientEoiRoiController extends Controller
      */
     protected function extractAnzscoCodeFromOccupation(?string $occupation): ?string
     {
-        if (empty($occupation) || !preg_match('/^(\d{4,6})\s*-\s*.+/', trim($occupation), $m)) {
+        if (empty($occupation) || ! preg_match('/^(\d{4,6})\s*-\s*.+/', trim($occupation), $m)) {
             return null;
         }
 
@@ -1090,17 +1105,17 @@ class ClientEoiRoiController extends Controller
             'invitation_date' => $eoi->eoi_invitation_date?->format('d/m/Y'),
             'nomination_date' => $eoi->eoi_nomination_date?->format('d/m/Y'),
             'roi' => $eoi->EOI_ROI,
-            'status' => $eoi->eoi_status,
-            'has_password' => !empty($eoi->EOI_password),
+            'status' => $this->expireSubmittedEois->effectiveStatus($eoi->eoi_status, $eoi->EOI_submission_date),
+            'has_password' => ! empty($eoi->EOI_password),
             'created_at' => $eoi->created_at?->format('d/m/Y H:i'),
             'updated_at' => $eoi->updated_at?->format('d/m/Y H:i'),
-            'created_by' => $eoi->creator?->first_name . ' ' . $eoi->creator?->last_name ?? 'Unknown',
-            'updated_by' => $eoi->updater?->first_name . ' ' . $eoi->updater?->last_name ?? 'Unknown',
-            
+            'created_by' => $eoi->creator?->first_name.' '.$eoi->creator?->last_name ?? 'Unknown',
+            'updated_by' => $eoi->updater?->first_name.' '.$eoi->updater?->last_name ?? 'Unknown',
+
             // Workflow fields
             'staff_verified' => (bool) $eoi->staff_verified,
             'verification_date' => $eoi->confirmation_date?->format('d/m/Y H:i'),
-            'verified_by' => $eoi->verifier ? ($eoi->verifier->first_name . ' ' . $eoi->verifier->last_name) : null,
+            'verified_by' => $eoi->verifier ? ($eoi->verifier->first_name.' '.$eoi->verifier->last_name) : null,
             'email_sent_at' => $eoi->confirmation_email_sent_at?->toIso8601String(),
             'client_confirmation_status' => $eoi->client_confirmation_status,
             'client_confirmation_date' => $eoi->client_last_confirmation?->format('d/m/Y H:i'),
@@ -1109,7 +1124,7 @@ class ClientEoiRoiController extends Controller
         ];
 
         // Only include decrypted password when editing a single record (never in list views)
-        if ($includePassword && !empty($eoi->EOI_password)) {
+        if ($includePassword && ! empty($eoi->EOI_password)) {
             $data['password'] = $eoi->getEOIPasswordDecrypted();
         }
 
@@ -1135,6 +1150,7 @@ class ClientEoiRoiController extends Controller
             return Carbon::parse($date)->format('Y-m-d');
         } catch (\Exception $e) {
             Log::warning('Failed to normalize date', ['date' => $date, 'error' => $e->getMessage()]);
+
             return null;
         }
     }

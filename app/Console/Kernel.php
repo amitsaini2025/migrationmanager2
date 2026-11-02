@@ -24,6 +24,7 @@ class Kernel extends ConsoleKernel
         '\App\Console\Commands\CleanUtf8Data',
         '\App\Console\Commands\BackfillEoiRoiData',
         '\App\Console\Commands\BackfillEoiAmendmentActions',
+        '\App\Console\Commands\ExpireSubmittedEois',
         '\App\Console\Commands\BackfillCpDocChecklistPortalSource',
         // '\App\Console\Commands\VisaExpireReminderEmail',
 
@@ -192,6 +193,13 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('access:expire-grants')->hourly();
         $schedule->command('access:cache-grant-stats')->hourly();
+
+        // EOI/ROI — mark submitted EOIs expired 2 years after submission date
+        $schedule->command('eoi:expire-submitted')
+            ->dailyAt('01:30')
+            ->timezone('Australia/Melbourne')
+            ->withoutOverlapping(30)
+            ->appendOutputTo(storage_path('logs/eoi-expire-submitted.log'));
 
         $schedule->command('visa-pricing:sync-google-sheet')
             ->hourly()

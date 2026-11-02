@@ -508,6 +508,7 @@
                                             <option value="nominated" {{ request('eoi_status') == 'nominated' ? 'selected' : '' }}>Nominated</option>
                                             <option value="rejected" {{ request('eoi_status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
                                             <option value="withdrawn" {{ request('eoi_status') == 'withdrawn' ? 'selected' : '' }}>Withdrawn</option>
+                                            <option value="expired" {{ request('eoi_status') == 'expired' ? 'selected' : '' }}>Expired</option>
                                         </select>
                                     </div>
                                 </div>
@@ -647,12 +648,18 @@
                                                 @php
                                                     $roi = data_get($row, 'EOI_ROI') ?? data_get($row, 'eoi_roi');
                                                     $status = data_get($row, 'eoi_status');
+                                                    $statusBadge = match ($status) {
+                                                        'invited' => 'success',
+                                                        'submitted' => 'primary',
+                                                        'expired' => 'danger',
+                                                        default => 'secondary',
+                                                    };
                                                 @endphp
                                                 @if($roi)
                                                     {{ $roi }}
                                                 @endif
                                                 @if($status)
-                                                    <span class="badge badge-{{ $status == 'invited' ? 'success' : ($status == 'submitted' ? 'primary' : 'secondary') }}">
+                                                    <span class="badge badge-{{ $statusBadge }}">
                                                         {{ ucfirst($status) }}
                                                     </span>
                                                 @endif

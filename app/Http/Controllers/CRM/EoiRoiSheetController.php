@@ -11,6 +11,7 @@ use App\Models\Document;
 use App\Models\VisaDocumentType;
 use App\Services\EmailConfigService;
 use App\Services\EoiClientConfirmationNotificationService;
+use App\Services\ExpireSubmittedEoisService;
 use App\Services\PointsService;
 use App\Services\SystemEmailLogService;
 use App\Support\StaffClientVisibility;
@@ -36,8 +37,11 @@ class EoiRoiSheetController extends Controller
 
     protected EmailConfigService $emailConfigService;
 
-    public function __construct(PointsService $pointsService, EmailConfigService $emailConfigService)
-    {
+    public function __construct(
+        PointsService $pointsService,
+        EmailConfigService $emailConfigService,
+        protected ExpireSubmittedEoisService $expireSubmittedEois,
+    ) {
         $this->pointsService = $pointsService;
         $this->emailConfigService = $emailConfigService;
         $this->middleware('auth:admin')->except([
@@ -65,6 +69,9 @@ class EoiRoiSheetController extends Controller
             $perPage = 50;
         }
 
+        // Keep sheet status current even before the daily scheduler runs.
+        $this->expireSubmittedEois->expire();
+
         // Build base query
         $query = $this->buildBaseQuery($request);
 
@@ -82,6 +89,10 @@ class EoiRoiSheetController extends Controller
         $rows->getCollection()->transform(function ($row) use (&$warningsCache) {
             $subclass = $this->getFirstSubclassFromRow($row);
             $row->partner_points = $this->calculatePartnerPoints($row->client_id, $subclass);
+            $row->eoi_status = $this->expireSubmittedEois->effectiveStatus(
+                data_get($row, 'eoi_status'),
+                data_get($row, 'EOI_submission_date')
+            );
 
             // Warnings (English expiry, age bracket, employment) for Comments column – cache by client + subclass
             $cacheKey = $row->client_id.'_'.($subclass ?? '');
@@ -106,6 +117,8 @@ class EoiRoiSheetController extends Controller
      */
     public function insights(Request $request)
     {
+        $this->expireSubmittedEois->expire();
+
         // Restrict to admin and super admin only (roles 1, 12)
         if (! in_array(\Auth::user()->role ?? 0, [1, 12])) {
             return redirect()->back()->with('error', 'Only admin and super admin can view insights.');
@@ -769,6 +782,7 @@ class EoiRoiSheetController extends Controller
     public function showConfirmationPage($token)
     {
         $eoi = ClientEoiReference::with('client')->where('client_confirmation_token', $token)->firstOrFail();
+        $eoi->eoi_status = $this->expireSubmittedEois->effectiveStatus($eoi->eoi_status, $eoi->EOI_submission_date);
 
         return view('crm.clients.sheets.eoi-client-confirmation', [
             'eoi' => $eoi,
@@ -786,6 +800,7 @@ class EoiRoiSheetController extends Controller
     public function showAmendmentPage($token)
     {
         $eoi = ClientEoiReference::with('client')->where('client_confirmation_token', $token)->firstOrFail();
+        $eoi->eoi_status = $this->expireSubmittedEois->effectiveStatus($eoi->eoi_status, $eoi->EOI_submission_date);
 
         return view('crm.clients.sheets.eoi-client-confirmation', [
             'eoi' => $eoi,

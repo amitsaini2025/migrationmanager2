@@ -214,8 +214,17 @@
                 <div class="detail-row">
                     <div class="detail-label">Status:</div>
                     <div class="detail-value">
-                        <span class="badge bg-{{ $eoi->eoi_status == 'invited' ? 'success' : ($eoi->eoi_status == 'submitted' ? 'primary' : 'secondary') }}">
-                            {{ ucfirst($eoi->eoi_status ?? 'Draft') }}
+                        @php
+                            $confirmationStatus = $eoi->eoi_status;
+                            $confirmationBadge = match ($confirmationStatus) {
+                                'invited' => 'success',
+                                'submitted' => 'primary',
+                                'expired' => 'danger',
+                                default => 'secondary',
+                            };
+                        @endphp
+                        <span class="badge bg-{{ $confirmationBadge }}">
+                            {{ ucfirst($confirmationStatus ?? 'Draft') }}
                         </span>
                     </div>
                 </div>

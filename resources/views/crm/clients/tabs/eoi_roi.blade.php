@@ -135,6 +135,7 @@
                                 <option value="nominated">Nominated</option>
                                 <option value="rejected">Rejected</option>
                                 <option value="withdrawn">Withdrawn</option>
+                                <option value="expired">Expired</option>
                             </select>
                         </div>
                     </div>

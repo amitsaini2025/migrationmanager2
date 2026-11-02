@@ -1,15 +1,48 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Admin;
-use App\Models\AnzscoOccupation;
-use App\Models\Staff;
 
 class ClientEoiReference extends Model
 {
+    use HasFactory;
+
+    public const STATUS_DRAFT = 'draft';
+
+    public const STATUS_SUBMITTED = 'submitted';
+
+    public const STATUS_INVITED = 'invited';
+
+    public const STATUS_NOMINATED = 'nominated';
+
+    public const STATUS_REJECTED = 'rejected';
+
+    public const STATUS_WITHDRAWN = 'withdrawn';
+
+    public const STATUS_EXPIRED = 'expired';
+
+    /**
+     * Allowed eoi_status values (includes expired for filters/validation).
+     *
+     * @return list<string>
+     */
+    public static function statuses(): array
+    {
+        return [
+            self::STATUS_DRAFT,
+            self::STATUS_SUBMITTED,
+            self::STATUS_INVITED,
+            self::STATUS_NOMINATED,
+            self::STATUS_REJECTED,
+            self::STATUS_WITHDRAWN,
+            self::STATUS_EXPIRED,
+        ];
+    }
+
     protected $table = 'client_eoi_references';
 
     protected $fillable = [
@@ -41,7 +74,7 @@ class ClientEoiReference extends Model
         'client_last_confirmation',
         'client_confirmation_notes',
         'client_confirmation_token',
-        'confirmation_email_sent_at'
+        'confirmation_email_sent_at',
     ];
 
     /**
@@ -179,5 +212,3 @@ class ClientEoiReference extends Model
         return $this->eoi_states ? implode(', ', $this->eoi_states) : ($this->EOI_state ?? '');
     }
 }
-
-

@@ -371,6 +371,10 @@ Route::get('/clients/fix-client-fund-receipt-matter', [ClientAccountsController:
 Route::get('/clients/genOfficeReceipt/{id}', [ClientAccountsController::class, 'genofficereceiptInvoice']);
 
 // Send to client routes
+Route::get('/clients/account-send-draft/{kind}/{id}', [ClientAccountsController::class, 'accountSendDraft'])
+    ->where('kind', 'invoice|client-fund|office')
+    ->whereNumber('id')
+    ->name('clients.accountSendDraft');
 Route::post('/clients/send-invoice-to-client/{id}', [ClientAccountsController::class, 'sendInvoiceToClient'])->name('clients.sendInvoiceToClient');
 Route::post('/clients/send-client-fund-receipt-to-client/{id}', [ClientAccountsController::class, 'sendClientFundReceiptToClient'])->name('clients.sendClientFundReceiptToClient');
 Route::post('/clients/send-office-receipt-to-client/{id}', [ClientAccountsController::class, 'sendOfficeReceiptToClient'])->name('clients.sendOfficeReceiptToClient');

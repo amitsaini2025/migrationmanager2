@@ -2687,6 +2687,50 @@ tr.unallocated-receipt[draggable="true"]:hover::after {
 }
 </style>
 
+<!-- Send invoice / receipt to client -->
+<div class="modal fade" id="accountSendToClientModal" tabindex="-1" role="dialog" aria-labelledby="accountSendToClientTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title account-send-title" id="accountSendToClientTitle">
+                    @icon('fa-envelope') Send to Client
+                </h5>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger account-send-error" style="display: none;" role="alert"></div>
+                <div class="form-group">
+                    <label for="account_send_from">From <span class="text-danger">*</span></label>
+                    <select class="form-control email-from-sendgrid" name="account_send_email_from" id="account_send_from">
+                        <option value="">Select From</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="account_send_to">To</label>
+                    <input type="text" class="form-control" id="account_send_to" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="account_send_subject">Subject <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="account_send_subject" maxlength="255">
+                </div>
+                <div class="form-group">
+                    <label for="account_send_message">Message <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="account_send_message" rows="10"></textarea>
+                </div>
+                <p class="text-muted mb-0" id="account_send_attachment" style="font-size: 13px;"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="accountSendToClientSubmit">
+                    @icon('fa-paper-plane') Send
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Upload Receipt Document Modal -->
 <div class="modal fade" id="uploadReceiptDocModal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">

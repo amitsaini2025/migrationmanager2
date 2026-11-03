@@ -23,11 +23,15 @@ use App\Services\CrmSentEmailS3Service;
 use App\Services\FCMService;
 use App\Services\FinancialStatsService;
 use App\Services\InvoicePaymentSyncService;
+use App\Services\SesSenderService;
 use App\Services\SystemEmailLogService;
+use App\Support\AccountClientSendComposer;
+use App\Support\SendGridFromAllowedDomains;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Filesystem\FilesystemAdapter;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -38,6 +42,7 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Validator;
 
 /**
  * ClientAccountsController
@@ -6382,6 +6387,170 @@ class ClientAccountsController extends Controller
     /**
      * Send Invoice to Client via Email
      */
+    /**
+     * Draft for the Account tab Send to Client popup (invoice, client fund receipt, office receipt).
+     */
+    public function accountSendDraft(Request $request, string $kind, $id)
+    {
+        $context = $this->accountSendContext($kind, (int) $id);
+        if ($context instanceof JsonResponse) {
+            return $context;
+        }
+
+        $senders = app(SesSenderService::class)->getComposeSenders();
+        $draft = AccountClientSendComposer::draft($kind, $context['client_name'], $context['number']);
+
+        return response()->json([
+            'status' => true,
+            'kind' => $kind,
+            'to' => $context['email'],
+            'to_name' => $context['client_name'],
+            'subject' => $draft['subject'],
+            'message' => $draft['message'],
+            'attachment_name' => $draft['attachment_name'],
+            'document_label' => $draft['document_label'],
+            'suggested_from' => AccountClientSendComposer::suggestedFrom($senders),
+        ]);
+    }
+
+    /**
+     * @return array{client_id: int, client_name: string, email: string, number: string}|JsonResponse
+     */
+    protected function accountSendContext(string $kind, int $id): array|JsonResponse
+    {
+        if ($kind === 'invoice') {
+            $record = AccountAllInvoiceReceipt::where('receipt_type', 3)
+                ->where('receipt_id', $id)
+                ->first();
+            $entry = DB::table('account_client_receipts')
+                ->where('receipt_id', $id)
+                ->where('receipt_type', 3)
+                ->first();
+
+            if (! $record || ! $entry) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invoice not found',
+                ], 404);
+            }
+
+            $clientId = (int) $record->client_id;
+            $number = (string) ($entry->invoice_no ?: $entry->trans_no ?: $id);
+        } elseif ($kind === 'office') {
+            $entry = DB::table('account_client_receipts')
+                ->where('receipt_type', 2)
+                ->where('id', $id)
+                ->first();
+
+            if (! $entry) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Office receipt not found',
+                ], 404);
+            }
+
+            $clientId = (int) $entry->client_id;
+            $number = (string) ($entry->trans_no ?: $id);
+        } else {
+            $entry = DB::table('account_client_receipts')
+                ->where('receipt_type', 1)
+                ->where('id', $id)
+                ->first();
+
+            if (! $entry) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Client fund receipt not found',
+                ], 404);
+            }
+
+            $clientId = (int) $entry->client_id;
+            $number = (string) ($entry->trans_no ?: $id);
+        }
+
+        $this->ensureCrmRecordAccess($clientId);
+
+        $client = DB::table('admins')->where('id', $clientId)->first();
+        $clientEmail = $client ? ($client->email ?? null) : null;
+        if (! $client || empty($clientEmail)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Client email not found',
+            ], 404);
+        }
+
+        return [
+            'client_id' => $clientId,
+            'client_name' => trim(($client->first_name ?? '').' '.($client->last_name ?? '')),
+            'email' => (string) $clientEmail,
+            'number' => $number,
+        ];
+    }
+
+    /**
+     * Apply the popup's From address, subject, and draft. Without those fields, keep the built-in letter.
+     *
+     * @return array{subject: string, html: string, from: string, from_name: string}|JsonResponse
+     */
+    protected function resolveAccountClientSendPayload(Request $request, string $defaultSubject, string $defaultHtml): array|JsonResponse
+    {
+        $usesDraft = $request->exists('email_from') || $request->exists('subject') || $request->exists('message');
+        if (! $usesDraft) {
+            return [
+                'subject' => $defaultSubject,
+                'html' => $defaultHtml,
+                'from' => AccountClientSendComposer::PREFERRED_FROM,
+                'from_name' => 'Bansal Immigration',
+            ];
+        }
+
+        $validator = Validator::make($request->all(), [
+            'email_from' => ['required', 'email', 'max:255'],
+            'subject' => ['required', 'string', 'max:255'],
+            'message' => ['required', 'string', 'max:20000'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
+
+        $from = strtolower(trim((string) $validator->validated()['email_from']));
+        $sender = AccountClientSendComposer::resolveSender(
+            $from,
+            app(SesSenderService::class)->getComposeSenders()
+        );
+
+        if ($sender === null || ! SendGridFromAllowedDomains::allowsEmail($from)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'The selected From address is not allowed for this CRM.',
+            ], 422);
+        }
+
+        return [
+            'subject' => trim((string) $validator->validated()['subject']),
+            'html' => AccountClientSendComposer::plainToHtml((string) $validator->validated()['message']),
+            'from' => $sender['email'],
+            'from_name' => $sender['name'],
+        ];
+    }
+
+    protected function logAccountDocumentSent(int $clientId, string $subject, string $description): void
+    {
+        $objs = new ActivitiesLog;
+        $objs->client_id = $clientId;
+        $objs->created_by = Auth::user()->id;
+        $objs->description = $description;
+        $objs->subject = $subject;
+        $objs->activity_type = 'financial';
+        $objs->task_status = 0;
+        $objs->pin = 0;
+        $objs->save();
+    }
+
     public function sendInvoiceToClient(Request $request, $id)
     {
         try {
@@ -6471,13 +6640,19 @@ class ClientAccountsController extends Controller
 
             // Prepare email data
             $clientFullName = trim(($clientname->first_name ?? '').' '.($clientname->last_name ?? ''));
-            $invoiceNo = $receipt_entry->invoice_no ?? $id;
+            $invoiceNo = $receipt_entry->invoice_no ?: ($receipt_entry->trans_no ?: $id);
 
-            $subject = 'Invoice #'.$invoiceNo.' from Bansal Immigration';
-            $emailContent = 'Dear '.$clientFullName.',<br><br>'.
+            $defaultSubject = 'Invoice #'.$invoiceNo.' from Bansal Immigration';
+            $defaultContent = 'Dear '.$clientFullName.',<br><br>'.
                 'Please find attached your invoice #'.$invoiceNo.'.<br><br>'.
                 "If you have any questions, please don't hesitate to contact us.<br><br>".
                 'Best regards,<br>Bansal Immigration';
+            $composed = $this->resolveAccountClientSendPayload($request, $defaultSubject, $defaultContent);
+            if ($composed instanceof JsonResponse) {
+                return $composed;
+            }
+            $subject = $composed['subject'];
+            $emailContent = $composed['html'];
 
             $pdfContent = file_get_contents($pdfUrl);
             if ($pdfContent === false || $pdfContent === '') {
@@ -6490,8 +6665,8 @@ class ClientAccountsController extends Controller
             // Send email using InvoiceEmailManager (in-memory attachment — no temp file)
             $invoiceArray = [
                 'view' => 'emails.template',
-                'from' => 'invoice@bansalimmigration.com.au',
-                'name' => 'Bansal Immigration',
+                'from' => $composed['from'],
+                'name' => $composed['from_name'],
                 'subject' => $subject,
                 'file_content' => $pdfContent,
                 'file_name' => 'Invoice-'.$invoiceNo.'.pdf',
@@ -6501,7 +6676,7 @@ class ClientAccountsController extends Controller
             $systemEmailLog = app(SystemEmailLogService::class);
             $log = $systemEmailLog->createPending([
                 'category' => 'invoice',
-                'from_mail' => 'invoice@bansalimmigration.com.au',
+                'from_mail' => $composed['from'],
                 'to_mail' => $clientEmail,
                 'subject' => $subject,
                 'message' => $emailContent,
@@ -6522,16 +6697,11 @@ class ClientAccountsController extends Controller
 
             Mail::mailer()->to($clientEmail)->queue(new InvoiceEmailManager($invoiceArray));
 
-            // Log activity
-            $objs = new ActivitiesLog;
-            $objs->client_id = $record_get->client_id;
-            $objs->created_by = Auth::user()->id;
-            $objs->description = 'Invoice #'.$invoiceNo.' sent to client email: '.$clientEmail;
-            $objs->subject = 'Invoice sent to client';
-            $objs->activity_type = 'financial';
-            $objs->task_status = 0;
-            $objs->pin = 0;
-            $objs->save();
+            $this->logAccountDocumentSent(
+                (int) $record_get->client_id,
+                'Invoice sent to client',
+                'Invoice #'.$invoiceNo.' sent to '.$clientEmail.' from '.$composed['from'].'. Subject: '.$subject
+            );
 
             return response()->json([
                 'status' => true,
@@ -6619,11 +6789,17 @@ class ClientAccountsController extends Controller
             $clientFullName = trim(($clientname->first_name ?? '').' '.($clientname->last_name ?? ''));
             $receiptNo = $record_get->trans_no ?? $id;
 
-            $subject = 'Client Fund Receipt #'.$receiptNo.' from Bansal Immigration';
-            $emailContent = 'Dear '.$clientFullName.',<br><br>'.
+            $defaultSubject = 'Client Fund Receipt #'.$receiptNo.' from Bansal Immigration';
+            $defaultContent = 'Dear '.$clientFullName.',<br><br>'.
                 'Please find attached your client fund receipt #'.$receiptNo.'.<br><br>'.
                 "If you have any questions, please don't hesitate to contact us.<br><br>".
                 'Best regards,<br>Bansal Immigration';
+            $composed = $this->resolveAccountClientSendPayload($request, $defaultSubject, $defaultContent);
+            if ($composed instanceof JsonResponse) {
+                return $composed;
+            }
+            $subject = $composed['subject'];
+            $emailContent = $composed['html'];
 
             $pdfContent = $this->getDocumentPdfContent($existingPdf, (int) $record_get->client_id, 'receipts');
             if ($pdfContent === null || $pdfContent === '') {
@@ -6636,8 +6812,8 @@ class ClientAccountsController extends Controller
             // Send email using InvoiceEmailManager (in-memory attachment — no temp file)
             $invoiceArray = [
                 'view' => 'emails.template',
-                'from' => 'invoice@bansalimmigration.com.au',
-                'name' => 'Bansal Immigration',
+                'from' => $composed['from'],
+                'name' => $composed['from_name'],
                 'subject' => $subject,
                 'file_content' => $pdfContent,
                 'file_name' => 'Receipt-'.$receiptNo.'.pdf',
@@ -6647,7 +6823,7 @@ class ClientAccountsController extends Controller
             $systemEmailLog = app(SystemEmailLogService::class);
             $log = $systemEmailLog->createPending([
                 'category' => 'receipt',
-                'from_mail' => 'invoice@bansalimmigration.com.au',
+                'from_mail' => $composed['from'],
                 'to_mail' => $clientEmail,
                 'subject' => $subject,
                 'message' => $emailContent,
@@ -6668,16 +6844,11 @@ class ClientAccountsController extends Controller
 
             Mail::mailer()->to($clientEmail)->queue(new InvoiceEmailManager($invoiceArray));
 
-            // Log activity
-            $objs = new ActivitiesLog;
-            $objs->client_id = $record_get->client_id;
-            $objs->created_by = Auth::user()->id;
-            $objs->description = 'Client fund receipt #'.$receiptNo.' sent to client email: '.$clientEmail;
-            $objs->subject = 'Client fund receipt sent to client';
-            $objs->activity_type = 'financial';
-            $objs->task_status = 0;
-            $objs->pin = 0;
-            $objs->save();
+            $this->logAccountDocumentSent(
+                (int) $record_get->client_id,
+                'Client fund receipt sent to client',
+                'Client fund receipt #'.$receiptNo.' sent to '.$clientEmail.' from '.$composed['from'].'. Subject: '.$subject
+            );
 
             return response()->json([
                 'status' => true,
@@ -6773,11 +6944,17 @@ class ClientAccountsController extends Controller
             $clientFullName = trim(($clientname->first_name ?? '').' '.($clientname->last_name ?? ''));
             $receiptNo = $record_get->trans_no ?? $id;
 
-            $subject = 'Office Receipt #'.$receiptNo.' from Bansal Immigration';
-            $emailContent = 'Dear '.$clientFullName.',<br><br>'.
+            $defaultSubject = 'Office Receipt #'.$receiptNo.' from Bansal Immigration';
+            $defaultContent = 'Dear '.$clientFullName.',<br><br>'.
                 'Please find attached your office receipt #'.$receiptNo.'.<br><br>'.
                 "If you have any questions, please don't hesitate to contact us.<br><br>".
                 'Best regards,<br>Bansal Immigration';
+            $composed = $this->resolveAccountClientSendPayload($request, $defaultSubject, $defaultContent);
+            if ($composed instanceof JsonResponse) {
+                return $composed;
+            }
+            $subject = $composed['subject'];
+            $emailContent = $composed['html'];
 
             $pdfContent = file_get_contents($pdfUrl);
             if ($pdfContent === false || $pdfContent === '') {
@@ -6790,8 +6967,8 @@ class ClientAccountsController extends Controller
             // Send email using InvoiceEmailManager (in-memory attachment — no temp file)
             $invoiceArray = [
                 'view' => 'emails.template',
-                'from' => 'invoice@bansalimmigration.com.au',
-                'name' => 'Bansal Immigration',
+                'from' => $composed['from'],
+                'name' => $composed['from_name'],
                 'subject' => $subject,
                 'file_content' => $pdfContent,
                 'file_name' => 'Office-Receipt-'.$receiptNo.'.pdf',
@@ -6801,7 +6978,7 @@ class ClientAccountsController extends Controller
             $systemEmailLog = app(SystemEmailLogService::class);
             $log = $systemEmailLog->createPending([
                 'category' => 'receipt',
-                'from_mail' => 'invoice@bansalimmigration.com.au',
+                'from_mail' => $composed['from'],
                 'to_mail' => $clientEmail,
                 'subject' => $subject,
                 'message' => $emailContent,
@@ -6822,16 +6999,11 @@ class ClientAccountsController extends Controller
 
             Mail::mailer()->to($clientEmail)->queue(new InvoiceEmailManager($invoiceArray));
 
-            // Log activity
-            $objs = new ActivitiesLog;
-            $objs->client_id = $record_get->client_id;
-            $objs->created_by = Auth::user()->id;
-            $objs->description = 'Office receipt #'.$receiptNo.' sent to client email: '.$clientEmail;
-            $objs->subject = 'Office receipt sent to client';
-            $objs->activity_type = 'financial';
-            $objs->task_status = 0;
-            $objs->pin = 0;
-            $objs->save();
+            $this->logAccountDocumentSent(
+                (int) $record_get->client_id,
+                'Office receipt sent to client',
+                'Office receipt #'.$receiptNo.' sent to '.$clientEmail.' from '.$composed['from'].'. Subject: '.$subject
+            );
 
             return response()->json([
                 'status' => true,

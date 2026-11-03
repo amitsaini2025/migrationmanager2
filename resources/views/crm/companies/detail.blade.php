@@ -1280,6 +1280,7 @@ $(document).ready(function() {
             deleteNominationCategory: '{{ route("clients.documents.deleteNominationDocCategory") }}',
             deletePersonalCategory: '{{ route("clients.documents.deletePersonalDocCategory") }}',
             deleteVisaCategory: '{{ route("clients.documents.deleteVisaDocCategory") }}',
+            accountSendDraft: '{{ url("/clients/account-send-draft") }}',
             sendInvoiceToClient: '{{ url("/clients/send-invoice-to-client") }}',
             sendClientFundReceiptToClient: '{{ url("/clients/send-client-fund-receipt-to-client") }}',
             sendOfficeReceiptToClient: '{{ url("/clients/send-office-receipt-to-client") }}',
@@ -1538,7 +1539,7 @@ $(document).ready(function() {
 <script src="{{ URL::asset('js/crm/clients/utils/dom-helpers.js') }}"></script>
 {{-- Phase 3 modules --}}
 <script src="{{ URL::asset('js/crm/clients/modules/references.js') }}"></script>
-<script src="{{ URL::asset('js/crm/clients/modules/send-to-client.js') }}"></script>
+<script src="{{ URL::asset('js/crm/clients/modules/send-to-client.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/modules/send-to-client.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/notes.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/modules/notes.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/checklist.js') }}?v={{ file_exists(public_path('js/crm/clients/modules/checklist.js')) ? filemtime(public_path('js/crm/clients/modules/checklist.js')) : 1 }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/documents.js') }}?v={{ file_exists(public_path('js/crm/clients/modules/documents.js')) ? filemtime(public_path('js/crm/clients/modules/documents.js')) : 1 }}"></script>

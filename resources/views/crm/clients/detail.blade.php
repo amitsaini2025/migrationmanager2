@@ -631,6 +631,7 @@ use App\Http\Controllers\Controller;
             updateNominationCategory: '{{ route("clients.documents.updateNominationDocCategory") }}',
             deletePersonalCategory: '{{ route("clients.documents.deletePersonalDocCategory") }}',
             deleteVisaCategory: '{{ route("clients.documents.deleteVisaDocCategory") }}',
+            accountSendDraft: '{{ url("/clients/account-send-draft") }}',
             sendInvoiceToClient: '{{ url("/clients/send-invoice-to-client") }}',
             sendClientFundReceiptToClient: '{{ url("/clients/send-client-fund-receipt-to-client") }}',
             sendOfficeReceiptToClient: '{{ url("/clients/send-office-receipt-to-client") }}',
@@ -716,7 +717,7 @@ use App\Http\Controllers\Controller;
 {{-- Phase 3 modules. On Activity these load after /get-activities, or on the first click that needs them. --}}
 @if(($activeTab ?? '') !== 'activityfeed')
 <script src="{{ URL::asset('js/crm/clients/modules/references.js') }}"></script>
-<script src="{{ URL::asset('js/crm/clients/modules/send-to-client.js') }}"></script>
+<script src="{{ URL::asset('js/crm/clients/modules/send-to-client.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/modules/send-to-client.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/notes.js') }}?v={{ \App\Support\ClientDetailTabs::publicAssetVersion('js/crm/clients/modules/notes.js') }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/checklist.js') }}?v={{ file_exists(public_path('js/crm/clients/modules/checklist.js')) ? filemtime(public_path('js/crm/clients/modules/checklist.js')) : 1 }}"></script>
 <script src="{{ URL::asset('js/crm/clients/modules/documents.js') }}?v={{ file_exists(public_path('js/crm/clients/modules/documents.js')) ? filemtime(public_path('js/crm/clients/modules/documents.js')) : 1 }}"></script>

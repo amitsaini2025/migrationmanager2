@@ -45,29 +45,8 @@
      * Send Invoice to Client
      */
     function handleSendInvoiceToClient($btn) {
-        var invoiceId = $btn.data('invoice-id');
-        var invoiceNo = $btn.data('invoice-no');
-
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: 'Send Invoice to Client?',
-                text: 'This will send invoice #' + invoiceNo + ' to the client\'s email address.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Yes, send it!',
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    sendInvoiceToClientAjax(invoiceId, invoiceNo, $btn);
-                }
-            });
-        } else {
-            if (confirm('Are you sure you want to send invoice #' + invoiceNo + ' to the client\'s email?')) {
-                sendInvoiceToClientAjax(invoiceId, invoiceNo, $btn);
-            }
-        }
+        var urls = (window.ClientDetailConfig && window.ClientDetailConfig.urls) || {};
+        openAccountSendModal('invoice', $btn.data('invoice-id'), $btn.data('invoice-no'), urls.sendInvoiceToClient, $btn);
     }
 
     function sendInvoiceToClientAjax(invoiceId, invoiceNo, $btn) {
@@ -80,14 +59,18 @@
             url: window.ClientDetailConfig.urls.sendInvoiceToClient + '/' + invoiceId,
             type: 'POST',
             dataType: 'json',
+            data: accountSendPayload(),
             headers: {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             },
             success: function(response) {
                 $btn.html(originalHtml);
                 $btn.prop('disabled', false);
+                $('#accountSendToClientSubmit').prop('disabled', false);
                 if (response.status) {
+                    $('#accountSendToClientModal').modal('hide');
                     showSendResult(true, response.message);
+                    refreshClientActivities();
                 } else {
                     showSendResult(false, response.message || 'Failed to send invoice.');
                 }
@@ -100,6 +83,7 @@
                 }
                 $btn.html(originalHtml);
                 $btn.prop('disabled', false);
+                $('#accountSendToClientSubmit').prop('disabled', false);
                 showSendResult(false, errorMsg);
             }
         });
@@ -109,29 +93,13 @@
      * Send Client Fund Receipt to Client
      */
     function handleSendClientFundReceiptToClient($btn) {
-        var receiptId = $btn.data('receipt-id');
-        var receiptNo = $btn.data('receipt-no');
-
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: 'Send Receipt to Client?',
-                text: 'This will send receipt #' + receiptNo + ' to the client\'s email address.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Yes, send it!',
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    sendClientFundReceiptToClientAjax(receiptId, receiptNo, $btn);
-                }
-            });
-        } else {
-            if (confirm('Are you sure you want to send receipt #' + receiptNo + ' to the client\'s email?')) {
-                sendClientFundReceiptToClientAjax(receiptId, receiptNo, $btn);
-            }
-        }
+        openAccountSendModal(
+            'client-fund',
+            $btn.data('receipt-id'),
+            $btn.data('receipt-no'),
+            ((window.ClientDetailConfig && window.ClientDetailConfig.urls) || {}).sendClientFundReceiptToClient,
+            $btn
+        );
     }
 
     function sendClientFundReceiptToClientAjax(receiptId, receiptNo, $btn) {
@@ -144,19 +112,24 @@
             url: window.ClientDetailConfig.urls.sendClientFundReceiptToClient + '/' + receiptId,
             type: 'POST',
             dataType: 'json',
+            data: accountSendPayload(),
             headers: {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             },
             success: function(response) {
                 $btn.html(originalHtml);
                 $btn.prop('disabled', false);
+                $('#accountSendToClientSubmit').prop('disabled', false);
                 if (response.status) {
+                    $('#accountSendToClientModal').modal('hide');
                     showSendResult(true, response.message);
+                    refreshClientActivities();
                 } else {
                     showSendResult(false, response.message || 'Failed to send receipt.');
                 }
             },
             error: function(xhr) {
+                $('#accountSendToClientSubmit').prop('disabled', false);
                 console.error('Error sending client fund receipt to client:', xhr);
                 var errorMsg = 'Failed to send receipt. Please try again.';
                 if (xhr.responseJSON && xhr.responseJSON.message) {
@@ -278,29 +251,13 @@
      * Send Office Receipt to Client
      */
     function handleSendOfficeReceiptToClient($btn) {
-        var receiptId = $btn.data('receipt-id');
-        var receiptNo = $btn.data('receipt-no');
-
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: 'Send Receipt to Client?',
-                text: 'This will send office receipt #' + receiptNo + ' to the client\'s email address.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Yes, send it!',
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    sendOfficeReceiptToClientAjax(receiptId, receiptNo, $btn);
-                }
-            });
-        } else {
-            if (confirm('Are you sure you want to send office receipt #' + receiptNo + ' to the client\'s email?')) {
-                sendOfficeReceiptToClientAjax(receiptId, receiptNo, $btn);
-            }
-        }
+        openAccountSendModal(
+            'office',
+            $btn.data('receipt-id'),
+            $btn.data('receipt-no'),
+            ((window.ClientDetailConfig && window.ClientDetailConfig.urls) || {}).sendOfficeReceiptToClient,
+            $btn
+        );
     }
 
     function sendOfficeReceiptToClientAjax(receiptId, receiptNo, $btn) {
@@ -313,19 +270,24 @@
             url: window.ClientDetailConfig.urls.sendOfficeReceiptToClient + '/' + receiptId,
             type: 'POST',
             dataType: 'json',
+            data: accountSendPayload(),
             headers: {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             },
             success: function(response) {
                 $btn.html(originalHtml);
                 $btn.prop('disabled', false);
+                $('#accountSendToClientSubmit').prop('disabled', false);
                 if (response.status) {
+                    $('#accountSendToClientModal').modal('hide');
                     showSendResult(true, response.message);
+                    refreshClientActivities();
                 } else {
                     showSendResult(false, response.message || 'Failed to send receipt.');
                 }
             },
             error: function(xhr) {
+                $('#accountSendToClientSubmit').prop('disabled', false);
                 console.error('Error sending office receipt to client:', xhr);
                 var errorMsg = 'Failed to send receipt. Please try again.';
                 if (xhr.responseJSON && xhr.responseJSON.message) {
@@ -577,6 +539,161 @@
     function attachSendToClientHandlers() {
         // no-op: handlers are document-delegated below
     }
+
+    var accountSendPending = null;
+
+    function refreshClientActivities() {
+        if (typeof window.loadActivities === 'function') {
+            window.loadActivities({ reset: true });
+        }
+    }
+
+    function accountSendPayload() {
+        return {
+            email_from: $('#account_send_from').val(),
+            subject: $('#account_send_subject').val(),
+            message: $('#account_send_message').val()
+        };
+    }
+
+    function applyAccountSendFrom(email) {
+        var select = document.getElementById('account_send_from');
+        if (!select) {
+            return;
+        }
+        var wanted = (email || '').toLowerCase();
+        var matched = false;
+        Array.prototype.forEach.call(select.options, function(opt) {
+            if (!matched && wanted && (opt.value || '').toLowerCase() === wanted) {
+                select.value = opt.value;
+                matched = true;
+            }
+        });
+        if (matched) {
+            return;
+        }
+        var first = Array.prototype.find.call(select.options, function(opt) {
+            return !!opt.value;
+        });
+        if (first) {
+            select.value = first.value;
+        }
+    }
+
+    function showAccountSendError(message) {
+        var $error = $('#accountSendToClientModal .account-send-error');
+        $error.text(message || 'Could not prepare this email.').show();
+    }
+
+    function openAccountSendModal(kind, recordId, recordNo, sendUrl, $btn) {
+        var $modal = $('#accountSendToClientModal');
+        var draftBase = (window.ClientDetailConfig && window.ClientDetailConfig.urls)
+            ? window.ClientDetailConfig.urls.accountSendDraft
+            : '';
+
+        if (!$modal.length || !draftBase || !sendUrl || !recordId) {
+            showSendResult(false, 'Send dialog is not available. Open the Account tab and try again.');
+            return;
+        }
+
+        accountSendPending = {
+            kind: kind,
+            id: recordId,
+            number: recordNo || '',
+            url: sendUrl,
+            $btn: $btn
+        };
+
+        var title = kind === 'invoice' ? 'Send invoice to client' : 'Send receipt to client';
+        if (recordNo) {
+            title += ' #' + recordNo;
+        }
+        $modal.find('.account-send-title').text(title);
+        $modal.find('.account-send-error').hide().text('');
+        $('#account_send_to').val('Loading…');
+        $('#account_send_subject').val('');
+        $('#account_send_message').val('');
+        $('#account_send_attachment').text('Loading the draft…');
+        $('#accountSendToClientSubmit').prop('disabled', true);
+        $modal.data('preferred-from', '');
+
+        if (typeof window.refreshEmailFromSenders === 'function') {
+            window.refreshEmailFromSenders();
+        }
+
+        $modal.modal('show');
+
+        $.ajax({
+            url: draftBase + '/' + kind + '/' + recordId,
+            type: 'GET',
+            dataType: 'json',
+            headers: { 'Accept': 'application/json' },
+            success: function(response) {
+                if (!response || !response.status) {
+                    showAccountSendError((response && response.message) || 'Could not load the draft.');
+                    return;
+                }
+                $('#account_send_to').val(response.to || '');
+                $('#account_send_subject').val(response.subject || '');
+                $('#account_send_message').val(response.message || '');
+                var attachment = response.attachment_name
+                    ? ('PDF attached: ' + response.attachment_name)
+                    : 'The PDF will be attached when you send.';
+                $('#account_send_attachment').text(attachment);
+                $modal.data('preferred-from', response.suggested_from || '');
+                var refresh = (typeof window.refreshEmailFromSenders === 'function')
+                    ? window.refreshEmailFromSenders()
+                    : null;
+                Promise.resolve(refresh).then(function() {
+                    applyAccountSendFrom(response.suggested_from || '');
+                    $('#accountSendToClientSubmit').prop('disabled', false);
+                });
+            },
+            error: function(xhr) {
+                var errorMsg = 'Could not load the draft.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                showAccountSendError(errorMsg);
+            }
+        });
+    }
+
+    $(document).on('shown.bs.modal', '#accountSendToClientModal', function() {
+        var preferred = $(this).data('preferred-from') || '';
+        setTimeout(function() {
+            applyAccountSendFrom(preferred);
+        }, 0);
+    });
+
+    $(document).on('click', '#accountSendToClientSubmit', function(e) {
+        e.preventDefault();
+        var pending = accountSendPending;
+        if (!pending || !pending.$btn) {
+            return;
+        }
+        var payload = accountSendPayload();
+        if (!payload.email_from) {
+            showAccountSendError('Choose the email address to send from.');
+            return;
+        }
+        if (!payload.subject || !$.trim(payload.message)) {
+            showAccountSendError('Subject and message are required.');
+            return;
+        }
+        $('#accountSendToClientModal .account-send-error').hide();
+        $(this).prop('disabled', true);
+
+        if (pending.kind === 'invoice') {
+            sendInvoiceToClientAjax(pending.id, pending.number, pending.$btn);
+            return;
+        }
+        if (pending.kind === 'office') {
+            sendOfficeReceiptToClientAjax(pending.id, pending.number, pending.$btn);
+            return;
+        }
+        sendClientFundReceiptToClientAjax(pending.id, pending.number, pending.$btn);
+    });
 
     function bindSendToClientClick(selector, handler) {
         $(document).on('click', selector, function(e) {

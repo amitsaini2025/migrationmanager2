@@ -12,7 +12,7 @@ final class AccountClientSendComposer
     /**
      * @return array{subject: string, message: string, attachment_name: string, document_label: string}
      */
-    public static function draft(string $kind, string $clientName, string $number): array
+    public static function draft(string $kind, string $clientName, string $number, ?float $amount = null): array
     {
         $name = trim($clientName) !== '' ? trim($clientName) : 'Client';
         $number = trim($number) !== '' ? trim($number) : '—';
@@ -35,11 +35,9 @@ final class AccountClientSendComposer
             default => 'Receipt',
         };
 
-        $message = "Dear {$name},\n\n"
-            ."Please find attached your {$documentLabel} #{$number}.\n\n"
-            ."If you have any questions, please don't hesitate to contact us.\n\n"
-            ."Best regards,\n"
-            .'Bansal Immigration';
+        $message = $kind === 'invoice'
+            ? self::invoiceMessage($name, $documentLabel, $number)
+            : self::receiptPaymentMessage($name, $amount);
 
         return [
             'subject' => $subjectPrefix.' #'.$number.' from Bansal Immigration',
@@ -47,6 +45,15 @@ final class AccountClientSendComposer
             'attachment_name' => $attachmentPrefix.'-'.$number.'.pdf',
             'document_label' => $documentLabel,
         ];
+    }
+
+    public static function formatPaymentAmount(?float $amount): string
+    {
+        if ($amount === null) {
+            return '';
+        }
+
+        return '$'.number_format($amount, 2);
     }
 
     public static function plainToHtml(string $plain): string
@@ -106,5 +113,29 @@ final class AccountClientSendComposer
         }
 
         return '';
+    }
+
+    private static function invoiceMessage(string $name, string $documentLabel, string $number): string
+    {
+        return "Dear {$name},\n\n"
+            ."Please find attached your {$documentLabel} #{$number}.\n\n"
+            ."If you have any questions, please don't hesitate to contact us.\n\n"
+            ."Best regards,\n"
+            .'Bansal Immigration';
+    }
+
+    private static function receiptPaymentMessage(string $name, ?float $amount): string
+    {
+        $amountText = self::formatPaymentAmount($amount);
+        $paymentLine = $amountText !== ''
+            ? "We confirm that we have received your payment of {$amountText}. Please find the receipt attached."
+            : 'We confirm that we have received your payment. Please find the receipt attached.';
+
+        return "Dear {$name},\n\n"
+            ."Thank you for choosing the Bansal Immigration.\n\n"
+            ."{$paymentLine}\n\n"
+            ."Should you have any queries, please do not hesitate to contact us.\n\n"
+            ."Best regards,\n"
+            .'Bansal Immigration';
     }
 }

@@ -6398,7 +6398,12 @@ class ClientAccountsController extends Controller
         }
 
         $senders = app(SesSenderService::class)->getComposeSenders();
-        $draft = AccountClientSendComposer::draft($kind, $context['client_name'], $context['number']);
+        $draft = AccountClientSendComposer::draft(
+            $kind,
+            $context['client_name'],
+            $context['number'],
+            $context['amount']
+        );
 
         return response()->json([
             'status' => true,
@@ -6414,10 +6419,12 @@ class ClientAccountsController extends Controller
     }
 
     /**
-     * @return array{client_id: int, client_name: string, email: string, number: string}|JsonResponse
+     * @return array{client_id: int, client_name: string, email: string, number: string, amount: ?float}|JsonResponse
      */
     protected function accountSendContext(string $kind, int $id): array|JsonResponse
     {
+        $amount = null;
+
         if ($kind === 'invoice') {
             $record = AccountAllInvoiceReceipt::where('receipt_type', 3)
                 ->where('receipt_id', $id)
@@ -6451,6 +6458,7 @@ class ClientAccountsController extends Controller
 
             $clientId = (int) $entry->client_id;
             $number = (string) ($entry->trans_no ?: $id);
+            $amount = isset($entry->deposit_amount) ? (float) $entry->deposit_amount : null;
         } else {
             $entry = DB::table('account_client_receipts')
                 ->where('receipt_type', 1)
@@ -6466,6 +6474,7 @@ class ClientAccountsController extends Controller
 
             $clientId = (int) $entry->client_id;
             $number = (string) ($entry->trans_no ?: $id);
+            $amount = isset($entry->deposit_amount) ? (float) $entry->deposit_amount : null;
         }
 
         $this->ensureCrmRecordAccess($clientId);
@@ -6484,6 +6493,7 @@ class ClientAccountsController extends Controller
             'client_name' => trim(($client->first_name ?? '').' '.($client->last_name ?? '')),
             'email' => (string) $clientEmail,
             'number' => $number,
+            'amount' => $amount,
         ];
     }
 
@@ -6641,12 +6651,9 @@ class ClientAccountsController extends Controller
             // Prepare email data
             $clientFullName = trim(($clientname->first_name ?? '').' '.($clientname->last_name ?? ''));
             $invoiceNo = $receipt_entry->invoice_no ?: ($receipt_entry->trans_no ?: $id);
-
-            $defaultSubject = 'Invoice #'.$invoiceNo.' from Bansal Immigration';
-            $defaultContent = 'Dear '.$clientFullName.',<br><br>'.
-                'Please find attached your invoice #'.$invoiceNo.'.<br><br>'.
-                "If you have any questions, please don't hesitate to contact us.<br><br>".
-                'Best regards,<br>Bansal Immigration';
+            $draft = AccountClientSendComposer::draft('invoice', $clientFullName, (string) $invoiceNo);
+            $defaultSubject = $draft['subject'];
+            $defaultContent = AccountClientSendComposer::plainToHtml($draft['message']);
             $composed = $this->resolveAccountClientSendPayload($request, $defaultSubject, $defaultContent);
             if ($composed instanceof JsonResponse) {
                 return $composed;
@@ -6788,12 +6795,14 @@ class ClientAccountsController extends Controller
             // Prepare email data
             $clientFullName = trim(($clientname->first_name ?? '').' '.($clientname->last_name ?? ''));
             $receiptNo = $record_get->trans_no ?? $id;
-
-            $defaultSubject = 'Client Fund Receipt #'.$receiptNo.' from Bansal Immigration';
-            $defaultContent = 'Dear '.$clientFullName.',<br><br>'.
-                'Please find attached your client fund receipt #'.$receiptNo.'.<br><br>'.
-                "If you have any questions, please don't hesitate to contact us.<br><br>".
-                'Best regards,<br>Bansal Immigration';
+            $draft = AccountClientSendComposer::draft(
+                'client-fund',
+                $clientFullName,
+                (string) $receiptNo,
+                isset($record_get->deposit_amount) ? (float) $record_get->deposit_amount : null
+            );
+            $defaultSubject = $draft['subject'];
+            $defaultContent = AccountClientSendComposer::plainToHtml($draft['message']);
             $composed = $this->resolveAccountClientSendPayload($request, $defaultSubject, $defaultContent);
             if ($composed instanceof JsonResponse) {
                 return $composed;
@@ -6943,12 +6952,14 @@ class ClientAccountsController extends Controller
             // Prepare email data
             $clientFullName = trim(($clientname->first_name ?? '').' '.($clientname->last_name ?? ''));
             $receiptNo = $record_get->trans_no ?? $id;
-
-            $defaultSubject = 'Office Receipt #'.$receiptNo.' from Bansal Immigration';
-            $defaultContent = 'Dear '.$clientFullName.',<br><br>'.
-                'Please find attached your office receipt #'.$receiptNo.'.<br><br>'.
-                "If you have any questions, please don't hesitate to contact us.<br><br>".
-                'Best regards,<br>Bansal Immigration';
+            $draft = AccountClientSendComposer::draft(
+                'office',
+                $clientFullName,
+                (string) $receiptNo,
+                isset($record_get->deposit_amount) ? (float) $record_get->deposit_amount : null
+            );
+            $defaultSubject = $draft['subject'];
+            $defaultContent = AccountClientSendComposer::plainToHtml($draft['message']);
             $composed = $this->resolveAccountClientSendPayload($request, $defaultSubject, $defaultContent);
             if ($composed instanceof JsonResponse) {
                 return $composed;

@@ -587,9 +587,11 @@
                     
                     <div class="form-group" id="entitySelectGroup" style="display: none;">
                         <label id="entitySelectLabel">Select Entity <span style="color: #dc3545;">*</span></label>
+                        <input type="search" class="form-control mb-2" id="attachEntitySearch" placeholder="Type name or email to search..." autocomplete="off">
                         <select class="form-control" id="attachEntityId" name="entity_id" required>
                             <option value="">-- Select --</option>
                         </select>
+                        <small class="form-text text-muted" id="attachEntitySearchHint">Type at least 2 characters to search.</small>
                     </div>
                     
                     <div class="form-group">
@@ -613,107 +615,166 @@
 
 @section('scripts')
 <script>
-// Data from controller - Clean and simple
-const clients = @json($clients ?? []);
-const leads = @json($leads ?? []);
 let currentDocId = null;
+let attachEntitySearchTimeout = null;
+const attachEntitiesUrl = @json(route('signatures.attach-entities'));
 
-console.log('✅ Dashboard script loaded. Clients:', clients.length, 'Leads:', leads.length);
+function resetAttachEntitySelect(message) {
+    const select = document.getElementById('attachEntityId');
+    if (!select) {
+        return;
+    }
+    select.innerHTML = '';
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = message || '-- Select --';
+    select.appendChild(option);
+}
+
+function populateAttachEntitySelect(results) {
+    const select = document.getElementById('attachEntityId');
+    if (!select) {
+        return;
+    }
+    select.innerHTML = '<option value="">-- Select --</option>';
+    if (!results || results.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No matches found';
+        select.appendChild(option);
+        return;
+    }
+    results.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = `${item.first_name || ''} ${item.last_name || ''} (${item.email || ''})`.trim();
+        select.appendChild(option);
+    });
+}
+
+function searchAttachEntities(type, query) {
+    const hint = document.getElementById('attachEntitySearchHint');
+    const q = (query || '').trim();
+    if (!type || q.length < 2) {
+        resetAttachEntitySelect('-- Select --');
+        if (hint) {
+            hint.textContent = 'Type at least 2 characters to search.';
+        }
+        return;
+    }
+
+    if (hint) {
+        hint.textContent = 'Searching...';
+    }
+
+    const params = new URLSearchParams({ type: type, q: q, limit: '25' });
+    fetch(attachEntitiesUrl + '?' + params.toString(), {
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin'
+    })
+        .then(response => response.json())
+        .then(data => {
+            populateAttachEntitySelect(data.results || []);
+            if (hint) {
+                const count = (data.results || []).length;
+                hint.textContent = count > 0
+                    ? `${count} match${count === 1 ? '' : 'es'} — select one below.`
+                    : 'No matches found. Try a different name or email.';
+            }
+        })
+        .catch(() => {
+            resetAttachEntitySelect('Search failed — try again');
+            if (hint) {
+                hint.textContent = 'Search failed. Please try again.';
+            }
+        });
+}
 
 // Define openAttachModal globally - available immediately
 function openAttachModal(docId, docTitle) {
-    console.log('📝 openAttachModal called:', docId, docTitle);
-    
     try {
         currentDocId = docId;
-        
-        // Get modal elements
+
         const docTitleEl = document.getElementById('attachDocTitle');
         const entityTypeEl = document.getElementById('attachEntityType');
         const entitySelectGroupEl = document.getElementById('entitySelectGroup');
         const attachEntityIdEl = document.getElementById('attachEntityId');
         const attachFormEl = document.getElementById('attachForm');
-        
-        // Validate elements exist
+        const searchEl = document.getElementById('attachEntitySearch');
+
         if (!docTitleEl || !entityTypeEl || !entitySelectGroupEl || !attachEntityIdEl || !attachFormEl) {
-            console.error('❌ Required modal elements not found');
             alert('Error: Modal elements not found. Please refresh the page and try again.');
             return;
         }
-        
-        // Reset and populate modal
+
         docTitleEl.value = docTitle;
         entityTypeEl.value = '';
         entitySelectGroupEl.style.display = 'none';
-        attachEntityIdEl.innerHTML = '<option value="">-- Select --</option>';
+        resetAttachEntitySelect('-- Select --');
+        if (searchEl) {
+            searchEl.value = '';
+        }
         attachFormEl.action = '{{ url("/signatures") }}/' + docId + '/associate';
-        
-        // Show modal
+
         if (typeof $ !== 'undefined' && $.fn.modal) {
             $('#attachModal').modal('show');
-            console.log('✅ Modal opened (jQuery)');
         } else if (typeof bootstrap !== 'undefined') {
             const modal = new bootstrap.Modal(document.getElementById('attachModal'));
             modal.show();
-            console.log('✅ Modal opened (Bootstrap 5)');
         } else {
-            console.error('❌ No modal library found');
             alert('Error: Modal library not found. Please refresh the page.');
         }
     } catch (error) {
-        console.error('❌ Error in openAttachModal:', error);
+        console.error('Error in openAttachModal:', error);
         alert('Error opening attachment modal. Please try again.');
     }
 }
 
-// Wait for DOM to be fully loaded for event listeners
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('✅ DOM ready, setting up event listeners');
-    
-    // Set up entity type change listener
     const attachEntityTypeEl = document.getElementById('attachEntityType');
+    const searchEl = document.getElementById('attachEntitySearch');
+
     if (attachEntityTypeEl) {
         attachEntityTypeEl.addEventListener('change', function() {
             const type = this.value;
             const selectGroup = document.getElementById('entitySelectGroup');
-            const select = document.getElementById('attachEntityId');
             const label = document.getElementById('entitySelectLabel');
-            
-            if (!selectGroup || !select || !label) {
-                console.error('❌ Required elements for entity selection not found');
+            const hint = document.getElementById('attachEntitySearchHint');
+
+            if (!selectGroup || !label) {
                 return;
             }
-            
+
             if (!type) {
                 selectGroup.style.display = 'none';
                 return;
             }
-            
+
             selectGroup.style.display = 'block';
             label.textContent = 'Select ' + (type === 'client' ? 'Client' : 'Lead') + ' ';
-            
-            const data = type === 'client' ? clients : leads;
-            select.innerHTML = '<option value="">-- Select --</option>';
-            
-            if (data && data.length > 0) {
-                data.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.id;
-                    option.textContent = `${item.first_name} ${item.last_name} (${item.email})`;
-                    select.appendChild(option);
-                });
-                console.log(`✅ Loaded ${data.length} ${type}s into dropdown`);
-            } else {
-                const option = document.createElement('option');
-                option.value = '';
-                option.textContent = 'No ' + (type === 'client' ? 'clients' : 'leads') + ' available';
-                select.appendChild(option);
-                console.warn(`⚠️ No ${type}s available`);
+            if (searchEl) {
+                searchEl.value = '';
+                searchEl.focus();
+            }
+            resetAttachEntitySelect('-- Select --');
+            if (hint) {
+                hint.textContent = 'Type at least 2 characters to search.';
             }
         });
-        console.log('✅ Entity type change listener attached');
-    } else {
-        console.error('❌ attachEntityType element not found');
+    }
+
+    if (searchEl) {
+        searchEl.addEventListener('input', function() {
+            clearTimeout(attachEntitySearchTimeout);
+            const type = document.getElementById('attachEntityType')?.value || '';
+            const query = this.value;
+            attachEntitySearchTimeout = setTimeout(function() {
+                searchAttachEntities(type, query);
+            }, 300);
+        });
     }
 });
 

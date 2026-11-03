@@ -1443,16 +1443,10 @@
 </div>
 
 <script>
-// Association functionality data
-const clients = @json($clients ?? []);
-const leads = @json($leads ?? []);
 let currentMatch = null;
-
-// Debug: Log the data
-console.log('Clients loaded:', clients.length);
-console.log('Leads loaded:', leads.length);
-if (clients.length > 0) console.log('Sample client:', clients[0]);
-if (leads.length > 0) console.log('Sample lead:', leads[0]);
+const attachEntitiesUrl = @json(route('signatures.attach-entities'));
+let attachLookupTimeout = null;
+let attachAutoSearchBound = false;
 
 // Open attach modal
 function openAttachModal() {
@@ -1464,9 +1458,57 @@ function openAttachModal() {
     document.getElementById('matterId').innerHTML = '<option value="">-- Select Matter --</option>';
     document.getElementById('matterSelection').style.display = 'none';
     document.getElementById('docCategory').value = '';
-    
+    currentMatch = null;
+
     // Setup auto-search
     setupAutoSearch();
+}
+
+function applyAttachMatch(match, typeLabel) {
+    currentMatch = { type: typeLabel.toLowerCase(), data: match };
+    showMatch(match, typeLabel);
+}
+
+function findAttachEntityByEmail(email, { showAlerts = false, lookupBtn = null, originalText = null } = {}) {
+    const paramsClient = new URLSearchParams({ type: 'client', email: email, limit: '5' });
+    const paramsLead = new URLSearchParams({ type: 'lead', email: email, limit: '5' });
+
+    return Promise.all([
+        fetch(attachEntitiesUrl + '?' + paramsClient.toString(), {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        }).then(r => r.json()),
+        fetch(attachEntitiesUrl + '?' + paramsLead.toString(), {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        }).then(r => r.json()),
+    ]).then(([clientData, leadData]) => {
+        const clientMatch = (clientData.results && clientData.results[0]) || null;
+        const leadMatch = (leadData.results && leadData.results[0]) || null;
+
+        if (clientMatch) {
+            applyAttachMatch(clientMatch, 'Client');
+        } else if (leadMatch) {
+            applyAttachMatch(leadMatch, 'Lead');
+        } else {
+            document.getElementById('lookupResults').style.display = 'none';
+            currentMatch = null;
+            if (showAlerts) {
+                alert('No matching client or lead found for this email address');
+            }
+        }
+    }).catch(() => {
+        document.getElementById('lookupResults').style.display = 'none';
+        currentMatch = null;
+        if (showAlerts) {
+            alert('Search failed. Please try again.');
+        }
+    }).finally(() => {
+        if (lookupBtn && originalText !== null) {
+            lookupBtn.innerHTML = originalText;
+            lookupBtn.disabled = false;
+        }
+    });
 }
 
 // Lookup signer by email
@@ -1476,75 +1518,35 @@ function lookupSigner() {
         alert('Please enter a signer email address');
         return;
     }
-    
-    // Show loading
+
     const lookupBtn = document.getElementById('lookupBtn');
     const originalText = lookupBtn.innerHTML;
     lookupBtn.innerHTML = (typeof crmIconLegacy === 'function' ? crmIconLegacy('fa fa-spinner fa-spin') : '<i class="fa fa-spinner fa-spin"></i>') + ' Searching...';
     lookupBtn.disabled = true;
-    
-    // Search in clients and leads
-    const clientMatch = clients.find(client => 
-        client.email && client.email.toLowerCase() === email.toLowerCase()
-    );
-    const leadMatch = leads.find(lead => 
-        lead.email && lead.email.toLowerCase() === email.toLowerCase()
-    );
-    
-    setTimeout(() => {
-        lookupBtn.innerHTML = originalText;
-        lookupBtn.disabled = false;
-        
-        if (clientMatch) {
-            currentMatch = { type: 'client', data: clientMatch };
-            showMatch(clientMatch, 'Client');
-        } else if (leadMatch) {
-            currentMatch = { type: 'lead', data: leadMatch };
-            showMatch(leadMatch, 'Lead');
-        } else {
-            alert('No matching client or lead found for this email address');
-        }
-    }, 500);
+
+    findAttachEntityByEmail(email, { showAlerts: true, lookupBtn: lookupBtn, originalText: originalText });
 }
 
 // Auto-search as user types (with debounce)
-let searchTimeout;
 function setupAutoSearch() {
     const emailInput = document.getElementById('signerEmail');
-    if (emailInput) {
-        emailInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            const email = this.value.trim();
-            
-            if (email.length > 3) { // Only search if email has more than 3 characters
-                searchTimeout = setTimeout(() => {
-                    // Auto-search without showing loading
-                    const clientMatch = clients.find(client => 
-                        client.email && client.email.toLowerCase() === email.toLowerCase()
-                    );
-                    const leadMatch = leads.find(lead => 
-                        lead.email && lead.email.toLowerCase() === email.toLowerCase()
-                    );
-                    
-                    if (clientMatch) {
-                        currentMatch = { type: 'client', data: clientMatch };
-                        showMatch(clientMatch, 'Client');
-                    } else if (leadMatch) {
-                        currentMatch = { type: 'lead', data: leadMatch };
-                        showMatch(leadMatch, 'Lead');
-                    } else {
-                        // Hide results if no match
-                        document.getElementById('lookupResults').style.display = 'none';
-                        currentMatch = null;
-                    }
-                }, 800); // 800ms delay
-            } else {
-                // Hide results if email is too short
-                document.getElementById('lookupResults').style.display = 'none';
-                currentMatch = null;
-            }
-        });
+    if (!emailInput || attachAutoSearchBound) {
+        return;
     }
+    attachAutoSearchBound = true;
+    emailInput.addEventListener('input', function() {
+        clearTimeout(attachLookupTimeout);
+        const email = this.value.trim();
+
+        if (email.length > 3 && email.includes('@')) {
+            attachLookupTimeout = setTimeout(() => {
+                findAttachEntityByEmail(email, { showAlerts: false });
+            }, 800);
+        } else {
+            document.getElementById('lookupResults').style.display = 'none';
+            currentMatch = null;
+        }
+    });
 }
 
 // Show match results

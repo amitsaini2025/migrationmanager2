@@ -222,18 +222,20 @@ Route::middleware('auth:admin')->group(function () {
         Route::post('/bulk-void', [SignatureDashboardController::class, 'bulkVoid'])->name('signatures.bulk-void');
         Route::post('/bulk-resend', [SignatureDashboardController::class, 'bulkResend'])->name('signatures.bulk-resend');
 
-        Route::get('/{id}', [SignatureDashboardController::class, 'show'])->name('signatures.show');
-        Route::post('/{id}/reminder', [SignatureDashboardController::class, 'sendReminder'])->name('signatures.reminder');
-        Route::post('/{id}/cancel', [SignatureDashboardController::class, 'cancelSignature'])->name('signatures.cancel');
-        Route::post('/{id}/send', [SignatureDashboardController::class, 'sendForSignature'])->name('signatures.send');
-        Route::post('/{id}/fields/{fieldId}/signer', [SignatureDashboardController::class, 'assignSignatureField'])->name('signatures.fields.assign');
-        Route::get('/{id}/copy-link', [SignatureDashboardController::class, 'copyLink'])->name('signatures.copy-link');
-
-        Route::post('/{id}/associate', [SignatureDashboardController::class, 'associate'])->name('signatures.associate');
-        Route::get('/api/client-matters/{clientId}', [SignatureDashboardController::class, 'getClientMatters'])->name('signatures.client-matters');
+        // Static API paths must be registered before /{id}
+        Route::get('/attach-entities', [SignatureDashboardController::class, 'searchAttachEntities'])->name('signatures.attach-entities');
+        Route::get('/api/client-matters/{clientId}', [SignatureDashboardController::class, 'getClientMatters'])->name('signatures.client-matters')->whereNumber('clientId');
         Route::get('/api/document-categories', [SignatureDashboardController::class, 'getDocumentCategories'])->name('signatures.document-categories');
         Route::get('/api/document-checklists', [SignatureDashboardController::class, 'getDocumentChecklists'])->name('signatures.document-checklists');
-        Route::post('/{id}/detach', [SignatureDashboardController::class, 'detach'])->name('signatures.detach');
+
+        Route::get('/{id}', [SignatureDashboardController::class, 'show'])->name('signatures.show')->whereNumber('id');
+        Route::post('/{id}/reminder', [SignatureDashboardController::class, 'sendReminder'])->name('signatures.reminder')->whereNumber('id');
+        Route::post('/{id}/cancel', [SignatureDashboardController::class, 'cancelSignature'])->name('signatures.cancel')->whereNumber('id');
+        Route::post('/{id}/send', [SignatureDashboardController::class, 'sendForSignature'])->name('signatures.send')->whereNumber('id');
+        Route::post('/{id}/fields/{fieldId}/signer', [SignatureDashboardController::class, 'assignSignatureField'])->name('signatures.fields.assign')->whereNumber(['id', 'fieldId']);
+        Route::get('/{id}/copy-link', [SignatureDashboardController::class, 'copyLink'])->name('signatures.copy-link')->whereNumber('id');
+        Route::post('/{id}/associate', [SignatureDashboardController::class, 'associate'])->name('signatures.associate')->whereNumber('id');
+        Route::post('/{id}/detach', [SignatureDashboardController::class, 'detach'])->name('signatures.detach')->whereNumber('id');
     });
 
     /* ---------- Client Matters API ---------- */

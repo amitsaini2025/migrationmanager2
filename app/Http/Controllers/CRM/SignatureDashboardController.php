@@ -88,11 +88,9 @@ class SignatureDashboardController extends Controller
         // Provide errors variable for the layout
         $errors = $request->session()->get('errors') ?? new MessageBag;
 
-        // Admins (clients) + leads for attach modal — IDs must match associateWithCategory (client_id / lead_id).
-        $clients = $this->signatureAttachClients();
-        $leads = $this->signatureAttachLeads();
+        // Attach modal clients/leads load on demand via searchAttachEntities (not all rows).
 
-        return view('crm.signatures.dashboard', compact('documents', 'counts', 'staff', 'errors', 'clients', 'leads'));
+        return view('crm.signatures.dashboard', compact('documents', 'counts', 'staff', 'errors'));
     }
 
     public function create(Request $request)
@@ -101,10 +99,6 @@ class SignatureDashboardController extends Controller
 
         // Check authorization
         $this->authorize('create', Document::class);
-
-        // Get clients and leads for association dropdown
-        $clients = Admin::whereIn('type', ['client', 'lead'])->whereNull('is_deleted')->get(['id', 'first_name', 'last_name', 'email']);
-        $leads = Lead::get(['id', 'first_name', 'last_name', 'email']);
 
         // Get active email accounts for template picker
         $emailAccounts = Email::where('status', true)
@@ -123,7 +117,7 @@ class SignatureDashboardController extends Controller
         // Provide errors variable for the layout
         $errors = request()->session()->get('errors') ?? new MessageBag;
 
-        return view('crm.signatures.create', compact('clients', 'leads', 'emailAccounts', 'staff', 'errors', 'document'));
+        return view('crm.signatures.create', compact('emailAccounts', 'staff', 'errors', 'document'));
     }
 
     public function store(Request $request)
@@ -314,14 +308,12 @@ class SignatureDashboardController extends Controller
             ->orderBy('email')
             ->get();
 
-        // Admins (clients) + leads for attach — same source as signature dashboard.
-        $clients = $this->signatureAttachClients();
-        $leads = $this->signatureAttachLeads();
+        // Attach modal clients/leads load on demand via searchAttachEntities / suggestAssociation.
 
         // Provide errors variable for the layout
         $errors = request()->session()->get('errors') ?? new MessageBag;
 
-        return view('crm.signatures.show', compact('document', 'errors', 'emailAccounts', 'clients', 'leads'));
+        return view('crm.signatures.show', compact('document', 'errors', 'emailAccounts'));
     }
 
     public function sendReminder(Request $request, $id)
@@ -1111,25 +1103,57 @@ class SignatureDashboardController extends Controller
     }
 
     /**
-     * CRM clients (admins.type = client) for attach modal — IDs match documents.client_id / associate().
+     * On-demand client/lead search for attach modals (same ID sources as associate()).
      */
-    private function signatureAttachClients()
+    public function searchAttachEntities(Request $request)
     {
-        return Admin::query()
-            ->where('type', 'client')
-            ->whereNull('is_deleted')
-            ->select('id', 'first_name', 'last_name', 'email')
-            ->orderBy('first_name')
-            ->orderBy('last_name')
-            ->get();
-    }
+        $validated = $request->validate([
+            'type' => 'required|string|in:client,lead',
+            'q' => 'nullable|string|max:100',
+            'email' => 'nullable|email|max:255',
+            'limit' => 'nullable|integer|min:1|max:50',
+        ]);
 
-    private function signatureAttachLeads()
-    {
-        return Lead::query()
-            ->select('id', 'first_name', 'last_name', 'email')
+        $limit = (int) ($validated['limit'] ?? 25);
+        $q = trim((string) ($validated['q'] ?? ''));
+        $email = isset($validated['email']) ? trim((string) $validated['email']) : '';
+
+        if ($email === '' && mb_strlen($q) < 2) {
+            return response()->json([
+                'success' => true,
+                'results' => [],
+            ]);
+        }
+
+        $query = $validated['type'] === 'client'
+            ? Admin::query()
+                ->where('type', 'client')
+                ->whereNull('is_deleted')
+                ->select('id', 'first_name', 'last_name', 'email')
+            : Lead::query()
+                ->select('id', 'first_name', 'last_name', 'email');
+
+        if ($email !== '') {
+            $query->whereRaw('LOWER(email) = ?', [mb_strtolower($email)]);
+        } else {
+            $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $q).'%';
+            $query->where(function ($subQ) use ($like) {
+                $subQ->where('first_name', 'like', $like)
+                    ->orWhere('last_name', 'like', $like)
+                    ->orWhere('email', 'like', $like)
+                    ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", [$like]);
+            });
+        }
+
+        $results = $query
             ->orderBy('first_name')
             ->orderBy('last_name')
+            ->limit($limit)
             ->get();
+
+        return response()->json([
+            'success' => true,
+            'results' => $results,
+        ]);
     }
 }

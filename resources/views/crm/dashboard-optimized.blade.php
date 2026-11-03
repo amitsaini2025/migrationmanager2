@@ -1,12 +1,12 @@
 @extends('layouts.crm_client_detail_dashboard')
 
-@section('title', 'Dashboard')
+@section('title', 'Migration Dashboard')
 
 @section('content')
     <main class="main-content">
         <header class="header">
             <div class="header-title-section">
-                <h1>Dashboard</h1>
+                <h1>Migration Dashboard</h1>
             </div>
             <div class="header-actions">
                 <button type="button" class="action-btn action-btn-secondary" id="refreshDashboard" title="Refresh Dashboard (Alt+R)">

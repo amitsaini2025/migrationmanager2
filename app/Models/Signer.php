@@ -2,34 +2,37 @@
 
 namespace App\Models;
 
-//use Illuminate\Database\Eloquent\Model;
-use Illuminate\Foundation\Auth\User as Authenticatable;
+// use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class Signer extends Authenticatable
 {
     use HasFactory;
+
     protected $fillable = [
-        'document_id', 
-        'email', 
-        'name', 
-        'token', 
-        'status', 
+        'document_id',
+        'email',
+        'name',
+        'token',
+        'status',
         'signed_at',
         'opened_at',
         'cancelled_at',
+        'sent_at',
         'last_reminder_sent_at',
         'reminder_count',
         'email_template',
         'email_subject',
         'email_message',
-        'from_email'
+        'from_email',
     ];
 
     protected $casts = [
         'signed_at' => 'datetime',
         'opened_at' => 'datetime',
         'cancelled_at' => 'datetime',
+        'sent_at' => 'datetime',
         'last_reminder_sent_at' => 'datetime',
     ];
 
@@ -61,6 +64,7 @@ class Signer extends Authenticatable
         } elseif ($this->status === 'pending') {
             return 'Pending';
         }
+
         return 'Unknown';
     }
 
@@ -75,6 +79,7 @@ class Signer extends Authenticatable
         } elseif ($this->status === 'pending') {
             return 'gray';
         }
+
         return 'gray';
     }
 }

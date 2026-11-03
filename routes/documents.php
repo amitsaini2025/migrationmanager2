@@ -226,6 +226,7 @@ Route::middleware('auth:admin')->group(function () {
         Route::post('/{id}/reminder', [SignatureDashboardController::class, 'sendReminder'])->name('signatures.reminder');
         Route::post('/{id}/cancel', [SignatureDashboardController::class, 'cancelSignature'])->name('signatures.cancel');
         Route::post('/{id}/send', [SignatureDashboardController::class, 'sendForSignature'])->name('signatures.send');
+        Route::post('/{id}/fields/{fieldId}/signer', [SignatureDashboardController::class, 'assignSignatureField'])->name('signatures.fields.assign');
         Route::get('/{id}/copy-link', [SignatureDashboardController::class, 'copyLink'])->name('signatures.copy-link');
 
         Route::post('/{id}/associate', [SignatureDashboardController::class, 'associate'])->name('signatures.associate');

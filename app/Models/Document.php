@@ -357,6 +357,15 @@ class Document extends Model
             ];
         }
 
+        if ($signedSigners->count() > 0 && $pendingSigners->count() > 0) {
+            $activeCount = $this->signers()->where('status', '!=', 'cancelled')->count();
+
+            return [
+                'text' => 'Signed '.$signedSigners->count().' of '.$activeCount,
+                'class' => 'sent',
+            ];
+        }
+
         // If document has been sent and signers have opened but not signed
         if ($this->status === 'sent' && $openedSigners->count() > 0) {
             return [

@@ -904,11 +904,24 @@
                                                         }
                                                         $pendingSigner = $fetch->signers()->whereIn('status', ['pending'])->first();
                                                         $signerId = $pendingSigner ? $pendingSigner->id : null;
+                                                        $recipientEmail = '';
+                                                        if (isset($fetchedData) && is_object($fetchedData) && method_exists($fetchedData, 'resolveSigningRecipient')) {
+                                                            $resolvedRecipient = $fetchedData->resolveSigningRecipient();
+                                                            $recipientEmail = strtolower((string) ($resolvedRecipient['email'] ?? ''));
+                                                        }
+                                                        $disableClientSend = false;
+                                                        if ($recipientEmail !== '') {
+                                                            $clientSigners = $fetch->signers()->get()->filter(function ($signer) use ($recipientEmail) {
+                                                                return strtolower((string) $signer->email) === $recipientEmail && $signer->status !== 'cancelled';
+                                                            });
+                                                            $disableClientSend = $clientSigners->isNotEmpty()
+                                                                && $clientSigners->where('status', 'pending')->whereNull('sent_at')->isEmpty();
+                                                        }
                                                     ?>
                                                     <tr class="visa-sig-action-bar" data-matterid="<?= $fetch->client_matter_id ?>" data-doc-id="<?= $fetch->id ?>" data-signer-id="<?= $signerId ?>" style="background: #f8f9fa; border-left: 4px solid #4a90e2;">
                                                         <td colspan="3" style="padding: 10px 16px;">
                                                             <div class="d-flex flex-wrap align-items-center gap-2" style="flex-wrap: wrap;">
-                                                                <button type="button" class="btn btn-sm btn-primary visa-sig-send-btn" data-doc-id="<?= $fetch->id ?>" <?= $docStatus === 'sent' ? 'disabled' : '' ?>>
+                                                                <button type="button" class="btn btn-sm btn-primary visa-sig-send-btn" data-doc-id="<?= $fetch->id ?>" <?= $disableClientSend ? 'disabled' : '' ?>>
                                                                     @icon('fa-paper-plane', ['class' => 'mr-1']) Send
                                                                 </button>
                                                                 <button type="button" class="btn btn-sm btn-outline-secondary visa-sig-revise-btn" data-doc-id="<?= $fetch->id ?>">
@@ -1365,7 +1378,7 @@
                     $.ajax({
                         url: '{{ url("/signatures") }}/' + docId + '/send',
                         method: 'POST',
-                        data: { _token: '{{ csrf_token() }}' },
+                        data: { _token: '{{ csrf_token() }}', only_document_client: 1 },
                         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                     })
                         .done(function(resp) {

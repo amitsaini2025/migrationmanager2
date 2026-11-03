@@ -11,6 +11,7 @@ use App\Models\SignatureActivity;
 use App\Models\Signer;
 use App\Support\DocumentStoredFilename;
 use Illuminate\Mail\Message;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -51,12 +52,8 @@ class SignatureService
                 $createdSigners[] = $signer;
             }
 
-            // Update document status and tracking
-            $document->update([
-                'status' => 'sent',
-            ]);
+            $this->prepareSignatureBoxesForSend($document);
 
-            // Send emails to all signers
             foreach ($createdSigners as $signer) {
                 $this->sendSigningEmail($document, $signer, $options);
             }
@@ -189,6 +186,12 @@ class SignatureService
                 $systemEmailLog->attachTrackingToMailMessage($mail, $log->id);
             });
 
+            if (! in_array($document->status, ['signed', 'void', 'voided', 'archived'], true)) {
+                $document->update(['status' => 'sent']);
+            }
+
+            $signer->update(['sent_at' => now()]);
+
             // Create activity note for successful email delivery
             SignatureActivity::create([
                 'document_id' => $document->id,
@@ -249,6 +252,182 @@ class SignatureService
     }
 
     /**
+     * PDF to show and stamp: the latest signed file once one exists, otherwise the original.
+     */
+    public function signingSourceUrl(Document $document): ?string
+    {
+        $signed = trim((string) ($document->signed_doc_link ?? ''));
+        if ($signed !== '') {
+            return $signed;
+        }
+
+        $original = trim((string) ($document->myfile ?? ''));
+
+        return $original !== '' ? $original : null;
+    }
+
+    /**
+     * Boxes this person may sign. A lone active signer also sees boxes not yet assigned.
+     */
+    public function signatureFieldsForSigner(Document $document, Signer $signer)
+    {
+        $activeSignerCount = $document->signers()->where('status', '!=', 'cancelled')->count();
+
+        return $document->signatureFields()
+            ->where(function ($query) use ($signer, $activeSignerCount) {
+                $query->where('signer_id', $signer->id);
+                if ($activeSignerCount <= 1) {
+                    $query->orWhereNull('signer_id');
+                }
+            })
+            ->get();
+    }
+
+    /**
+     * One signer receives every unassigned box. Two or more signers require every box to be assigned.
+     */
+    public function prepareSignatureBoxesForSend(Document $document): void
+    {
+        $activeSigners = $document->signers()->where('status', '!=', 'cancelled')->get();
+
+        if ($activeSigners->count() <= 1) {
+            $onlySigner = $activeSigners->first();
+            if ($onlySigner !== null) {
+                $document->signatureFields()->whereNull('signer_id')->update(['signer_id' => $onlySigner->id]);
+            }
+
+            return;
+        }
+
+        if ($document->signatureFields()->whereNull('signer_id')->exists()) {
+            throw new \RuntimeException('Assign every signature box to a signer before sending to more than one person.');
+        }
+    }
+
+    public function signerMatchesDocumentClient(Document $document, Signer $signer): bool
+    {
+        $client = $document->client;
+        if ($client === null) {
+            return false;
+        }
+
+        $emails = [];
+        $recipient = $client->resolveSigningRecipient();
+        if (is_array($recipient) && ($recipient['email'] ?? '') !== '') {
+            $emails[] = strtolower((string) $recipient['email']);
+        }
+        if (! empty($client->email)) {
+            $emails[] = strtolower((string) $client->email);
+        }
+
+        return in_array(strtolower((string) $signer->email), $emails, true);
+    }
+
+    /**
+     * Email pending signers who have not been sent a link yet.
+     *
+     * @return array{sent: int, errors: list<string>, emailed: Collection<int, Signer>}
+     */
+    public function sendPendingSigningEmails(Document $document, ?int $onlySignerId = null, bool $onlyDocumentClient = false): array
+    {
+        $this->prepareSignatureBoxesForSend($document);
+
+        $signers = $document->signers()->where('status', 'pending')->whereNull('sent_at')->get();
+
+        if ($onlySignerId !== null) {
+            $signers = $signers->where('id', $onlySignerId)->values();
+            if ($signers->isEmpty()) {
+                $requested = $document->signers()->whereKey($onlySignerId)->first();
+                if ($requested === null) {
+                    return ['sent' => 0, 'errors' => ['Signer not found for this document.'], 'emailed' => collect()];
+                }
+                if ($requested->sent_at !== null) {
+                    return ['sent' => 0, 'errors' => ['This signer has already been emailed.'], 'emailed' => collect()];
+                }
+
+                return ['sent' => 0, 'errors' => ['This signer is not pending.'], 'emailed' => collect()];
+            }
+        }
+
+        if ($onlyDocumentClient) {
+            $signers = $signers->filter(fn (Signer $signer) => $this->signerMatchesDocumentClient($document, $signer))->values();
+        }
+
+        $sent = 0;
+        $errors = [];
+        $emailed = collect();
+
+        foreach ($signers as $signer) {
+            try {
+                $this->sendSigningEmail($document, $signer, [
+                    'template' => $signer->email_template ?? 'emails.signature.send',
+                    'subject' => $signer->email_subject ?? 'Document Signature Request from Bansal Migration',
+                    'message' => $signer->email_message ?? 'Please review and sign the attached document.',
+                    'from_email' => $signer->from_email,
+                ]);
+                $sent++;
+                $emailed->push($signer->fresh());
+            } catch (\Exception $e) {
+                $errors[] = "Failed to send email to {$signer->email}: ".$e->getMessage();
+            }
+        }
+
+        return ['sent' => $sent, 'errors' => $errors, 'emailed' => $emailed];
+    }
+
+    /**
+     * Mark one signer as submitted and decide whether the document is finished.
+     *
+     * @return 'sent'|'signed'|'cleared'
+     */
+    public function recordSignerSigned(Signer $signer): string
+    {
+        if ($signer->status !== 'signed') {
+            $signer->update([
+                'status' => 'signed',
+                'signed_at' => $signer->signed_at ?? now(),
+            ]);
+        }
+
+        return $this->syncCompletionStatus($signer->document);
+    }
+
+    /**
+     * Pending signers keep the document open. It becomes signed only when every remaining signer has submitted.
+     * No pending and none signed clears the signature link, matching cancel of the last open request.
+     *
+     * @return 'sent'|'signed'|'cleared'
+     */
+    public function syncCompletionStatus(Document $document): string
+    {
+        $pending = $document->signers()->where('status', 'pending')->count();
+        $signed = $document->signers()->where('status', 'signed')->count();
+
+        if ($pending > 0) {
+            if ($signed > 0 && $document->status !== 'sent') {
+                $document->update(['status' => 'sent']);
+            }
+
+            return 'sent';
+        }
+
+        if ($signed > 0) {
+            if ($document->status !== 'signed') {
+                $document->update(['status' => 'signed']);
+            }
+
+            return 'signed';
+        }
+
+        $document->update([
+            'status' => null,
+            'signature_doc_link' => null,
+        ]);
+
+        return 'cleared';
+    }
+
+    /**
      * Send reminder to a signer using SendGrid mailer.
      */
     public function remind(Signer $signer, array $options = []): bool
@@ -260,6 +439,10 @@ class SignatureService
             // Check if signature is cancelled - cannot send reminders to cancelled signers
             if ($signer->status === 'cancelled') {
                 throw new \Exception('Cannot send reminder. Signature has been cancelled.');
+            }
+
+            if ($signer->sent_at === null) {
+                throw new \Exception('Cannot send reminder until the signing email has been sent.');
             }
 
             // Check if already signed - no need to send reminders

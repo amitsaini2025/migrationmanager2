@@ -15,9 +15,9 @@ use App\Models\SignatureActivity;
 use App\Models\VisaDocumentType;
 use App\Services\SignatureAnalyticsService;
 use App\Services\SignatureService;
+use App\Services\SignedDocumentFinalizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\MessageBag;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -412,19 +412,18 @@ class SignatureDashboardController extends Controller
         }
 
         try {
-            // Update signer status to cancelled
+            $wasSigned = $document->status === 'signed';
             $signer->update([
                 'status' => 'cancelled',
                 'cancelled_at' => now(),
             ]);
 
-            // If no more pending signers, reset document status (so action bar hides for visa docs)
-            $pendingCount = $document->signers()->where('status', 'pending')->count();
-            if ($pendingCount === 0) {
-                $document->update([
-                    'status' => null,
-                    'signature_doc_link' => null,
-                ]);
+            $completion = $this->signatureService->syncCompletionStatus($document->fresh());
+            if ($completion === 'signed' && ! $wasSigned) {
+                $finished = $document->fresh();
+                if (trim((string) ($finished->signed_doc_link ?? '')) !== '') {
+                    app(SignedDocumentFinalizer::class)->finalize($finished, (string) $finished->signed_doc_link);
+                }
             }
 
             if ($document->client_id) {
@@ -463,6 +462,30 @@ class SignatureDashboardController extends Controller
 
             return back()->with('error', 'An error occurred while cancelling the signature. Please try again.');
         }
+    }
+
+    public function assignSignatureField(Request $request, $id, $fieldId)
+    {
+        $document = Document::findOrFail($id);
+        $this->authorize('sendReminder', $document);
+
+        $request->validate([
+            'signer_id' => 'required|integer',
+        ]);
+
+        $field = $document->signatureFields()->whereKey($fieldId)->firstOrFail();
+        $signer = $document->signers()
+            ->whereKey((int) $request->input('signer_id'))
+            ->where('status', '!=', 'cancelled')
+            ->first();
+
+        if ($signer === null) {
+            return back()->with('error', 'Choose a signer on this document.');
+        }
+
+        $field->update(['signer_id' => $signer->id]);
+
+        return back()->with('success', 'Signature box assigned to '.$signer->name.'.');
     }
 
     public function sendForSignature(Request $request, $id)
@@ -567,91 +590,30 @@ class SignatureDashboardController extends Controller
             return back()->with('error', $message);
         }
 
-        $emailsSent = 0;
-        $errors = [];
+        $request->validate([
+            'signer_id' => 'nullable|integer',
+            'only_document_client' => 'nullable|boolean',
+        ]);
 
-        foreach ($pendingSigners as $signer) {
-            try {
-                // Generate signing URL
-                $signingUrl = url("/sign/{$document->id}/{$signer->token}");
-
-                // Use the signer's stored email template
-                $template = $signer->email_template ?? 'emails.signature.send';
-
-                // Use the signer's stored email settings, or fallback to defaults
-                $subject = $signer->email_subject ?? 'Document Signature Request from Bansal Migration';
-                $message = $signer->email_message ?? 'Please review and sign the attached document.';
-
-                // Prepare template data
-                $templateData = [
-                    'signerName' => $signer->name,
-                    'documentTitle' => $document->display_title,
-                    'signingUrl' => $signingUrl,
-                    'emailMessage' => $message,
-                    'documentType' => 'document',
-                    'dueDate' => null,
-                ];
-
-                $fromAddress = $signer->from_email ?: config('mail.noreply.address');
-                $fromName = config('mail.from.name', 'Bansal Migration');
-                $emailSignature = '';
-                if (! empty($fromAddress)) {
-                    $emailAccount = Email::where('status', true)->where('email', $fromAddress)->first();
-                    if ($emailAccount) {
-                        $fromName = $emailAccount->display_name ?: $fromName;
-                        $emailSignature = $emailAccount->email_signature ?: '';
-                    }
-                }
-                $templateData['emailSignature'] = $emailSignature;
-
-                try {
-                    Mail::mailer()->send($template, $templateData, function ($mail) use ($signer, $subject, $fromAddress, $fromName) {
-                        $mail->to($signer->email, $signer->name)
-                            ->subject($subject)
-                            ->from($fromAddress, $fromName);
-                    });
-
-                    // Create activity note for successful email
-                    SignatureActivity::create([
-                        'document_id' => $document->id,
-                        'created_by' => Auth::guard('admin')->id() ?? 1,
-                        'action_type' => 'email_sent',
-                        'note' => "Email sent successfully to {$signer->name} ({$signer->email})",
-                        'metadata' => [
-                            'signer_email' => $signer->email,
-                            'signer_name' => $signer->name,
-                            'subject' => $subject,
-                            'status' => 'sent_via_sendgrid',
-                        ],
-                    ]);
-                } catch (\Exception $emailException) {
-                    // Create activity note for failed email
-                    SignatureActivity::create([
-                        'document_id' => $document->id,
-                        'created_by' => Auth::guard('admin')->id() ?? 1,
-                        'action_type' => 'email_failed',
-                        'note' => "Failed to send email to {$signer->name} ({$signer->email}): {$emailException->getMessage()}",
-                        'metadata' => [
-                            'signer_email' => $signer->email,
-                            'signer_name' => $signer->name,
-                            'error' => $emailException->getMessage(),
-                        ],
-                    ]);
-                    throw $emailException;
-                }
-
-                $emailsSent++;
-
-            } catch (\Exception $e) {
-                $errors[] = "Failed to send email to {$signer->email}: ".$e->getMessage();
+        try {
+            $result = $this->signatureService->sendPendingSigningEmails(
+                $document->fresh(),
+                $request->filled('signer_id') ? (int) $request->input('signer_id') : null,
+                $request->boolean('only_document_client'),
+            );
+        } catch (\RuntimeException $e) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
             }
+
+            return back()->with('error', $e->getMessage());
         }
 
-        // Update document status
-        $document->update(['status' => 'sent']);
+        $emailsSent = $result['sent'];
+        $errors = $result['errors'];
 
         if ($emailsSent > 0 && $document->client_id) {
-            $recipients = $pendingSigners->map(fn ($s) => $s->name.' ('.$s->email.')')->implode(', ');
+            $recipients = $result['emailed']->map(fn ($s) => $s->name.' ('.$s->email.')')->implode(', ');
             ActivitiesLog::create([
                 'client_id' => $document->client_id,
                 'created_by' => Auth::guard('admin')->id(),
@@ -675,7 +637,9 @@ class SignatureDashboardController extends Controller
             return back()->with('success', $message);
         }
 
-        $message = 'Failed to send any emails. Errors: '.implode(', ', $errors);
+        $message = $errors === []
+            ? 'No signers are waiting for a signing email.'
+            : 'Failed to send any emails. Errors: '.implode(', ', $errors);
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => false, 'message' => $message], 422);
         }

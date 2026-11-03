@@ -2,34 +2,34 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use App\Models\Document;
-use App\Models\Signer;
 use App\Models\Admin;
+use App\Models\Document;
 use App\Models\Lead;
-use App\Models\Email;
-use App\Services\SignatureService;
+use App\Models\Signer;
 use App\Services\EmailConfigService;
+use App\Services\SignatureService;
 use App\Services\SystemEmailLogService;
+use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
 
 class SignatureServiceTest extends TestCase
 {
-
     protected SignatureService $signatureService;
+
     protected EmailConfigService $emailConfigService;
 
     protected function setUp(): void
     {
         parent::setUp();
-        
-        $this->emailConfigService = new EmailConfigService();
+
+        $this->emailConfigService = new EmailConfigService;
         $this->signatureService = new SignatureService(
             $this->emailConfigService,
             app(SystemEmailLogService::class)
         );
-        
+
         Storage::fake('s3');
         Mail::fake();
     }
@@ -40,17 +40,17 @@ class SignatureServiceTest extends TestCase
         // Create a test document
         $document = Document::factory()->create([
             'status' => 'draft',
-            'title' => 'Test Agreement'
+            'title' => 'Test Agreement',
         ]);
 
         $signers = [
             ['email' => 'john@example.com', 'name' => 'John Doe'],
-            ['email' => 'jane@example.com', 'name' => 'Jane Smith']
+            ['email' => 'jane@example.com', 'name' => 'Jane Smith'],
         ];
 
         $options = [
             'subject' => 'Please sign this document',
-            'message' => 'Test message'
+            'message' => 'Test message',
         ];
 
         // Send document for signature
@@ -66,7 +66,7 @@ class SignatureServiceTest extends TestCase
 
         // Assert signers created
         $this->assertCount(2, $document->signers);
-        
+
         $firstSigner = $document->signers->first();
         $this->assertEquals('john@example.com', $firstSigner->email);
         $this->assertEquals('John Doe', $firstSigner->name);
@@ -75,7 +75,7 @@ class SignatureServiceTest extends TestCase
         $this->assertEquals(64, strlen($firstSigner->token));
 
         // Assert emails were queued
-        Mail::assertSent(\Illuminate\Mail\Mailable::class, 2);
+        Mail::assertSent(Mailable::class, 2);
     }
 
     /** @test */
@@ -85,14 +85,15 @@ class SignatureServiceTest extends TestCase
         $signer = Signer::factory()->create([
             'document_id' => $document->id,
             'status' => 'pending',
+            'sent_at' => now()->subDay(),
             'reminder_count' => 0,
-            'last_reminder_sent_at' => null
+            'last_reminder_sent_at' => null,
         ]);
 
         $result = $this->signatureService->remind($signer);
 
         $this->assertTrue($result);
-        
+
         $signer->refresh();
         $this->assertEquals(1, $signer->reminder_count);
         $this->assertNotNull($signer->last_reminder_sent_at);
@@ -105,8 +106,9 @@ class SignatureServiceTest extends TestCase
         $signer = Signer::factory()->create([
             'document_id' => $document->id,
             'status' => 'pending',
+            'sent_at' => now()->subDays(2),
             'reminder_count' => 3,
-            'last_reminder_sent_at' => now()
+            'last_reminder_sent_at' => now(),
         ]);
 
         $result = $this->signatureService->remind($signer);
@@ -122,8 +124,9 @@ class SignatureServiceTest extends TestCase
         $signer = Signer::factory()->create([
             'document_id' => $document->id,
             'status' => 'pending',
+            'sent_at' => now()->subDays(2),
             'reminder_count' => 1,
-            'last_reminder_sent_at' => now()->subHours(12) // Only 12 hours ago
+            'last_reminder_sent_at' => now()->subHours(12), // Only 12 hours ago
         ]);
 
         $result = $this->signatureService->remind($signer);
@@ -148,13 +151,13 @@ class SignatureServiceTest extends TestCase
     {
         $document = Document::factory()->create();
         $client = Admin::factory()->create(['role' => 2]);
-        
+
         $this->actingAs($client, 'admin');
 
         $result = $this->signatureService->associate($document, 'client', $client->id, 'Test note');
 
         $this->assertTrue($result);
-        
+
         $document->refresh();
         $this->assertEquals($client->id, $document->client_id);
         $this->assertNull($document->lead_id);
@@ -165,14 +168,14 @@ class SignatureServiceTest extends TestCase
     {
         $document = Document::factory()->create();
         $lead = Lead::factory()->create();
-        
+
         $admin = Admin::factory()->create(['role' => 1]);
         $this->actingAs($admin, 'admin');
 
         $result = $this->signatureService->associate($document, 'lead', $lead->id, 'Test note');
 
         $this->assertTrue($result);
-        
+
         $document->refresh();
         $this->assertEquals($lead->id, $document->lead_id);
         $this->assertNull($document->client_id);
@@ -184,7 +187,7 @@ class SignatureServiceTest extends TestCase
         $client = Admin::factory()->create(['role' => 2]);
         $document = Document::factory()->create([
             'client_id' => $client->id,
-            'lead_id' => null
+            'lead_id' => null,
         ]);
 
         $admin = Admin::factory()->create(['role' => 1]);
@@ -193,7 +196,7 @@ class SignatureServiceTest extends TestCase
         $result = $this->signatureService->detach($document, 'Test reason');
 
         $this->assertTrue($result);
-        
+
         $document->refresh();
         $this->assertNull($document->client_id);
         $this->assertNull($document->lead_id);
@@ -206,7 +209,7 @@ class SignatureServiceTest extends TestCase
             'role' => 2,
             'email' => 'client@example.com',
             'first_name' => 'John',
-            'last_name' => 'Client'
+            'last_name' => 'Client',
         ]);
 
         $suggestion = $this->signatureService->suggestAssociation('client@example.com');
@@ -224,7 +227,7 @@ class SignatureServiceTest extends TestCase
         $lead = Lead::factory()->create([
             'email' => 'lead@example.com',
             'first_name' => 'Jane',
-            'last_name' => 'Lead'
+            'last_name' => 'Lead',
         ]);
 
         $suggestion = $this->signatureService->suggestAssociation('lead@example.com');
@@ -299,4 +302,3 @@ class SignatureServiceTest extends TestCase
         $this->assertEquals(2, $count);
     }
 }
-

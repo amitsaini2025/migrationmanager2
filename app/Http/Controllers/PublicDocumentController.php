@@ -9,12 +9,10 @@ use App\Models\ClientMatter;
 use App\Models\Document;
 use App\Models\Notification;
 use App\Models\Signer;
-use App\Models\WorkflowStage;
 use App\Services\PythonService;
+use App\Services\SignatureService;
+use App\Services\SignedDocumentFinalizer;
 use App\Services\SignedDocumentS3PathResolver;
-use App\Support\ClientDetailDocumentsTab;
-use App\Support\WorkflowStageNavigation;
-use App\Support\WorkflowV2Display;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,10 +34,10 @@ class PublicDocumentController extends Controller
     /**
      * No authentication required - using token-based validation
      */
-    public function __construct()
-    {
-        // Public controller - no authentication middleware
-    }
+    public function __construct(
+        private SignatureService $signatures,
+        private SignedDocumentFinalizer $signedDocumentFinalizer,
+    ) {}
 
     /**
      * Show the public signing form for a document using a tokenized link.
@@ -99,10 +97,10 @@ class PublicDocumentController extends Controller
                 $signer->update(['opened_at' => now()]);
             }
 
-            $signatureFields = $document->signatureFields()->get();
+            $signatureFields = $this->signatures->signatureFieldsForSigner($document, $signer);
 
-            // Get PDF path - handle both S3 and local files
-            $url = $document->myfile;
+            // Get PDF path - handle both S3 and local files. Later signers see the latest stamped file.
+            $url = $this->signatures->signingSourceUrl($document);
             $pdfPath = null;
             $isLocalFile = false;
 
@@ -125,7 +123,7 @@ class PublicDocumentController extends Controller
                 $tmpPdfPath = storage_path('app/public/'.$url);
                 $isLocalFile = true;
                 Log::info('Using local file for document signing page', ['path' => $tmpPdfPath]);
-            } else {
+            } elseif (trim((string) ($document->signed_doc_link ?? '')) === '') {
                 // Try to build S3 key from DB fields as fallback
                 if (! empty($document->myfile_key) && ! empty($document->doc_type) && ! empty($document->client_id)) {
                     $admin = DB::table('admins')->select('client_id')->where('id', '=', $document->client_id)->first();
@@ -254,8 +252,18 @@ class PublicDocumentController extends Controller
                 $isLocalFile = false;
 
                 try {
-                    // Get PDF file using multiple fallback methods (like CRM)
-                    $url = $document->myfile;
+                    DB::beginTransaction();
+                    $lockedDocument = Document::query()->whereKey($document->id)->lockForUpdate()->first();
+                    if ($lockedDocument !== null) {
+                        $document->setRawAttributes($lockedDocument->getAttributes(), true);
+                    }
+
+                    $preferSignedFile = trim((string) ($document->signed_doc_link ?? '')) !== '';
+                    $url = $this->signatures->signingSourceUrl($document);
+                    $allowedFieldIds = $this->signatures->signatureFieldsForSigner($document, $signer)
+                        ->pluck('id')
+                        ->map(fn ($fieldId) => (int) $fieldId)
+                        ->all();
                     $pdfPath = null;
 
                     // Fallback 1: Check if URL is a full S3 URL
@@ -286,6 +294,16 @@ class PublicDocumentController extends Controller
                         $tmpPdfPath = storage_path('app/public/'.$url);
                         $isLocalFile = true;
                         Log::info('Using local file for document submission', ['path' => $tmpPdfPath]);
+                    }
+
+                    if ($preferSignedFile && ! $tmpPdfPath) {
+                        DB::rollBack();
+                        Log::error('Latest signed PDF not found for document submission', [
+                            'document_id' => $document->id,
+                            'signed_doc_link' => $document->signed_doc_link,
+                        ]);
+
+                        return redirect()->back()->with('error', 'The latest signed document could not be opened. Please contact support.');
                     }
 
                     // Fallback 3: Try media library (legacy support)
@@ -337,7 +355,18 @@ class PublicDocumentController extends Controller
                     }
 
                     // Final check: If no file found, return error
+                    if ($preferSignedFile && (! $tmpPdfPath || ! file_exists($tmpPdfPath) || filesize($tmpPdfPath) === 0)) {
+                        DB::rollBack();
+                        Log::error('Latest signed PDF not found for document submission', [
+                            'document_id' => $document->id,
+                            'signed_doc_link' => $document->signed_doc_link,
+                        ]);
+
+                        return redirect()->back()->with('error', 'The latest signed document could not be opened. Please contact support.');
+                    }
+
                     if (! $tmpPdfPath || ! file_exists($tmpPdfPath) || filesize($tmpPdfPath) === 0) {
+                        DB::rollBack();
                         Log::error('PDF file not found for document submission', [
                             'document_id' => $document->id,
                             'url' => $url,
@@ -374,7 +403,7 @@ class PublicDocumentController extends Controller
 
                         foreach ($signatures as $fieldId => $signatureData) {
                             $sanitizedFieldId = (int) $fieldId;
-                            if ($sanitizedFieldId <= 0) {
+                            if ($sanitizedFieldId <= 0 || ! in_array($sanitizedFieldId, $allowedFieldIds, true)) {
                                 continue;
                             }
 
@@ -434,7 +463,7 @@ class PublicDocumentController extends Controller
                     }
 
                     if (! $signaturesSaved) {
-                        // ✅ FIX #4: Return to signing page with error
+                        DB::rollBack();
                         Log::error('No valid signatures saved', [
                             'document_id' => $document->id,
                             'signer_id' => $signer->id,
@@ -513,12 +542,15 @@ class PublicDocumentController extends Controller
                                 'file_size' => file_exists($outputTmpPath) ? filesize($outputTmpPath) : 0,
                             ]);
 
+                            DB::rollBack();
+
                             return redirect()->back()
                                 ->with('error', 'Signature processing service is currently unavailable. Please try again later or contact support if the issue persists.')
                                 ->withInput();
                         }
                     } else {
                         Log::error('Python PDF service not available');
+                        DB::rollBack();
 
                         return redirect()->back()
                             ->with('error', 'Signature processing service is currently unavailable. Please try again later or contact support if the issue persists.')
@@ -553,12 +585,11 @@ class PublicDocumentController extends Controller
                         Log::info('Signed PDF saved locally', ['path' => $signedPdfPath]);
                     }
 
-                    // Update statuses
-                    $signer->update(['status' => 'signed', 'signed_at' => now()]);
-                    $document->status = 'signed';
                     $document->signature_doc_link = json_encode($signatureLinks);
                     $document->signed_doc_link = $signedPdfUrl;
                     $document->save();
+                    $completion = $this->signatures->recordSignerSigned($signer);
+                    DB::commit();
 
                     Log::info('Public document signed successfully', [
                         'document_id' => $document->id,
@@ -579,211 +610,20 @@ class PublicDocumentController extends Controller
                         ]);
                     }
 
-                    // For visa/nomination documents: create {checklist}_signed row in same category (if not already exists).
-                    // Refresh so folder_name / checklist / matter match DB after save (avoid stale model skipping this block).
-                    $document->refresh();
-
-                    $docTypeNorm = strtolower(trim((string) ($document->doc_type ?? '')));
-                    $folderGuard = trim((string) ($document->folder_name ?? ''));
-                    $baseChecklist = trim((string) str_replace("\0", '', (string) ($document->checklist ?? '')));
-                    if ($baseChecklist === '') {
-                        $baseChecklist = 'Document';
-                    }
-                    $checklistAlreadySignedSuffix = str_ends_with($baseChecklist, '_signed');
-                    $isVisaOrNominationDoc = in_array($docTypeNorm, ['visa', 'nomination'], true);
-
-                    $shouldCreateSignedCopy = $isVisaOrNominationDoc
-                        && (bool) $document->client_id
-                        && $folderGuard !== ''
-                        && ! $checklistAlreadySignedSuffix;
-
-                    if ($isVisaOrNominationDoc && ! $shouldCreateSignedCopy) {
-                        Log::info('Skipping _signed document row', [
-                            'document_id' => $document->id,
-                            'doc_type' => $document->doc_type,
-                            'has_client_id' => (bool) $document->client_id,
-                            'folder_name_raw' => $document->folder_name,
-                            'folder_empty_after_trim' => $folderGuard === '',
-                            'checklist' => $document->checklist,
-                            'checklist_ends_with__signed' => $checklistAlreadySignedSuffix,
-                        ]);
+                    if ($completion === 'signed') {
+                        $this->signedDocumentFinalizer->finalize($document->fresh(), (string) $signedPdfUrl);
                     }
 
-                    if ($shouldCreateSignedCopy) {
-                        $signedChecklist = $baseChecklist.'_signed';
-                        $exists = Document::where('client_id', '=', $document->client_id, 'and')
-                            ->where('folder_name', '=', $document->folder_name, 'and')
-                            ->where('client_matter_id', '=', $document->client_matter_id, 'and')
-                            ->where('checklist', '=', $signedChecklist, 'and')
-                            ->whereNull('not_used_doc')
-                            ->exists();
-
-                        $companionReady = $exists;
-
-                        if ($exists) {
-                            Log::info('Signed companion row already present (active)', [
-                                'document_id' => $document->id,
-                                'doc_type' => $docTypeNorm,
-                                'signed_checklist' => $signedChecklist,
-                                'folder_name' => $document->folder_name,
-                                'client_matter_id' => $document->client_matter_id,
-                            ]);
-                        }
-
-                        if (! $exists) {
-                            try {
-                                $parentKey = (string) ($document->myfile_key ?? '');
-                                $parentStem = preg_replace('/\.(pdf|PDF)$/', '', $document->file_name ?? 'document');
-                                if ($parentKey !== '' && ! preg_match('/^\d+_signed\.pdf$/i', $parentKey)) {
-                                    $signedKey = pathinfo($parentKey, PATHINFO_FILENAME).'_signed.pdf';
-                                } else {
-                                    $signedKey = $parentStem.'_signed.pdf';
-                                }
-                                $signedKey = preg_replace('/[^a-zA-Z0-9_\-\.\s\$]+/', '_', $signedKey);
-                                $signedKey = trim($signedKey);
-                                if ($signedKey === '' || strcasecmp($signedKey, '_signed.pdf') === 0 || strlen($signedKey) > 200) {
-                                    $signedKey = mb_substr(preg_replace('/[^a-zA-Z0-9_\-\.\s\$]+/', '_', $parentStem.'_signed.pdf'), 0, 200);
-                                }
-                                if ($signedKey === '' || strcasecmp($signedKey, '_signed.pdf') === 0) {
-                                    $signedKey = $document->id.'_signed.pdf';
-                                }
-                                $signedDoc = new Document;
-                                $signedDoc->checklist = $signedChecklist;
-                                $signedDoc->file_name = preg_replace('/\.(pdf|PDF)$/', '', $document->file_name ?? 'document').'_signed';
-                                $signedDoc->filetype = 'pdf';
-                                $signedDoc->myfile = $signedPdfUrl;
-                                $signedDoc->myfile_key = $signedKey;
-                                $signedDoc->client_id = $document->client_id;
-                                $signedDoc->client_matter_id = $document->client_matter_id;
-                                $signedDoc->folder_name = (string) $document->folder_name;
-                                // Keep companion in the same tab as the parent (visa vs nomination).
-                                $signedDoc->doc_type = $docTypeNorm;
-                                $signedDoc->type = 'client';
-                                $signedDoc->user_id = $document->user_id;
-                                $signedDoc->status = 'signed';
-                                $signedDoc->signed_doc_link = $signedPdfUrl;
-                                $signedDoc->save();
-                                $companionReady = true;
-                                Log::info('Created _signed companion row', [
-                                    'original_id' => $document->id,
-                                    'signed_id' => $signedDoc->id,
-                                    'doc_type' => $docTypeNorm,
-                                ]);
-                            } catch (\Exception $e) {
-                                Log::error('Failed to create _signed companion row', [
-                                    'document_id' => $document->id,
-                                    'doc_type' => $docTypeNorm,
-                                    'signed_checklist' => $signedChecklist ?? null,
-                                    'error' => $e->getMessage(),
-                                    'trace' => $e->getTraceAsString(),
-                                ]);
-                            }
-                        }
-
-                        // Hide unsigned parent from Forms/Visa once the signed companion is active.
-                        // Does not delete the file; parent moves to Not Used (same as manual action).
-                        if ($companionReady && ClientDetailDocumentsTab::archiveUnsignedParentAfterSignedCompanion($document)) {
-                            Log::info('Archived unsigned parent after signed companion', [
-                                'document_id' => $document->id,
-                                'doc_type' => $docTypeNorm,
-                                'signed_checklist' => $signedChecklist,
-                            ]);
-                        }
-                    }
-
-                    // Advance workflow to next stage when document is tied to a checklist/client matter
-                    if ($document->client_matter_id && $document->client_id) {
-                        try {
-                            ClientMatter::where('id', '=', $document->client_matter_id, 'and')->update(['updated_at_type' => 'signed', 'updated_at' => now()]);
-
-                            // Agreement-specific activity log (Cost Agreement)
-                            if ($document->doc_type === 'agreement') {
-                                $clientMatterInfo = ClientMatter::select(['client_unique_matter_no', 'sel_person_responsible'])
-                                    ->where('id', '=', $document->client_matter_id)->first();
-                                if ($clientMatterInfo && $clientMatterInfo->sel_person_responsible) {
-                                    $docSignerInfo = Admin::select(['first_name', 'last_name', 'client_id'])
-                                        ->where('id', '=', $document->client_id)->first();
-                                    $docSignerFullName = $docSignerInfo ? trim(($docSignerInfo->first_name ?? '').' '.($docSignerInfo->last_name ?? '')) : 'NA';
-                                    $docSignerClientId = $docSignerInfo?->client_id ?? 'NA';
-                                    $clientMatterReference = $docSignerClientId.'-'.($clientMatterInfo->client_unique_matter_no ?? '');
-                                    $signedDocName = $document->getFilenameWithExtensionForDisplay();
-                                    $subject = $docSignerFullName.' signed cost agreement for matter ref no - '.$clientMatterReference.' at document '.$signedDocName;
-                                    ActivitiesLog::create([
-                                        'client_id' => $document->client_id,
-                                        'created_by' => $clientMatterInfo->sel_person_responsible,
-                                        'description' => '',
-                                        'subject' => $subject,
-                                        'activity_type' => 'document',
-                                        'task_status' => 0,
-                                        'pin' => 0,
-                                    ]);
-                                }
-                            }
-
-                            // Advance workflow stage to next in sequence (when next stage doesn't require manual input)
-                            $clientMatter = ClientMatter::find($document->client_matter_id, ['*']);
-                            if ($clientMatter && $clientMatter->workflow_stage_id) {
-                                // Do not auto-advance discontinued matters (same policy as staff stage transitions)
-                                if ((int) $clientMatter->matter_status === 0) {
-                                    Log::info('Skipped workflow advance on sign: matter discontinued', [
-                                        'document_id' => $document->id,
-                                        'client_matter_id' => $document->client_matter_id,
-                                    ]);
-                                } else {
-                                    $currentStage = WorkflowStage::find($clientMatter->workflow_stage_id, ['*']);
-                                    if ($currentStage) {
-                                        // Match staff next-stage: block advance while required checklist items remain
-                                        $outstandingRequired = WorkflowV2Display::outstandingRequiredForCurrentStage($clientMatter);
-                                        if ($outstandingRequired > 0) {
-                                            Log::info('Skipped workflow advance on sign: outstanding required checklist items', [
-                                                'document_id' => $document->id,
-                                                'client_matter_id' => $document->client_matter_id,
-                                                'outstanding_required' => $outstandingRequired,
-                                                'current_stage' => $currentStage->name,
-                                            ]);
-                                        } else {
-                                            $stages = WorkflowStageNavigation::orderedStages(
-                                                $clientMatter->workflow_id ? (int) $clientMatter->workflow_id : null,
-                                                $currentStage->workflow_id ? (int) $currentStage->workflow_id : null
-                                            );
-                                            $nextStage = WorkflowStageNavigation::nextAfter(
-                                                $stages,
-                                                (int) $clientMatter->workflow_stage_id
-                                            );
-
-                                            // Only auto-advance if next stage is NOT "Decision Received" (requires outcome/note)
-                                            if ($nextStage && strtolower(trim($nextStage->name ?? '')) !== 'decision received') {
-                                                $clientMatter->workflow_stage_id = $nextStage->id;
-                                                $clientMatter->save();
-
-                                                // applications table removed - workflow tracked via client_matters
-
-                                                Log::info('Workflow advanced on document sign', [
-                                                    'document_id' => $document->id,
-                                                    'client_matter_id' => $document->client_matter_id,
-                                                    'from_stage' => $currentStage->name,
-                                                    'to_stage' => $nextStage->name,
-                                                ]);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        } catch (\Exception $e) {
-                            Log::warning('Workflow advancement on sign failed', [
-                                'document_id' => $document->id,
-                                'client_matter_id' => $document->client_matter_id ?? null,
-                                'error' => $e->getMessage(),
-                            ]);
-                        }
-                    }
+                    $successMessage = $completion === 'signed'
+                        ? 'Document signed successfully! You can now download your signed document.'
+                        : 'Your signature has been saved. The document stays open until every signer has submitted.';
 
                     // Create notifications and activity logs
                     $this->createSignatureNotifications($document, $signer);
 
                     // Redirect to thank you page with success message
                     return redirect()->route('public.documents.thankyou', ['id' => $document->id])
-                        ->with('success', 'Document signed successfully! You can now download your signed document.');
+                        ->with('success', $successMessage);
                 } finally {
                     TempFileHelper::deleteMany([$tmpPdfPath, $outputTmpPath]);
                 }
@@ -801,6 +641,10 @@ class PublicDocumentController extends Controller
             return redirect()->back()
                 ->with('error', 'An unexpected error occurred while processing your signature. Please try again or contact support if the issue persists.');
         } catch (\Exception $e) {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+
             Log::error('Error in public submitSignatures', [
                 'error' => $e->getMessage(),
                 'document_id' => $id,
@@ -846,6 +690,9 @@ class PublicDocumentController extends Controller
             $document = Document::findOrFail($id);
 
             $url = $document->myfile;
+            if (! $isAdmin) {
+                $url = $this->signatures->signingSourceUrl($document) ?? $url;
+            }
             $pdfPath = null;
             $isLocalFile = false;
 
@@ -877,6 +724,8 @@ class PublicDocumentController extends Controller
                 $tmpPdfPath = storage_path('app/public/'.$url);
                 $isLocalFile = true;
                 Log::info('Using local file for document page', ['path' => $tmpPdfPath]);
+            } elseif (! $isAdmin && trim((string) ($document->signed_doc_link ?? '')) !== '') {
+                abort(404, 'Document file not found');
             } else {
                 // Try to build S3 key from DB fields as fallback
                 if (! empty($document->myfile_key) && ! empty($document->doc_type) && ! empty($document->client_id)) {

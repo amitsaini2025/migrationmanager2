@@ -972,6 +972,15 @@
 
                         @if($signer->status === 'pending')
                         <div class="signer-actions">
+                            @if($signer->sent_at === null)
+                            <form action="{{ route('signatures.send', $document->id) }}" method="POST" style="display: inline;">
+                                @csrf
+                                <input type="hidden" name="signer_id" value="{{ $signer->id }}">
+                                <button type="submit" class="btn btn-success">
+                                    @icon('fa-paper-plane') Send
+                                </button>
+                            </form>
+                            @else
                             <form action="{{ route('signatures.reminder', $document->id) }}" method="POST" style="display: inline;">
                                 @csrf
                                 <input type="hidden" name="signer_id" value="{{ $signer->id }}">
@@ -981,6 +990,7 @@
                                     Send Reminder ({{ $signer->reminder_count }}/3)
                                 </button>
                             </form>
+                            @endif
                             
                             <button type="button" class="btn btn-secondary" onclick="copySigningLink('{{ url("/sign/{$document->id}/{$signer->token}") }}')">
                                 @icon('fa-copy') Copy Link
@@ -1028,6 +1038,34 @@
                 </div>
                 @endif
             </div>
+
+            @if($document->signatureFields->isNotEmpty() && $document->signers->where('status', '!=', 'cancelled')->isNotEmpty())
+            <div class="main-content-card" style="margin-top: 20px;">
+                <h2 class="section-title">
+                    @icon('fa-pen-nib')
+                    Signature boxes
+                </h2>
+                <p style="color: #6c757d; font-size: 13px;">Each person only sees the boxes assigned to them. With two or more signers, every box needs a signer before anyone else can be emailed.</p>
+                @foreach($document->signatureFields as $field)
+                    @php
+                        $assignedSigner = $document->signers->firstWhere('id', $field->signer_id);
+                    @endphp
+                    <form action="{{ route('signatures.fields.assign', [$document->id, $field->id]) }}" method="POST" style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
+                        @csrf
+                        <span style="min-width: 90px; font-size: 13px;">Page {{ $field->page_number }}</span>
+                        <select name="signer_id" class="form-control" style="max-width: 280px;" onchange="this.form.submit()">
+                            <option value="" disabled @selected(! $field->signer_id)>Unassigned</option>
+                            @foreach($document->signers->where('status', '!=', 'cancelled') as $boxSigner)
+                                <option value="{{ $boxSigner->id }}" @selected((int) $field->signer_id === (int) $boxSigner->id)>
+                                    {{ $boxSigner->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <span style="font-size: 12px; color: #6c757d;">{{ $assignedSigner->name ?? 'Not assigned' }}</span>
+                    </form>
+                @endforeach
+            </div>
+            @endif
         </div>
 
         <!-- Sidebar -->
@@ -1056,21 +1094,22 @@
                         @icon('fa-edit') Edit Signature Placement
                     </a>
                     
-                    @if($document->signers()->where('status', 'pending')->count() > 0)
-                        @if($document->status === 'sent')
+                    @php
+                        $unsentSignerCount = $document->signers->where('status', 'pending')->whereNull('sent_at')->count();
+                    @endphp
+                    @if($unsentSignerCount > 0)
+                        <form action="{{ route('signatures.send', $document->id) }}" method="POST">
+                            @csrf
+                            <button type="submit" class="btn btn-success btn-block" 
+                                    onclick="return confirm('Send signing links to everyone who has not been emailed yet?')">
+                                @icon('fa-paper-plane') Send to all not yet emailed
+                            </button>
+                        </form>
+                    @elseif($document->status === 'sent')
                         <div style="display: flex; align-items: center; padding: 8px 16px; background: #e8f5e9; border-radius: 6px; color: #2e7d32; font-size: 14px; text-align: center;">
                             @icon('fa-check-circle', ['style' => 'margin-right: 8px;'])
                             Document sent for signature
                         </div>
-                        @else
-                        <form action="{{ route('signatures.send', $document->id) }}" method="POST">
-                            @csrf
-                            <button type="submit" class="btn btn-success btn-block" 
-                                    onclick="return confirm('Are you sure you want to send this document for signature? This will send signing links to all pending signers.')">
-                                @icon('fa-paper-plane') Send for Signature
-                            </button>
-                        </form>
-                        @endif
                     @else
                     <div style="display: flex; align-items: center; padding: 8px 16px; background: #f8f9fa; border-radius: 6px; color: #6c757d; font-size: 14px; text-align: center;">
                         @icon('fa-info-circle', ['style' => 'margin-right: 8px;'])

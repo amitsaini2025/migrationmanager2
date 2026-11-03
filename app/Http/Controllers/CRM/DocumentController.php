@@ -1539,7 +1539,12 @@ class DocumentController extends Controller
                     'reminder_count' => 0, // PostgreSQL NOT NULL constraint - must set this field
                 ]);
             }
-            // dd($token);
+            try {
+                app(SignatureService::class)->prepareSignatureBoxesForSend($document->fresh());
+            } catch (\RuntimeException $e) {
+                return back()->withErrors(['error' => $e->getMessage()]);
+            }
+
             $document->status = 'sent';
             $document->save();
 
@@ -1631,6 +1636,7 @@ class DocumentController extends Controller
                             }
                         );
                         $sendMail = true;
+                        $document->signers()->where('email', $signerEmail)->where('status', 'pending')->update(['sent_at' => now()]);
 
                         // Create activity note for successful email
                         SignatureActivity::create([
@@ -1752,6 +1758,7 @@ class DocumentController extends Controller
                                     ->from($fromAddress, $fromName);
                             }
                         );
+                        $document->signers()->where('email', $signerEmail)->where('status', 'pending')->update(['sent_at' => now()]);
 
                         // Create activity note for successful email
                         SignatureActivity::create([
@@ -1819,10 +1826,10 @@ class DocumentController extends Controller
                 $signer->update(['opened_at' => now()]);
             }
 
-            $signatureFields = $document->signatureFields()->get();
+            $signatureFields = app(SignatureService::class)->signatureFieldsForSigner($document, $signer);
 
             // Check if URL is a full S3 URL or local path
-            $url = $document->myfile;
+            $url = app(SignatureService::class)->signingSourceUrl($document) ?? $document->myfile;
 
             if ($url && filter_var($url, FILTER_VALIDATE_URL) && strpos($url, 's3') !== false) {
                 // This is an S3 URL - extract the key
@@ -2107,7 +2114,14 @@ class DocumentController extends Controller
                 }
                 $docType = $document->doc_type ?? '';
                 $myfileKey = $document->myfile_key ?? '';
+                $signedSource = app(SignatureService::class)->signingSourceUrl($document);
                 $s3Key = $clientId && $docType && $myfileKey ? ($clientId . '/' . $docType . '/' . $myfileKey) : null;
+                if (is_string($signedSource) && $signedSource !== '' && $signedSource !== $document->myfile) {
+                    $parsedSigned = parse_url($signedSource);
+                    if (isset($parsedSigned['path'])) {
+                        $s3Key = ltrim(urldecode($parsedSigned['path']), '/');
+                    }
+                }
 
                 $tmpPdfPath = storage_path('app/tmp_' . uniqid() . '.pdf');
                 $pdfStream = Storage::disk('s3')->get($s3Key);
@@ -2270,7 +2284,8 @@ class DocumentController extends Controller
                     $pdf->AddPage($specs['orientation'], [$specs['width'], $specs['height']]);
                     $pdf->useTemplate($tplIdx, 0, 0, $specs['width'], $specs['height']);
                     // Get signature fields for this page
-                    $fields = $document->signatureFields()->where('page_number', $page)->get();
+                    $fields = app(SignatureService::class)->signatureFieldsForSigner($document, $signer)
+                        ->where('page_number', $page);
                     Log::info("Found {$fields->count()} signature fields for page {$page}", [
                         'field_ids' => $fields->pluck('id')->toArray(),
                         'signaturePositions_keys' => array_keys($signaturePositions)
@@ -2330,14 +2345,12 @@ class DocumentController extends Controller
                 @unlink($outputTmpPath);
 
                 // Update statuses and document links
-                $signer->update(['status' => 'signed', 'signed_at' => now()]);
-
-                $document->status = 'signed';
                 $document->signature_doc_link = json_encode($signatureLinks);
                 $document->signed_doc_link = $s3SignedUrl ?? null;
                 $docSigned = $document->save();
+                $completion = app(SignatureService::class)->recordSignerSigned($signer);
 
-                if( $docSigned && $document->doc_type == 'agreement'){
+                if( $docSigned && $completion === 'signed' && $document->doc_type == 'agreement'){
                     $clientMatterInfo = \App\Models\ClientMatter::select('client_unique_matter_no','sel_person_responsible')->where('id', $document->client_matter_id)->first();
                     if(isset($clientMatterInfo->sel_person_responsible) && $clientMatterInfo->sel_person_responsible != ''){
                         $docSignerInfo = \App\Models\Admin::select('first_name','last_name','client_id')->where('id', $document->client_id)->first();
@@ -3005,10 +3018,10 @@ class DocumentController extends Controller
                 $signer->update(['opened_at' => now()]);
             }
 
-            $signatureFields = $document->signatureFields()->get();
+            $signatureFields = app(SignatureService::class)->signatureFieldsForSigner($document, $signer);
 
             // Check if file exists locally first (for newly uploaded documents)
-            $url = $document->myfile;
+            $url = app(SignatureService::class)->signingSourceUrl($document) ?? $document->myfile;
             $pdfPath = null;
             $pdfPages = 1;
 

@@ -64,7 +64,7 @@ class SignedDocumentS3PathResolver
             return null;
         }
 
-        return $prefix . '/' . self::resolveDocType($document) . '/signed/' . $document->id . '_signed.pdf';
+        return $prefix.'/'.self::resolveDocType($document).'/signed/'.$document->id.'_signed.pdf';
     }
 
     public static function resolveSignaturePngS3Key(Document $document, string $filename): ?string
@@ -76,7 +76,7 @@ class SignedDocumentS3PathResolver
 
         $basename = basename(ltrim($filename, '/'));
 
-        return $prefix . '/' . self::resolveDocType($document) . '/signatures/' . $basename;
+        return $prefix.'/'.self::resolveDocType($document).'/signatures/'.$basename;
     }
 
     /**
@@ -121,6 +121,31 @@ class SignedDocumentS3PathResolver
      *
      * @return array{disk: 'local', path: string}|array{disk: 's3', key: string}|null
      */
+    /**
+     * Local filesystem path for the latest signed PDF. S3 copies land in a tmp_ file.
+     */
+    public static function copySignedPdfToLocalPath(Document $document): ?string
+    {
+        $located = self::locateSignedPdfFile($document);
+        if ($located === null) {
+            return null;
+        }
+
+        if ($located['disk'] === 'local') {
+            return $located['path'];
+        }
+
+        $contents = Storage::disk('s3')->get($located['key']);
+        if (! is_string($contents) || $contents === '') {
+            return null;
+        }
+
+        $tmpPdfPath = storage_path('app/tmp_'.uniqid().'.pdf');
+        file_put_contents($tmpPdfPath, $contents);
+
+        return is_file($tmpPdfPath) && filesize($tmpPdfPath) > 0 ? $tmpPdfPath : null;
+    }
+
     public static function locateSignedPdfFile(Document $document, ?string $fileUrl = null): ?array
     {
         $fileUrl = trim((string) ($fileUrl ?? $document->signed_doc_link ?? ''));
@@ -248,7 +273,7 @@ class SignedDocumentS3PathResolver
     private static function normalizeS3ObjectKey(string $key): string
     {
         $bucket = (string) config('filesystems.disks.s3.bucket', '');
-        if ($bucket !== '' && str_starts_with($key, $bucket . '/')) {
+        if ($bucket !== '' && str_starts_with($key, $bucket.'/')) {
             return substr($key, strlen($bucket) + 1);
         }
 

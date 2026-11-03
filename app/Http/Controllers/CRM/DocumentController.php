@@ -1545,9 +1545,6 @@ class DocumentController extends Controller
                 return back()->withErrors(['error' => $e->getMessage()]);
             }
 
-            $document->status = 'sent';
-            $document->save();
-
             // Define the signing URL before sending the email
             $signingUrl = url("/sign/{$document->id}/{$token}");
 
@@ -1636,7 +1633,7 @@ class DocumentController extends Controller
                             }
                         );
                         $sendMail = true;
-                        $document->signers()->where('email', $signerEmail)->where('status', 'pending')->update(['sent_at' => now()]);
+                        $this->markSignerEmailed($document, $signerEmail);
 
                         // Create activity note for successful email
                         SignatureActivity::create([
@@ -1758,7 +1755,7 @@ class DocumentController extends Controller
                                     ->from($fromAddress, $fromName);
                             }
                         );
-                        $document->signers()->where('email', $signerEmail)->where('status', 'pending')->update(['sent_at' => now()]);
+                        $this->markSignerEmailed($document, $signerEmail);
 
                         // Create activity note for successful email
                         SignatureActivity::create([
@@ -1810,6 +1807,14 @@ class DocumentController extends Controller
         }
     }
 
+    private function markSignerEmailed(Document $document, string $signerEmail): void
+    {
+        $document->signers()->where('email', $signerEmail)->where('status', 'pending')->update(['sent_at' => now()]);
+        if (! in_array($document->status, ['signed', 'void', 'voided', 'archived'], true)) {
+            $document->update(['status' => 'sent']);
+        }
+    }
+
     public function showSignForm($id)
     {
         $pdfPath = null;
@@ -1828,10 +1833,18 @@ class DocumentController extends Controller
 
             $signatureFields = app(SignatureService::class)->signatureFieldsForSigner($document, $signer);
 
-            // Check if URL is a full S3 URL or local path
-            $url = app(SignatureService::class)->signingSourceUrl($document) ?? $document->myfile;
+            $pdfPath = null;
+            if (trim((string) ($document->signed_doc_link ?? '')) !== '') {
+                $pdfPath = SignedDocumentS3PathResolver::copySignedPdfToLocalPath($document);
+                if ($pdfPath === null) {
+                    return redirect('/')->with('error', 'The latest signed document could not be opened.');
+                }
+            }
 
-            if ($url && filter_var($url, FILTER_VALIDATE_URL) && strpos($url, 's3') !== false) {
+            // Check if URL is a full S3 URL or local path
+            $url = $pdfPath ? null : (app(SignatureService::class)->signingSourceUrl($document) ?? $document->myfile);
+
+            if (! $pdfPath && $url && filter_var($url, FILTER_VALIDATE_URL) && strpos($url, 's3') !== false) {
                 // This is an S3 URL - extract the key
                 $s3Key = null; // Initialize here
                 $parsed = parse_url($url);
@@ -1854,11 +1867,11 @@ class DocumentController extends Controller
                 $pdfStream = Storage::disk('s3')->get($s3Key);
                 file_put_contents($pdfPath, $pdfStream);
                 Log::info('Downloaded S3 file for document sign form', ['s3Key' => $s3Key, 'tempPath' => $pdfPath]);
-            } elseif ($url && file_exists(storage_path('app/public/'.$url))) {
+            } elseif (! $pdfPath && $url && file_exists(storage_path('app/public/'.$url))) {
                 // This is a local file path and file exists
                 $pdfPath = storage_path('app/public/'.$url);
                 Log::info('Using local file for document sign form', ['path' => $pdfPath]);
-            } else {
+            } elseif (! $pdfPath) {
                 // Try to get from media library (legacy support)
                 $pdfPath = $document->getFirstMediaPath('documents');
 
@@ -3020,12 +3033,20 @@ class DocumentController extends Controller
 
             $signatureFields = app(SignatureService::class)->signatureFieldsForSigner($document, $signer);
 
-            // Check if file exists locally first (for newly uploaded documents)
             $url = app(SignatureService::class)->signingSourceUrl($document) ?? $document->myfile;
             $pdfPath = null;
             $pdfPages = 1;
 
-            if ($url && file_exists(storage_path('app/public/' . $url))) {
+            if (trim((string) ($document->signed_doc_link ?? '')) !== '') {
+                $signedPdfPath = SignedDocumentS3PathResolver::copySignedPdfToLocalPath($document);
+                if ($signedPdfPath === null) {
+                    return redirect('/')->with('error', 'The latest signed document could not be opened.');
+                }
+                $pdfPages = $this->countPdfPages($signedPdfPath) ?: 1;
+                if (str_starts_with(basename($signedPdfPath), 'tmp_')) {
+                    @unlink($signedPdfPath);
+                }
+            } elseif ($url && file_exists(storage_path('app/public/'.$url))) {
                 $pdfPath = storage_path('app/public/' . $url);
                 $pdfPages = $this->countPdfPages($pdfPath) ?: 1;
                 Log::info('Using local file for document sign', ['path' => $pdfPath, 'pages' => $pdfPages]);

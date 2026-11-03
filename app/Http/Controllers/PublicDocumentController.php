@@ -99,8 +99,16 @@ class PublicDocumentController extends Controller
 
             $signatureFields = $this->signatures->signatureFieldsForSigner($document, $signer);
 
+            $preferSignedFile = trim((string) ($document->signed_doc_link ?? '')) !== '';
+            if ($preferSignedFile) {
+                $tmpPdfPath = SignedDocumentS3PathResolver::copySignedPdfToLocalPath($document);
+                if ($tmpPdfPath === null) {
+                    return $this->showErrorPage('Document Unavailable', 'The latest signed document could not be opened. Please contact the document sender for assistance.', $document);
+                }
+            }
+
             // Get PDF path - handle both S3 and local files. Later signers see the latest stamped file.
-            $url = $this->signatures->signingSourceUrl($document);
+            $url = $preferSignedFile ? null : $this->signatures->signingSourceUrl($document);
             $pdfPath = null;
             $isLocalFile = false;
 
@@ -258,8 +266,22 @@ class PublicDocumentController extends Controller
                         $document->setRawAttributes($lockedDocument->getAttributes(), true);
                     }
 
+                    $signer->refresh();
+                    if ($signer->status !== 'pending') {
+                        DB::rollBack();
+                        if ($signer->status === 'signed') {
+                            return redirect()->route('public.documents.thankyou', ['id' => $document->id])
+                                ->with('info', 'This document has already been signed.');
+                        }
+
+                        return redirect('/')->with('error', 'This signing link has been cancelled. Please contact the document sender for assistance.');
+                    }
+
                     $preferSignedFile = trim((string) ($document->signed_doc_link ?? '')) !== '';
                     $url = $this->signatures->signingSourceUrl($document);
+                    if ($preferSignedFile) {
+                        $tmpPdfPath = SignedDocumentS3PathResolver::copySignedPdfToLocalPath($document);
+                    }
                     $allowedFieldIds = $this->signatures->signatureFieldsForSigner($document, $signer)
                         ->pluck('id')
                         ->map(fn ($fieldId) => (int) $fieldId)
@@ -585,10 +607,13 @@ class PublicDocumentController extends Controller
                         Log::info('Signed PDF saved locally', ['path' => $signedPdfPath]);
                     }
 
-                    $document->signature_doc_link = json_encode($signatureLinks);
                     $document->signed_doc_link = $signedPdfUrl;
                     $document->save();
                     $completion = $this->signatures->recordSignerSigned($signer);
+                    if ($completion === 'signed') {
+                        $document->signature_doc_link = json_encode($signatureLinks);
+                        $document->save();
+                    }
                     DB::commit();
 
                     Log::info('Public document signed successfully', [
@@ -690,7 +715,14 @@ class PublicDocumentController extends Controller
             $document = Document::findOrFail($id);
 
             $url = $document->myfile;
-            if (! $isAdmin) {
+            $preferSignedFile = ! $isAdmin && trim((string) ($document->signed_doc_link ?? '')) !== '';
+            if ($preferSignedFile) {
+                $tmpPdfPath = SignedDocumentS3PathResolver::copySignedPdfToLocalPath($document);
+                if ($tmpPdfPath === null) {
+                    abort(404, 'Document file not found');
+                }
+                $url = null;
+            } elseif (! $isAdmin) {
                 $url = $this->signatures->signingSourceUrl($document) ?? $url;
             }
             $pdfPath = null;
@@ -724,7 +756,7 @@ class PublicDocumentController extends Controller
                 $tmpPdfPath = storage_path('app/public/'.$url);
                 $isLocalFile = true;
                 Log::info('Using local file for document page', ['path' => $tmpPdfPath]);
-            } elseif (! $isAdmin && trim((string) ($document->signed_doc_link ?? '')) !== '') {
+            } elseif (! $tmpPdfPath && ! $isAdmin && trim((string) ($document->signed_doc_link ?? '')) !== '') {
                 abort(404, 'Document file not found');
             } else {
                 // Try to build S3 key from DB fields as fallback

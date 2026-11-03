@@ -6,10 +6,12 @@ use App\Models\Document;
 use App\Models\Signer;
 use App\Services\EmailConfigService;
 use App\Services\SignatureService;
+use App\Services\SignedDocumentS3PathResolver;
 use App\Services\SystemEmailLogService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -59,6 +61,22 @@ class SignatureServiceMultiSignerTest extends TestCase
 
         $this->assertSame('signed', $this->signatures->recordSignerSigned($wife->fresh()));
         $this->assertSame('signed', $document->fresh()->status);
+    }
+
+    #[Test]
+    public function a_local_signed_pdf_url_is_the_file_the_next_signer_opens(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('signed/9_signed.pdf', '%PDF-1.4 test');
+
+        $document = new Document;
+        $document->id = 9;
+        $document->signed_doc_link = 'http://localhost/storage/signed/9_signed.pdf';
+
+        $path = SignedDocumentS3PathResolver::copySignedPdfToLocalPath($document);
+
+        $this->assertNotNull($path);
+        $this->assertSame('%PDF-1.4 test', file_get_contents($path));
     }
 
     #[Test]

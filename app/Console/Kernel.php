@@ -56,6 +56,9 @@ class Kernel extends ConsoleKernel
         // Smart Email Import
         '\App\Console\Commands\CleanSmartEmailImportStaging',
 
+        // Outlook Add-in
+        '\App\Console\Commands\GenerateOutlookAddinManifest',
+
         // Client Age Management Commands
         '\App\Console\Commands\UpdateClientAges',
 

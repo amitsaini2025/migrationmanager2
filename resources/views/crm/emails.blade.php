@@ -67,6 +67,9 @@
                 <span id="file-count" class="file-count-badge">0</span>
                 <input type="file" id="emailFileInput" class="file-input" accept="{{ $emailUploadAccept }}" multiple style="display: none;">
             </div>
+            <div class="small text-muted px-2 pb-2" style="line-height:1.4;">
+                <i class="fa-solid fa-circle-info text-primary me-1"></i> @include('outlook_addin.partials.install-tip')
+            </div>
             <div id="upload-progress" class="upload-progress">
                 <span id="fileStatus">Ready to upload</span>
             </div>

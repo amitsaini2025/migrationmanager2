@@ -13,6 +13,7 @@ use App\Http\Controllers\CRM\CRMUtilityController;
 use App\Http\Controllers\CRM\DashboardController;
 use App\Http\Controllers\CRM\DashboardMyDayController;
 use App\Http\Controllers\CRM\EmailVerificationController;
+use App\Http\Controllers\CRM\OutlookAddinController;
 use App\Http\Controllers\CRM\EoiRoiSheetController;
 use App\Http\Controllers\CRM\FrontDeskCheckInController;
 use App\Http\Controllers\CRM\Leads\LeadAnalyticsController;
@@ -503,6 +504,22 @@ final class RegisterWebRoutes
         $this->router->get('/client/eoi/amend/{token}', [EoiRoiSheetController::class, 'showAmendmentPage'])->name('client.eoi.amend');
         $this->router->post('/client/eoi/process/{token}', [EoiRoiSheetController::class, 'processClientConfirmation'])->name('client.eoi.process');
         $this->router->get('/client/eoi/success/{token}', [EoiRoiSheetController::class, 'showSuccessPage'])->name('client.eoi.success');
+
+        /*--------------------------------------------------
+        | SECTION: Outlook Add-in (production + local tunnel)
+        | Live: https://migrationmanager.bansalcrm.com/outlook-addin/*
+        |--------------------------------------------------*/
+        $this->router->prefix('outlook-addin')->name('outlook-addin.')->group(function () {
+            $this->router->get('/manifest/download', [OutlookAddinController::class, 'downloadManifest'])->name('manifest.download');
+            $this->router->get('/manifest.xml', [OutlookAddinController::class, 'manifest'])->name('manifest');
+            $this->router->get('/taskpane', [OutlookAddinController::class, 'taskpane'])->name('taskpane');
+            $this->router->post('/match', [OutlookAddinController::class, 'match'])->name('match');
+            $this->router->get('/matters', [OutlookAddinController::class, 'searchMatters'])->name('matters');
+            $this->router->get('/folders', [OutlookAddinController::class, 'folders'])->name('folders');
+            $this->router->post('/save', [OutlookAddinController::class, 'saveEmail'])->name('save');
+            $this->router->post('/set-staff', [OutlookAddinController::class, 'setStaff'])->name('set-staff');
+            $this->router->post('/log', [OutlookAddinController::class, 'logClient'])->name('log');
+        });
 
     }
 

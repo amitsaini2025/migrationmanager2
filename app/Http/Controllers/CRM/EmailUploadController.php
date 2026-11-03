@@ -1713,7 +1713,7 @@ class EmailUploadController extends Controller
     /**
      * Import a single staged email into the normal upload pipeline.
      *
-     * Called by SmartEmailImportController after the staff review stage.
+     * Called by SmartEmailImportController / Outlook add-in after staff review.
      * Builds a synthetic Request so processEmailFile() receives all the fields it
      * expects, then delegates to the existing save logic (S3, documents, email_logs,
      * attachments, labels, activity log).
@@ -1722,6 +1722,7 @@ class EmailUploadController extends Controller
      * @param  string  $mailType  'inbox' | 'sent'
      * @param  int  $clientMatterId  client_matters.id
      * @param  string  $recordType  'client' | 'lead'
+     * @param  array<int, array<string, mixed>>  $attachmentStorage
      * @return array Same shape as processEmailFile(): ['success' => bool, ...]
      */
     public function importEmailFromContext(
@@ -1729,19 +1730,26 @@ class EmailUploadController extends Controller
         int $clientId,
         string $mailType,
         int $clientMatterId,
-        string $recordType
+        string $recordType,
+        array $attachmentStorage = []
     ): array {
         $clientUniqueId = Admin::select('client_id')
             ->where('id', $clientId)
             ->value('client_id') ?? '';
 
-        $syntheticRequest = new Request;
-        $syntheticRequest->merge([
+        $payload = [
             'client_id' => $clientId,
             'type' => $recordType,
             'upload_inbox_mail_client_matter_id' => $mailType === 'inbox' ? $clientMatterId : null,
             'upload_sent_mail_client_matter_id' => $mailType === 'sent' ? $clientMatterId : null,
-        ]);
+        ];
+
+        if ($attachmentStorage !== []) {
+            $payload['attachment_storage'] = json_encode(array_values($attachmentStorage));
+        }
+
+        $syntheticRequest = new Request;
+        $syntheticRequest->merge($payload);
 
         return $this->processEmailFile($file, $clientId, $clientUniqueId, $mailType, $syntheticRequest);
     }

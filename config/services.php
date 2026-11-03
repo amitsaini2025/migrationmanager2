@@ -87,6 +87,13 @@ return [
         'health_check_interval' => env('PYTHON_SERVICE_HEALTH_CHECK_INTERVAL', 60),
     ],
 
+    'outlook_addin' => [
+        // Canonical live CRM URL used for production manifests / M365 deployment.
+        'production_url' => rtrim((string) env('OUTLOOK_ADDIN_PRODUCTION_URL', 'https://migrationmanager.bansalcrm.com'), '/'),
+        // Local/dev HTTPS tunnel override (Cloudflare / ngrok / localtunnel). Ignored when APP_ENV=production.
+        'base_url' => env('OUTLOOK_ADDIN_BASE_URL'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | PDF Converter Services

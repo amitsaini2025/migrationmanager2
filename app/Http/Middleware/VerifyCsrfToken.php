@@ -34,5 +34,6 @@ class VerifyCsrfToken extends PreventRequestForgery
 		'admin/update_task_priority',
 		'admin/updateduedate',
 		'get-activities', // Client activities endpoint (GET request, no CSRF needed)
+		'outlook-addin/*', // Office.js taskpane posts from Outlook iframe / webview
     ];
 }

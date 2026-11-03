@@ -410,6 +410,61 @@
         });
     }
 
+    function dibpReceiptsChecklistRowIsEmpty(checklistEl) {
+        if (!checklistEl) {
+            return false;
+        }
+        var row = checklistEl.closest('.dibp-receipts-row');
+        if (!row) {
+            return false;
+        }
+        return !row.querySelector('.dibp-receipts-file');
+    }
+
+    function dibpReceiptsSyncChecklistMenu(checklistEl) {
+        var item = document.getElementById('dibp-receipts-delete-checklist');
+        if (!item) {
+            return;
+        }
+        var canDelete = dibpReceiptsChecklistRowIsEmpty(checklistEl);
+        item.hidden = !canDelete;
+        item.disabled = !canDelete;
+    }
+
+    function dibpReceiptsDeleteEmptyChecklist(checklistEl) {
+        var panel = dibpReceiptsPanel();
+        var deleteUrl = panel ? (panel.getAttribute('data-delete-checklist-url') || '') : '';
+        if (!panel || !checklistEl || !deleteUrl || dibpReceiptsUnusedBusy) {
+            return;
+        }
+        if (!dibpReceiptsChecklistRowIsEmpty(checklistEl)) {
+            window.alert('Cannot delete checklist with uploaded file. Move it to Not Used first.');
+            dibpReceiptsHideContextMenus();
+            return;
+        }
+        if (!window.confirm('Delete this empty checklist? This cannot be undone.')) {
+            dibpReceiptsHideContextMenus();
+            return;
+        }
+        dibpReceiptsHideContextMenus();
+        dibpReceiptsUnusedBusy = true;
+        dibpReceiptsPostForm(deleteUrl, {
+            clientid: panel.getAttribute('data-clientid') || '',
+            id: checklistEl.getAttribute('data-id') || ''
+        }).then(function (payload) {
+            dibpReceiptsUnusedBusy = false;
+            if (!payload.status) {
+                window.alert(payload.message || 'Unable to delete this checklist.');
+                return;
+            }
+            dibpReceiptsRemoveLeftRow(payload.id || checklistEl.getAttribute('data-id'));
+            window.alert(payload.message || 'Checklist deleted.');
+        }).catch(function () {
+            dibpReceiptsUnusedBusy = false;
+            window.alert('Unable to delete this checklist.');
+        });
+    }
+
     var dibpReceiptsBulkFiles = [];
 
     function dibpReceiptsBulkDropzone() {
@@ -1145,6 +1200,7 @@
         dibpReceiptsContextUnusedFile = null;
         var checklistMenu = document.getElementById('dibp-receipts-checklist-context-menu');
         if (checklistMenu) {
+            dibpReceiptsSyncChecklistMenu(checklistEl);
             dibpReceiptsPositionMenu(checklistMenu, event);
         }
     });
@@ -1181,6 +1237,10 @@
             }
             if (action === 'delete-unused' && dibpReceiptsContextUnusedFile) {
                 dibpReceiptsDeleteUnused(dibpReceiptsContextUnusedFile);
+                return;
+            }
+            if (action === 'delete-checklist' && dibpReceiptsContextChecklist) {
+                dibpReceiptsDeleteEmptyChecklist(dibpReceiptsContextChecklist);
                 return;
             }
             dibpReceiptsHideContextMenus();

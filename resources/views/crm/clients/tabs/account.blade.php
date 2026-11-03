@@ -637,6 +637,7 @@
          data-bulk-url="{{ route('clients.documents.bulkUploadDibpReceiptDocuments') }}"
          data-rename-url="{{ route('clients.documents.renameDibpReceiptDocument') }}"
          data-rename-checklist-url="{{ route('clients.documents.renameDibpReceiptChecklist') }}"
+         data-delete-checklist-url="{{ route('clients.documents.deleteDibpReceiptChecklist') }}"
          data-download-url="{{ route('clients.documents.downloadDibpReceiptDocument') }}"
          data-hubdoc-url="{{ route('clients.documents.sendDibpReceiptToHubdoc') }}"
          data-unused-url="{{ route('clients.documents.markDibpReceiptUnused') }}"
@@ -835,6 +836,9 @@
 <div id="dibp-receipts-checklist-context-menu" class="dibp-receipts-context-menu" hidden>
     <button type="button" class="dibp-receipts-context-item" data-action="rename-checklist">
         @icon('fa-edit') Rename Checklist
+    </button>
+    <button type="button" class="dibp-receipts-context-item" data-action="delete-checklist" id="dibp-receipts-delete-checklist">
+        @icon('fa-trash') Delete Checklist
     </button>
 </div>
 <div id="dibp-receipts-file-context-menu" class="dibp-receipts-context-menu" hidden>

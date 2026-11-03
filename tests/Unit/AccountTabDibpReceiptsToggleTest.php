@@ -53,6 +53,10 @@ class AccountTabDibpReceiptsToggleTest extends TestCase
         Assert::assertStringContainsString('id="dibp-receipts-checklist-context-menu"', $blade);
         Assert::assertStringContainsString('Rename File Name', $blade);
         Assert::assertStringContainsString('Rename Checklist', $blade);
+        Assert::assertStringContainsString('data-action="delete-checklist"', $blade);
+        Assert::assertStringContainsString('id="dibp-receipts-delete-checklist"', $blade);
+        Assert::assertStringContainsString('Delete Checklist', $blade);
+        Assert::assertStringContainsString('data-delete-checklist-url', $blade);
         Assert::assertStringContainsString('id="dibp-receipts-send-hubdoc"', $blade);
         Assert::assertStringContainsString('Send to Hubdoc', $blade);
         Assert::assertStringContainsString('data-action="send-hubdoc"', $blade);

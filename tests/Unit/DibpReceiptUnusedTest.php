@@ -354,16 +354,31 @@ class DibpReceiptUnusedTest extends TestCase
             Schema::create('admins', function (Blueprint $table) {
                 $table->id();
                 $table->string('client_id')->nullable();
+                $table->string('type')->nullable();
+                $table->unsignedBigInteger('user_id')->nullable();
                 $table->string('first_name')->nullable();
                 $table->unsignedTinyInteger('is_company')->nullable();
                 $table->timestamps();
             });
         }
 
+        foreach (['type', 'user_id'] as $column) {
+            if (! Schema::hasColumn('admins', $column)) {
+                Schema::table('admins', function (Blueprint $table) use ($column) {
+                    if ($column === 'user_id') {
+                        $table->unsignedBigInteger($column)->nullable();
+                    } else {
+                        $table->string($column)->nullable();
+                    }
+                });
+            }
+        }
+
         DB::table('admins')->updateOrInsert(
             ['id' => $id],
             [
                 'client_id' => 'C'.$id,
+                'type' => 'client',
                 'first_name' => 'Test',
                 'is_company' => 0,
                 'created_at' => now(),

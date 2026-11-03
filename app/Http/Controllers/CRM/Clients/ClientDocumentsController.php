@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\BulkDownloadClientDocumentsRequest;
 use App\Http\Requests\StoreDibpReceiptBulkUploadRequest;
 use App\Http\Requests\StoreDibpReceiptChecklistRequest;
+use App\Http\Requests\StoreDibpReceiptDeleteChecklistRequest;
 use App\Http\Requests\StoreDibpReceiptDownloadRequest;
 use App\Http\Requests\StoreDibpReceiptHubdocRequest;
 use App\Http\Requests\StoreDibpReceiptRenameChecklistRequest;
@@ -4829,6 +4830,49 @@ class ClientDocumentsController extends Controller
         }
 
         return response()->json($payload);
+    }
+
+    public function deleteDibpReceiptChecklist(StoreDibpReceiptDeleteChecklistRequest $request): JsonResponse
+    {
+        $document = $this->dibpReceiptDocumentForClient(
+            (int) $request->validated('clientid'),
+            (int) $request->validated('id')
+        );
+        if ($document instanceof JsonResponse) {
+            return $document;
+        }
+
+        if (ClientDetailDocumentsTab::isUnused($document)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unused receipts must be deleted from Not Used.',
+            ], 422);
+        }
+
+        if (ClientDetailDocumentsTab::hasAttachedFile($document) || filled($document->myfile) || filled($document->myfile_key)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Cannot delete checklist with uploaded file. Move it to Not Used first.',
+            ], 422);
+        }
+
+        $clientId = (int) $document->client_id;
+        $documentId = (int) $document->id;
+        $checklistName = (string) ($document->checklist ?? '');
+
+        $document->delete();
+        $this->logClientActivity(
+            $clientId,
+            'deleted empty DIBP receipt checklist'.($checklistName !== '' ? ': '.$checklistName : ''),
+            '<p>Empty DIBP receipt checklist deleted</p>',
+            'document'
+        );
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Checklist deleted.',
+            'id' => $documentId,
+        ]);
     }
 
     public function downloadDibpReceiptDocument(StoreDibpReceiptDownloadRequest $request)

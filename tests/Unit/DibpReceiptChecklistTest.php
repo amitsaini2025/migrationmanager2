@@ -363,6 +363,85 @@ class DibpReceiptChecklistTest extends TestCase
         $emptyDownload->assertStatus(422);
     }
 
+    #[Test]
+    public function delete_empty_checklist_removes_row_and_rejects_uploaded_or_visa(): void
+    {
+        $this->seedClient(20);
+
+        $staff = Staff::query()->create([
+            'first_name' => 'Dibp',
+            'last_name' => 'Deleter',
+            'email' => 'dibp-delete-checklist@test.com',
+            'password' => Hash::make('password'),
+            'role' => 1,
+            'status' => 1,
+        ]);
+
+        $empty = ClientDetailDocumentsTab::addChecklist(20, (int) $staff->id, 'Empty BVB', null);
+        $uploaded = ClientDetailDocumentsTab::addChecklist(20, (int) $staff->id, 'Uploaded', null);
+        $uploaded->file_name = 'Uploaded_receipt';
+        $uploaded->filetype = 'pdf';
+        $uploaded->myfile_key = 'Uploaded_receipt.pdf';
+        $uploaded->myfile = 'https://example.test/Uploaded_receipt.pdf';
+        $uploaded->save();
+
+        $visa = Document::query()->create([
+            'client_id' => 20,
+            'user_id' => $staff->id,
+            'doc_type' => 'visa',
+            'type' => 'client',
+            'folder_name' => '1',
+            'checklist' => 'Visa form',
+        ]);
+
+        $router = app('router');
+        $route = $router->getRoutes()->match(Request::create('/documents/delete-dibp-receipt-checklist', 'POST'));
+        Assert::assertSame('clients.documents.deleteDibpReceiptChecklist', $route->getName());
+        Assert::assertSame('deleteDibpReceiptChecklist', $route->getActionMethod());
+
+        $deletedVisa = $this->actingAs($staff, 'admin')
+            ->postJson('/documents/delete-dibp-receipt-checklist', [
+                'clientid' => 20,
+                'id' => $visa->id,
+            ]);
+        $deletedVisa->assertStatus(422);
+        Assert::assertNotNull(Document::query()->find($visa->id));
+
+        $deletedUploaded = $this->actingAs($staff, 'admin')
+            ->postJson('/documents/delete-dibp-receipt-checklist', [
+                'clientid' => 20,
+                'id' => $uploaded->id,
+            ]);
+        $deletedUploaded->assertStatus(422);
+        Assert::assertNotNull(Document::query()->find($uploaded->id));
+        Assert::assertSame('Uploaded_receipt', $uploaded->fresh()->file_name);
+
+        $deleted = $this->actingAs($staff, 'admin')
+            ->postJson('/documents/delete-dibp-receipt-checklist', [
+                'clientid' => 20,
+                'id' => $empty->id,
+            ]);
+        $deleted->assertOk();
+        Assert::assertTrue($deleted->json('status'));
+        Assert::assertSame((int) $empty->id, (int) $deleted->json('id'));
+        Assert::assertNull(Document::query()->find($empty->id));
+        Assert::assertNotNull(Document::query()->find($uploaded->id));
+
+        $blade = file_get_contents($this->projectPath('resources/views/crm/clients/tabs/account.blade.php'));
+        Assert::assertNotFalse($blade);
+        Assert::assertStringContainsString('data-delete-checklist-url', $blade);
+        Assert::assertStringContainsString('data-action="delete-checklist"', $blade);
+        Assert::assertStringContainsString('id="dibp-receipts-delete-checklist"', $blade);
+
+        $js = file_get_contents($this->projectPath('public/js/crm/clients/dibp-receipts-tab.js'));
+        Assert::assertNotFalse($js);
+        Assert::assertStringContainsString('dibpReceiptsDeleteEmptyChecklist', $js);
+        Assert::assertStringContainsString('data-delete-checklist-url', $js);
+        Assert::assertStringContainsString("action === 'delete-checklist'", $js);
+        Assert::assertStringNotContainsString('/documents/delete-checklist', $js);
+        Assert::assertSame(8, substr_count($js, '}, true);'));
+    }
+
     private function createChecklistSchema(): void
     {
         if (! Schema::hasTable('staff')) {
@@ -486,11 +565,42 @@ class DibpReceiptChecklistTest extends TestCase
             Schema::create('admins', function (Blueprint $table) {
                 $table->id();
                 $table->string('client_id')->nullable();
+                $table->string('type')->nullable();
+                $table->unsignedBigInteger('user_id')->nullable();
                 $table->string('first_name')->nullable();
                 $table->unsignedTinyInteger('is_company')->nullable();
                 $table->timestamps();
             });
         }
+
+        foreach (['type', 'user_id'] as $column) {
+            if (! Schema::hasColumn('admins', $column)) {
+                Schema::table('admins', function (Blueprint $table) use ($column) {
+                    if ($column === 'user_id') {
+                        $table->unsignedBigInteger($column)->nullable();
+                    } else {
+                        $table->string($column)->nullable();
+                    }
+                });
+            }
+        }
+    }
+
+    private function seedClient(int $id): void
+    {
+        $this->ensureAdminsTable();
+
+        DB::table('admins')->updateOrInsert(
+            ['id' => $id],
+            [
+                'client_id' => 'C'.$id,
+                'type' => 'client',
+                'first_name' => 'Test',
+                'is_company' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        );
     }
 
     private function projectPath(string $relative): string

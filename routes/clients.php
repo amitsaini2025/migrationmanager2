@@ -260,6 +260,7 @@ Route::post('/documents/add-dibp-receipt-checklist', [ClientDocumentsController:
 Route::post('/documents/upload-dibp-receipt-document', [ClientDocumentsController::class, 'uploadDibpReceiptDocument'])->name('clients.documents.uploadDibpReceiptDocument');
 Route::post('/documents/rename-dibp-receipt-document', [ClientDocumentsController::class, 'renameDibpReceiptDocument'])->name('clients.documents.renameDibpReceiptDocument');
 Route::post('/documents/rename-dibp-receipt-checklist', [ClientDocumentsController::class, 'renameDibpReceiptChecklist'])->name('clients.documents.renameDibpReceiptChecklist');
+Route::post('/documents/delete-dibp-receipt-checklist', [ClientDocumentsController::class, 'deleteDibpReceiptChecklist'])->name('clients.documents.deleteDibpReceiptChecklist');
 Route::post('/documents/download-dibp-receipt-document', [ClientDocumentsController::class, 'downloadDibpReceiptDocument'])->name('clients.documents.downloadDibpReceiptDocument');
 Route::post('/documents/bulk-upload-dibp-receipt-documents', [ClientDocumentsController::class, 'bulkUploadDibpReceiptDocuments'])->name('clients.documents.bulkUploadDibpReceiptDocuments');
 Route::post('/documents/send-dibp-receipt-to-hubdoc', [ClientDocumentsController::class, 'sendDibpReceiptToHubdoc'])->name('clients.documents.sendDibpReceiptToHubdoc');

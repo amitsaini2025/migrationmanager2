@@ -99,4 +99,18 @@ class ClientDetailModalsTest extends TestCase
         Assert::assertStringContainsString('textarea.sms-compose-message', $customCss);
         Assert::assertStringContainsString('resize: vertical', $customCss);
     }
+
+    #[Test]
+    public function account_send_message_textarea_avoids_form_control_height_lock(): void
+    {
+        $account = (string) file_get_contents(resource_path('views/crm/clients/tabs/account.blade.php'));
+        $customCss = (string) file_get_contents(public_path('css/custom.css'));
+
+        Assert::assertStringContainsString('id="account_send_message"', $account);
+        Assert::assertStringContainsString('class="account-send-message"', $account);
+        Assert::assertDoesNotMatchRegularExpression('/id="account_send_message"[^>]*class="form-control"/', $account);
+        Assert::assertDoesNotMatchRegularExpression('/class="form-control"[^>]*id="account_send_message"/', $account);
+        Assert::assertStringContainsString('textarea.account-send-message', $customCss);
+        Assert::assertStringContainsString('resize: vertical', $customCss);
+    }
 }

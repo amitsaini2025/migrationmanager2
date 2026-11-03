@@ -532,22 +532,17 @@ class SignatureDashboardController extends Controller
             return back()->with('error', $message);
         }
 
-        // Upgrade placeholder (@lead.internal) signers and strip trailing punctuation on emails
+        // Upgrade placeholder (@lead.internal) signers and strip trailing punctuation on emails.
+        // Do not abort the whole send when one signer is undeliverable — other signers still get emailed.
         $recipient = $document->client?->resolveSigningRecipient();
         $signerEmailFixed = false;
         foreach ($pendingSigners as $signer) {
             $updates = [];
             if (Admin::isInternalPlaceholderEmail($signer->email)) {
-                if (! $recipient) {
-                    $message = 'Cannot send signature email: company has a placeholder (@lead.internal) address. Please add a real email on the company/contact profile.';
-                    if ($request->ajax() || $request->wantsJson()) {
-                        return response()->json(['success' => false, 'message' => $message], 422);
-                    }
-
-                    return back()->with('error', $message);
+                if ($recipient) {
+                    $updates['email'] = $recipient['email'];
+                    $updates['name'] = $recipient['name'] ?: $signer->name;
                 }
-                $updates['email'] = $recipient['email'];
-                $updates['name'] = $recipient['name'] ?: $signer->name;
             } else {
                 $clean = Admin::sanitizeEmailAddress($signer->email);
                 if ($clean !== '' && $clean !== $signer->email) {
@@ -603,6 +598,8 @@ class SignatureDashboardController extends Controller
 
         $emailsSent = $result['sent'];
         $errors = $result['errors'];
+        $skipped = $result['skipped'] ?? [];
+        $notices = array_values(array_filter(array_merge($errors, $skipped)));
 
         if ($emailsSent > 0 && $document->client_id) {
             $recipients = $result['emailed']->map(fn ($s) => $s->name.' ('.$s->email.')')->implode(', ');
@@ -618,9 +615,11 @@ class SignatureDashboardController extends Controller
         }
 
         if ($emailsSent > 0) {
-            $message = "Document sent for signature! {$emailsSent} signing link(s) sent successfully.";
-            if (! empty($errors)) {
-                $message .= ' However, some emails failed: '.implode(', ', $errors);
+            $emailedNames = $result['emailed']->map(fn ($s) => $s->name)->implode(', ');
+            $message = "Document sent for signature! {$emailsSent} signing link(s) sent successfully";
+            $message .= $emailedNames !== '' ? " to: {$emailedNames}." : '.';
+            if ($notices !== []) {
+                $message .= ' Note: '.implode(' ', $notices);
             }
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => true, 'message' => $message]);
@@ -629,9 +628,9 @@ class SignatureDashboardController extends Controller
             return back()->with('success', $message);
         }
 
-        $message = $errors === []
+        $message = $notices === []
             ? 'No signers are waiting for a signing email.'
-            : 'Failed to send any emails. Errors: '.implode(', ', $errors);
+            : 'Failed to send any emails. '.implode(' ', $notices);
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => false, 'message' => $message], 422);
         }

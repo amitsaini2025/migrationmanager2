@@ -326,31 +326,47 @@ class SignatureService
     /**
      * Email pending signers who have not been sent a link yet.
      *
-     * @return array{sent: int, errors: list<string>, emailed: Collection<int, Signer>}
+     * Each signer is attempted independently so one failure (or a skipped
+     * co-signer when only_document_client is set) never blocks the others.
+     *
+     * @return array{sent: int, errors: list<string>, skipped: list<string>, emailed: Collection<int, Signer>}
      */
     public function sendPendingSigningEmails(Document $document, ?int $onlySignerId = null, bool $onlyDocumentClient = false): array
     {
         $this->prepareSignatureBoxesForSend($document);
 
-        $signers = $document->signers()->where('status', 'pending')->whereNull('sent_at')->get();
+        $signers = $document->signers()
+            ->where('status', 'pending')
+            ->whereNull('sent_at')
+            ->orderBy('id')
+            ->get();
 
         if ($onlySignerId !== null) {
-            $signers = $signers->where('id', $onlySignerId)->values();
+            $signers = $signers->filter(fn (Signer $signer) => (int) $signer->id === $onlySignerId)->values();
             if ($signers->isEmpty()) {
                 $requested = $document->signers()->whereKey($onlySignerId)->first();
                 if ($requested === null) {
-                    return ['sent' => 0, 'errors' => ['Signer not found for this document.'], 'emailed' => collect()];
+                    return ['sent' => 0, 'errors' => ['Signer not found for this document.'], 'skipped' => [], 'emailed' => collect()];
                 }
                 if ($requested->sent_at !== null) {
-                    return ['sent' => 0, 'errors' => ['This signer has already been emailed.'], 'emailed' => collect()];
+                    return ['sent' => 0, 'errors' => ['This signer has already been emailed.'], 'skipped' => [], 'emailed' => collect()];
                 }
 
-                return ['sent' => 0, 'errors' => ['This signer is not pending.'], 'emailed' => collect()];
+                return ['sent' => 0, 'errors' => ['This signer is not pending.'], 'skipped' => [], 'emailed' => collect()];
             }
         }
 
+        $skipped = [];
+
         if ($onlyDocumentClient) {
-            $signers = $signers->filter(fn (Signer $signer) => $this->signerMatchesDocumentClient($document, $signer))->values();
+            $matching = $signers->filter(fn (Signer $signer) => $this->signerMatchesDocumentClient($document, $signer))->values();
+            foreach ($signers as $signer) {
+                if ($matching->contains(fn (Signer $match) => (int) $match->id === (int) $signer->id)) {
+                    continue;
+                }
+                $skipped[] = "Skipped {$signer->name} ({$signer->email}): not the associated client. Open Signatures and use Send / Send to all for co-signers.";
+            }
+            $signers = $matching;
         }
 
         $sent = 0;
@@ -358,6 +374,12 @@ class SignatureService
         $emailed = collect();
 
         foreach ($signers as $signer) {
+            if (Admin::isInternalPlaceholderEmail($signer->email)) {
+                $errors[] = "Cannot send to {$signer->name} ({$signer->email}): placeholder address needs a real email on the client/company profile.";
+
+                continue;
+            }
+
             try {
                 $this->sendSigningEmail($document, $signer, [
                     'template' => $signer->email_template ?? 'emails.signature.send',
@@ -367,12 +389,12 @@ class SignatureService
                 ]);
                 $sent++;
                 $emailed->push($signer->fresh());
-            } catch (\Exception $e) {
-                $errors[] = "Failed to send email to {$signer->email}: ".$e->getMessage();
+            } catch (\Throwable $e) {
+                $errors[] = "Failed to send email to {$signer->name} ({$signer->email}): ".$e->getMessage();
             }
         }
 
-        return ['sent' => $sent, 'errors' => $errors, 'emailed' => $emailed];
+        return ['sent' => $sent, 'errors' => $errors, 'skipped' => $skipped, 'emailed' => $emailed];
     }
 
     /**

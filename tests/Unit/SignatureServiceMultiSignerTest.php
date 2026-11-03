@@ -38,14 +38,54 @@ class SignatureServiceMultiSignerTest extends TestCase
         $document = $this->document();
         $husband = $this->signer($document, 'husband@example.com', 'Husband');
         $wife = $this->signer($document, 'wife@example.com', 'Wife');
-        $this->assignEveryBox($document, $husband);
+        $this->assignBox($document, $husband);
+        $this->assignBox($document, $wife);
 
         $result = $this->signatures->sendPendingSigningEmails($document, $husband->id);
 
         $this->assertSame(1, $result['sent']);
+        $this->assertSame([], $result['skipped']);
         $this->assertNotNull($husband->fresh()->sent_at);
         $this->assertNull($wife->fresh()->sent_at);
         $this->assertSame('sent', $document->fresh()->status);
+    }
+
+    #[Test]
+    public function send_all_emails_every_pending_signer(): void
+    {
+        $document = $this->document();
+        $first = $this->signer($document, 'first@example.com', 'First Client');
+        $second = $this->signer($document, 'second@example.com', 'Second Client');
+        $this->assignBox($document, $first);
+        $this->assignBox($document, $second);
+
+        $result = $this->signatures->sendPendingSigningEmails($document);
+
+        $this->assertSame(2, $result['sent']);
+        $this->assertSame([], $result['errors']);
+        $this->assertSame([], $result['skipped']);
+        $this->assertNotNull($first->fresh()->sent_at);
+        $this->assertNotNull($second->fresh()->sent_at);
+        $this->assertSame('sent', $document->fresh()->status);
+        $this->assertCount(2, $result['emailed']);
+    }
+
+    #[Test]
+    public function send_all_continues_when_one_signer_still_has_a_placeholder_email(): void
+    {
+        $document = $this->document();
+        $real = $this->signer($document, 'real@example.com', 'Real Client');
+        $placeholder = $this->signer($document, 'client-123@lead.internal', 'Placeholder Client');
+        $this->assignBox($document, $real);
+        $this->assignBox($document, $placeholder);
+
+        $result = $this->signatures->sendPendingSigningEmails($document);
+
+        $this->assertSame(1, $result['sent']);
+        $this->assertNotNull($real->fresh()->sent_at);
+        $this->assertNull($placeholder->fresh()->sent_at);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertStringContainsString('placeholder', strtolower($result['errors'][0]));
     }
 
     #[Test]
@@ -111,7 +151,7 @@ class SignatureServiceMultiSignerTest extends TestCase
         ], $overrides));
     }
 
-    private function assignEveryBox(Document $document, Signer $signer): void
+    private function assignBox(Document $document, Signer $signer): void
     {
         $document->signatureFields()->create([
             'signer_id' => $signer->id,
@@ -121,6 +161,11 @@ class SignatureServiceMultiSignerTest extends TestCase
             'width_percent' => 0.2,
             'height_percent' => 0.05,
         ]);
+    }
+
+    private function assignEveryBox(Document $document, Signer $signer): void
+    {
+        $this->assignBox($document, $signer);
     }
 
     private function ensureSchema(): void

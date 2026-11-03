@@ -117,6 +117,14 @@ class EmailService
         return $this->registerMailboxFailoverMailer($account);
     }
 
+    /**
+     * Same mailer selection as CRM compose for a From address (mailbox SMTP when configured).
+     */
+    public function mailerForFromAddress(string $from): string
+    {
+        return $this->composeMailerName($this->findMailbox($from));
+    }
+
     protected function findMailbox(string $from): ?Email
     {
         $from = strtolower(trim($from));

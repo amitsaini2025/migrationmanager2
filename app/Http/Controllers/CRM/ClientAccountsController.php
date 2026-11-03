@@ -20,6 +20,7 @@ use App\Models\Staff;
 use App\Services\ApplyInvoiceOfficeDiscount;
 use App\Services\ClientPortalActionNoteService;
 use App\Services\CrmSentEmailS3Service;
+use App\Services\EmailService;
 use App\Services\FCMService;
 use App\Services\FinancialStatsService;
 use App\Services\InvoicePaymentSyncService;
@@ -147,10 +148,31 @@ class ClientAccountsController extends Controller
                 ]]
             );
         } catch (\Exception $e) {
-            Log::warning('Account send email PDF archive failed (email still queued)', [
+            Log::warning('Account send email PDF archive failed (delivery still attempted)', [
                 'email_log_id' => $emailLog->id ?? null,
                 'error' => $e->getMessage(),
             ]);
+        }
+    }
+
+    /**
+     * Send Account tab invoice/receipt mail using the selected From mailbox (compose-compatible).
+     * Uses send() so mailbox-specific Zoho SMTP registered by EmailService exists in this request.
+     *
+     * @param  array<string, mixed>  $invoiceArray
+     */
+    protected function sendAccountClientMail(string $to, array $invoiceArray, string $from, $emailLog = null): void
+    {
+        $mailer = app(EmailService::class)->mailerForFromAddress($from);
+
+        try {
+            Mail::mailer($mailer)->to($to)->send(new InvoiceEmailManager($invoiceArray));
+        } catch (\Throwable $e) {
+            if ($emailLog) {
+                app(SystemEmailLogService::class)->markSendFailed($emailLog, $e->getMessage());
+            }
+
+            throw $e;
         }
     }
 
@@ -6702,7 +6724,7 @@ class ClientAccountsController extends Controller
                 'Invoice-'.$invoiceNo.'.pdf'
             );
 
-            Mail::mailer()->to($clientEmail)->queue(new InvoiceEmailManager($invoiceArray));
+            $this->sendAccountClientMail($clientEmail, $invoiceArray, $composed['from'], $log);
 
             $this->logAccountDocumentSent(
                 (int) $record_get->client_id,
@@ -6851,7 +6873,7 @@ class ClientAccountsController extends Controller
                 'Receipt-'.$receiptNo.'.pdf'
             );
 
-            Mail::mailer()->to($clientEmail)->queue(new InvoiceEmailManager($invoiceArray));
+            $this->sendAccountClientMail($clientEmail, $invoiceArray, $composed['from'], $log);
 
             $this->logAccountDocumentSent(
                 (int) $record_get->client_id,
@@ -7008,7 +7030,7 @@ class ClientAccountsController extends Controller
                 'Office-Receipt-'.$receiptNo.'.pdf'
             );
 
-            Mail::mailer()->to($clientEmail)->queue(new InvoiceEmailManager($invoiceArray));
+            $this->sendAccountClientMail($clientEmail, $invoiceArray, $composed['from'], $log);
 
             $this->logAccountDocumentSent(
                 (int) $record_get->client_id,

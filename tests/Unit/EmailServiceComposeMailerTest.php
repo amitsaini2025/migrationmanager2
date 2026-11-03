@@ -63,4 +63,12 @@ class EmailServiceComposeMailerTest extends TestCase
 
         $this->assertSame('array', (new EmailService)->composeMailerName($account));
     }
+
+    #[Test]
+    public function empty_from_address_keeps_default_mailer(): void
+    {
+        config(['mail.default' => 'failover']);
+
+        $this->assertSame('failover', (new EmailService)->mailerForFromAddress(''));
+    }
 }

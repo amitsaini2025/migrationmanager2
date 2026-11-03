@@ -110,7 +110,8 @@ class ClientDetailModalsTest extends TestCase
         Assert::assertStringContainsString('class="account-send-message"', $account);
         Assert::assertDoesNotMatchRegularExpression('/id="account_send_message"[^>]*class="form-control"/', $account);
         Assert::assertDoesNotMatchRegularExpression('/class="form-control"[^>]*id="account_send_message"/', $account);
-        Assert::assertStringContainsString('textarea.account-send-message', $customCss);
+        Assert::assertStringContainsString('#accountSendToClientModal textarea.account-send-message', $customCss);
+        Assert::assertStringContainsString('width: 100% !important', $customCss);
         Assert::assertStringContainsString('resize: vertical', $customCss);
     }
 }

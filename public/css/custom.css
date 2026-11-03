@@ -902,9 +902,10 @@ textarea.sms-compose-message:focus {
 }
 
 /* Account send invoice/receipt: same height-lock escape as SMS compose (scoped; do not use form-control). */
-textarea.account-send-message {
+#accountSendToClientModal textarea.account-send-message {
     display: block;
-    width: 100%;
+    width: 100% !important;
+    max-width: 100%;
     padding: 0.375rem 0.75rem;
     font-size: 0.9rem;
     font-weight: 400;
@@ -920,7 +921,7 @@ textarea.account-send-message {
     overflow-y: auto;
     box-sizing: border-box;
 }
-textarea.account-send-message:focus {
+#accountSendToClientModal textarea.account-send-message:focus {
     color: #495057;
     background-color: #fff;
     border-color: #80bdff;

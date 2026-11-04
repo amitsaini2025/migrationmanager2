@@ -23,11 +23,9 @@ final class AccountClientSendComposer
             default => 'client fund receipt',
         };
 
-        $subject = match ($kind) {
-            'invoice' => 'Invoice #'.$number.' from Bansal Immigration',
-            'office' => 'Office Receipt #'.$number.' from Bansal Immigration',
-            default => 'Payment Receipt from Bansal Immigration #'.$number,
-        };
+        $subject = $kind === 'invoice'
+            ? 'Invoice #'.$number.' from Bansal Immigration'
+            : 'Payment Receipt from Bansal Immigration #'.$number;
 
         $attachmentPrefix = match ($kind) {
             'invoice' => 'Invoice',

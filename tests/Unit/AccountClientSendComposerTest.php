@@ -28,7 +28,7 @@ class AccountClientSendComposerTest extends TestCase
         $office = AccountClientSendComposer::draft('office', 'Jane', 'OR-9', 150.5);
         $invoice = AccountClientSendComposer::draft('invoice', 'Jane', 'INV-3');
 
-        $this->assertSame('Office Receipt #OR-9 from Bansal Immigration', $office['subject']);
+        $this->assertSame('Payment Receipt from Bansal Immigration #OR-9', $office['subject']);
         $this->assertSame('Office-Receipt-OR-9.pdf', $office['attachment_name']);
         $this->assertStringContainsString('payment of $150.50', $office['message']);
         $this->assertSame('Invoice #INV-3 from Bansal Immigration', $invoice['subject']);

@@ -84,10 +84,10 @@ return [
     */
     'matter_discontinue_role_ids' => (($__matterDiscontinueRoles = array_values(array_filter(array_map(
         'intval',
-        explode(',', (string) env('CRM_MATTER_DISCONTINUE_ROLE_IDS', '1,17,16'))
+        explode(',', (string) env('CRM_MATTER_DISCONTINUE_ROLE_IDS', '1,17,16,15'))
     ), static fn (int $id) => $id > 0))) !== [])
         ? $__matterDiscontinueRoles
-        : [1, 17, 16],
+        : [1, 17, 16, 15],
 
     /*
     |--------------------------------------------------------------------------

@@ -98,9 +98,9 @@ class EmailService
     }
 
     /**
-     * Zoho mailbox SMTP first, then AWS SMTP when a password is stored.
-     * Temporary until AWS SMTP delivery is confirmed. Array/log drivers
-     * (and a plain smtp default without mailbox password) stay unchanged.
+     * AWS SMTP first, then that mailbox's Zoho SMTP when a password is stored.
+     * Array/log drivers (and a plain smtp default without mailbox password)
+     * stay unchanged.
      */
     public function composeMailerName(?Email $account): string
     {
@@ -170,7 +170,7 @@ class EmailService
             ],
             "mail.mailers.{$failoverMailer}" => [
                 'transport' => 'failover',
-                'mailers' => [$zohoMailer, 'smtp'],
+                'mailers' => ['smtp', $zohoMailer],
                 'retry_after' => 60,
             ],
         ]);

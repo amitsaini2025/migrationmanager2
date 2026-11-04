@@ -269,8 +269,8 @@ return [
         'checklist_status_column' => 'employer_checklist_status',
         'session_prefix' => 'employer_sheet_',
 
-        // NominationENS is the live ENS sponsor nick; DE/nomination kept for legacy matters.
-        'matter_nick_names' => ['SBS', 'DAMA', 'TAS', 'NominationENS', 'DE', 'SESR', 'SIDCoreSkills', 'TN 407', 'nomination'],
+        // Live ENS nick is "Nomination ENS" (space); NominationENS/DE/nomination kept for legacy.
+        'matter_nick_names' => ['SBS', 'DAMA', 'TAS', 'Nomination ENS', 'NominationENS', 'DE', 'SESR', 'SIDCoreSkills', 'TN 407', 'nomination'],
         'matter_title_patterns' => [],
         'sponsor_type_labels' => [
             'sbs' => 'SBS',
@@ -278,6 +278,7 @@ return [
             'dama' => 'Labour agreement',
             'sidcoreskills' => 'Nomination — Core Skills',
             'nomination' => 'Nomination',
+            'nomination ens' => 'Nomination — ENS',
             'nominationens' => 'Nomination — ENS',
             'de' => 'Nomination — ENS',
             'sesr' => 'Nomination — Regional',

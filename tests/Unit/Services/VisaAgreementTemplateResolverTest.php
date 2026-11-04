@@ -45,6 +45,10 @@ class VisaAgreementTemplateResolverTest extends TestCase
         $liveNick = $this->resolver->determineCandidates(true, 'NominationENS', 'Employer Nomination Scheme', false);
         $this->assertSame('company_nomination', $liveNick['rule']);
         $this->assertSame('Service_Agreement_company_nomination.docx', $liveNick['candidates'][0]);
+
+        $spacedNick = $this->resolver->determineCandidates(true, 'Nomination ENS', 'Employer Nomination Scheme', false);
+        $this->assertSame('company_nomination', $spacedNick['rule']);
+        $this->assertSame('Service_Agreement_company_nomination.docx', $spacedNick['candidates'][0]);
     }
 
     public function test_company_client_regional_employer_nomination_uses_nomination_template(): void

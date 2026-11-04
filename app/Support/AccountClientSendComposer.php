@@ -23,10 +23,10 @@ final class AccountClientSendComposer
             default => 'client fund receipt',
         };
 
-        $subjectPrefix = match ($kind) {
-            'invoice' => 'Invoice',
-            'office' => 'Office Receipt',
-            default => 'Client Fund Receipt',
+        $subject = match ($kind) {
+            'invoice' => 'Invoice #'.$number.' from Bansal Immigration',
+            'office' => 'Office Receipt #'.$number.' from Bansal Immigration',
+            default => 'Payment Receipt from Bansal Immigration #'.$number,
         };
 
         $attachmentPrefix = match ($kind) {
@@ -40,7 +40,7 @@ final class AccountClientSendComposer
             : self::receiptPaymentMessage($name, $amount);
 
         return [
-            'subject' => $subjectPrefix.' #'.$number.' from Bansal Immigration',
+            'subject' => $subject,
             'message' => $message,
             'attachment_name' => $attachmentPrefix.'-'.$number.'.pdf',
             'document_label' => $documentLabel,

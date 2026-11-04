@@ -13,7 +13,7 @@ class AccountClientSendComposerTest extends TestCase
     {
         $draft = AccountClientSendComposer::draft('client-fund', 'John Testing', '482SD_1', 2200.0);
 
-        $this->assertSame('Client Fund Receipt #482SD_1 from Bansal Immigration', $draft['subject']);
+        $this->assertSame('Payment Receipt from Bansal Immigration #482SD_1', $draft['subject']);
         $this->assertStringContainsString('Dear John Testing,', $draft['message']);
         $this->assertStringContainsString('Thank you for choosing the Bansal Immigration.', $draft['message']);
         $this->assertStringContainsString('We confirm that we have received your payment of $2,200.00.', $draft['message']);

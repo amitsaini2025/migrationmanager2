@@ -11,6 +11,7 @@ use App\Models\Notification;
 use App\Models\Signer;
 use App\Services\PythonService;
 use App\Services\SignatureService;
+use App\Services\SignedDocumentChecklistActionService;
 use App\Services\SignedDocumentFinalizer;
 use App\Services\SignedDocumentS3PathResolver;
 use Illuminate\Filesystem\FilesystemAdapter;
@@ -37,6 +38,7 @@ class PublicDocumentController extends Controller
     public function __construct(
         private SignatureService $signatures,
         private SignedDocumentFinalizer $signedDocumentFinalizer,
+        private SignedDocumentChecklistActionService $signedDocumentChecklistAction,
     ) {}
 
     /**
@@ -645,6 +647,10 @@ class PublicDocumentController extends Controller
 
                     // Create notifications and activity logs
                     $this->createSignatureNotifications($document, $signer);
+
+                    if ($completion === 'signed') {
+                        $this->signedDocumentChecklistAction->record($document->fresh() ?? $document);
+                    }
 
                     // Redirect to thank you page with success message
                     return redirect()->route('public.documents.thankyou', ['id' => $document->id])

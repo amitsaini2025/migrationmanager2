@@ -1245,7 +1245,10 @@
             }
             dibpReceiptsHideContextMenus();
             if (action === 'preview' && dibpReceiptsContextFile) {
-                dibpReceiptsPreviewFile(dibpReceiptsContextFile.getAttribute('data-filetype'), dibpReceiptsContextFile.getAttribute('data-fileurl'));
+                var previewUrl = dibpReceiptsContextFile.getAttribute('data-fileurl');
+                if (previewUrl) {
+                    window.open(previewUrl, '_blank');
+                }
             } else if (action === 'download' && dibpReceiptsContextFile) {
                 dibpReceiptsDownload(dibpReceiptsContextFile);
             } else if (action === 'rename-file' && dibpReceiptsContextFile) {

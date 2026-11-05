@@ -219,6 +219,7 @@ class AccountTabDibpReceiptsToggleTest extends TestCase
         Assert::assertStringContainsString('dibp-receipts-file-context-menu', $js);
         Assert::assertStringContainsString('dibp-receipts-preview', $js);
         Assert::assertStringContainsString('dibpReceiptsPreviewFile', $js);
+        Assert::assertStringContainsString("window.open(previewUrl, '_blank')", $js);
         Assert::assertStringContainsString('data-rename-url', $js);
         Assert::assertStringContainsString('data-download-url', $js);
         Assert::assertStringContainsString('data-hubdoc-url', $js);

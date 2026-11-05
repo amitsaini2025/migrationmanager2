@@ -120,6 +120,63 @@ class SignatureServiceMultiSignerTest extends TestCase
     }
 
     #[Test]
+    public function checklist_reminder_sends_and_leaves_the_signing_email_available(): void
+    {
+        $document = $this->document([
+            'doc_type' => 'agreement',
+            'status' => 'sent',
+            'client_id' => 10,
+            'client_matter_id' => 20,
+            'signature_doc_link' => json_encode([['url' => 'https://example.test/sign']]),
+        ]);
+        $signer = $this->signer($document, 'signer@example.com', 'Signer');
+        $this->assignBox($document, $signer);
+
+        $this->assertTrue($this->signatures->remind($signer));
+
+        $signer->refresh();
+        $this->assertSame(1, (int) $signer->reminder_count);
+        $this->assertNull($signer->sent_at);
+
+        $result = $this->signatures->sendPendingSigningEmails($document->fresh(), $signer->id);
+
+        $this->assertSame(1, $result['sent']);
+        $this->assertNotNull($signer->fresh()->sent_at);
+    }
+
+    #[Test]
+    public function reminder_before_the_signing_email_stays_blocked_for_other_documents(): void
+    {
+        $document = $this->document([
+            'doc_type' => 'visa',
+            'status' => 'placed',
+            'client_id' => 10,
+            'client_matter_id' => 20,
+            'signature_doc_link' => json_encode([['url' => 'https://example.test/sign']]),
+        ]);
+        $signer = $this->signer($document, 'visa@example.com', 'Visa Signer');
+
+        $this->assertFalse($this->signatures->remind($signer));
+        $this->assertSame(0, (int) $signer->fresh()->reminder_count);
+        $this->assertNull($signer->fresh()->sent_at);
+    }
+
+    #[Test]
+    public function reminder_still_sends_after_the_signing_email(): void
+    {
+        $document = $this->document([
+            'doc_type' => 'visa',
+            'status' => 'sent',
+            'client_id' => 3,
+        ]);
+        $signer = $this->signer($document, 'sent@example.com', 'Sent Signer', ['sent_at' => now()]);
+
+        $this->assertTrue($this->signatures->remind($signer));
+        $this->assertSame(1, (int) $signer->fresh()->reminder_count);
+        $this->assertNotNull($signer->fresh()->sent_at);
+    }
+
+    #[Test]
     public function a_single_signer_finishes_the_document_on_submit(): void
     {
         $document = $this->document(['status' => 'sent']);
@@ -186,6 +243,7 @@ class SignatureServiceMultiSignerTest extends TestCase
 
         foreach ([
             'client_id' => fn (Blueprint $table) => $table->unsignedBigInteger('client_id')->nullable(),
+            'client_matter_id' => fn (Blueprint $table) => $table->unsignedBigInteger('client_matter_id')->nullable(),
             'file_name' => fn (Blueprint $table) => $table->string('file_name')->nullable(),
             'myfile' => fn (Blueprint $table) => $table->string('myfile')->nullable(),
             'status' => fn (Blueprint $table) => $table->string('status')->nullable(),
@@ -223,6 +281,7 @@ class SignatureServiceMultiSignerTest extends TestCase
             'status' => fn (Blueprint $table) => $table->string('status')->nullable(),
             'sent_at' => fn (Blueprint $table) => $table->timestamp('sent_at')->nullable(),
             'signed_at' => fn (Blueprint $table) => $table->timestamp('signed_at')->nullable(),
+            'last_reminder_sent_at' => fn (Blueprint $table) => $table->timestamp('last_reminder_sent_at')->nullable(),
             'reminder_count' => fn (Blueprint $table) => $table->unsignedInteger('reminder_count')->default(0),
             'email_template' => fn (Blueprint $table) => $table->string('email_template')->nullable(),
             'email_subject' => fn (Blueprint $table) => $table->string('email_subject')->nullable(),

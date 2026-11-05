@@ -456,14 +456,22 @@ class SignatureService
     {
         $systemEmailLog = $this->systemEmailLog;
         $log = null;
+        $document = $signer->document;
+        $documentId = $document?->id ?? $signer->document_id;
 
         try {
+            if ($document === null) {
+                throw new \Exception('Cannot send reminder. Document was not found.');
+            }
+
             // Check if signature is cancelled - cannot send reminders to cancelled signers
             if ($signer->status === 'cancelled') {
                 throw new \Exception('Cannot send reminder. Signature has been cancelled.');
             }
 
-            if ($signer->sent_at === null) {
+            // Checklist agreements store the signing link without sent_at. Other
+            // documents still require the signing email before a reminder.
+            if ($signer->sent_at === null && ! $this->checklistAgreementHasSigningLink($document, $signer)) {
                 throw new \Exception('Cannot send reminder until the signing email has been sent.');
             }
 
@@ -477,7 +485,6 @@ class SignatureService
                 throw new \Exception('Maximum reminders already sent');
             }
 
-            $document = $signer->document;
             $signingUrl = url("/sign/{$document->id}/{$signer->token}");
             $from = $this->resolveFrom($options['from_email'] ?? $signer->from_email ?? null);
 
@@ -544,7 +551,7 @@ class SignatureService
             // Create activity note for failed reminder
             try {
                 SignatureActivity::create([
-                    'document_id' => $document->id,
+                    'document_id' => $documentId,
                     'created_by' => Auth::guard('admin')->id() ?? 1,
                     'action_type' => 'email_failed',
                     'note' => "Failed to send reminder to {$signer->name} ({$signer->email}): {$e->getMessage()}",
@@ -558,7 +565,7 @@ class SignatureService
                 ]);
             } catch (\Exception $noteException) {
                 Log::warning('Failed to create reminder failure note', [
-                    'document_id' => $document->id,
+                    'document_id' => $documentId,
                     'error' => $noteException->getMessage(),
                 ]);
             }
@@ -570,6 +577,22 @@ class SignatureService
 
             return false;
         }
+    }
+
+    /**
+     * Checklist cost agreements publish a signing link before any signing email is recorded.
+     */
+    protected function checklistAgreementHasSigningLink(Document $document, Signer $signer): bool
+    {
+        if ($document->doc_type !== 'agreement' || empty($document->client_matter_id) || empty($document->client_id)) {
+            return false;
+        }
+
+        if (trim((string) $signer->token) === '') {
+            return false;
+        }
+
+        return trim((string) ($document->signature_doc_link ?? '')) !== '';
     }
 
     /**

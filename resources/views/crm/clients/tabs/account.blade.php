@@ -2718,13 +2718,13 @@ tr.unallocated-receipt[draggable="true"]:hover::after {
                 <div class="form-group">
                     <label for="account_send_subject">Subject <span class="text-danger">*</span></label>
                     <input type="text" class="form-control" id="account_send_subject" maxlength="255">
+                    <p class="account-send-attachment mb-0 mt-2" id="account_send_attachment"></p>
                 </div>
                 <div class="form-group">
                     <label for="account_send_message">Message <span class="text-danger">*</span></label>
                     {{-- Avoid global textarea.form-control{height:64px!important} so drag-resize works --}}
                     <textarea class="account-send-message" id="account_send_message" rows="10"></textarea>
                 </div>
-                <p class="text-muted mb-0" id="account_send_attachment" style="font-size: 13px;"></p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

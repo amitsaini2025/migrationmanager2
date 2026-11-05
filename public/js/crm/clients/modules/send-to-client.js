@@ -556,28 +556,42 @@
         };
     }
 
-    function applyAccountSendFrom(email) {
+    function clearAccountSendFrom() {
         var select = document.getElementById('account_send_from');
-        if (!select) {
+        if (select) {
+            select.value = '';
+        }
+    }
+
+    function accountSendPdfUrl(kind, recordId) {
+        var base = (window.ClientDetailConfig && window.ClientDetailConfig.urls && window.ClientDetailConfig.urls.base) || '';
+        base = String(base).replace(/\/$/, '');
+        var id = encodeURIComponent(recordId);
+        if (kind === 'invoice') {
+            return base + '/clients/genInvoice/' + id;
+        }
+        if (kind === 'office') {
+            return base + '/clients/genOfficeReceipt/' + id;
+        }
+        return base + '/clients/genClientFundReceipt/' + id;
+    }
+
+    function renderAccountSendAttachment(name, kind, recordId) {
+        var slot = document.getElementById('account_send_attachment');
+        if (!slot) {
             return;
         }
-        var wanted = (email || '').toLowerCase();
-        var matched = false;
-        Array.prototype.forEach.call(select.options, function(opt) {
-            if (!matched && wanted && (opt.value || '').toLowerCase() === wanted) {
-                select.value = opt.value;
-                matched = true;
-            }
-        });
-        if (matched) {
+        slot.textContent = '';
+        if (!name) {
+            slot.textContent = 'The PDF will be attached when you send.';
             return;
         }
-        var first = Array.prototype.find.call(select.options, function(opt) {
-            return !!opt.value;
-        });
-        if (first) {
-            select.value = first.value;
-        }
+        var link = document.createElement('a');
+        link.href = accountSendPdfUrl(kind, recordId);
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = name;
+        slot.appendChild(link);
     }
 
     function showAccountSendError(message) {
@@ -615,7 +629,7 @@
         $('#account_send_message').val('');
         $('#account_send_attachment').text('Loading the draft…');
         $('#accountSendToClientSubmit').prop('disabled', true);
-        $modal.data('preferred-from', '');
+        clearAccountSendFrom();
 
         if (typeof window.refreshEmailFromSenders === 'function') {
             window.refreshEmailFromSenders();
@@ -636,16 +650,12 @@
                 $('#account_send_to').val(response.to || '');
                 $('#account_send_subject').val(response.subject || '');
                 $('#account_send_message').val(response.message || '');
-                var attachment = response.attachment_name
-                    ? ('PDF attached: ' + response.attachment_name)
-                    : 'The PDF will be attached when you send.';
-                $('#account_send_attachment').text(attachment);
-                $modal.data('preferred-from', response.suggested_from || '');
+                renderAccountSendAttachment(response.attachment_name || '', kind, recordId);
                 var refresh = (typeof window.refreshEmailFromSenders === 'function')
                     ? window.refreshEmailFromSenders()
                     : null;
                 Promise.resolve(refresh).then(function() {
-                    applyAccountSendFrom(response.suggested_from || '');
+                    clearAccountSendFrom();
                     $('#accountSendToClientSubmit').prop('disabled', false);
                 });
             },
@@ -660,9 +670,8 @@
     }
 
     $(document).on('shown.bs.modal', '#accountSendToClientModal', function() {
-        var preferred = $(this).data('preferred-from') || '';
         setTimeout(function() {
-            applyAccountSendFrom(preferred);
+            clearAccountSendFrom();
         }, 0);
     });
 

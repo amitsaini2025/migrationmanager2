@@ -12,7 +12,7 @@ final class AccountClientSendComposer
     /**
      * @return array{subject: string, message: string, attachment_name: string, document_label: string}
      */
-    public static function draft(string $kind, string $clientName, string $number, ?float $amount = null): array
+    public static function draft(string $kind, string $clientName, string $number, ?float $amount = null, ?string $matterReference = null): array
     {
         $name = trim($clientName) !== '' ? trim($clientName) : 'Client';
         $number = trim($number) !== '' ? trim($number) : '—';
@@ -25,7 +25,7 @@ final class AccountClientSendComposer
 
         $subject = $kind === 'invoice'
             ? 'Invoice #'.$number.' from Bansal Immigration'
-            : 'Payment Receipt from Bansal Immigration #'.$number;
+            : self::receiptSubject($number, $matterReference);
 
         $attachmentPrefix = match ($kind) {
             'invoice' => 'Invoice',
@@ -111,6 +111,16 @@ final class AccountClientSendComposer
         }
 
         return '';
+    }
+
+    private static function receiptSubject(string $number, ?string $matterReference): string
+    {
+        $reference = trim((string) $matterReference);
+        if ($reference === '') {
+            return 'Payment Receipt from Bansal Immigration #'.$number;
+        }
+
+        return 'Payment Receipt from Bansal Immigration (Our REF: '.$reference.')';
     }
 
     private static function invoiceMessage(string $name, string $documentLabel, string $number): string

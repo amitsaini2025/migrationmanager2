@@ -928,3 +928,16 @@ textarea.sms-compose-message:focus {
     outline: 0;
     box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
+
+/* Attachment name sits on a white modal. Do not use .text-muted here: that class is forced to white. */
+#accountSendToClientModal #account_send_attachment {
+    color: #495057 !important;
+    font-size: 13px;
+}
+#accountSendToClientModal #account_send_attachment a {
+    color: #394eea !important;
+    text-decoration: underline;
+}
+#accountSendToClientModal #account_send_attachment a:hover {
+    color: #2436b8 !important;
+}

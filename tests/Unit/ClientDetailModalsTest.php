@@ -114,4 +114,20 @@ class ClientDetailModalsTest extends TestCase
         Assert::assertStringContainsString('width: 100% !important', $customCss);
         Assert::assertStringContainsString('resize: vertical', $customCss);
     }
+
+    #[Test]
+    public function account_send_attachment_is_visible_and_opens_the_existing_pdf(): void
+    {
+        $account = (string) file_get_contents(resource_path('views/crm/clients/tabs/account.blade.php'));
+        $customCss = (string) file_get_contents(public_path('css/custom.css'));
+        $script = (string) file_get_contents(public_path('js/crm/clients/modules/send-to-client.js'));
+
+        Assert::assertStringContainsString('class="account-send-attachment mb-0 mt-2" id="account_send_attachment"', $account);
+        Assert::assertStringContainsString('#accountSendToClientModal #account_send_attachment', $customCss);
+        Assert::assertStringContainsString('color: #495057 !important', $customCss);
+        Assert::assertStringContainsString("link.target = '_blank'", $script);
+        Assert::assertStringContainsString('/clients/genClientFundReceipt/', $script);
+        Assert::assertStringContainsString('/clients/genOfficeReceipt/', $script);
+        Assert::assertStringContainsString('/clients/genInvoice/', $script);
+    }
 }

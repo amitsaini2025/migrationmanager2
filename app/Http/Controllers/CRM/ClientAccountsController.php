@@ -6424,7 +6424,8 @@ class ClientAccountsController extends Controller
             $kind,
             $context['client_name'],
             $context['number'],
-            $context['amount']
+            $context['amount'],
+            $kind === 'invoice' ? null : $context['matter_reference']
         );
 
         return response()->json([
@@ -6441,7 +6442,7 @@ class ClientAccountsController extends Controller
     }
 
     /**
-     * @return array{client_id: int, client_name: string, email: string, number: string, amount: ?float}|JsonResponse
+     * @return array{client_id: int, client_name: string, email: string, number: string, amount: ?float, matter_reference: string}|JsonResponse
      */
     protected function accountSendContext(string $kind, int $id): array|JsonResponse
     {
@@ -6516,7 +6517,29 @@ class ClientAccountsController extends Controller
             'email' => (string) $clientEmail,
             'number' => $number,
             'amount' => $amount,
+            'matter_reference' => $this->accountMatterReference($client, (int) ($entry->client_matter_id ?? 0)),
         ];
+    }
+
+    /**
+     * Client code plus matter number, matching the Account screen reference (JOHN2608773-482SD_1).
+     */
+    protected function accountMatterReference(object $client, int $clientMatterId): string
+    {
+        $clientCode = trim((string) ($client->client_id ?? ''));
+        $matterNumber = '';
+        if ($clientMatterId > 0) {
+            $matterNumber = trim((string) DB::table('client_matters')
+                ->where('id', $clientMatterId)
+                ->where('client_id', (int) $client->id)
+                ->value('client_unique_matter_no'));
+        }
+
+        if ($clientCode !== '' && $matterNumber !== '') {
+            return $clientCode.'-'.$matterNumber;
+        }
+
+        return $clientCode;
     }
 
     /**
@@ -6821,7 +6844,8 @@ class ClientAccountsController extends Controller
                 'client-fund',
                 $clientFullName,
                 (string) $receiptNo,
-                isset($record_get->deposit_amount) ? (float) $record_get->deposit_amount : null
+                isset($record_get->deposit_amount) ? (float) $record_get->deposit_amount : null,
+                $this->accountMatterReference($clientname, (int) ($record_get->client_matter_id ?? 0))
             );
             $defaultSubject = $draft['subject'];
             $defaultContent = AccountClientSendComposer::plainToHtml($draft['message']);
@@ -6978,7 +7002,8 @@ class ClientAccountsController extends Controller
                 'office',
                 $clientFullName,
                 (string) $receiptNo,
-                isset($record_get->deposit_amount) ? (float) $record_get->deposit_amount : null
+                isset($record_get->deposit_amount) ? (float) $record_get->deposit_amount : null,
+                $this->accountMatterReference($clientname, (int) ($record_get->client_matter_id ?? 0))
             );
             $defaultSubject = $draft['subject'];
             $defaultContent = AccountClientSendComposer::plainToHtml($draft['message']);

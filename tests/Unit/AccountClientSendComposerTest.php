@@ -38,6 +38,26 @@ class AccountClientSendComposerTest extends TestCase
     }
 
     #[Test]
+    public function receipt_subject_uses_the_client_matter_reference(): void
+    {
+        $clientFund = AccountClientSendComposer::draft('client-fund', 'John', 'CFL-8315', 1.0, 'JOHN2608773-482SD_1');
+        $office = AccountClientSendComposer::draft('office', 'Jane', 'REC-754', 1.0, 'VIPL2400001-820P_1');
+        $invoice = AccountClientSendComposer::draft('invoice', 'Jane', 'INV-3', null, 'JOHN2608773-482SD_1');
+
+        $this->assertSame(
+            'Payment Receipt from Bansal Immigration (Our REF: JOHN2608773-482SD_1)',
+            $clientFund['subject']
+        );
+        $this->assertSame('Receipt-CFL-8315.pdf', $clientFund['attachment_name']);
+        $this->assertSame(
+            'Payment Receipt from Bansal Immigration (Our REF: VIPL2400001-820P_1)',
+            $office['subject']
+        );
+        $this->assertSame('Office-Receipt-REC-754.pdf', $office['attachment_name']);
+        $this->assertSame('Invoice #INV-3 from Bansal Immigration', $invoice['subject']);
+    }
+
+    #[Test]
     public function receipt_draft_without_amount_still_confirms_payment(): void
     {
         $draft = AccountClientSendComposer::draft('client-fund', 'Sam', 'CFL-1');

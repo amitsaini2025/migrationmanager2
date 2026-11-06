@@ -57,7 +57,7 @@ class SignedDocumentChecklistActionServiceTest extends TestCase
             && (string) $note->type === 'client'
             && (int) $note->client_id === $client->id
             && (int) $note->matter_id === $matter->id
-            && (int) $note->user_id === $responsible->id));
+            && (int) $note->user_id === $assisting->id));
     }
 
     #[Test]
@@ -80,6 +80,7 @@ class SignedDocumentChecklistActionServiceTest extends TestCase
         $this->assertSame('AVNE2503771-JRP_1 signed Form 80', $note->description);
         $this->assertSame('Checklist', $note->task_group);
         $this->assertSame($responsible->id, (int) $note->assigned_to);
+        $this->assertSame($responsible->id, (int) $note->user_id);
     }
 
     #[Test]

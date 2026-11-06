@@ -133,10 +133,18 @@ class SignedDocumentChecklistActionService
     }
 
     /**
+     * Action page Assigner Name reads user_id. These rows show Person Assisting.
+     * Person Responsible is used only when the matter has no assisting staff.
+     *
      * @param  list<int>  $assigneeIds
      */
     private function assignerId(?ClientMatter $matter, array $assigneeIds): int
     {
+        $assistingId = (int) ($matter->sel_person_assisting ?? 0);
+        if (in_array($assistingId, $assigneeIds, true)) {
+            return $assistingId;
+        }
+
         $responsibleId = (int) ($matter->sel_person_responsible ?? 0);
         if (in_array($responsibleId, $assigneeIds, true)) {
             return $responsibleId;

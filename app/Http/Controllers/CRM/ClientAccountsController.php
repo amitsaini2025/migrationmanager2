@@ -27,6 +27,7 @@ use App\Services\InvoicePaymentSyncService;
 use App\Services\SesSenderService;
 use App\Services\SystemEmailLogService;
 use App\Support\AccountClientSendComposer;
+use App\Support\InvoiceListAging;
 use App\Support\SendGridFromAllowedDomains;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Carbon\Carbon;
@@ -4160,6 +4161,9 @@ class ClientAccountsController extends Controller
                 });
             }
         }
+
+        // Aging category is optional. An empty value leaves the list unchanged.
+        InvoiceListAging::apply($query, $request->input('aging_category'));
 
         // Sorting
         $sortBy = $request->input('sort_by', 'id');

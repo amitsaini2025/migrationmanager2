@@ -885,34 +885,14 @@
                     ];
 
                     foreach ($lists as $invoice) {
-                        if ($invoice->void_invoice == 1) continue; // Skip voided invoices
-                        $balanceAmount = isset($invoice->balance_amount) ? floatval($invoice->balance_amount) : 0;
-                        if (isset($invoice->payment_type) && $invoice->payment_type === 'Discount') {
-                            $balanceAmount = abs($balanceAmount);
+                        $bucket = \App\Support\InvoiceListAging::bucket($invoice);
+                        if ($bucket === null) {
+                            continue;
                         }
-                        $isPaidInvoice = ($invoice->invoice_status == 1) || ($balanceAmount <= 0);
-                        if ($isPaidInvoice) continue; // Skip fully paid invoices
 
-                        $transDate = !empty($invoice->trans_date) ? strtotime($invoice->trans_date) : false;
-                        $today = strtotime(date('Y-m-d'));
-                        $daysOld = $transDate ? floor(($today - $transDate) / (60 * 60 * 24)) : 0;
-                        
-                        // Outstanding amount for aging buckets
-                        $amount = $balanceAmount > 0 ? $balanceAmount : 0;
-                        
-                        if ($daysOld <= 30) {
-                            $agingSummary['current']['count']++;
-                            $agingSummary['current']['amount'] += $amount;
-                        } elseif ($daysOld <= 60) {
-                            $agingSummary['warning']['count']++;
-                            $agingSummary['warning']['amount'] += $amount;
-                        } elseif ($daysOld <= 90) {
-                            $agingSummary['urgent']['count']++;
-                            $agingSummary['urgent']['amount'] += $amount;
-                        } else {
-                            $agingSummary['critical']['count']++;
-                            $agingSummary['critical']['amount'] += $amount;
-                        }
+                        $amount = \App\Support\InvoiceListAging::outstandingAmount($invoice);
+                        $agingSummary[$bucket]['count']++;
+                        $agingSummary[$bucket]['amount'] += $amount;
                     }
                     ?>
 
@@ -1325,55 +1305,12 @@
                                                 </div>
                                             </td>
                                             <td>
-                                                <?php
-                                                // Calculate aging status
-                                                $transDate = !empty($list->trans_date) ? strtotime($list->trans_date) : false;
-                                                $today = strtotime(date('Y-m-d'));
-                                                $daysOld = $transDate ? floor(($today - $transDate) / (60 * 60 * 24)) : 0;
-
-                                                $balanceAmount = isset($list->balance_amount) ? floatval($list->balance_amount) : 0;
-                                                if (isset($list->payment_type) && $list->payment_type === 'Discount') {
-                                                    $balanceAmount = abs($balanceAmount);
-                                                }
-
-                                                $isPaidInvoice = ($list->invoice_status == 1) || ($balanceAmount <= 0);
-
-                                                if ($list->void_invoice == 1) {
-                                                    $agingClass = 'badge-void';
-                                                    $agingLabel = 'Voided';
-                                                    $agingIcon = 'fa-ban';
-                                                    $agingDays = null;
-                                                } elseif ($isPaidInvoice) {
-                                                    $agingClass = 'badge-paid';
-                                                    $agingLabel = 'Paid';
-                                                    $agingIcon = 'fa-check-circle';
-                                                    $agingDays = null;
-                                                } else {
-                                                    if ($daysOld <= 30) {
-                                                        $agingClass = 'badge-current';
-                                                        $agingLabel = 'Current';
-                                                        $agingIcon = 'fa-check-circle';
-                                                    } elseif ($daysOld <= 60) {
-                                                        $agingClass = 'badge-warning';
-                                                        $agingLabel = 'Warning';
-                                                        $agingIcon = 'fa-exclamation-triangle';
-                                                    } elseif ($daysOld <= 90) {
-                                                        $agingClass = 'badge-urgent';
-                                                        $agingLabel = 'Urgent';
-                                                        $agingIcon = 'fa-exclamation-circle';
-                                                    } else {
-                                                        $agingClass = 'badge-critical';
-                                                        $agingLabel = 'Critical';
-                                                        $agingIcon = 'fa-times-circle';
-                                                    }
-                                                    $agingDays = $daysOld . ' days';
-                                                }
-                                                ?>
-                                                <span class="aging-badge <?php echo $agingClass; ?>">
-                                                    <?php echo \App\Helpers\IconHelper::fromLegacy('fas ' . $agingIcon); ?>
-                                                    <?php echo $agingLabel; ?>
-                                                    <?php if (!empty($agingDays)) { ?>
-                                                        <span class="aging-days"><?php echo $agingDays; ?></span>
+                                                <?php $aging = \App\Support\InvoiceListAging::presentation($list); ?>
+                                                <span class="aging-badge <?php echo $aging['class']; ?>">
+                                                    <?php echo \App\Helpers\IconHelper::fromLegacy('fas ' . $aging['icon']); ?>
+                                                    <?php echo $aging['label']; ?>
+                                                    <?php if (!empty($aging['days'])) { ?>
+                                                        <span class="aging-days"><?php echo $aging['days']; ?></span>
                                                     <?php } ?>
                                                 </span>
                                             </td>

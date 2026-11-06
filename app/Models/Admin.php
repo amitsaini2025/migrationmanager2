@@ -685,6 +685,39 @@ class Admin extends Authenticatable
     }
 
     /**
+     * Primary contact used as the compose To address for a company client.
+     * Person clients return null so existing recipient behavior stays in place.
+     *
+     * @return array{id: int, name: string, email: string, status: string}|null
+     */
+    public function composePrimaryContactRecipient(): ?array
+    {
+        if (! $this->isCompany()) {
+            return null;
+        }
+
+        $this->loadMissing('company.contactPerson');
+        $contact = $this->company?->contactPerson;
+        if (! $contact) {
+            return null;
+        }
+
+        $email = self::sanitizeEmailAddress($contact->email ?? '');
+        if ($email === '' || self::isInternalPlaceholderEmail($email)) {
+            return null;
+        }
+
+        $name = trim(($contact->first_name ?? '').' '.($contact->last_name ?? ''));
+
+        return [
+            'id' => (int) $contact->id,
+            'name' => $name !== '' ? $name : $email,
+            'email' => $email,
+            'status' => 'Client',
+        ];
+    }
+
+    /**
      * Placeholder emails stored on company admin rows when the real email
      * already exists (admins.email unique). Not valid for outbound mail.
      */

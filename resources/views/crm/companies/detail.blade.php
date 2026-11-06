@@ -1174,6 +1174,9 @@ $(document).ready(function() {
         $detailAuthStaff = \Illuminate\Support\Facades\Auth::user();
         $canBulkDownloadClientDocuments = $detailAuthStaff instanceof \App\Models\Staff
             && $detailAuthStaff->hasCrmModule('84');
+        $companyPrimaryContact = ($fetchedData ?? null) instanceof \App\Models\Admin
+            ? $fetchedData->composePrimaryContactRecipient()
+            : null;
     @endphp
     window.ClientDetailConfig = {
         clientId: @json(($fetchedData->id ?? '')),
@@ -1183,6 +1186,7 @@ $(document).ready(function() {
         relabelPersonalDocTypeAsCompany: true,
         matterRefNo: @json(($id1 ?? '')),
         clientFirstName: @json(($fetchedData->first_name ?? 'client')),
+        companyPrimaryContact: @json($companyPrimaryContact),
         notPickedCallSmsDefault: @json($notPickedCallSmsDefault ?? ''),
         canBulkDownloadClientDocuments: @json($canBulkDownloadClientDocuments),
         // SMS Template Variables

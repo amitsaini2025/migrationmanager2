@@ -2926,6 +2926,27 @@
     }
 
     /**
+     * Company client pages pass the primary contact. Person clients omit it,
+     * so reply keeps using the original message address.
+     */
+    function companyPrimaryContactRecipient() {
+        const contact = window.ClientDetailConfig && window.ClientDetailConfig.companyPrimaryContact;
+        if (!contact || !contact.id || !contact.email) {
+            return null;
+        }
+        const email = extractEmailAddress(contact.email);
+        if (!email || !email.includes('@')) {
+            return null;
+        }
+        return {
+            id: String(contact.id),
+            name: contact.name || email,
+            email: email,
+            status: contact.status || 'Client'
+        };
+    }
+
+    /**
      * Look up a CRM client/lead record by email for the compose To dropdown.
      */
     async function fetchRecipientByEmail(emailAddress) {
@@ -3179,7 +3200,12 @@
 
         // Set To / From on modal shown (Tom Select + SendGrid From need the modal DOM ready)
         const applyComposeRecipients = () => {
-            if (data.to && data.to.length > 0) {
+            if (Array.isArray(data.recipients) && data.recipients.length && typeof window.initComposeEmailToField === 'function') {
+                window.initComposeEmailToField(
+                    data.recipients.map(recipient => String(recipient.id)),
+                    data.recipients
+                );
+            } else if (data.to && data.to.length > 0) {
                 resolveAndSetComposeTo(data.to);
             } else {
                 clearComposeToField();
@@ -3221,7 +3247,10 @@
 
         const detail = await ensureEmailDetail(email);
 
-        const recipientAddresses = getReplyRecipientAddresses(detail);
+        const companyContact = companyPrimaryContactRecipient();
+        const recipientAddresses = companyContact
+            ? [companyContact.email]
+            : getReplyRecipientAddresses(detail);
         if (!recipientAddresses.length) {
             showNotification('Could not extract recipient email address', 'error');
             return;
@@ -3242,6 +3271,9 @@
             message: replyMessage,
             matterId: matterId
         };
+        if (companyContact) {
+            composeData.recipients = [companyContact];
+        }
 
         // Outbound mail: pre-select the mailbox that sent the original email
         if (shouldReplyToOriginalRecipient(detail) && detail.from_mail) {

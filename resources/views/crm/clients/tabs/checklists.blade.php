@@ -23,6 +23,13 @@
                 $checklistAuthOfficeId = $checklistsTabPayload['checklistAuthOfficeId'];
                 $checklistMatterList = $checklistsTabPayload['checklistMatterList'];
                 $checklist_forms = $checklistsTabPayload['checklistForms'];
+
+                $checklistPrimaryContact = ($fetchedData ?? null) instanceof \App\Models\Admin
+                    ? $fetchedData->composePrimaryContactRecipient()
+                    : null;
+                $checklistSendRecipientId = $checklistPrimaryContact['id'] ?? ($fetchedData->id ?? '');
+                $checklistSendRecipientEmail = $checklistPrimaryContact['email'] ?? ($fetchedData->email ?? '');
+                $checklistSendRecipientName = $checklistPrimaryContact['name'] ?? (trim(($fetchedData->first_name ?? '') . ' ' . ($fetchedData->last_name ?? '')) ?: ($fetchedData->company_name ?? ''));
            @endphp
            <div class="tab-pane" id="checklists-tab"
                 data-current-matter-id="{{ $checklistCurrentMatterId ?? '' }}"
@@ -321,9 +328,9 @@
                                                                         </a>
                                                                         @endif
                                                                         <button type="button" class="btn btn-outline-info btn-sm btn-send-checklist" title="Send Document Checklist to client"
-                                                                            data-client-id="{{ $fetchedData->id ?? '' }}"
-                                                                            data-client-email="{{ $fetchedData->email ?? '' }}"
-                                                                            data-client-name="{{ trim(($fetchedData->first_name ?? '') . ' ' . ($fetchedData->last_name ?? '')) ?: ($fetchedData->company_name ?? '') }}"
+                                                                            data-client-id="{{ $checklistSendRecipientId }}"
+                                                                            data-client-email="{{ $checklistSendRecipientEmail }}"
+                                                                            data-client-name="{{ $checklistSendRecipientName }}"
                                                                             data-client-matter-id="{{ $form->client_matter_id ?? '' }}">
                                                                             @icon('fa-paper-plane', ['class' => 'mr-1'])Send Checklist
                                                                         </button>

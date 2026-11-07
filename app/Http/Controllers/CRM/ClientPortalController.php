@@ -3802,29 +3802,28 @@ class ClientPortalController extends Controller
 
 				$matterNo = $clientMatter->client_unique_matter_no ?? 'ID: ' . $matterId;
 
-				// Activity Feed (activities_logs): skip when request is from Client Portal tab; keep for Workflow tab etc.
-				if (!$this->shouldOmitActivitiesLogForClientPortalWebContext($request)) {
-					$comments = 'moved the stage from <b>' . $currentStage->name . '</b> to <b>' . $nextStage->name . '</b>';
-					if ($isAdvancingToDecisionReceived) {
-						$decisionOutcome = $request->input('decision_outcome');
-						$decisionNote = $request->input('decision_note', '');
-						$comments .= '<br>Outcome: <b>' . e($decisionOutcome) . '</b>';
-						if (!empty(trim($decisionNote))) {
-							$comments .= '<br>Note: ' . e($decisionNote);
-						}
+				// Always log stage moves to Activity Feed (including Client Portal tab).
+				// Other Client Portal actions still use shouldOmitActivitiesLogForClientPortalWebContext.
+				$comments = 'moved the stage from <b>' . $currentStage->name . '</b> to <b>' . $nextStage->name . '</b>';
+				if ($isAdvancingToDecisionReceived) {
+					$decisionOutcome = $request->input('decision_outcome');
+					$decisionNote = $request->input('decision_note', '');
+					$comments .= '<br>Outcome: <b>' . e($decisionOutcome) . '</b>';
+					if (!empty(trim($decisionNote))) {
+						$comments .= '<br>Note: ' . e($decisionNote);
 					}
-					$activityLog = new ActivitiesLog;
-					$activityLog->client_id = $clientMatter->client_id;
-					$activityLog->created_by = Auth::user()->id;
-					$activityLog->subject = $matterNo . ' Stage: ' . $currentStage->name;
-					$activityLog->description = $comments;
-					$activityLog->activity_type = 'stage';
-					$activityLog->use_for = 'matter';
-					$activityLog->task_status = 0;
-					$activityLog->pin = 0;
-					$activityLog->source = 'client_portal_web';
-					$activityLog->save();
 				}
+				$activityLog = new ActivitiesLog;
+				$activityLog->client_id = $clientMatter->client_id;
+				$activityLog->created_by = Auth::user()->id;
+				$activityLog->subject = $matterNo . ' Stage: ' . $currentStage->name;
+				$activityLog->description = $comments;
+				$activityLog->activity_type = 'stage';
+				$activityLog->use_for = 'matter';
+				$activityLog->task_status = 0;
+				$activityLog->pin = 0;
+				$activityLog->source = 'client_portal_web';
+				$activityLog->save();
 
 				// Create action for Action page Client Portal tab (only when triggered from Client Portal tab)
 				if ($request->input('source') === 'client_portal') {
@@ -3980,22 +3979,21 @@ class ClientPortalController extends Controller
 
 				$matterNo = $clientMatter->client_unique_matter_no ?? 'ID: ' . $matterId;
 
-				// Activity Feed (activities_logs): skip when request is from Client Portal tab; keep for Workflow tab etc.
-				if (!$this->shouldOmitActivitiesLogForClientPortalWebContext($request)) {
-					$comments = 'moved the stage from <b>' . $currentStage->name . '</b> to <b>' . $prevStage->name . '</b>';
+				// Always log stage moves to Activity Feed (including Client Portal tab).
+				// Other Client Portal actions still use shouldOmitActivitiesLogForClientPortalWebContext.
+				$comments = 'moved the stage from <b>' . $currentStage->name . '</b> to <b>' . $prevStage->name . '</b>';
 
-					$activityLog = new ActivitiesLog;
-					$activityLog->client_id = $clientMatter->client_id;
-					$activityLog->created_by = Auth::user()->id;
-					$activityLog->subject = $matterNo . ' Stage: ' . $currentStage->name;
-					$activityLog->description = $comments;
-					$activityLog->activity_type = 'stage';
-					$activityLog->use_for = 'matter';
-					$activityLog->task_status = 0;
-					$activityLog->pin = 0;
-					$activityLog->source = 'client_portal_web';
-					$activityLog->save();
-				}
+				$activityLog = new ActivitiesLog;
+				$activityLog->client_id = $clientMatter->client_id;
+				$activityLog->created_by = Auth::user()->id;
+				$activityLog->subject = $matterNo . ' Stage: ' . $currentStage->name;
+				$activityLog->description = $comments;
+				$activityLog->activity_type = 'stage';
+				$activityLog->use_for = 'matter';
+				$activityLog->task_status = 0;
+				$activityLog->pin = 0;
+				$activityLog->source = 'client_portal_web';
+				$activityLog->save();
 
 				// Create action for Action page Client Portal tab (only when triggered from Client Portal tab)
 				if ($request->input('source') === 'client_portal') {
@@ -4070,6 +4068,10 @@ class ClientPortalController extends Controller
 		return null;
 	}
 
+	/**
+	 * Whether ActivitiesLog should be omitted for Client Portal web UI context.
+	 * Intentionally NOT used for next/previous stage moves — those always write Activity Feed rows.
+	 */
 	private function shouldOmitActivitiesLogForClientPortalWebContext(Request $request): bool
 	{
 		if ($request->input('source') === 'client_portal') {

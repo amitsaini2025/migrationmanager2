@@ -194,16 +194,32 @@ class SignedDocumentFinalizer
 
                                 // Only auto-advance if next stage is NOT "Decision Received" (requires outcome/note)
                                 if ($nextStage && strtolower(trim($nextStage->name ?? '')) !== 'decision received') {
+                                    $fromStageName = (string) ($currentStage->name ?? '');
+                                    $toStageName = (string) ($nextStage->name ?? '');
                                     $clientMatter->workflow_stage_id = $nextStage->id;
                                     $clientMatter->save();
 
                                     // applications table removed - workflow tracked via client_matters
 
+                                    $matterNo = $clientMatter->client_unique_matter_no ?? 'ID: '.$clientMatter->id;
+                                    $createdBy = (int) ($clientMatter->sel_person_responsible ?? 0);
+                                    ActivitiesLog::create([
+                                        'client_id' => $clientMatter->client_id,
+                                        'created_by' => $createdBy > 0 ? $createdBy : null,
+                                        'subject' => $matterNo.' Stage: '.$fromStageName,
+                                        'description' => 'moved the stage from <b>'.$fromStageName.'</b> to <b>'.$toStageName.'</b>',
+                                        'activity_type' => 'stage',
+                                        'use_for' => 'matter',
+                                        'task_status' => 0,
+                                        'pin' => 0,
+                                        'source' => 'document_sign',
+                                    ]);
+
                                     Log::info('Workflow advanced on document sign', [
                                         'document_id' => $document->id,
                                         'client_matter_id' => $document->client_matter_id,
-                                        'from_stage' => $currentStage->name,
-                                        'to_stage' => $nextStage->name,
+                                        'from_stage' => $fromStageName,
+                                        'to_stage' => $toStageName,
                                     ]);
                                 }
                             }

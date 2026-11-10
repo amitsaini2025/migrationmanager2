@@ -2127,7 +2127,11 @@
                                     message += '\n\nWarnings:\n' + response.errors.join('\n');
                                 }
                                 alert(message);
-                                location.reload();
+                                softRefreshVisaDocumentsAfterBulk(categoryId)
+                                    .catch(function(refreshErr) {
+                                        console.warn('[VisaBulkUpload] Soft refresh failed, falling back to reload', refreshErr);
+                                        location.reload();
+                                    });
                             } else {
                                 let errorMsg = 'Error: ' + (response.message || 'Upload failed');
                                 if (response.errors && response.errors.length > 0) {
@@ -2147,6 +2151,95 @@
                             $('#bulk-upload-progress').hide();
                             $('#confirm-bulk-upload').prop('disabled', false);
                         }
+                    });
+                }
+
+                /**
+                 * Soft-refresh Visa Documents tab after bulk upload (no full page reload).
+                 * Replaces only #visadocuments-tab from the fragment URL, reselects category,
+                 * and rebinds drag/drop. Falls back to location.reload() via caller on failure.
+                 */
+                function softRefreshVisaDocumentsAfterBulk(categoryId) {
+                    var currentTab = document.getElementById('visadocuments-tab');
+                    if (!currentTab || !currentTab.parentNode) {
+                        return Promise.reject(new Error('Visa documents tab missing'));
+                    }
+
+                    var url = currentTab.getAttribute('data-visadocuments-url') || '';
+                    if (!url && window.ClientDetailConfig && window.ClientDetailConfig.urls) {
+                        url = window.ClientDetailConfig.urls.visaDocumentsTab || '';
+                    }
+                    if (!url) {
+                        url = window.location.href;
+                    }
+
+                    $('#bulk-upload-mapping-modal').hide();
+                    $('#bulk-upload-progress').hide();
+                    $('#confirm-bulk-upload').prop('disabled', false);
+                    if (categoryId && typeof bulkUploadVisaFiles !== 'undefined') {
+                        bulkUploadVisaFiles[categoryId] = [];
+                    }
+                    $('.popuploader').show();
+
+                    return fetch(url, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'text/html'
+                        },
+                        credentials: 'same-origin'
+                    }).then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('Failed to refresh visa documents (' + response.status + ')');
+                        }
+                        return response.text();
+                    }).then(function(html) {
+                        var parsed = new DOMParser().parseFromString(html, 'text/html');
+                        var newTab = parsed.querySelector('#visadocuments-tab');
+                        currentTab = document.getElementById('visadocuments-tab');
+                        if (!newTab || !currentTab || !currentTab.parentNode) {
+                            throw new Error('Visa documents tab fragment missing');
+                        }
+
+                        var wasActive = currentTab.classList.contains('active');
+                        var savedUrl = currentTab.getAttribute('data-visadocuments-url');
+                        if (wasActive) {
+                            newTab.classList.add('active');
+                        }
+                        if (savedUrl && !newTab.getAttribute('data-visadocuments-url')) {
+                            newTab.setAttribute('data-visadocuments-url', savedUrl);
+                        }
+                        currentTab.replaceWith(newTab);
+
+                        var $tab = $('#visadocuments-tab');
+                        if (categoryId) {
+                            $tab.find('.subtab6-button').removeClass('active');
+                            $tab.find('.subtab6-pane').removeClass('active');
+                            $tab.find('.subtab6-button[data-subtab6="' + categoryId + '"]').addClass('active');
+                            $tab.find('[id="' + categoryId + '-subtab6"]').addClass('active');
+                        }
+
+                        if (typeof window.initVisaDocDragDrop === 'function') {
+                            window.initVisaDocDragDrop();
+                        }
+                        if (typeof window.initVisaBulkUploadDragDrop === 'function') {
+                            window.initVisaBulkUploadDragDrop();
+                        }
+                        if (typeof window.bindBulkDownloadHandlers === 'function') {
+                            window.bindBulkDownloadHandlers();
+                        }
+                        if (typeof refreshLucideIcons === 'function') {
+                            refreshLucideIcons($tab[0]);
+                        }
+                        if (typeof window.adjustPreviewContainers === 'function') {
+                            window.adjustPreviewContainers();
+                        }
+                        if (window.SidebarTabs && typeof window.SidebarTabs.filterVisaDocumentsByMatter === 'function') {
+                            var matterId = $('#sel_matter_id_client_detail').val() || '';
+                            window.SidebarTabs.filterVisaDocumentsByMatter(matterId);
+                        }
+                        return true;
+                    }).finally(function() {
+                        $('.popuploader').hide();
                     });
                 }
 

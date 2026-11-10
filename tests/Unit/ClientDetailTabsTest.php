@@ -670,6 +670,10 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertStringContainsString('window.showFileContextMenu', $blade);
         Assert::assertStringContainsString('window.handleContextAction', $blade);
         Assert::assertStringContainsString('window.showPersonalChecklistContextMenu', $blade);
+        Assert::assertStringContainsString('function softRefreshPersonalDocumentsAfterBulk', $blade);
+        Assert::assertStringContainsString('softRefreshPersonalDocumentsAfterBulk(categoryId)', $blade);
+        Assert::assertStringContainsString('[PersonalBulkUpload] Soft refresh failed, falling back to reload', $blade);
+        Assert::assertStringContainsString('function applyPersonalDocumentMoveUi', $blade);
 
         $companyDetail = file_get_contents($this->projectPath('resources/views/crm/companies/detail.blade.php'));
         Assert::assertNotFalse($companyDetail);
@@ -729,6 +733,10 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertStringContainsString('.bulk-upload-mapping-modal', $blade);
         Assert::assertStringContainsString('function visaBulkChecklistRowIsSelectable', $blade);
         Assert::assertStringContainsString("#visadocuments-tab .migdocumnetlist_' + categoryId + ' .visachecklist-row", $blade);
+        Assert::assertStringContainsString('function softRefreshVisaDocumentsAfterBulk', $blade);
+        Assert::assertStringContainsString('softRefreshVisaDocumentsAfterBulk(categoryId)', $blade);
+        Assert::assertStringContainsString('[VisaBulkUpload] Soft refresh failed, falling back to reload', $blade);
+        Assert::assertStringContainsString('function applyVisaDocumentMoveUi', $blade);
     }
 
     #[Test]

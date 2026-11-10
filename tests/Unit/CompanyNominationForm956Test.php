@@ -27,6 +27,13 @@ class CompanyNominationForm956Test extends TestCase
         Assert::assertStringContainsString('bulk-download-btn', $nomination);
         Assert::assertStringContainsString('canBulkDownloadClientDocuments()', $nomination);
         Assert::assertStringContainsString('bulk-download-doc-checkbox', $nomination);
+
+        // Move + bulk upload refresh the tab DOM without a full page reload (reload is fallback only).
+        Assert::assertStringContainsString('function applyNominationDocumentMoveUi', $nomination);
+        Assert::assertStringContainsString('[MoveNominationDoc] UI update failed, falling back to reload', $nomination);
+        Assert::assertStringContainsString('function softRefreshNominationDocumentsAfterBulk', $nomination);
+        Assert::assertStringContainsString('softRefreshNominationDocumentsAfterBulk(categoryId)', $nomination);
+        Assert::assertStringContainsString('[NominationBulkUpload] Soft refresh failed, falling back to reload', $nomination);
     }
 
     #[Test]

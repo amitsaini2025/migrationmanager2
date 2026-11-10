@@ -1475,12 +1475,31 @@
                             if (response.status) {
                                 // Close modal
                                 $('#moveNominationDocumentModal').modal('hide');
-                                
+                                if (typeof hideNominationContextMenu === 'function') {
+                                    hideNominationContextMenu();
+                                }
+
                                 // Show success message using alert
                                 alert(response.message || 'Document moved successfully');
-                                
-                                // Reload the page to refresh document lists
-                                location.reload();
+
+                                var moved = false;
+                                try {
+                                    moved = !!applyNominationDocumentMoveUi(
+                                        currentMoveNominationDocumentId,
+                                        targetType,
+                                        targetId,
+                                        response.new_location || '',
+                                        response.document || null
+                                    );
+                                } catch (moveErr) {
+                                    console.warn('[MoveNominationDoc] UI update failed, falling back to reload', moveErr);
+                                    moved = false;
+                                }
+
+                                if (!moved) {
+                                    location.reload();
+                                    return;
+                                }
                             } else {
                                 $error.text(response.message || 'Failed to move document').show();
                                 $btn.prop('disabled', false).text('Move Document');
@@ -1496,6 +1515,214 @@
                         }
                     });
                 });
+
+                function escapeNominationMoveJsAttr(value) {
+                    return String(value == null ? '' : value)
+                        .replace(/\\/g, '\\\\')
+                        .replace(/'/g, "\\'");
+                }
+
+                function escapeNominationMoveHtml(value) {
+                    return String(value == null ? '' : value)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                }
+
+                /**
+                 * Update Nomination Documents UI after a successful move without full page reload.
+                 * Nomination → nomination: relocate row (+ signature bar) into the target category.
+                 * Nomination → personal: remove from nomination, insert into personal/company category, switch tab.
+                 * Falls back to location.reload() when the DOM update cannot be applied safely.
+                 */
+                function applyNominationDocumentMoveUi(documentId, targetType, targetId, targetTitle, docPayload) {
+                    if (!documentId || !targetType || !targetId) {
+                        return false;
+                    }
+
+                    var $nomTab = $('#nominationdocuments-tab');
+                    if (!$nomTab.length) {
+                        return false;
+                    }
+
+                    var $row = $nomTab.find('#id_' + documentId);
+                    var $sigBar = $nomTab.find('.visa-sig-action-bar[data-doc-id="' + documentId + '"]');
+
+                    if (targetType === 'nomination') {
+                        return moveNominationDocWithinNominationUi($row, $sigBar, documentId, targetId, targetTitle);
+                    }
+
+                    if (targetType === 'personal') {
+                        if ($row.length) {
+                            $row.remove();
+                        }
+                        if ($sigBar.length) {
+                            $sigBar.remove();
+                        }
+                        if (!appendMovedNominationDocToPersonalCategory(docPayload, targetId, targetTitle, documentId)) {
+                            return false;
+                        }
+                        activatePersonalDocumentsCategoryFromNomination(targetId);
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                function moveNominationDocWithinNominationUi($row, $sigBar, documentId, targetId, targetTitle) {
+                    var $nomTab = $('#nominationdocuments-tab');
+                    var $targetTbody = $nomTab.find('.migdocumnetlist_' + targetId);
+                    if (!$row.length || !$targetTbody.length) {
+                        return false;
+                    }
+
+                    var categoryTitle = targetTitle
+                        || $nomTab.find('.subtab6-button[data-subtab6="' + targetId + '"]').first().text().trim()
+                        || '';
+
+                    $row.attr('data-catid', targetId);
+
+                    $row.find('.doc-row').each(function() {
+                        var $docRow = $(this);
+                        var fileId = $docRow.data('id') || documentId;
+                        var fileType = 'pdf';
+                        var fileUrl = '';
+                        var fileStatus = 'draft';
+                        var onctx = $docRow.attr('oncontextmenu') || '';
+                        var parsed = onctx.match(/showNominationFileContextMenu\(\s*event\s*,\s*([^,]+)\s*,\s*'((?:\\'|[^'])*)'\s*,\s*'((?:\\'|[^'])*)'\s*,\s*'((?:\\'|[^'])*)'\s*,\s*'((?:\\'|[^'])*)'/);
+                        if (parsed) {
+                            fileType = parsed[2].replace(/\\'/g, "'") || fileType;
+                            fileUrl = parsed[3].replace(/\\'/g, "'") || fileUrl;
+                            fileStatus = parsed[5].replace(/\\'/g, "'") || fileStatus;
+                        } else if (typeof currentNominationContextData !== 'undefined' && currentNominationContextData) {
+                            fileType = currentNominationContextData.fileType || fileType;
+                            fileUrl = currentNominationContextData.fileUrl || fileUrl;
+                            fileStatus = currentNominationContextData.fileStatus || fileStatus;
+                        }
+
+                        $docRow.attr(
+                            'oncontextmenu',
+                            "showNominationFileContextMenu(event, " + fileId + ", '" + escapeNominationMoveJsAttr(fileType) + "', '" + escapeNominationMoveJsAttr(fileUrl) + "', '" + escapeNominationMoveJsAttr(targetId) + "', '" + escapeNominationMoveJsAttr(fileStatus) + "'); return false;"
+                        );
+                    });
+
+                    $row.find('.nomination-doc-drag-zone, .migdocupload').attr('data-doccategory', targetId);
+                    if (categoryTitle) {
+                        $row.find('input[name="doccategory"]').val(categoryTitle);
+                        $row.find('a.notuseddoc').attr('data-doccategory', categoryTitle);
+                    }
+
+                    $targetTbody.prepend($row);
+                    if ($sigBar.length) {
+                        $row.after($sigBar);
+                    }
+
+                    $nomTab.find('.subtab6-button').removeClass('active');
+                    $nomTab.find('.subtab6-pane').removeClass('active');
+                    $nomTab.find('.subtab6-button[data-subtab6="' + targetId + '"]').addClass('active');
+                    $nomTab.find('[id="' + targetId + '-subtab6"]').addClass('active');
+
+                    if (typeof window.initNominationDocDragDrop === 'function') {
+                        window.initNominationDocDragDrop();
+                    }
+
+                    return true;
+                }
+
+                function appendMovedNominationDocToPersonalCategory(docPayload, categoryId, categoryTitle, fallbackDocId) {
+                    var docId = (docPayload && docPayload.id) ? docPayload.id : fallbackDocId;
+                    if (!docId) {
+                        return false;
+                    }
+
+                    var $tab = $('#personaldocuments-tab');
+                    var $tbody = $tab.find('.documnetlist_' + categoryId);
+                    if (!$tab.length || !$tbody.length) {
+                        return false;
+                    }
+                    if ($tbody.find('#id_' + docId).length) {
+                        return true;
+                    }
+
+                    var checklist = (docPayload && docPayload.checklist) ? docPayload.checklist : 'Document';
+                    var fileName = (docPayload && docPayload.file_name) ? docPayload.file_name : '';
+                    var fileType = (docPayload && docPayload.filetype) ? docPayload.filetype : 'pdf';
+                    var fileUrl = (docPayload && docPayload.myfile) ? docPayload.myfile : '';
+                    var status = (docPayload && docPayload.status) ? docPayload.status : 'draft';
+                    var catTitle = categoryTitle
+                        || $tab.find('.subtab2-button[data-subtab2="' + categoryId + '"]').first().text().trim()
+                        || '';
+                    var iconHtml = (typeof crmI === 'function') ? crmI('fa-file-image') : '';
+                    var displayName = fileName ? (fileName + (fileType ? ('.' + fileType) : '')) : '';
+
+                    var fileCellHtml;
+                    if (fileName && fileUrl) {
+                        fileCellHtml =
+                            '<div data-id="' + docId + '" data-name="' + escapeNominationMoveHtml(fileName) + '" class="doc-row" ' +
+                            'oncontextmenu="showFileContextMenu(event, ' + docId + ', \'' + escapeNominationMoveJsAttr(fileType) + '\', \'' + escapeNominationMoveJsAttr(fileUrl) + '\', \'' + escapeNominationMoveJsAttr(categoryId) + '\', \'' + escapeNominationMoveJsAttr(status) + '\'); return false;">' +
+                            '<a href="javascript:void(0);" onclick="previewFile(\'' + escapeNominationMoveJsAttr(fileType) + '\',\'' + escapeNominationMoveJsAttr(fileUrl) + '\',\'preview-container-' + escapeNominationMoveJsAttr(categoryId) + '\')">' +
+                            iconHtml + ' <span>' + escapeNominationMoveHtml(displayName) + '</span></a></div>';
+                    } else {
+                        fileCellHtml =
+                            '<div class="upload_document" style="display: inline-block;">' +
+                            '<form method="POST" enctype="multipart/form-data" id="upload_form_' + docId + '">' +
+                            '<input type="hidden" name="_token" value="' + ($('meta[name="csrf-token"]').attr('content') || '') + '">' +
+                            '<input type="hidden" name="clientid" value="' + escapeNominationMoveHtml((window.ClientDetailConfig && window.ClientDetailConfig.clientId) || '') + '">' +
+                            '<input type="hidden" name="fileid" value="' + docId + '">' +
+                            '<input type="hidden" name="type" value="client">' +
+                            '<input type="hidden" name="doctype" value="personal">' +
+                            '<input type="hidden" name="doccategory" value="' + escapeNominationMoveHtml(catTitle) + '">' +
+                            '<div class="document-drag-drop-zone personal-doc-drag-zone" data-fileid="' + docId + '" data-doccategory="' + escapeNominationMoveHtml(categoryId) + '" data-formid="upload_form_' + docId + '">' +
+                            '<div class="drag-zone-inner"><span class="drag-zone-text">Drag file here or <strong>click to browse</strong></span></div></div>' +
+                            '<input class="docupload d-none" data-fileid="' + docId + '" data-doccategory="' + escapeNominationMoveHtml(categoryId) + '" type="file" name="document_upload" style="display: none;"/>' +
+                            '</form></div>';
+                    }
+
+                    var rowHtml =
+                        '<tr class="drow" id="id_' + docId + '">' +
+                            '<td style="white-space: initial;">' +
+                                '<div data-id="' + docId + '" data-personalchecklistname="' + escapeNominationMoveHtml(checklist) + '" class="personalchecklist-row" ' +
+                                'style="display: flex; align-items: center; gap: 8px;" ' +
+                                'oncontextmenu="showPersonalChecklistContextMenu(event, ' + docId + '); return false;">' +
+                                '<span style="flex: 1;">' + escapeNominationMoveHtml(checklist) + '</span></div>' +
+                            '</td>' +
+                            '<td style="white-space: initial;">' + fileCellHtml + '</td>' +
+                            '<td>' +
+                                '<a class="renamechecklist" data-id="' + docId + '" href="javascript:;" style="display: none;"></a>' +
+                                (fileName
+                                    ? '<a class="renamedoc" data-id="' + docId + '" href="javascript:;" style="display: none;"></a>' +
+                                      '<a class="download-file" data-filelink="' + escapeNominationMoveHtml(fileUrl) + '" data-filename="' + escapeNominationMoveHtml(fileName) + '" data-id="' + docId + '" href="#" style="display: none;"></a>' +
+                                      '<a class="notuseddoc" data-id="' + docId + '" data-doctype="personal" data-doccategory="' + escapeNominationMoveHtml(catTitle) + '" data-href="documents/not-used" href="javascript:;" style="display: none;"></a>'
+                                    : '<a class="delete-checklist-btn" data-id="' + docId + '" data-checklist="' + escapeNominationMoveHtml(checklist) + '" href="javascript:;" style="display: none;"></a>') +
+                            '</td>' +
+                        '</tr>';
+
+                    $tbody.prepend(rowHtml);
+                    if (typeof refreshLucideIcons === 'function') {
+                        refreshLucideIcons($tbody.find('#id_' + docId)[0]);
+                    }
+                    return true;
+                }
+
+                function activatePersonalDocumentsCategoryFromNomination(categoryId) {
+                    if (typeof SidebarTabs !== 'undefined' && typeof SidebarTabs.activateTab === 'function') {
+                        SidebarTabs.activateTab('personaldocuments');
+                    } else {
+                        $('.client-nav-button').removeClass('active');
+                        $('.tab-pane').removeClass('active');
+                        $('.client-nav-button[data-tab="personaldocuments"]').addClass('active');
+                        $('#personaldocuments-tab').addClass('active');
+                        localStorage.setItem('activeTab', 'personaldocuments');
+                    }
+
+                    var $tab = $('#personaldocuments-tab');
+                    $tab.find('.subtab2-button').removeClass('active');
+                    $tab.find('.subtab2-pane').removeClass('active');
+                    $tab.find('.subtab2-button[data-subtab2="' + categoryId + '"]').addClass('active');
+                    $tab.find('[id="' + categoryId + '-subtab2"]').addClass('active');
+                }
 
                 // Reset button state when modal is closed
                 $('#moveNominationDocumentModal').on('hidden.bs.modal', function() {
@@ -2375,7 +2602,11 @@
                                     message += '\n\nWarnings:\n' + response.errors.join('\n');
                                 }
                                 alert(message);
-                                location.reload();
+                                softRefreshNominationDocumentsAfterBulk(categoryId)
+                                    .catch(function(refreshErr) {
+                                        console.warn('[NominationBulkUpload] Soft refresh failed, falling back to reload', refreshErr);
+                                        location.reload();
+                                    });
                             } else {
                                 let errorMsg = 'Error: ' + (response.message || 'Upload failed');
                                 if (response.errors && response.errors.length > 0) {
@@ -2395,6 +2626,80 @@
                             $('#bulk-upload-progress').hide();
                             $('#confirm-bulk-upload').prop('disabled', false);
                         }
+                    });
+                }
+
+                /**
+                 * Soft-refresh Nomination Documents tab after bulk upload (no full page reload).
+                 * Replaces only #nominationdocuments-tab from the current detail URL, reselects category,
+                 * and rebinds drag/drop. Falls back to location.reload() via caller on failure.
+                 */
+                function softRefreshNominationDocumentsAfterBulk(categoryId) {
+                    var currentTab = document.getElementById('nominationdocuments-tab');
+                    if (!currentTab || !currentTab.parentNode) {
+                        return Promise.reject(new Error('Nomination documents tab missing'));
+                    }
+
+                    var url = window.location.href;
+                    $('#bulk-upload-mapping-modal').hide();
+                    $('#bulk-upload-progress').hide();
+                    $('#confirm-bulk-upload').prop('disabled', false);
+                    if (categoryId && bulkUploadNominationFiles) {
+                        bulkUploadNominationFiles[categoryId] = [];
+                    }
+                    $('.popuploader').show();
+
+                    return fetch(url, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'text/html'
+                        },
+                        credentials: 'same-origin'
+                    }).then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('Failed to refresh nomination documents (' + response.status + ')');
+                        }
+                        return response.text();
+                    }).then(function(html) {
+                        var parsed = new DOMParser().parseFromString(html, 'text/html');
+                        var newTab = parsed.querySelector('#nominationdocuments-tab');
+                        currentTab = document.getElementById('nominationdocuments-tab');
+                        if (!newTab || !currentTab || !currentTab.parentNode) {
+                            throw new Error('Nomination documents tab fragment missing');
+                        }
+
+                        var wasActive = currentTab.classList.contains('active');
+                        if (wasActive) {
+                            newTab.classList.add('active');
+                        }
+                        currentTab.replaceWith(newTab);
+
+                        var $tab = $('#nominationdocuments-tab');
+                        if (categoryId) {
+                            $tab.find('.subtab6-button').removeClass('active');
+                            $tab.find('.subtab6-pane').removeClass('active');
+                            $tab.find('.subtab6-button[data-subtab6="' + categoryId + '"]').addClass('active');
+                            $tab.find('[id="' + categoryId + '-subtab6"]').addClass('active');
+                        }
+
+                        if (typeof window.initNominationDocDragDrop === 'function') {
+                            window.initNominationDocDragDrop();
+                        }
+                        if (typeof window.initVisaBulkUploadDragDrop === 'function') {
+                            window.initVisaBulkUploadDragDrop();
+                        }
+                        if (typeof window.bindBulkDownloadHandlers === 'function') {
+                            window.bindBulkDownloadHandlers();
+                        }
+                        if (typeof refreshLucideIcons === 'function') {
+                            refreshLucideIcons($tab[0]);
+                        }
+                        if (typeof window.adjustPreviewContainers === 'function') {
+                            window.adjustPreviewContainers();
+                        }
+                        return true;
+                    }).finally(function() {
+                        $('.popuploader').hide();
                     });
                 }
             </script>

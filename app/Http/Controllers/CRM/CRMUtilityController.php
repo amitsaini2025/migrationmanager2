@@ -1477,8 +1477,7 @@ class CRMUtilityController extends Controller
                         $subject,
                         $requestData['email_from'],
                         $preparedSendPaths,
-                        $ccarray,
-                        $obj->id
+                        $ccarray
                     );
                     $anySendSuccess = true;
                     $lastSendSubject = $subject;

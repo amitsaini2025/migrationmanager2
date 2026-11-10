@@ -7,6 +7,7 @@ use App\Models\Staff;
 use App\Services\CrmAccess\CrmAccessDeniedException;
 use App\Services\CrmAccess\CrmAccessService;
 use App\Support\AccountsListAccess;
+use App\Support\StaffClientVisibility;
 use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -92,16 +93,21 @@ class AccountsListAccessTest extends TestCase
         $this->assertSame(15, (int) $next->starts_at->diffInMinutes($next->ends_at));
     }
 
-    public function test_standing_file_access_does_not_start_a_timer(): void
+    public function test_accountant_does_not_keep_standing_file_access_when_allocation_is_off(): void
     {
         config(['crm_access.strict_allocation' => false]);
         $this->insertOffice();
         $this->insertClient(9, 'ABC123');
+        $accountant = $this->accountant();
 
-        $grant = (new CrmAccessService)->openAccountantClientFile($this->accountant(), 9);
+        $this->assertFalse(StaffClientVisibility::canAccessClientOrLead(9, $accountant));
 
-        $this->assertNull($grant);
-        $this->assertSame(0, ClientAccessGrant::query()->count());
+        $grant = (new CrmAccessService)->openAccountantClientFile($accountant, 9);
+
+        $this->assertNotNull($grant);
+        $this->assertTrue(StaffClientVisibility::canAccessClientOrLead(9, $accountant));
+        $this->assertNull((new CrmAccessService)->openAccountantClientFile($accountant, 9));
+        $this->assertSame(1, ClientAccessGrant::query()->count());
     }
 
     public function test_allocated_accountant_does_not_receive_another_grant(): void

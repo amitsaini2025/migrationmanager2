@@ -40,7 +40,7 @@ class EmailService
      *
      * @throws \Exception
      */
-    public function sendEmail($view, $data, $to, $subject, $fromEmailId, $attachments = [], $cc = [], ?int $emailLogId = null)
+    public function sendEmail($view, $data, $to, $subject, $fromEmailId, $attachments = [], $cc = [])
     {
         try {
             $emailConfig = $this->findMailbox((string) $fromEmailId);

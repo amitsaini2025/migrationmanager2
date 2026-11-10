@@ -952,7 +952,8 @@ final class StaffClientVisibility
         }
 
         if (! $strict) {
-            if (! self::isRestrictedPersonAssisting($user)) {
+            // Accounts team file access is the 15-minute grant from the money lists, or allocation.
+            if (! self::isRestrictedPersonAssisting($user) && ! AccountsListAccess::isAccountant($user)) {
                 return true;
             }
             if ($hasAllocatingMatter) {

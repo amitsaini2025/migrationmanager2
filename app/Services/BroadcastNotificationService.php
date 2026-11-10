@@ -3,12 +3,13 @@
 namespace App\Services;
 
 use App\Events\BroadcastNotificationCreated;
-use App\Models\Staff;
 use App\Models\Notification;
+use App\Models\Staff;
+use Illuminate\Broadcasting\BroadcastException;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -24,16 +25,15 @@ class BroadcastNotificationService
     /**
      * Create a broadcast notification batch and notify recipients.
      *
-     * @param  array  $payload
      * @return array{batch_uuid:string, recipient_count:int, message:string, title:?string, sent_at:Carbon}
      */
     public function createBroadcast(array $payload): array
     {
         \Log::info('🚀 BroadcastNotificationService::createBroadcast started');
-        
+
         $sender = $payload['sender'] ?? Auth::user();
 
-        if (!$sender) {
+        if (! $sender) {
             \Log::error('❌ No sender found for broadcast');
             throw new \RuntimeException('A valid sender is required to create a broadcast.');
         }
@@ -41,18 +41,18 @@ class BroadcastNotificationService
         $scope = $payload['scope'] ?? 'all';
         $messageBody = trim((string) ($payload['message'] ?? ''));
         $title = isset($payload['title']) ? trim((string) $payload['title']) : null;
-        
+
         \Log::info('📋 Resolving recipients', [
             'scope' => $scope,
             'sender_id' => $sender->id,
-            'provided_recipient_ids' => $payload['recipient_ids'] ?? []
+            'provided_recipient_ids' => $payload['recipient_ids'] ?? [],
         ]);
-        
+
         $recipientIds = $this->resolveRecipients($scope, (array) ($payload['recipient_ids'] ?? []), (int) $sender->id);
-        
+
         \Log::info('✅ Recipients resolved', [
             'count' => $recipientIds->count(),
-            'ids' => $recipientIds->take(10)->toArray() // Show first 10
+            'ids' => $recipientIds->take(10)->toArray(), // Show first 10
         ]);
 
         if ($recipientIds->isEmpty()) {
@@ -97,9 +97,9 @@ class BroadcastNotificationService
             'recipient_count' => $recipientCount,
             'scope' => $scope,
             'channel_count' => count($recipientIdsForChannels),
-            'broadcast_driver' => config('broadcasting.default')
+            'broadcast_driver' => config('broadcasting.default'),
         ]);
-        
+
         try {
             broadcast(new BroadcastNotificationCreated(
                 batchUuid: $batchUuid,
@@ -113,9 +113,9 @@ class BroadcastNotificationService
                 scope: $scope,
                 sentAt: $sentAt
             ));
-            
+
             \Log::info('✅ Broadcast event dispatched successfully');
-        } catch (\Illuminate\Broadcasting\BroadcastException $e) {
+        } catch (BroadcastException $e) {
             // Log the error but don't fail the entire operation
             \Log::error('⚠️ Reverb broadcast failed (notification still saved to database)', [
                 'error' => $e->getMessage(),
@@ -123,7 +123,7 @@ class BroadcastNotificationService
                 'broadcast_driver' => config('broadcasting.default'),
                 'reverb_host' => config('broadcasting.connections.reverb.options.host'),
                 'reverb_port' => config('broadcasting.connections.reverb.options.port'),
-                'hint' => 'Ensure Reverb server is running: php artisan reverb:start'
+                'hint' => 'Ensure Reverb server is running: php artisan reverb:start',
             ]);
             // Continue execution - notification is already saved to database
         } catch (\Exception $e) {
@@ -131,7 +131,7 @@ class BroadcastNotificationService
             \Log::error('⚠️ Unexpected broadcast error (notification still saved to database)', [
                 'error' => $e->getMessage(),
                 'batch_uuid' => $batchUuid,
-                'exception' => get_class($e)
+                'exception' => get_class($e),
             ]);
             // Continue execution - notification is already saved to database
         }
@@ -148,7 +148,7 @@ class BroadcastNotificationService
     /**
      * Retrieve broadcast history for a sender.
      *
-     * @return \Illuminate\Support\Collection<int,array<string,mixed>>
+     * @return Collection<int,array<string,mixed>>
      */
     public function getBroadcastHistory(int $senderId): Collection
     {
@@ -186,7 +186,7 @@ class BroadcastNotificationService
     /**
      * Retrieve ALL broadcast history globally (for all users to see).
      *
-     * @return \Illuminate\Support\Collection<int,array<string,mixed>>
+     * @return Collection<int,array<string,mixed>>
      */
     public function getAllBroadcastHistory(): Collection
     {
@@ -223,7 +223,7 @@ class BroadcastNotificationService
     /**
      * Get broadcasts that the user has already read (for archive view).
      *
-     * @return \Illuminate\Support\Collection<int,array<string,mixed>>
+     * @return Collection<int,array<string,mixed>>
      */
     public function getReadBroadcasts(int $receiverId): Collection
     {
@@ -262,11 +262,11 @@ class BroadcastNotificationService
     {
         \Log::info('🗑️ Delete broadcast requested', [
             'batch_uuid' => $batchUuid,
-            'requester_id' => $requesterId
+            'requester_id' => $requesterId,
         ]);
 
         $url = $this->formatBroadcastUrl($batchUuid);
-        
+
         $deleted = DB::table('notifications')
             ->where('notification_type', 'broadcast')
             ->where('url', $url)
@@ -274,7 +274,7 @@ class BroadcastNotificationService
 
         \Log::info('✅ Broadcast deleted', [
             'batch_uuid' => $batchUuid,
-            'notifications_deleted' => $deleted
+            'notifications_deleted' => $deleted,
         ]);
 
         return $deleted > 0;
@@ -286,12 +286,12 @@ class BroadcastNotificationService
     protected function getSenderName(int $senderId): string
     {
         static $senderCache = [];
-        
-        if (!isset($senderCache[$senderId])) {
+
+        if (! isset($senderCache[$senderId])) {
             $sender = Staff::find($senderId);
             $senderCache[$senderId] = $sender ? $this->formatSenderName($sender) : 'Unknown';
         }
-        
+
         return $senderCache[$senderId];
     }
 
@@ -357,7 +357,7 @@ class BroadcastNotificationService
             ->where('notification_type', 'broadcast')
             ->first();
 
-        if (!$notification) {
+        if (! $notification) {
             return [
                 'status' => 'not_found',
                 'remaining_seconds' => 0,
@@ -374,7 +374,7 @@ class BroadcastNotificationService
         $cacheKey = $this->readTimerCacheKey($receiverId, $notificationId);
         $startedAt = Cache::get($cacheKey);
 
-        if (!$startedAt) {
+        if (! $startedAt) {
             $startedAt = Carbon::now()->timestamp;
             Cache::put($cacheKey, $startedAt, now()->addDay());
         }
@@ -399,7 +399,7 @@ class BroadcastNotificationService
             ->where('notification_type', 'broadcast')
             ->first();
 
-        if (!$notification) {
+        if (! $notification) {
             return null;
         }
 
@@ -429,7 +429,7 @@ class BroadcastNotificationService
             ->where('notification_type', 'broadcast')
             ->first();
 
-        if (!$notification) {
+        if (! $notification) {
             return ['status' => 'not_found'];
         }
 
@@ -467,7 +467,7 @@ class BroadcastNotificationService
     /**
      * Return unread broadcast notifications for a receiver.
      *
-     * @return \Illuminate\Support\Collection<int,array<string,mixed>>
+     * @return Collection<int,array<string,mixed>>
      */
     public function getUnreadBroadcasts(int $receiverId): Collection
     {
@@ -491,7 +491,7 @@ class BroadcastNotificationService
                 'message' => $messageMeta['message'],
                 'title' => $messageMeta['title'],
                 'sender_id' => $notification->sender_id,
-                 'sender_name' => $senderName,
+                'sender_name' => $senderName,
                 'sent_at' => Carbon::parse($notification->created_at),
             ];
         });
@@ -514,7 +514,7 @@ class BroadcastNotificationService
      */
     protected function formatBroadcastUrl(string $batchUuid): string
     {
-        return '/broadcasts/' . $batchUuid;
+        return '/broadcasts/'.$batchUuid;
     }
 
     /**
@@ -522,7 +522,7 @@ class BroadcastNotificationService
      */
     protected function extractBatchUuid(?string $url): string
     {
-        if (!$url) {
+        if (! $url) {
             return '';
         }
 
@@ -584,7 +584,7 @@ class BroadcastNotificationService
 
     protected function formatSenderName($sender): string
     {
-        if (!$sender) {
+        if (! $sender) {
             return 'System';
         }
 
@@ -605,21 +605,8 @@ class BroadcastNotificationService
         return $sender->email ?? 'System';
     }
 
-    /**
-     * @return \Illuminate\Support\Collection<int,never>
-     * @deprecated No longer used - clients are excluded from broadcasts. This method always returns an empty collection.
-     */
-    protected function portalUsers(): Collection
-    {
-        // This method is deprecated - clients (User model) should not receive broadcasts
-        // Only staff (type != 'client'/'lead') should receive broadcasts
-        return collect();
-    }
-
     protected function readTimerCacheKey(int $receiverId, int $notificationId): string
     {
         return "broadcast-read-timer:{$receiverId}:{$notificationId}";
     }
 }
-
-

@@ -4,7 +4,7 @@
     $badgeClass = \App\Services\EmailDeliveryStatus::statusBadgeClass($status);
     $tip = $reason ?? null;
     if ($tip === null && $status === 'pending') {
-        $tip = 'Waiting for delivery confirmation.';
+        $tip = 'Waiting for Amazon SES to confirm delivery.';
     }
 @endphp
 <span class="badge {{ $badgeClass }} email-delivery-badge"

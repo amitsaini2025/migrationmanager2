@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Email;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Mail;
 
@@ -17,18 +16,6 @@ class EmailService
     private const FAILOVER_DEFAULTS = ['failover', 'smtp', 'ses', 'zoho'];
 
     /**
-     * Get all active email configurations.
-     *
-     * @return Collection
-     */
-    public function getAllActiveEmails()
-    {
-        return Email::where('status', true)
-            ->select('id', 'email', 'display_name')
-            ->get();
-    }
-
-    /**
      * Send an email using the specified email configuration.
      *
      * @param  string  $view
@@ -40,17 +27,21 @@ class EmailService
      *
      * @throws \Exception
      */
-    public function sendEmail($view, $data, $to, $subject, $fromEmailId, $attachments = [], $cc = [])
+    public function sendEmail($view, $data, $to, $subject, $fromEmailId, $attachments = [], $cc = [], ?int $emailLogId = null)
     {
         try {
             $emailConfig = $this->findMailbox((string) $fromEmailId);
             $fromAddress = $this->resolveFromAddress($emailConfig, (string) $fromEmailId);
             $fromName = $emailConfig?->display_name ?: config('mail.from.name');
 
-            Mail::mailer($this->composeMailerName($emailConfig))->send($view, $data, function (Message $message) use ($to, $subject, $fromAddress, $fromName, $attachments, $cc) {
+            Mail::mailer($this->composeMailerName($emailConfig))->send($view, $data, function (Message $message) use ($to, $subject, $fromAddress, $fromName, $attachments, $cc, $emailLogId) {
                 $message->to($to)
                     ->subject($subject)
                     ->from($fromAddress, $fromName);
+
+                if ($emailLogId !== null) {
+                    (new SesDeliveryHeaders)->applyToMailMessage($message, $emailLogId);
+                }
 
                 if (! empty($cc)) {
                     $message->cc($cc);

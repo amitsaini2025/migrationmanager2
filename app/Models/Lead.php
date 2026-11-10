@@ -102,14 +102,6 @@ class Lead extends Admin
     }
 
     /**
-     * @deprecated Use assignedTo() - kept for backward compatibility
-     */
-    public function createdBy()
-    {
-        return $this->assignedTo();
-    }
-
-    /**
      * Convert lead to client
      */
     public function convertToClient()

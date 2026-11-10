@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\ClientMatter;
 use App\Models\Email;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -13,54 +12,6 @@ use Illuminate\Support\Str;
  */
 class EmailConfigService
 {
-    /**
-     * Get email configuration for a specific account by email ID
-     *
-     * @param  int  $emailId  The email record ID
-     * @return array Sender configuration array
-     *
-     * @throws \Exception If email config not found
-     */
-    public function forAccountById(int $emailId): array
-    {
-        try {
-            $emailConfig = Email::findOrFail($emailId);
-
-            return $this->buildConfig($emailConfig);
-        } catch (\Exception $e) {
-            Log::error('Failed to retrieve email config by ID', [
-                'email_id' => $emailId,
-                'error' => $e->getMessage(),
-            ]);
-            throw new \Exception("Email configuration not found for ID: {$emailId}");
-        }
-    }
-
-    /**
-     * Get email configuration for a specific account by email address
-     *
-     * @param  string  $email  The email address
-     * @return array Sender configuration array
-     *
-     * @throws \Exception If email config not found
-     */
-    public function forAccount(string $email): array
-    {
-        try {
-            $emailConfig = Email::where('email', $email)
-                ->where('status', true)
-                ->firstOrFail();
-
-            return $this->buildConfig($emailConfig);
-        } catch (\Exception $e) {
-            Log::error('Failed to retrieve email config by email address', [
-                'email' => $email,
-                'error' => $e->getMessage(),
-            ]);
-            throw new \Exception("Email configuration not found for: {$email}");
-        }
-    }
-
     /**
      * Build sender configuration array from Email model
      */
@@ -71,36 +22,6 @@ class EmailConfigService
             'from_name' => $emailConfig->display_name ?? 'Bansal Migration',
             'email_signature' => $emailConfig->email_signature ?? '',
         ];
-    }
-
-    /**
-     * Sender identity only — does not change the failover (SES → Zoho) mailer.
-     *
-     * @param  array{from_address: string, from_name: string, email_signature?: string}  $config
-     */
-    public function applyConfig(array $config): void
-    {
-        config([
-            'mail.from.address' => $config['from_address'],
-            'mail.from.name' => $config['from_name'],
-        ]);
-
-        Log::debug('Applied sender configuration', [
-            'from' => $config['from_address'],
-        ]);
-    }
-
-    /**
-     * Get all active email accounts for dropdown selection
-     *
-     * @return Collection
-     */
-    public function getActiveAccounts()
-    {
-        return Email::where('status', true)
-            ->select('id', 'email', 'display_name')
-            ->orderBy('email')
-            ->get();
     }
 
     /**
@@ -131,31 +52,6 @@ class EmailConfigService
         }
 
         return null;
-    }
-
-    /**
-     * Get email configuration from .env file only
-     * Use this when you want to force .env credentials regardless of database accounts
-     */
-    public function getEnvAccount(): ?array
-    {
-        try {
-            $fromAddress = config('mail.from.address');
-            if ($fromAddress) {
-                return [
-                    'from_address' => $fromAddress,
-                    'from_name' => config('mail.from.name', 'Bansal Migration'),
-                ];
-            }
-
-            return null;
-        } catch (\Exception $e) {
-            Log::error('Failed to get .env email configuration', [
-                'error' => $e->getMessage(),
-            ]);
-
-            return null;
-        }
     }
 
     /**
@@ -284,22 +180,5 @@ class EmailConfigService
         $officeName = $matter?->office?->office_name;
 
         return is_string($officeName) && Str::contains(Str::lower($officeName), 'adelaide');
-    }
-
-    /**
-     * Validate email configuration by attempting connection
-     */
-    public function validateConfig(array $config): bool
-    {
-        try {
-            return ! empty($config['from_address']);
-        } catch (\Exception $e) {
-            Log::warning('Email config validation failed', [
-                'config' => $config['from_address'] ?? 'unknown',
-                'error' => $e->getMessage(),
-            ]);
-
-            return false;
-        }
     }
 }

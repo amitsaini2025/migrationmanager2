@@ -297,9 +297,4 @@ class BansalSchedulingServiceTypeTest extends TestCase
         $this->assertFalse(BansalSchedulingServiceType::isCrmOnlyNoe(6));
         $this->assertFalse(BansalSchedulingServiceType::isCrmOnlyNoe(7));
     }
-
-    public function test_melbourne_employer_sponsored_routing_disabled(): void
-    {
-        $this->assertFalse(BansalSchedulingServiceType::melbourneUsesEmployerSponsoredRouting(11, 'melbourne'));
-    }
 }

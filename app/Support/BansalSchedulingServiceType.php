@@ -121,12 +121,6 @@ class BansalSchedulingServiceType
         return in_array((int) $noeId, self::CRM_ONLY_NOE_IDS, true);
     }
 
-    /** @deprecated Melbourne family/citizenship no longer use employer-sponsored slot lookup. */
-    public static function melbourneUsesEmployerSponsoredRouting(int $noeId, ?string $location): bool
-    {
-        return false;
-    }
-
     public static function melbourneUsesVijayCalendarRouting(int $noeId, ?string $location): bool
     {
         if ($location === null || $location === '') {

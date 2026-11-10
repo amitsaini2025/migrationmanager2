@@ -26,75 +26,6 @@ class EmailConfigServiceTest extends TestCase
     }
 
     /** @test */
-    public function it_can_get_email_config_by_email_address()
-    {
-        Email::factory()->create([
-            'email' => 'test@example.com',
-            'display_name' => 'Test Sender',
-            'status' => true,
-        ]);
-
-        $config = $this->service->forAccount('test@example.com');
-
-        $this->assertEquals('test@example.com', $config['from_address']);
-        $this->assertEquals('Test Sender', $config['from_name']);
-    }
-
-    /** @test */
-    public function it_throws_exception_when_email_not_found_by_id()
-    {
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('Email configuration not found for ID: 9999');
-
-        $this->service->forAccountById(9999);
-    }
-
-    /** @test */
-    public function it_throws_exception_when_email_not_found_by_address()
-    {
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('Email configuration not found for: nonexistent@example.com');
-
-        $this->service->forAccount('nonexistent@example.com');
-    }
-
-    /** @test */
-    public function it_only_finds_active_emails_when_searching_by_address()
-    {
-        Email::factory()->create([
-            'email' => 'inactive@example.com',
-            'status' => false, // Inactive
-        ]);
-
-        $this->expectException(\Exception::class);
-
-        $this->service->forAccount('inactive@example.com');
-    }
-
-    /** @test */
-    public function it_can_get_all_active_accounts()
-    {
-        Email::factory()->create([
-            'email' => 'active1@example.com',
-            'status' => true,
-        ]);
-        Email::factory()->create([
-            'email' => 'active2@example.com',
-            'status' => true,
-        ]);
-        Email::factory()->create([
-            'email' => 'inactive@example.com',
-            'status' => false,
-        ]);
-
-        $accounts = $this->service->getActiveAccounts();
-
-        $this->assertCount(2, $accounts);
-        $this->assertEquals('active1@example.com', $accounts[0]->email);
-        $this->assertEquals('active2@example.com', $accounts[1]->email);
-    }
-
-    /** @test */
     public function it_can_get_default_account()
     {
         Email::factory()->create([
@@ -154,7 +85,7 @@ class EmailConfigServiceTest extends TestCase
             'status' => true,
         ]);
 
-        $config = $this->service->forAccountById($email->id);
+        $config = $this->service->getDefaultAccount();
 
         $this->assertIsArray($config);
         $this->assertCount(3, $config);

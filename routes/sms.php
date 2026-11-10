@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminConsole\SesEventWebhookController;
 use App\Http\Controllers\AdminConsole\Sms\SmsWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,3 +27,7 @@ Route::prefix('webhooks/sms')->name('webhooks.sms.')->group(function () {
     Route::post('/cellcast/status', [SmsWebhookController::class, 'cellcastStatus'])->name('cellcast.status');
     Route::post('/cellcast/incoming', [SmsWebhookController::class, 'cellcastIncoming'])->name('cellcast.incoming');
 });
+
+// Amazon SES configuration-set events, delivered by SNS. No session auth; the handler checks the topic and signature.
+Route::post('/webhooks/ses/events', [SesEventWebhookController::class, 'events'])
+    ->name('webhooks.ses.events');

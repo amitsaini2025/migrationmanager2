@@ -45,7 +45,7 @@ class AssigneeController extends Controller
     {
         $query = QueryBuilder::for(Note::class)
             ->allowedSorts(['first_name', 'action_date', 'task_group', 'created_at'])
-            ->with(['noteStaff', 'noteClient.company', 'lead.service', 'assigned_staff'])
+            ->with(['noteStaff', 'noteClient.company', 'assigned_staff'])
             ->where('type', 'client')
             ->where('is_action', 1)
             ->where('status', '<>', '1');
@@ -64,9 +64,9 @@ class AssigneeController extends Controller
     public function completed(Request $request)
     {
         if (Auth::user()->role == 1) {
-            $assignees = Note::with(['noteStaff', 'noteClient.company', 'lead.service', 'assigned_staff'])->where('type', 'client')->whereNotNull('client_id')->where('is_action', 1)->where('status', '1')->orderBy('created_at', 'desc')->latest()->paginate(20); // where('status','like','Closed')
+            $assignees = Note::with(['noteStaff', 'noteClient.company', 'assigned_staff'])->where('type', 'client')->whereNotNull('client_id')->where('is_action', 1)->where('status', '1')->orderBy('created_at', 'desc')->latest()->paginate(20); // where('status','like','Closed')
         } else {
-            $assignees = Note::with(['noteStaff', 'noteClient.company', 'lead.service', 'assigned_staff'])->where('assigned_to', Auth::user()->id)->where('type', 'client')->where('is_action', 1)->where('status', '1')->orderBy('created_at', 'desc')->latest()->paginate(20);
+            $assignees = Note::with(['noteStaff', 'noteClient.company', 'assigned_staff'])->where('assigned_to', Auth::user()->id)->where('type', 'client')->where('is_action', 1)->where('status', '1')->orderBy('created_at', 'desc')->latest()->paginate(20);
         }  // dd( $assignees);
 
         return view('crm.assignee.completed', compact('assignees'))
@@ -278,13 +278,13 @@ class AssigneeController extends Controller
     public function assigned_to_me(Request $request)
     {
         if (Auth::user()->role == 1) {
-            $assignees_notCompleted = Note::with(['noteStaff', 'noteClient.company', 'lead.service', 'assigned_staff'])->where('status', '<>', '1')->where('assigned_to', Auth::user()->id)->where('type', 'client')->whereNotNull('client_id')->where('is_action', 1)->orderBy('created_at', 'desc')->latest()->paginate(20); // where('status','not like','Closed')
+            $assignees_notCompleted = Note::with(['noteStaff', 'noteClient.company', 'assigned_staff'])->where('status', '<>', '1')->where('assigned_to', Auth::user()->id)->where('type', 'client')->whereNotNull('client_id')->where('is_action', 1)->orderBy('created_at', 'desc')->latest()->paginate(20); // where('status','not like','Closed')
 
-            $assignees_completed = Note::with(['noteStaff', 'noteClient.company', 'lead.service', 'assigned_staff'])->where('status', '1')->where('assigned_to', Auth::user()->id)->where('type', 'client')->whereNotNull('client_id')->where('is_action', 1)->orderBy('created_at', 'desc')->latest()->paginate(20);
+            $assignees_completed = Note::with(['noteStaff', 'noteClient.company', 'assigned_staff'])->where('status', '1')->where('assigned_to', Auth::user()->id)->where('type', 'client')->whereNotNull('client_id')->where('is_action', 1)->orderBy('created_at', 'desc')->latest()->paginate(20);
         } else {
-            $assignees_notCompleted = Note::with(['noteStaff', 'noteClient.company', 'lead.service', 'assigned_staff'])->where('status', '<>', '1')->where('assigned_to', Auth::user()->id)->where('type', 'client')->where('is_action', 1)->orderBy('created_at', 'desc')->latest()->paginate(20);
+            $assignees_notCompleted = Note::with(['noteStaff', 'noteClient.company', 'assigned_staff'])->where('status', '<>', '1')->where('assigned_to', Auth::user()->id)->where('type', 'client')->where('is_action', 1)->orderBy('created_at', 'desc')->latest()->paginate(20);
 
-            $assignees_completed = Note::with(['noteStaff', 'noteClient.company', 'lead.service', 'assigned_staff'])->where('status', '1')->where('assigned_to', Auth::user()->id)->where('type', 'client')->where('is_action', 1)->orderBy('created_at', 'desc')->latest()->paginate(20);
+            $assignees_completed = Note::with(['noteStaff', 'noteClient.company', 'assigned_staff'])->where('status', '1')->where('assigned_to', Auth::user()->id)->where('type', 'client')->where('is_action', 1)->orderBy('created_at', 'desc')->latest()->paginate(20);
         }
 
         return view('crm.assignee.assign_to_me', compact('assignees_notCompleted', 'assignees_completed'))

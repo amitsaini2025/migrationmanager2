@@ -4,12 +4,15 @@ namespace App\Services;
 
 use App\Models\EmailLog;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class SystemEmailLogService
 {
     public const CONVERSION_TYPE = 'system_generated';
+
+    public function __construct(private SesDeliveryHeaders $deliveryHeaders = new SesDeliveryHeaders) {}
 
     /** @var array<string, string> */
     public const CATEGORIES = [
@@ -67,6 +70,18 @@ class SystemEmailLogService
         ]);
     }
 
+    public function applyTrackingToMailable(Mailable $mailable, int $emailLogId): Mailable
+    {
+        return $mailable->withSymfonyMessage(function ($message) use ($emailLogId): void {
+            $this->deliveryHeaders->apply($message, $emailLogId);
+        });
+    }
+
+    public function stampOutgoingMessage(Message $message, int $emailLogId): void
+    {
+        $this->deliveryHeaders->applyToMailMessage($message, $emailLogId);
+    }
+
     public function markSendFailed(EmailLog $log, string $reason): void
     {
         $log->update([
@@ -99,7 +114,7 @@ class SystemEmailLogService
         try {
             Mail::mailer($mailer)
                 ->to($to)
-                ->send($mailable);
+                ->send($this->applyTrackingToMailable($mailable, $log->id));
         } catch (\Throwable $e) {
             $this->markSendFailed($log, $e->getMessage());
             throw $e;

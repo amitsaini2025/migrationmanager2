@@ -215,9 +215,13 @@ class ClientAccountsController extends Controller
     protected function sendAccountClientMail(string $to, array $invoiceArray, string $from, $emailLog = null): void
     {
         $mailer = app(EmailService::class)->mailerForFromAddress($from);
+        $mailable = new InvoiceEmailManager($invoiceArray);
+        if ($emailLog && ! empty($emailLog->id)) {
+            $mailable = app(SystemEmailLogService::class)->applyTrackingToMailable($mailable, (int) $emailLog->id);
+        }
 
         try {
-            Mail::mailer($mailer)->to($to)->send(new InvoiceEmailManager($invoiceArray));
+            Mail::mailer($mailer)->to($to)->send($mailable);
         } catch (\Throwable $e) {
             if ($emailLog) {
                 app(SystemEmailLogService::class)->markSendFailed($emailLog, $e->getMessage());

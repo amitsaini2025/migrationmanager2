@@ -29,6 +29,11 @@ return [
         'key' => env('AWS_ACCESS_KEY_ID_SES', env('AWS_ACCESS_KEY_ID')),
         'secret' => env('AWS_SECRET_ACCESS_KEY_SES', env('AWS_SECRET_ACCESS_KEY')),
         'region' => env('AWS_DEFAULT_REGION_SES', env('SES_REGION', env('AWS_DEFAULT_REGION', 'ap-southeast-2'))),
+        // SMTP sends this as X-SES-CONFIGURATION-SET. The API mailer reads options below.
+        'configuration_set' => env('SES_CONFIGURATION_SET'),
+        // SNS topic that receives configuration-set events. Required for the delivery webhook.
+        'sns_topic_arn' => env('SES_SNS_TOPIC_ARN'),
+        'webhook_token' => env('SES_WEBHOOK_TOKEN'),
         'options' => array_filter([
             'ConfigurationSetName' => env('SES_CONFIGURATION_SET') ?: null,
         ]),
@@ -43,7 +48,6 @@ return [
         'from_email' => env('SES_FROM_EMAIL', env('MAIL_FROM_ADDRESS', '')),
         'from_allowed_domains' => env('SES_FROM_ALLOWED_DOMAINS', 'bansalimmigration.com.au'),
         'signature_from_email' => env('SIGNATURE_FROM_EMAIL', env('MAIL_INFO_ADDRESS', 'info@bansalimmigration.com.au')),
-        'webhook_token' => env('SES_WEBHOOK_TOKEN'),
     ],
 
     /*

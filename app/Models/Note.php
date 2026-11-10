@@ -124,19 +124,6 @@ class Note extends Model
     }
 
     /**
-     * Legacy relationship - Appointment model has been removed
-     * This relationship is kept for backward compatibility but will return null
-     *
-     * @deprecated Appointment system has been removed
-     */
-    public function lead()
-    {
-        // Appointment model no longer exists - old appointment system removed
-        // Returning null to prevent errors
-        return null;
-    }
-
-    /**
      * Whether the staff member may update or delete this client action.
      * Allowed: super admin, assignee, or creator (Assigned by Me).
      */

@@ -4,7 +4,7 @@
                     <?php
                     $authStaffNominationDocs = \Illuminate\Support\Facades\Auth::user();
                     $canBulkDownloadClientDocuments = $authStaffNominationDocs instanceof \App\Models\Staff
-                        && $authStaffNominationDocs->hasCrmModule('84');
+                        && $authStaffNominationDocs->canBulkDownloadClientDocuments();
                     $client_selected_matter_id1 = null;
                     $matter_cnt = \App\Models\ClientMatter::select('id')->where('client_id',$fetchedData->id)->where('matter_status',1)->count();
                     if( $matter_cnt >0 ) {

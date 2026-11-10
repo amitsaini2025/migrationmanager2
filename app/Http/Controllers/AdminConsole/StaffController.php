@@ -149,6 +149,7 @@ class StaffController extends Controller
             $obj->default_calendar_type = $this->normalizedDefaultCalendarType($requestData['default_calendar_type'] ?? null);
             $obj->team = @$requestData['team'];
             $obj->show_dashboard_per = isset($requestData['show_dashboard_per']) ? 1 : 0;
+            $obj->bulk_download_enabled = $request->boolean('bulk_download_enabled');
             $obj->permission = (isset($requestData['permission']) && is_array($requestData['permission']))
                 ? implode(',', $requestData['permission'])
                 : '';
@@ -281,6 +282,7 @@ class StaffController extends Controller
                 : '';
             $obj->sheet_access = $this->normalizeStaffSheetAccess($requestData['sheet_access'] ?? null);
             $obj->show_dashboard_per = isset($requestData['show_dashboard_per']) ? 1 : 0;
+            $obj->bulk_download_enabled = $request->boolean('bulk_download_enabled');
             $obj->is_migration_agent = isset($requestData['is_migration_agent']) ? 1 : 0;
 
             if (isset($requestData['is_migration_agent'])) {

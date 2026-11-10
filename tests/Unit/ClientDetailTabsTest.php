@@ -665,7 +665,7 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertStringContainsString('bulk-upload-dropzone-container', $blade);
         Assert::assertStringContainsString('bindPersonalBulkUploadToggle', $blade);
         Assert::assertStringContainsString('bulk-download-btn', $blade);
-        Assert::assertStringContainsString('hasCrmModule(\'84\')', $blade);
+        Assert::assertStringContainsString('canBulkDownloadClientDocuments()', $blade);
         Assert::assertStringContainsString('bulk-download-doc-checkbox', $blade);
         Assert::assertStringContainsString('window.showFileContextMenu', $blade);
         Assert::assertStringContainsString('window.handleContextAction', $blade);

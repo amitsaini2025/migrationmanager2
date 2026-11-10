@@ -628,6 +628,7 @@
                                             @icon('fa-caret-down')
                                         </span>
                                     </th>
+                                    <th>Description</th>
                                     <th class="sortable-header {{ request('sort_by') == 'amount' ? (request('sort_order') == 'desc' ? 'sort-desc' : 'sort-asc') : '' }}" data-sort="amount">
                                         Amount
                                         <span class="sort-icon">
@@ -691,13 +692,14 @@
                                             </td>
 
                                             <!--<td><?php //echo $list->receipt_id;?></td>-->
-                                            <td>{{ $client_id_display }}</td>
+                                            <td>@include('crm.clients.partials.accounts-list-client-link', ['clientAdminId' => $client_info->id ?? null, 'label' => $client_id_display])</td>
                                              <td>{{ $client_matter_display }}</td>
                                             <td>{{ $client_full_name }}</td>
                                             <td>{{ $trans_date }}</td>
-                                            <td>{{ $Reference }}</td>
+                                            <td>@include('crm.clients.partials.accounts-list-reference', ['text' => $Reference, 'pdfUrl' => url('/clients/genOfficeReceipt/'.$list->id), 'docUrl' => $list->account_dropdown_doc_url ?? null])</td>
                                             <td>{{ $invoice_no }}</td>
                                             <td>{{ $payment_method }}</td>
+                                            <td>{{ $list->description ?: '-' }}</td>
                                             <td id="deposit_{{@$list->id}}">{{ is_numeric($deposit_amount) ? '$'.number_format((float)$deposit_amount, 2) : '-' }}</td>
                                             <?php
                                             if($list->validate_receipt == 1) {
@@ -722,7 +724,7 @@
                                     @endforeach
                                 @else
                                     <tr>
-                                        <td colspan="11" style="text-align: center; padding: 60px 20px;">
+                                        <td colspan="12" style="text-align: center; padding: 60px 20px;">
                                             <div style="opacity: 0.5;">
                                                 @icon('fa-inbox', ['style' => 'font-size: 48px; color: #cbd5e1; margin-bottom: 16px;'])
                                                 <div style="font-size: 18px; font-weight: 600; color: #64748b;">No Records Found</div>

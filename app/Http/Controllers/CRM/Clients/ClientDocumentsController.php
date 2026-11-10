@@ -22,6 +22,7 @@ use App\Models\Form956;
 use App\Models\NominationDocumentType;
 // use App\Models\VisaDocChecklist; // REMOVED: VisaDocChecklist model has been deleted
 use App\Models\PersonalDocumentType;
+use App\Models\Staff;
 use App\Models\VisaDocumentType;
 use App\Services\DocumentBulkDownloadService;
 use App\Services\SystemEmailLogService;
@@ -2990,7 +2991,9 @@ class ClientDocumentsController extends Controller
 
     private function canBulkDownloadClientDocuments(): bool
     {
-        return $this->hasModuleAccess('84');
+        $user = Auth::guard('admin')->user();
+
+        return $user instanceof Staff && $user->canBulkDownloadClientDocuments();
     }
 
     private function bulkDownloadSelectHeaderHtml(): string

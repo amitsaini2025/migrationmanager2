@@ -1,7 +1,7 @@
 @extends('layouts.crm_client_detail')
 @section('title', 'Access requests')
 @php
-    $crmAccessReasonLabels = config('crm_access.quick_reason_options', []);
+    $crmAccessReasonLabels = \App\Support\AccountsListAccess::reasonLabels();
 @endphp
 @section('content')
 <div class="main-content">

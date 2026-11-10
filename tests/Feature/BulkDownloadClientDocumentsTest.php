@@ -47,6 +47,7 @@ class BulkDownloadClientDocumentsTest extends TestCase
             'password' => Hash::make('password'),
             'role' => 1,
             'status' => 1,
+            'bulk_download_enabled' => true,
         ]);
 
         $this->staffWithoutPermission = Staff::create([
@@ -56,6 +57,7 @@ class BulkDownloadClientDocumentsTest extends TestCase
             'password' => Hash::make('password'),
             'role' => 92,
             'status' => 1,
+            'bulk_download_enabled' => true,
         ]);
     }
 
@@ -85,6 +87,25 @@ class BulkDownloadClientDocumentsTest extends TestCase
         Storage::disk('public')->put('documents/denied.pdf', 'DENIED');
 
         $this->actingAs($this->staffWithoutPermission, 'admin')
+            ->post(route('clients.documents.bulkDownload'), [
+                'client_id' => $client->id,
+                'document_ids' => [$document->id],
+            ])
+            ->assertForbidden();
+    }
+
+    #[Test]
+    public function staff_with_role_permission_but_checkbox_off_receive_forbidden(): void
+    {
+        $this->staffWithPermission->bulk_download_enabled = false;
+        $this->staffWithPermission->save();
+
+        $client = $this->makeClient(ownerStaffId: (int) $this->staffWithPermission->id);
+        $document = $this->makePersonalDocument($client->id, 'documents/checkbox-off.pdf');
+        Storage::fake('public');
+        Storage::disk('public')->put('documents/checkbox-off.pdf', 'OFF');
+
+        $this->actingAs($this->staffWithPermission, 'admin')
             ->post(route('clients.documents.bulkDownload'), [
                 'client_id' => $client->id,
                 'document_ids' => [$document->id],
@@ -241,7 +262,12 @@ class BulkDownloadClientDocumentsTest extends TestCase
                 $table->string('password')->nullable();
                 $table->unsignedInteger('role')->nullable();
                 $table->unsignedInteger('status')->nullable();
+                $table->boolean('bulk_download_enabled')->default(false);
                 $table->timestamps();
+            });
+        } elseif (! Schema::hasColumn('staff', 'bulk_download_enabled')) {
+            Schema::table('staff', function (Blueprint $table) {
+                $table->boolean('bulk_download_enabled')->default(false);
             });
         }
 

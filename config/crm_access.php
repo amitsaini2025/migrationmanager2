@@ -40,6 +40,15 @@ return [
     // Leave CRM_ACCESS_EXEMPT_STAFF_IDS blank to use the canonical default exempt staff ids below.
     'exempt_staff_ids' => $exempt_staff_ids,
 
+    // Accounts team (user_roles.id). Standing access is the four money lists only.
+    'accountant_role_id' => 15,
+
+    // Written on the 15-minute file grant opened from those lists. Not a selectable quick-access reason.
+    'accounts_open_reason' => [
+        'code' => 'accounts_validation',
+        'label' => 'Accounts validation',
+    ],
+
     'quick_reason_options' => [
         'calling' => 'Calling / Reception',
         'cover' => 'Covering Absent Colleague',

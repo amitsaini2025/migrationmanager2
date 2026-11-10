@@ -38,7 +38,7 @@
 <script>
 (function () {
     var miniUrl = @json($miniQueueUrl);
-    var reasonLabels = @json(config('crm_access.quick_reason_options', []));
+    var reasonLabels = @json(\App\Support\AccountsListAccess::reasonLabels());
     var approveTpl = @json($approveTemplateUrl);
     var rejectTpl = @json($rejectTemplateUrl);
     var token = document.querySelector('meta[name="csrf-token"]');

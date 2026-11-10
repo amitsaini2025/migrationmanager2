@@ -511,7 +511,7 @@ use App\Http\Controllers\Controller;
     @php
         $detailAuthStaff = \Illuminate\Support\Facades\Auth::user();
         $canBulkDownloadClientDocuments = $detailAuthStaff instanceof \App\Models\Staff
-            && $detailAuthStaff->hasCrmModule('84');
+            && $detailAuthStaff->canBulkDownloadClientDocuments();
     @endphp
     window.ClientDetailConfig = {
         clientId: @json(($fetchedData->id ?? '')),

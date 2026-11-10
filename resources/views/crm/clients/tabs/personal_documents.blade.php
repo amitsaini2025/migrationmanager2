@@ -19,7 +19,7 @@
                         && in_array((int) (\Illuminate\Support\Facades\Auth::user()->role ?? 0), config('crm.personal_document_category_delete_role_ids', [1, 16]), true);
                     $authStaff = \Illuminate\Support\Facades\Auth::user();
                     $canBulkDownloadClientDocuments = $authStaff instanceof \App\Models\Staff
-                        && $authStaff->hasCrmModule('84');
+                        && $authStaff->canBulkDownloadClientDocuments();
                     $personalDocTypeScope = $companyDocumentsOnlyGeneral
                         ? ['company', 'both']
                         : ['personal', 'both'];

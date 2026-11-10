@@ -360,6 +360,9 @@ Route::get('/clients/insights', [ClientsController::class, 'insights'])->name('c
 Route::get('/clients/invoicelist', [ClientAccountsController::class, 'invoicelist'])->name('clients.invoicelist');
 Route::post('/void_invoice', [ClientAccountsController::class, 'void_invoice'])->name('client.void_invoice');
 Route::get('/clients/clientreceiptlist', [ClientAccountsController::class, 'clientreceiptlist'])->name('clients.clientreceiptlist');
+Route::get('/clients/accounts-open/{id}', [ClientAccountsController::class, 'openClientFromAccountsList'])
+    ->whereNumber('id')
+    ->name('clients.accountsOpen');
 Route::get('/clients/officereceiptlist', [ClientAccountsController::class, 'officereceiptlist'])->name('clients.officereceiptlist');
 Route::get('/clients/journalreceiptlist', [ClientAccountsController::class, 'journalreceiptlist'])->name('clients.journalreceiptlist');
 Route::post('/validate_receipt', [ClientAccountsController::class, 'validate_receipt'])->name('client.validate_receipt');

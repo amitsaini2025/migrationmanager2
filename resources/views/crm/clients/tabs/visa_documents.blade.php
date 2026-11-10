@@ -15,7 +15,7 @@
                     <?php
                     $authStaffVisaDocs = \Illuminate\Support\Facades\Auth::user();
                     $canBulkDownloadClientDocuments = $authStaffVisaDocs instanceof \App\Models\Staff
-                        && $authStaffVisaDocs->hasCrmModule('84');
+                        && $authStaffVisaDocs->canBulkDownloadClientDocuments();
                     $client_selected_matter_id1 = null;
                     $matter_cnt = \App\Models\ClientMatter::select('id')->where('client_id',$fetchedData->id)->where('matter_status',1)->count();
                     if( $matter_cnt >0 ) {

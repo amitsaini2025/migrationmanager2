@@ -646,6 +646,8 @@
                                             @icon('fa-caret-down')
                                         </span>
                                     </th>
+                                    <th>Payment method</th>
+                                    <th>Description</th>
                                     <th class="sortable-header {{ request('sort_by') == 'funds_in' ? (request('sort_order') == 'desc' ? 'sort-desc' : 'sort-asc') : '' }}" data-sort="funds_in">
                                         Funds In (+)
                                         <span class="sort-icon">
@@ -721,12 +723,14 @@
                                                 </div>
                                             </td>
                                             <!--<td>{{--$id--}}</td>-->
-                                            <td>{{ $client_id_display }}</td>
+                                            <td>@include('crm.clients.partials.accounts-list-client-link', ['clientAdminId' => $client_info->id ?? null, 'label' => $client_id_display])</td>
                                             <td>{{ $client_matter_display }}</td>
                                             <td>{{ $client_full_name }}</td>
                                             <td>{{ $trans_date }}</td>
                                             <td>{{ $client_fund_ledger_type }} {{$invoice_no }}</td>
-                                            <td>{{ $Reference }}</td>
+                                            <td>@include('crm.clients.partials.accounts-list-reference', ['text' => $Reference, 'pdfUrl' => url('/clients/genClientFundReceipt/'.$list->id), 'docUrl' => $list->account_dropdown_doc_url ?? null])</td>
+                                            <td>{{ $list->payment_method ?: '-' }}</td>
+                                            <td>{{ $list->description ?: '-' }}</td>
                                             <td id="deposit_{{@$list->id}}">{{ is_numeric($total_fund_in_amount) ? '$'.number_format((float)$total_fund_in_amount, 2) : '-' }}</td>
                                             <td id="withdraw_{{@$list->id}}">{{ is_numeric($total_fund_out_amount) ? '$'.number_format((float)$total_fund_out_amount, 2) : '-' }}</td>
                                             <td id="validate_{{@$list->id}}">
@@ -745,7 +749,7 @@
                                     @endforeach
                                 @else
                                     <tr>
-                                        <td colspan="11" style="text-align: center; padding: 60px 20px;">
+                                        <td colspan="13" style="text-align: center; padding: 60px 20px;">
                                             <div style="opacity: 0.5;">
                                                 @icon('fa-inbox', ['style' => 'font-size: 48px; color: #cbd5e1; margin-bottom: 16px;'])
                                                 <div style="font-size: 18px; font-weight: 600; color: #64748b;">No Records Found</div>
@@ -1019,7 +1023,7 @@ jQuery(document).ready(function($){
                         $('.listing-container .custom-error-msg').addClass('alert alert-success');
                         // Check if table is empty after deletion
                         if ($('.listing-container .tdata tr').length === 0) {
-                            $('.listing-container .tdata').html('<tr><td colspan="11" style="text-align: center; padding: 20px;">No Record Found</td></tr>');
+                            $('.listing-container .tdata').html('<tr><td colspan="13" style="text-align: center; padding: 20px;">No Record Found</td></tr>');
                         }
                     } else {
                         $('.listing-container .custom-error-msg').text(obj.message);

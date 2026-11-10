@@ -248,6 +248,15 @@
                                         <input value="6" type="checkbox" name="permission[]" class="show_dashboard_per">&nbsp; Delete &nbsp;
                                     <?php
                                     }?>
+                                    <div class="mt-2">
+                                        <label class="d-flex align-items-center mb-0">
+                                            <input type="hidden" name="bulk_download_enabled" value="0">
+                                            <input type="checkbox" name="bulk_download_enabled" value="1" class="mr-2"
+                                                @if(old('bulk_download_enabled', $fetchedData->bulk_download_enabled ?? false)) checked @endif>
+                                            <span>Bulk download client documents</span>
+                                        </label>
+                                        <small class="text-muted d-block">When on, this person can select documents and download them as a ZIP. Their role must also allow bulk download.</small>
+                                    </div>
                                 </div>
 
                                 @include('AdminConsole.staff.partials.sheet-access', ['sheetDefinitions' => $sheetDefinitions, 'selectedSheetKeys' => $selectedSheetKeys])

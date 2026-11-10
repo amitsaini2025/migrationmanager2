@@ -1173,7 +1173,7 @@ $(document).ready(function() {
     @php
         $detailAuthStaff = \Illuminate\Support\Facades\Auth::user();
         $canBulkDownloadClientDocuments = $detailAuthStaff instanceof \App\Models\Staff
-            && $detailAuthStaff->hasCrmModule('84');
+            && $detailAuthStaff->canBulkDownloadClientDocuments();
         $companyPrimaryContact = ($fetchedData ?? null) instanceof \App\Models\Admin
             ? $fetchedData->composePrimaryContactRecipient()
             : null;

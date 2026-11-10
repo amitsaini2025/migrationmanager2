@@ -116,12 +116,18 @@
 											@if(in_array(5, $permission_arr)) <span class="badge badge-info">Add/Edit</span> @endif
 											@if(in_array(6, $permission_arr)) <span class="badge badge-info">Delete</span> @endif
 										</div>
+										<div class="mt-2"><strong>Bulk download:</strong>
+											@if($fetchedData->bulk_download_enabled) <span class="badge badge-info">On</span> @else <span class="badge badge-secondary">Off</span> @endif
+										</div>
 									<?php
 									}
 									else
 									{
 									?>
 										<span class="text-muted">No permissions assigned</span>
+										<div class="mt-2"><strong>Bulk download:</strong>
+											@if($fetchedData->bulk_download_enabled) <span class="badge badge-info">On</span> @else <span class="badge badge-secondary">Off</span> @endif
+										</div>
 									<?php
 									}
 									?>

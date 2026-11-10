@@ -112,10 +112,6 @@ class CrmAccessService
             throw new CrmAccessDeniedException('An active quick access grant already exists for this record.');
         }
 
-        $minutes = max(1, (int) config('crm_access.quick_grant_minutes', 15));
-        $starts = Carbon::now('UTC');
-        $ends = $starts->copy()->addMinutes($minutes);
-
         $office = Branch::query()->find($officeId);
         if (! $office) {
             throw new CrmAccessDeniedException('Invalid office.');
@@ -124,8 +120,58 @@ class CrmAccessService
         $teamLabel = null;
         if ($teamId !== null) {
             $team = Team::query()->find($teamId);
-            $teamLabel = $team ? (string) $team->name : 'Team ' . $teamId;
+            $teamLabel = $team ? (string) $team->name : 'Team '.$teamId;
         }
+
+        return $this->storeQuickGrant($user, $adminId, $recordType, $office, $teamId, $teamLabel, $reasonCode);
+    }
+
+    /**
+     * 15-minute client file for an accountant who opens that client from a money list.
+     * An active grant is left unchanged. A later open after it ends starts a new window.
+     */
+    public function openAccountantClientFile(Staff $user, int $adminId): ?ClientAccessGrant
+    {
+        if ((int) ($user->role ?? 0) !== (int) config('crm_access.accountant_role_id', 15)) {
+            throw new CrmAccessDeniedException('Only the accounts team can open a client from these lists.');
+        }
+
+        $this->denyIfSuperAdminOnlyLockedClient($adminId);
+
+        $row = Admin::query()
+            ->where('id', $adminId)
+            ->whereIn('type', ['client', 'lead'])
+            ->first(['id', 'type']);
+        if (! $row) {
+            throw new CrmAccessDeniedException('Record not found.');
+        }
+
+        if ($this->hasActiveGrant($user, $adminId) || StaffClientVisibility::canAccessClientOrLead($adminId, $user)) {
+            return null;
+        }
+
+        $officeId = (int) ($user->office_id ?? 0);
+        $office = $officeId > 0 ? Branch::query()->find($officeId) : null;
+        if (! $office) {
+            throw new CrmAccessDeniedException('Your staff record has no office, so a timed file open cannot be recorded.');
+        }
+
+        return $this->storeQuickGrant(
+            $user,
+            $adminId,
+            (string) $row->type,
+            $office,
+            null,
+            null,
+            (string) config('crm_access.accounts_open_reason.code', 'accounts_validation')
+        );
+    }
+
+    private function storeQuickGrant(Staff $user, int $adminId, string $recordType, Branch $office, ?int $teamId, ?string $teamLabel, string $reasonCode): ClientAccessGrant
+    {
+        $minutes = max(1, (int) config('crm_access.quick_grant_minutes', 15));
+        $starts = Carbon::now('UTC');
+        $ends = $starts->copy()->addMinutes($minutes);
 
         return ClientAccessGrant::query()->create([
             'staff_id' => (int) $user->id,
@@ -135,7 +181,7 @@ class CrmAccessService
             'access_type' => 'quick',
             'status' => 'active',
             'quick_reason_code' => $reasonCode,
-            'office_id' => $officeId,
+            'office_id' => (int) $office->id,
             'office_label_snapshot' => (string) $office->office_name,
             'team_id' => $teamId,
             'team_label_snapshot' => $teamLabel,
@@ -278,12 +324,12 @@ class CrmAccessService
         // Also clean up pending requests that were never actioned after a generous window
         // (configurable; defaults to 14 days so stale requests don't accumulate).
         $pendingTtlDays = max(1, (int) config('crm_access.pending_ttl_days', 14));
-        $pendingCutoff  = $now->copy()->subDays($pendingTtlDays);
+        $pendingCutoff = $now->copy()->subDays($pendingTtlDays);
 
         $pendingExpired = ClientAccessGrant::query()
             ->where('status', 'pending')
             ->where('requested_at', '<', $pendingCutoff)
-            ->update(['status' => 'expired', 'revoke_reason' => 'Auto-expired: not actioned within ' . $pendingTtlDays . ' days']);
+            ->update(['status' => 'expired', 'revoke_reason' => 'Auto-expired: not actioned within '.$pendingTtlDays.' days']);
 
         return $expired + $pendingExpired;
     }
@@ -321,11 +367,11 @@ class CrmAccessService
 
     protected function notifyApproversOfPendingGrant(ClientAccessGrant $grant, Staff $requester, int $adminId): void
     {
-        $senderName = trim(($requester->first_name ?? '') . ' ' . ($requester->last_name ?? ''));
+        $senderName = trim(($requester->first_name ?? '').' '.($requester->last_name ?? ''));
         if ($senderName === '') {
             $senderName = $requester->email ?? 'Staff';
         }
-        $msg = $senderName . ' requested access to record #' . $adminId;
+        $msg = $senderName.' requested access to record #'.$adminId;
         $url = url('/crm/access/queue');
 
         $approverIds = array_values(array_filter(
@@ -397,7 +443,7 @@ class CrmAccessService
         if ($senderId > 0) {
             $approver = Staff::query()->find($senderId);
             if ($approver) {
-                $senderName = trim(($approver->first_name ?? '') . ' ' . ($approver->last_name ?? '')) ?: $approver->email;
+                $senderName = trim(($approver->first_name ?? '').' '.($approver->last_name ?? '')) ?: $approver->email;
             }
         }
 
@@ -407,7 +453,7 @@ class CrmAccessService
                 'receiver_id' => $receiverId,
                 'module_id' => (int) $grant->id,
                 'url' => $notifUrl,
-                'notification_type' => 'access_request_' . $verb,
+                'notification_type' => 'access_request_'.$verb,
                 'message' => $msg,
                 'receiver_status' => 0,
                 'seen' => 0,

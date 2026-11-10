@@ -25,7 +25,7 @@ class CompanyNominationForm956Test extends TestCase
         Assert::assertStringContainsString('add_nomination_doc', $nomination);
         Assert::assertStringContainsString('bulk-upload-toggle-btn-nomination', $nomination);
         Assert::assertStringContainsString('bulk-download-btn', $nomination);
-        Assert::assertStringContainsString('hasCrmModule(\'84\')', $nomination);
+        Assert::assertStringContainsString('canBulkDownloadClientDocuments()', $nomination);
         Assert::assertStringContainsString('bulk-download-doc-checkbox', $nomination);
     }
 
@@ -38,7 +38,7 @@ class CompanyNominationForm956Test extends TestCase
         Assert::assertStringContainsString('form956CreateForm', $visa);
         Assert::assertStringContainsString('data-form956-doctype="visa"', $visa);
         Assert::assertStringContainsString('bulk-download-btn', $visa);
-        Assert::assertStringContainsString('hasCrmModule(\'84\')', $visa);
+        Assert::assertStringContainsString('canBulkDownloadClientDocuments()', $visa);
     }
 
     #[Test]

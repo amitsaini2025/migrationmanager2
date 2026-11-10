@@ -60,6 +60,7 @@ class Staff extends Authenticatable
         'quick_access_enabled',
         'profile_access_enabled',
         'grant_super_admin_access',
+        'bulk_download_enabled',
     ];
 
     /**
@@ -80,9 +81,17 @@ class Staff extends Authenticatable
         'quick_access_enabled' => 'boolean',
         'profile_access_enabled' => 'boolean',
         'grant_super_admin_access' => 'boolean',
+        'bulk_download_enabled' => 'boolean',
         'token_generated_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+    ];
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'bulk_download_enabled' => false,
     ];
 
     /**
@@ -267,6 +276,19 @@ class Staff extends Authenticatable
             ->whereIn('role', $roleIds)
             ->orderBy('first_name')
             ->orderBy('last_name');
+    }
+
+    /**
+     * Per-staff switch for ZIP download of client documents.
+     * The role must also grant module 84.
+     */
+    public function canBulkDownloadClientDocuments(): bool
+    {
+        if (! (bool) ($this->bulk_download_enabled ?? false)) {
+            return false;
+        }
+
+        return $this->hasCrmModule('84');
     }
 
     /**

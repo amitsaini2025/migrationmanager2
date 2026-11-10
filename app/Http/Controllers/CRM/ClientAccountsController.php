@@ -19,6 +19,8 @@ use App\Models\Document;
 use App\Models\Staff;
 use App\Services\ApplyInvoiceOfficeDiscount;
 use App\Services\ClientPortalActionNoteService;
+use App\Services\CrmAccess\CrmAccessDeniedException;
+use App\Services\CrmAccess\CrmAccessService;
 use App\Services\CrmSentEmailS3Service;
 use App\Services\EmailService;
 use App\Services\FCMService;
@@ -27,14 +29,18 @@ use App\Services\InvoicePaymentSyncService;
 use App\Services\SesSenderService;
 use App\Services\SystemEmailLogService;
 use App\Support\AccountClientSendComposer;
+use App\Support\AccountReceiptDocumentUrls;
+use App\Support\AccountsListAccess;
 use App\Support\InvoiceListAging;
 use App\Support\SendGridFromAllowedDomains;
+use App\Support\StaffClientVisibility;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -74,8 +80,52 @@ class ClientAccountsController extends Controller
     protected function ensureAccountsClientFromRequest(Request $request): void
     {
         if ($request->filled('client_id')) {
-            $this->ensureCrmRecordAccess((int) $request->input('client_id'));
+            $this->ensureAccountsListClient((int) $request->input('client_id'));
         }
+    }
+
+    /**
+     * Accounts team may read and validate from the money lists without a client-file grant.
+     * Everyone else still needs allocation or an access grant. Locked files stay closed.
+     */
+    protected function ensureAccountsListClient(int $clientId): void
+    {
+        if (AccountsListAccess::accountantMayUseClient($clientId)) {
+            return;
+        }
+
+        $this->ensureCrmRecordAccess($clientId);
+    }
+
+    /**
+     * @return Collection<int, object>
+     */
+    private function accountsListClientOptions()
+    {
+        $query = DB::table('account_client_receipts as acr')
+            ->join('admins', 'admins.id', '=', 'acr.client_id')
+            ->select('acr.client_id', 'admins.first_name', 'admins.last_name', 'admins.client_id as client_unique_id')
+            ->distinct()
+            ->orderBy('admins.first_name', 'asc');
+        StaffClientVisibility::applyExcludeSuperAdminOnlyLockedClientsOnAdminJoin($query, 'admins');
+
+        return $query->get();
+    }
+
+    /**
+     * @return Collection<int, object>
+     */
+    private function accountsListMatterOptions()
+    {
+        $query = DB::table('account_client_receipts as acr')
+            ->join('client_matters', 'client_matters.id', '=', 'acr.client_matter_id')
+            ->join('admins', 'admins.id', '=', 'acr.client_id')
+            ->select('acr.client_matter_id', 'client_matters.client_unique_matter_no', 'admins.client_id as client_unique_id')
+            ->distinct()
+            ->orderBy('admins.client_id', 'asc');
+        StaffClientVisibility::applyExcludeSuperAdminOnlyLockedClientsOnAdminJoin($query, 'admins');
+
+        return $query->get();
     }
 
     /**
@@ -3032,7 +3082,7 @@ class ClientAccountsController extends Controller
             abort(404, 'Invoice not found or client_id could not be determined');
         }
 
-        $this->ensureCrmRecordAccess((int) $queryClientId);
+        $this->ensureAccountsListClient((int) $queryClientId);
         // ============= END BACKWARD COMPATIBILITY =============
 
         $record_get = AccountAllInvoiceReceipt::where('receipt_type', 3)
@@ -4115,6 +4165,7 @@ class ClientAccountsController extends Controller
                 ->from('account_client_receipts')
                 ->where('receipt_type', 3)
                 ->groupBy('receipt_id');
+            AccountsListAccess::excludeLockedClients($subquery, 'client_id');
 
             // Apply same filters to subquery
             if ($request->has('client_id') && trim($request->input('client_id')) != '') {
@@ -4124,6 +4175,7 @@ class ClientAccountsController extends Controller
                 $subquery->where('client_matter_id', '=', $request->input('client_matter_id'));
             }
         })->where('receipt_type', 3);
+        AccountsListAccess::excludeLockedClients($query, 'client_id');
 
         // Filter: Client ID
         if ($request->has('client_id') && trim($request->input('client_id')) != '') {
@@ -4194,23 +4246,8 @@ class ClientAccountsController extends Controller
         $perPage = in_array($perPageRequest, $allowedPerPage, true) ? $perPageRequest : 20;
 
         $lists = $query->paginate($perPage);
-
-        // Dropdown: Client list with receipts
-        $clientIds = DB::table('account_client_receipts as acr')
-            ->join('admins', 'admins.id', '=', 'acr.client_id')
-            ->select('acr.client_id', 'admins.first_name', 'admins.last_name', 'admins.client_id as client_unique_id')
-            ->distinct()
-            ->orderBy('admins.first_name', 'asc')
-            ->get();
-
-        // Dropdown: Matter list with receipts
-        $matterIds = DB::table('account_client_receipts as acr')
-            ->join('client_matters', 'client_matters.id', '=', 'acr.client_matter_id')
-            ->join('admins', 'admins.id', '=', 'acr.client_id')
-            ->select('acr.client_matter_id', 'client_matters.client_unique_matter_no', 'admins.client_id as client_unique_id')
-            ->distinct()
-            ->orderBy('admins.client_id', 'asc')
-            ->get();
+        $clientIds = $this->accountsListClientOptions();
+        $matterIds = $this->accountsListMatterOptions();
 
         return view('crm.clients.invoicelist', compact(['lists', 'totalData', 'clientIds', 'matterIds', 'perPage']));
     }
@@ -4580,11 +4617,32 @@ class ClientAccountsController extends Controller
         return response()->json($response);
     }
 
+    /**
+     * Accountant opens a client from a money list. Starts a 15-minute file grant
+     * when they do not already have access, and does not extend an active grant.
+     */
+    public function openClientFromAccountsList(int $id)
+    {
+        $user = Auth::user();
+        if (! $user instanceof Staff) {
+            abort(403, 'Only the accounts team can open a client from these lists.');
+        }
+
+        try {
+            app(CrmAccessService::class)->openAccountantClientFile($user, $id);
+        } catch (CrmAccessDeniedException $e) {
+            abort(403, $e->getMessage());
+        }
+
+        return redirect('/clients/detail/'.$this->encodeString((string) $id));
+    }
+
     public function clientreceiptlist(Request $request)
     {
         $this->ensureAccountsClientFromRequest($request);
 
         $query = AccountClientReceipt::where('receipt_type', 1);
+        AccountsListAccess::excludeLockedClients($query, 'client_id');
 
         // Filter: Client ID
         if ($request->has('client_id') && trim($request->input('client_id')) != '') {
@@ -4651,23 +4709,9 @@ class ClientAccountsController extends Controller
 
         // Fetch paginated list
         $lists = $query->paginate($perPage);
-
-        // Dropdown: Client list with receipts
-        $clientIds = DB::table('account_client_receipts as acr')
-            ->join('admins', 'admins.id', '=', 'acr.client_id')
-            ->select('acr.client_id', 'admins.first_name', 'admins.last_name', 'admins.client_id as client_unique_id')
-            ->distinct()
-            ->orderBy('admins.first_name', 'asc')
-            ->get();
-
-        // Dropdown: Matter list with receipts
-        $matterIds = DB::table('account_client_receipts as acr')
-            ->join('client_matters', 'client_matters.id', '=', 'acr.client_matter_id')
-            ->join('admins', 'admins.id', '=', 'acr.client_id')
-            ->select('acr.client_matter_id', 'client_matters.client_unique_matter_no', 'admins.client_id as client_unique_id')
-            ->distinct()
-            ->orderBy('admins.client_id', 'asc')
-            ->get();
+        AccountReceiptDocumentUrls::attach($lists);
+        $clientIds = $this->accountsListClientOptions();
+        $matterIds = $this->accountsListMatterOptions();
 
         return view('crm.clients.clientreceiptlist', compact(['lists', 'totalData', 'clientIds', 'matterIds', 'perPage']));
     }
@@ -4677,6 +4721,7 @@ class ClientAccountsController extends Controller
         $this->ensureAccountsClientFromRequest($request);
 
         $query = AccountClientReceipt::where('receipt_type', 2);
+        AccountsListAccess::excludeLockedClients($query, 'client_id');
         // Filter: Client ID
         if ($request->has('client_id') && trim($request->input('client_id')) != '') {
             $query->where('client_id', '=', $request->input('client_id'));
@@ -4733,23 +4778,9 @@ class ClientAccountsController extends Controller
         $perPage = in_array($perPageRequest, $allowedPerPage, true) ? $perPageRequest : 20;
 
         $lists = $query->paginate($perPage);
-
-        // Dropdown: Client list with receipts
-        $clientIds = DB::table('account_client_receipts as acr')
-            ->join('admins', 'admins.id', '=', 'acr.client_id')
-            ->select('acr.client_id', 'admins.first_name', 'admins.last_name', 'admins.client_id as client_unique_id')
-            ->distinct()
-            ->orderBy('admins.first_name', 'asc')
-            ->get();
-
-        // Dropdown: Matter list with receipts
-        $matterIds = DB::table('account_client_receipts as acr')
-            ->join('client_matters', 'client_matters.id', '=', 'acr.client_matter_id')
-            ->join('admins', 'admins.id', '=', 'acr.client_id')
-            ->select('acr.client_matter_id', 'client_matters.client_unique_matter_no', 'admins.client_id as client_unique_id')
-            ->distinct()
-            ->orderBy('admins.client_id', 'asc')
-            ->get();
+        AccountReceiptDocumentUrls::attach($lists);
+        $clientIds = $this->accountsListClientOptions();
+        $matterIds = $this->accountsListMatterOptions();
 
         return view('crm.clients.officereceiptlist', compact(['lists', 'totalData', 'clientIds', 'matterIds', 'perPage']));
     }
@@ -4757,9 +4788,10 @@ class ClientAccountsController extends Controller
     public function journalreceiptlist(Request $request)
     {
         // PostgreSQL requires all non-aggregate columns in GROUP BY
-        $query = AccountClientReceipt::select('id', 'receipt_id', 'client_id', 'user_id', 'trans_date', 'entry_date', 'trans_no', 'invoice_no', 'payment_method', 'validate_receipt', 'voided_or_validated_by', DB::raw('sum(withdraw_amount) as total_withdrawal_amount'))
+        $query = AccountClientReceipt::select('id', 'receipt_id', 'client_id', 'client_matter_id', 'user_id', 'trans_date', 'entry_date', 'trans_no', 'invoice_no', 'payment_method', 'description', 'uploaded_doc_id', 'validate_receipt', 'voided_or_validated_by', DB::raw('sum(withdraw_amount) as total_withdrawal_amount'))
             ->where('receipt_type', 4)
-            ->groupBy('id', 'receipt_id', 'client_id', 'user_id', 'trans_date', 'entry_date', 'trans_no', 'invoice_no', 'payment_method', 'validate_receipt', 'voided_or_validated_by');
+            ->groupBy('id', 'receipt_id', 'client_id', 'client_matter_id', 'user_id', 'trans_date', 'entry_date', 'trans_no', 'invoice_no', 'payment_method', 'description', 'uploaded_doc_id', 'validate_receipt', 'voided_or_validated_by');
+        AccountsListAccess::excludeLockedClients($query, 'client_id');
 
         // Enhanced Date Filtering
         $this->applyDateFilters($query, $request);
@@ -4789,6 +4821,7 @@ class ClientAccountsController extends Controller
 
         $totalData = $query->count();
         $lists = $query->paginate(20);
+        AccountReceiptDocumentUrls::attach($lists);
 
         return view('crm.clients.journalreceiptlist', compact(['lists', 'totalData']));
     }
@@ -4867,7 +4900,7 @@ class ClientAccountsController extends Controller
             foreach ($request->clickedReceiptIds as $rid) {
                 $row = AccountClientReceipt::select('client_id')->where('id', $rid)->where('receipt_type', $request->receipt_type)->first();
                 if ($row && $row->client_id) {
-                    $this->ensureCrmRecordAccess((int) $row->client_id);
+                    $this->ensureAccountsListClient((int) $row->client_id);
                 }
             }
 
@@ -5087,7 +5120,7 @@ class ClientAccountsController extends Controller
             abort(404, 'Receipt not found');
         }
 
-        $this->ensureCrmRecordAccess((int) $record_get[0]->client_id);
+        $this->ensureAccountsListClient((int) $record_get[0]->client_id);
 
         $clientname = DB::table('admins')->select('first_name', 'last_name', 'address', 'state', 'city', 'zip', 'country')->where('id', $record_get[0]->client_id)->first();
         $agentname = $record_get[0]->agent_id
@@ -5112,7 +5145,7 @@ class ClientAccountsController extends Controller
             abort(404, 'Receipt not found');
         }
 
-        $this->ensureCrmRecordAccess((int) $record_get->client_id);
+        $this->ensureAccountsListClient((int) $record_get->client_id);
 
         $clientname = DB::table('admins')->where('id', $record_get->client_id)->first();
 
@@ -5434,6 +5467,8 @@ class ClientAccountsController extends Controller
         if (! $record_get) {
             abort(404, 'Receipt not found');
         }
+
+        $this->ensureAccountsListClient((int) $record_get->client_id);
 
         // ============= START CACHING LOGIC =============
 

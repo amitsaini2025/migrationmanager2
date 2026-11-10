@@ -13,7 +13,7 @@ class BulkDownloadClientDocumentsRequest extends FormRequest
     public function authorize(): bool
     {
         $user = $this->user('admin');
-        if (! $user instanceof Staff || ! $user->hasCrmModule('84')) {
+        if (! $user instanceof Staff || ! $user->canBulkDownloadClientDocuments()) {
             return false;
         }
 

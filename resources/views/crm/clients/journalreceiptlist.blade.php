@@ -568,6 +568,8 @@
                                             @icon('fa-caret-down')
                                         </span>
                                     </th>
+                                    <th>Payment method</th>
+                                    <th>Description</th>
                                     <th class="sortable-header {{ request('sort_by') == 'invoice_no' ? (request('sort_order') == 'desc' ? 'sort-desc' : 'sort-asc') : '' }}" data-sort="invoice_no">
                                         Invoice No
                                         <span class="sort-icon">
@@ -621,10 +623,12 @@
                                                 </div>
                                             </td>
                                             <td><?php echo $list->receipt_id;?></td>
-                                            <td><?php if(isset($client_info->client_id)) {echo $client_info->client_id;} else {echo 'N/A';}?></td>
+                                            <td>@include('crm.clients.partials.accounts-list-client-link', ['clientAdminId' => $client_info->id ?? null, 'label' => $client_info->client_id ?? 'N/A'])</td>
                                             <td><?php if(isset($client_info->first_name)) { echo $client_info->first_name;} else {echo 'N/A';} ?></td><td><?php echo $list->trans_date;?></td>
                                             <td><?php echo $list->entry_date;?></td>
-                                            <td><?php echo $list->trans_no;?></td>
+                                            <td>@include('crm.clients.partials.accounts-list-reference', ['text' => $list->trans_no ?: '-', 'pdfUrl' => null, 'docUrl' => $list->account_dropdown_doc_url ?? null])</td>
+                                            <td>{{ $list->payment_method ?: '-' }}</td>
+                                            <td>{{ $list->description ?: '-' }}</td>
                                             <td><?php echo $list->invoice_no;?></td>
                                             <td id="deposit_{{@$list->id}}"><?php echo "$".$list->total_withdrawal_amount;?></td>
                                             <td id="validate_{{@$list->id}}">
@@ -643,7 +647,7 @@
                                     @endforeach
                                 @else
                                     <tr>
-                                        <td colspan="11" style="text-align: center; padding: 60px 20px;">
+                                        <td colspan="13" style="text-align: center; padding: 60px 20px;">
                                             <div style="opacity: 0.5;">
                                                 @icon('fa-inbox', ['style' => 'font-size: 48px; color: #cbd5e1; margin-bottom: 16px;'])
                                                 <div style="font-size: 18px; font-weight: 600; color: #64748b;">No Records Found</div>

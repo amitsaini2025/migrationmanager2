@@ -1271,10 +1271,10 @@
                                                     <label for="checkbox-{{$i}}" class="custom-control-label">&nbsp;</label>
                                                 </div>
                                             </td>
-                                            <td>{{ $client_id_display }}</td>
+                                            <td>@include('crm.clients.partials.accounts-list-client-link', ['clientAdminId' => $client_info->id ?? null, 'label' => $client_id_display])</td>
                                             <td>{{ $client_matter_display }}</td>
                                             <td>{{ $client_full_name }}</td>
-                                            <td>{{ $Reference }}</td>
+                                            <td>@include('crm.clients.partials.accounts-list-reference', ['text' => $Reference, 'pdfUrl' => url('/clients/genInvoice/'.$list->receipt_id.'/'.$list->client_id), 'docUrl' => null])</td>
                                             <td>{{ $trans_date }}</td>
                                             <td id="deposit_{{@$list->id}}">
                                                 @if($list->invoice_status == 1 && ($list->balance_amount == 0 || $list->balance_amount == 0.00))

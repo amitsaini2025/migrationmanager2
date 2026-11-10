@@ -17,7 +17,6 @@ class OutboundMailerConfigTest extends TestCase
         $this->assertSame('smtp.zoho.com', config('mail.mailers.zoho.host'));
         $this->assertSame('failover', config('mail.mailers.failover.transport'));
         $this->assertSame(['smtp', 'zoho'], config('mail.mailers.failover.mailers'));
-        $this->assertSame(['smtp', 'zoho'], config('mail.mailers.sendgrid.mailers'));
         $this->assertSame(['smtp', 'zoho'], config('mail.mailers.roundrobin.mailers'));
     }
 

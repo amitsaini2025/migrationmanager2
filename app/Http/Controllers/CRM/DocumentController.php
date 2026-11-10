@@ -1645,7 +1645,7 @@ class DocumentController extends Controller
                                 'signer_email' => $signerEmail,
                                 'signer_name' => $signerName,
                                 'subject' => $request->subject,
-                                'status' => 'sent_via_sendgrid',
+                                'status' => 'sent',
                             ],
                         ]);
                     } catch (\Exception $emailException) {
@@ -1766,7 +1766,7 @@ class DocumentController extends Controller
                             'metadata' => [
                                 'signer_email' => $signerEmail,
                                 'signer_name' => $signerName,
-                                'status' => 'sent_via_sendgrid',
+                                'status' => 'sent',
                             ],
                         ]);
                     } catch (\Exception $emailException) {

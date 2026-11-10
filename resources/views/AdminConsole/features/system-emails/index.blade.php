@@ -82,7 +82,7 @@
                                                 <option value="">Any Status</option>
                                                 @foreach(['pending','processed','delivered','deferred','bounced','dropped','send_failed'] as $status)
                                                     <option value="{{ $status }}" {{ request('delivery_status') === $status ? 'selected' : '' }}>
-                                                        {{ \App\Services\SendGridWebhookService::statusLabel($status) }}
+                                                        {{ \App\Services\EmailDeliveryStatus::statusLabel($status) }}
                                                     </option>
                                                 @endforeach
                                             </select>

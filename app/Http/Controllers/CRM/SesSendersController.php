@@ -8,15 +8,15 @@ use Illuminate\Http\JsonResponse;
 
 /**
  * Returns SES / Admin Console From identities for the Compose Email "From" dropdown.
- * Used by partials/email-from-sendgrid-script.blade.php (AJAX on page load).
+ * Used by partials/email-from-select-script.blade.php (AJAX on page load).
  */
-class SendGridSendersController extends Controller
+class SesSendersController extends Controller
 {
     public function __construct(private SesSenderService $sesSenders) {}
 
     /**
      * Return verified senders as JSON for AJAX (e.g. frontend populating From dropdown).
-     * GET /crm/ses-senders (and legacy GET /crm/sendgrid-senders)
+     * GET /crm/ses-senders
      */
     public function senders(): JsonResponse
     {

@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Email;
-use App\Support\SendGridFromAllowedDomains;
+use App\Support\MailFromAllowedDomains;
 use Illuminate\Support\Facades\Log;
 
 class SesSenderService
@@ -12,7 +12,6 @@ class SesSenderService
      * Active From addresses for compose dropdowns.
      *
      * Admin Console emails table first, then SES_SENDERS / MAIL_FROM_* env fallbacks.
-     * Does not call the SendGrid API.
      *
      * @return list<array{email: string, name: string, nickname: string}>
      */
@@ -37,7 +36,7 @@ class SesSenderService
             if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 continue;
             }
-            if (! SendGridFromAllowedDomains::allowsEmail($email)) {
+            if (! MailFromAllowedDomains::allowsEmail($email)) {
                 continue;
             }
             $displayName = trim((string) ($row->display_name ?? ''));
@@ -107,7 +106,7 @@ class SesSenderService
             if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 continue;
             }
-            if (! SendGridFromAllowedDomains::allowsEmail($email)) {
+            if (! MailFromAllowedDomains::allowsEmail($email)) {
                 continue;
             }
             $list[$email] = [

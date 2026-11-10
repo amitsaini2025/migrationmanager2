@@ -21,7 +21,7 @@ class InvoiceEmailManager extends Mailable
     {
         // Queued mailables are JSON-encoded. Raw PDF bytes are binary (not UTF-8) and
         // break queue serialization — store as base64, decode again in build().
-        if (!empty($array['file_content']) && empty($array['file_content_base64'])) {
+        if (! empty($array['file_content']) && empty($array['file_content_base64'])) {
             $array['file_content'] = base64_encode($array['file_content']);
             $array['file_content_base64'] = true;
         }
@@ -44,9 +44,9 @@ class InvoiceEmailManager extends Mailable
             'mime' => 'application/pdf',
         ];
 
-        if (!empty($this->array['file_content'])) {
+        if (! empty($this->array['file_content'])) {
             $fileContent = $this->array['file_content'];
-            if (!empty($this->array['file_content_base64'])) {
+            if (! empty($this->array['file_content_base64'])) {
                 $decoded = base64_decode($fileContent, true);
                 if ($decoded !== false) {
                     $fileContent = $decoded;
@@ -58,17 +58,10 @@ class InvoiceEmailManager extends Mailable
                 $this->array['file_name'],
                 $attachOptions
             );
-        } elseif (!empty($this->array['file']) && is_file($this->array['file'])) {
+        } elseif (! empty($this->array['file']) && is_file($this->array['file'])) {
             $message->attach($this->array['file'], array_merge($attachOptions, [
                 'as' => $this->array['file_name'],
             ]));
-        }
-
-        if (!empty($this->array['email_log_id'])) {
-            $emailLogId = (int) $this->array['email_log_id'];
-            $message->withSymfonyMessage(function ($symfonyMessage) use ($emailLogId) {
-                app(\App\Services\SystemEmailLogService::class)->attachTrackingHeader($symfonyMessage, $emailLogId);
-            });
         }
 
         return $message;

@@ -41,7 +41,7 @@ return [
     'ses_crm' => [
         'senders' => env('SES_SENDERS', env('MAIL_FROM_ADDRESS', '')),
         'from_email' => env('SES_FROM_EMAIL', env('MAIL_FROM_ADDRESS', '')),
-        'from_allowed_domains' => env('SES_FROM_ALLOWED_DOMAINS', env('SENDGRID_FROM_ALLOWED_DOMAINS', 'bansalimmigration.com.au')),
+        'from_allowed_domains' => env('SES_FROM_ALLOWED_DOMAINS', 'bansalimmigration.com.au'),
         'signature_from_email' => env('SIGNATURE_FROM_EMAIL', env('MAIL_INFO_ADDRESS', 'info@bansalimmigration.com.au')),
         'webhook_token' => env('SES_WEBHOOK_TOKEN'),
     ],
@@ -54,19 +54,6 @@ return [
             'address' => env('ZOHO_MAIL_FROM_ADDRESS', env('MAIL_FROM_ADDRESS', 'info@bansalimmigration.com.au')),
             'name' => env('ZOHO_MAIL_FROM_NAME', env('MAIL_FROM_NAME', 'Bansal Immigration')),
         ],
-    ],
-
-    /*
-    | Legacy SendGrid webhook URL only (outbound mail no longer uses SendGrid).
-    | from_allowed_domains kept so older config/tests still resolve.
-    */
-    'sendgrid' => [
-        'api_key' => env('SENDGRID_API_KEY'),
-        'base_url' => env('SENDGRID_BASE_URL', 'https://api.sendgrid.com'),
-        'from_email' => env('SES_FROM_EMAIL', env('SENDGRID_FROM_EMAIL', '')),
-        'senders' => env('SES_SENDERS', env('SENDGRID_SENDERS', '')),
-        'webhook_token' => env('SENDGRID_WEBHOOK_TOKEN'),
-        'from_allowed_domains' => env('SES_FROM_ALLOWED_DOMAINS', env('SENDGRID_FROM_ALLOWED_DOMAINS', 'bansalimmigration.com.au')),
     ],
 
     /*

@@ -1,23 +1,23 @@
 <?php
+
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Kyslik\ColumnSortable\Sortable;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\ClientMatter;
 
 class EmailLog extends Authenticatable
 {
     use Notifiable;
-	use Sortable;
+    use Sortable;
 
-	protected $table = 'email_logs';
+    protected $table = 'email_logs';
 
-	protected $fillable = [
+    protected $fillable = [
         'id',
         'user_id',
         'from_mail',
@@ -52,7 +52,6 @@ class EmailLog extends Authenticatable
         'processed_at',
         // Additional metadata
         'message_id',
-        'sendgrid_message_id',
         'delivery_status',
         'delivered_at',
         'opened_at',
@@ -64,10 +63,10 @@ class EmailLog extends Authenticatable
         'last_accessed_at',
         'file_hash',
         'created_at',
-        'updated_at'
+        'updated_at',
     ];
 
-	public $sortable = ['id', 'created_at', 'updated_at', 'subject', 'from_mail'];
+    public $sortable = ['id', 'created_at', 'updated_at', 'subject', 'from_mail'];
 
     protected $casts = [
         'python_analysis' => 'array',
@@ -115,7 +114,7 @@ class EmailLog extends Authenticatable
     public function labels(): BelongsToMany
     {
         return $this->belongsToMany(EmailLabel::class, 'email_label_email_log', 'email_log_id', 'email_label_id')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 
     /**
@@ -162,9 +161,9 @@ class EmailLog extends Authenticatable
     }
 
     /**
-     * SendGrid webhook events (delivery + engagement timeline).
+     * Delivery and engagement events recorded for this email.
      */
-    public function sendgridEvents(): HasMany
+    public function deliveryEvents(): HasMany
     {
         return $this->hasMany(EmailLogEvent::class, 'email_log_id')
             ->orderBy('occurred_at')
@@ -192,18 +191,18 @@ class EmailLog extends Authenticatable
      */
     public function getFormattedFileSizeAttribute(): string
     {
-        if (!isset($this->attributes['file_size'])) {
+        if (! isset($this->attributes['file_size'])) {
             return '0 B';
         }
-        
+
         $bytes = $this->attributes['file_size'];
         $units = ['B', 'KB', 'MB', 'GB'];
-        
+
         for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
             $bytes /= 1024;
         }
-        
-        return round($bytes, 2) . ' ' . $units[$i];
+
+        return round($bytes, 2).' '.$units[$i];
     }
 
     /**
@@ -211,7 +210,7 @@ class EmailLog extends Authenticatable
      */
     public function hasPythonAnalysis(): bool
     {
-        return !empty($this->python_analysis);
+        return ! empty($this->python_analysis);
     }
 
     /**
@@ -219,7 +218,7 @@ class EmailLog extends Authenticatable
      */
     public function hasSecurityIssues(): bool
     {
-        return !empty($this->security_issues);
+        return ! empty($this->security_issues);
     }
 
     /**
@@ -245,9 +244,9 @@ class EmailLog extends Authenticatable
     {
         return $query->where(function ($q) use ($search) {
             $q->where('subject', 'like', "%{$search}%")
-              ->orWhere('from_mail', 'like', "%{$search}%")
-              ->orWhere('to_mail', 'like', "%{$search}%")
-              ->orWhere('message', 'like', "%{$search}%");
+                ->orWhere('from_mail', 'like', "%{$search}%")
+                ->orWhere('to_mail', 'like', "%{$search}%")
+                ->orWhere('message', 'like', "%{$search}%");
         });
     }
 

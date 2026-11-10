@@ -7,11 +7,11 @@
 	var fetchPromise = null;
 
 	function collectSelects() {
-		return document.querySelectorAll('.email-from-sendgrid');
+		return document.querySelectorAll('.email-from-select');
 	}
 
 	function isSelectFilled(select) {
-		return select.getAttribute('data-sendgrid-from-loaded') === '1';
+		return select.getAttribute('data-email-from-loaded') === '1';
 	}
 
 	function applyToSelect(select) {
@@ -23,7 +23,7 @@
 
 		if (cachedError) {
 			select.innerHTML = '<option value="">Could not load senders — check SES / Admin Console Emails</option>';
-			select.setAttribute('data-sendgrid-from-loaded', '1');
+			select.setAttribute('data-email-from-loaded', '1');
 			return;
 		}
 
@@ -50,7 +50,7 @@
 			select.innerHTML = '<option value="">No verified senders found</option>';
 		}
 
-		select.setAttribute('data-sendgrid-from-loaded', '1');
+		select.setAttribute('data-email-from-loaded', '1');
 
 		if (previous) {
 			var matched = Array.prototype.some.call(select.options, function(opt) {
@@ -106,7 +106,7 @@
 
 	if (typeof jQuery !== 'undefined') {
 		jQuery(document).on('shown.bs.modal', '.modal', function() {
-			var select = this.querySelector('.email-from-sendgrid');
+			var select = this.querySelector('.email-from-select');
 			if (!select) {
 				return;
 			}

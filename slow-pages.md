@@ -16,7 +16,7 @@ Times are **server HTML render only**. A real browser load is slower (CSS/JS/Tin
 | Assigned by me | `/assigned_by_me` | 1.8s |
 | EOI/ROI sheet | `/clients/sheets/eoi-roi` | 1.7s |
 | Visa expiry report | `/reports/visaexpires` | 1.7s |
-| SendGrid senders (AJAX, hits with client detail) | `/crm/sendgrid-senders` | 1.7s |
+| SES senders (AJAX, hits with client detail) | `/crm/ses-senders` | 1.7s |
 | Invoice list | `/clients/invoicelist` | 1.5s |
 | Client receipts | `/clients/clientreceiptlist` | 1.4s |
 | Office receipts | `/clients/officereceiptlist` | 1.1s |

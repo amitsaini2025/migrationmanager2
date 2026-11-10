@@ -47,7 +47,7 @@ Local TTFB baselines from [slow-pages.md](../slow-pages.md) (25–26 Aug 2026, `
 | Visa expiry report | `/reports/visaexpires` | 1.7 s |
 | Invoice / receipt lists | `/clients/invoicelist`, `clientreceiptlist` | 1.4–1.5 s |
 
-Those numbers are **server HTML only**. Browser load (CSS/JS) is extra. `php artisan serve` is single-threaded, so overlapping AJAX (activity feed, tab fragments, SendGrid senders) queues behind the first request.
+Those numbers are **server HTML only**. Browser load (CSS/JS) is extra. `php artisan serve` is single-threaded, so overlapping AJAX (activity feed, tab fragments, SES senders) queues behind the first request.
 
 ### 2.2 Two layers of latency
 

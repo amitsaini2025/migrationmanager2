@@ -21,7 +21,7 @@ A comprehensive Laravel-based Customer Relationship Management (CRM) system spec
 - **Document Management**: Secure storage, electronic signatures, and organisation of client documents and checklists
 - **Lead Management**: Track potential clients from inquiry to conversion with analytics
 - **Office Visit Tracking**: Manage walk-in clients and office visit queues
-- **Email Integration**: Built-in email management with client correspondence tracking (SendGrid)
+- **Email Integration**: Built-in email management with client correspondence tracking
 - **Team & Staff Management**: Role-based access control; dedicated `staff` table / `Staff` model with login analytics (CRM login no longer uses `admins` for staff)
 - **Reporting & Analytics**: Comprehensive reports on clients, matters, and revenue
 - **Client Portal API**: Mobile/API portal (Laravel Sanctum) for clients to view status, upload documents, message staff, and pay invoices/appointments
@@ -47,7 +47,7 @@ A comprehensive Laravel-based Customer Relationship Management (CRM) system spec
 - **Database**: PostgreSQL (Primary), MySQL (optional for migration), SQLite (Development)
 - **PDF Generation**: DomPDF for invoices and reports
 - **Document Processing**: Python API service (`python_services/`) for DOCX to PDF conversion
-- **Email System**: Laravel Mail with SendGrid (primary), SMTP/IMAP integration
+- **Email System**: Laravel Mail with Amazon SES SMTP, Zoho failover, and SMTP/IMAP where configured
 - **Payment Integration**: Stripe, PayU payment gateways
 - **File Storage**: Local storage with S3 support for attachments
 - **Authentication**: CRM session guard `admin` → `Staff` provider; Client Portal API → Sanctum on `Admin` (clients/leads)
@@ -116,14 +116,16 @@ A comprehensive Laravel-based Customer Relationship Management (CRM) system spec
    ```
 
 7. **Configure mail settings**
-   Update `.env` with SendGrid and sender details:
+   Update `.env` with Amazon SES SMTP and the sender address:
    ```env
-   MAIL_MAILER=sendgrid
+   MAIL_MAILER=failover
+   MAIL_HOST=email-smtp.ap-southeast-2.amazonaws.com
+   MAIL_PORT=587
+   MAIL_USERNAME=your_ses_smtp_username
+   MAIL_PASSWORD=your_ses_smtp_password
+   MAIL_ENCRYPTION=tls
    MAIL_FROM_ADDRESS=your_sender@yourdomain.com
    MAIL_FROM_NAME="Your Company Name"
-   SENDGRID_API_KEY=SG.your_api_key_here
-   SENDGRID_FROM_EMAIL=your_sender@yourdomain.com
-   SENDGRID_BASE_URL=https://api.sendgrid.com
    ```
 
 8. **Build frontend assets**
@@ -345,7 +347,7 @@ Staff can be designated as Migration Agents (`is_migration_agent`) with role-bas
   
 - **Services**:
   - `PythonConverterService` - DOCX to PDF via Python HTTP API
-  - `EmailConfigService` - Resolves sender from DB (SendGrid)
+  - `EmailConfigService` - Resolves sender from DB
   - `StripePaymentService` - Stripe payment gateway integration
   - `SignatureService` / `SignatureTemplateService` - Electronic document signing
   - `Sms/UnifiedSmsManager` - SMS via Twilio or Cellcast providers
@@ -515,14 +517,15 @@ DB_DATABASE=migration_manager
 DB_USERNAME=postgres
 DB_PASSWORD=
 
-# Mail Configuration (SendGrid)
-MAIL_MAILER=sendgrid
+# Mail Configuration (Amazon SES SMTP, Zoho failover)
+MAIL_MAILER=failover
+MAIL_HOST=email-smtp.ap-southeast-2.amazonaws.com
+MAIL_PORT=587
+MAIL_USERNAME=your_ses_smtp_username
+MAIL_PASSWORD=your_ses_smtp_password
+MAIL_ENCRYPTION=tls
 MAIL_FROM_ADDRESS=your_sender@yourdomain.com
 MAIL_FROM_NAME="Your Company Name"
-SENDGRID_API_KEY=SG.your_api_key_here
-SENDGRID_FROM_EMAIL=your_sender@yourdomain.com
-SENDGRID_BASE_URL=https://api.sendgrid.com
-SENDGRID_WEBHOOK_TOKEN=      # Required in production for event webhook auth
 
 # Optional realtime (Laravel Reverb) — see docs/REVERB_PRODUCTION_NGINX.md
 # REVERB_APP_ID=
@@ -636,11 +639,10 @@ A full area-by-area CRM bug audit (auth, merge, e-sign, payments, EOI, portal AP
 - CRM auth is Staff-only (session); Client Portal uses Sanctum tokens on the `Admin` (client) model
 - Document storage is handled locally by default, with optional S3 integration
 - Comprehensive logging is available in `storage/logs/laravel.log`
-- Email integration uses SendGrid primarily; SMTP/IMAP also supported where configured
+- Email is sent through Amazon SES SMTP, with Zoho SMTP as the failover. IMAP is still used where incoming mail is configured
 - Payment gateways (Stripe, PayU) need to be configured for online payments
 - SMS providers (Twilio, Cellcast) need to be configured for SMS notifications
 - **CRM cross-access**: ensure `php artisan schedule:run` (or cron) runs in production so `access:expire-grants` executes; set `CRM_ACCESS_STRICT_ALLOCATION=true` only after UAT (see implementation plan)
-- Set `SENDGRID_WEBHOOK_TOKEN` in production so SendGrid event webhooks are not open when the token env is empty
 
 ## Troubleshooting
 
@@ -677,7 +679,7 @@ A full area-by-area CRM bug audit (auth, merge, e-sign, payments, EOI, portal AP
 - **Regular backups** - Automated daily database backups recommended
 - **Update dependencies** - Run `composer update` and `npm update` regularly
 - **Role-based access** - Limit Super Admin / exempt CRM-access roles to trusted staff only
-- **Webhook secrets** - Always set `SENDGRID_WEBHOOK_TOKEN` and validate SMS provider webhook signatures in production
+- **Webhook secrets** - Validate SMS provider webhook signatures in production
 - **Two-factor authentication** - Consider implementing 2FA for staff CRM accounts
 - **Data encryption** - Sensitive client data should be encrypted at rest
 - **Known gaps** - Review and triage **`crmbugs.md`** before production hardening (payment trust, e-sign tokens, remember-me cookie, etc.)

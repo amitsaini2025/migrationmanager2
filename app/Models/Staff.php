@@ -88,13 +88,6 @@ class Staff extends Authenticatable
     ];
 
     /**
-     * @var array<string, mixed>
-     */
-    protected $attributes = [
-        'bulk_download_enabled' => false,
-    ];
-
-    /**
      * Sortable columns for listings.
      */
     public $sortable = [

@@ -108,7 +108,7 @@ class SignatureService
     }
 
     /**
-     * Send signing email to a signer using SendGrid mailer.
+     * Send signing email to a signer.
      */
     protected function sendSigningEmail(Document $document, Signer $signer, array $options = []): void
     {
@@ -156,7 +156,7 @@ class SignatureService
                 'user_id' => Auth::guard('admin')->id(),
             ]);
 
-            Mail::mailer()->send($template, $templateData, function (Message $mail) use ($signer, $subject, $from, $attachments, $log, $systemEmailLog) {
+            Mail::mailer()->send($template, $templateData, function (Message $mail) use ($signer, $subject, $from, $attachments) {
                 $mail->to($signer->email, $signer->name)
                     ->subject($subject)
                     ->from($from['from_address'], $from['from_name']);
@@ -182,8 +182,6 @@ class SignatureService
                         }
                     }
                 }
-
-                $systemEmailLog->attachTrackingToMailMessage($mail, $log->id);
             });
 
             if (! in_array($document->status, ['signed', 'void', 'voided', 'archived'], true)) {
@@ -203,12 +201,12 @@ class SignatureService
                     'signer_email' => $signer->email,
                     'signer_name' => $signer->name,
                     'subject' => $subject,
-                    'status' => 'sent_via_sendgrid',
+                    'status' => 'sent',
                     'email_account' => $from['from_address'],
                 ],
             ]);
 
-            Log::info('Signing email sent via SendGrid mailer', [
+            Log::info('Signing email sent', [
                 'document_id' => $document->id,
                 'signer_email' => $signer->email,
                 'template' => $template,
@@ -450,7 +448,7 @@ class SignatureService
     }
 
     /**
-     * Send reminder to a signer using SendGrid mailer.
+     * Send reminder to a signer.
      */
     public function remind(Signer $signer, array $options = []): bool
     {
@@ -507,12 +505,10 @@ class SignatureService
                 'user_id' => Auth::guard('admin')->id(),
             ]);
 
-            Mail::mailer()->send('emails.signature.reminder', $templateData, function (Message $mail) use ($signer, $from, $log, $systemEmailLog) {
+            Mail::mailer()->send('emails.signature.reminder', $templateData, function (Message $mail) use ($signer, $from) {
                 $mail->to($signer->email, $signer->name)
                     ->subject('Reminder: Please Sign Your Document - Bansal Migration')
                     ->from($from['from_address'], $from['from_name']);
-
-                $systemEmailLog->attachTrackingToMailMessage($mail, $log->id);
             });
 
             // Update reminder tracking
@@ -532,11 +528,11 @@ class SignatureService
                     'signer_email' => $signer->email,
                     'signer_name' => $signer->name,
                     'reminder_number' => $signer->reminder_count,
-                    'status' => 'sent_via_sendgrid',
+                    'status' => 'sent',
                 ],
             ]);
 
-            Log::info('Reminder sent via SendGrid mailer', [
+            Log::info('Reminder sent', [
                 'signer_id' => $signer->id,
                 'reminder_count' => $signer->reminder_count,
                 'email_account' => $from['from_address'],

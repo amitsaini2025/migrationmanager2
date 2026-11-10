@@ -1,47 +1,59 @@
 <?php
+
 namespace App\Http\Controllers\CRM;
 
 use App\Http\Controllers\Concerns\EnsuresCrmRecordAccess;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Response;
-use Illuminate\Support\Facades\Redirect;
-
-use App\Models\Lead;
+use App\Models\ActivitiesLog;
 use App\Models\Admin;
+use App\Models\AgentDetails;
+use App\Models\Branch;
+use App\Models\CheckinLog;
+use App\Models\ClientMatter;
+use App\Models\CostAssignmentForm;
 use App\Models\Country;
+use App\Models\Document;
+use App\Models\EmailLog;
 // use App\Models\WebsiteSetting; // removed website settings dependency
 // use App\Models\State; // REMOVED: State model has been deleted
-use PDF;
-use Illuminate\Support\Facades\Auth;
-use App\Models\ActivitiesLog;
-use App\Models\Note;
-use App\Models\ClientMatter;
-use App\Models\Document;
-use App\Services\MatterEmailBodyCleanupService;
-use Carbon\Carbon;
-use App\Models\ClientVisaCountry;
+use App\Models\EmailTemplate;
+use App\Models\Lead;
 use App\Models\McqChapter;
 use App\Models\McqSubject;
-use App\Services\EmailService;
-use App\Services\CrmSentEmailS3Service;
-use App\Services\CompanyVisaAgreementMacroBuilder;
-use App\Support\ComposeEmailPayload;
-use App\Support\SendGridFromAllowedDomains;
-use App\Support\StaffClientVisibility;
+use App\Models\Note;
+use App\Models\Notification;
+use App\Models\Staff;
+use App\Models\UploadChecklist;
 use App\Models\WorkflowStage;
+use App\Services\CompanyVisaAgreementMacroBuilder;
+use App\Services\CrmSentEmailS3Service;
+use App\Services\EmailService;
+use App\Services\MatterEmailBodyCleanupService;
+use App\Services\VisaSheetService;
+use App\Support\CachedHeaderCounts;
+use App\Support\ComposeEmailPayload;
+use App\Support\CurrentVisaExpiry;
+use App\Support\MailFromAllowedDomains;
+use App\Support\StaffClientVisibility;
+use Carbon\Carbon;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class CRMUtilityController extends Controller
 {
     use EnsuresCrmRecordAccess;
 
     protected EmailService $emailService;
+
     protected CrmSentEmailS3Service $crmSentEmailS3Service;
 
     public function __construct(EmailService $emailService, CrmSentEmailS3Service $crmSentEmailS3Service)
@@ -52,40 +64,43 @@ class CRMUtilityController extends Controller
     }
     // Dashboard functionality moved to DashboardController
 
-    public function fetchnotification(Request $request){
+    public function fetchnotification(Request $request)
+    {
         // $notificalists = \App\Models\Notification::where('receiver_id', Auth::user()->id)->where('receiver_status', 0)->orderby('created_at','DESC')->paginate(5);
-         $notificalistscount = \App\Models\Notification::query()
+        $notificalistscount = Notification::query()
             ->where('receiver_id', '=', (int) Auth::user()->id)
             ->where('receiver_status', '=', 0)
             ->count();
         /* $output = '';
-	    foreach($notificalists as $listnoti){
-	        $output .= '<a href="'.$listnoti->url.'?t='.$listnoti->id.'" class="dropdown-item dropdown-item-unread">
-						<span class="dropdown-item-icon bg-primary text-white">
-							<?php echo \App\Helpers\IconHelper::fromLegacy('fas fa-code'); ?>
-						</span>
-						<span class="dropdown-item-desc">'.$listnoti->message.' <span class="time">'.date('d/m/Y h:i A',strtotime($listnoti->created_at)).'</span></span>
-					</a>';
-	    }*/
+        foreach($notificalists as $listnoti){
+            $output .= '<a href="'.$listnoti->url.'?t='.$listnoti->id.'" class="dropdown-item dropdown-item-unread">
+                        <span class="dropdown-item-icon bg-primary text-white">
+                            <?php echo \App\Helpers\IconHelper::fromLegacy('fas fa-code'); ?>
+                        </span>
+                        <span class="dropdown-item-desc">'.$listnoti->message.' <span class="time">'.date('d/m/Y h:i A',strtotime($listnoti->created_at)).'</span></span>
+                    </a>';
+        }*/
 
-	    $data = array(
-           //'notification' => $output,
-           'unseen_notification'  => $notificalistscount
-        );
+        $data = [
+            // 'notification' => $output,
+            'unseen_notification' => $notificalistscount,
+        ];
         echo json_encode($data);
     }
 
-    public function fetchmessages(Request $request){
-        $notificalists = \App\Models\Notification::query()
+    public function fetchmessages(Request $request)
+    {
+        $notificalists = Notification::query()
             ->where('receiver_id', '=', (int) Auth::user()->id)
             ->where('seen', '=', 0)
             ->first();
-        if($notificalists){
-            $obj = \App\Models\Notification::query()->whereKey($notificalists->id)->first();
+        if ($notificalists) {
+            $obj = Notification::query()->whereKey($notificalists->id)->first();
             $obj->seen = 1;
             $obj->save();
+
             return $notificalists->message;
-        }else{
+        } else {
             return 0;
         }
     }
@@ -101,661 +116,518 @@ class CRMUtilityController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-	public function returnsetting(Request $request){
-		return view('crm.settings.returnsetting');
-	}
-	public function myProfile(Request $request)
-	{
-		/* Get all Select Data */
-			$countries = array();
-		/* Get all Select Data */
+    public function returnsetting(Request $request)
+    {
+        return view('crm.settings.returnsetting');
+    }
 
-		if ($request->isMethod('post'))
-		{
-			$requestData 		= 	$request->all();
+    public function myProfile(Request $request)
+    {
+        /* Get all Select Data */
+        $countries = [];
+        /* Get all Select Data */
 
-			$this->validate($request, [
-										'first_name' => 'required',
-										'last_name' => 'nullable',
-										'country' => 'required',
-										'phone' => 'required',
-										'state' => 'required',
-										'city' => 'required',
-										'address' => 'required',
-										'zip' => 'required'
-									  ]);
+        if ($request->isMethod('post')) {
+            $requestData = $request->all();
 
-			$obj							= 	\App\Models\Staff::query()->whereKey((int) Auth::user()->id)->first();
+            $this->validate($request, [
+                'first_name' => 'required',
+                'last_name' => 'nullable',
+                'country' => 'required',
+                'phone' => 'required',
+                'state' => 'required',
+                'city' => 'required',
+                'address' => 'required',
+                'zip' => 'required',
+            ]);
 
-			$obj->first_name				=	@$requestData['first_name'];
-			$obj->last_name					=	@$requestData['last_name'];
-			$obj->phone						=	@$requestData['phone'];
-			$obj->address					=	@$requestData['address'];
-			$obj->company_name				=	@$requestData['company_name'];
-			$obj->company_website			=	@$requestData['company_website'];
+            $obj = Staff::query()->whereKey((int) Auth::user()->id)->first();
 
-			$saved							=	$obj->save();
+            $obj->first_name = @$requestData['first_name'];
+            $obj->last_name = @$requestData['last_name'];
+            $obj->phone = @$requestData['phone'];
+            $obj->address = @$requestData['address'];
+            $obj->company_name = @$requestData['company_name'];
+            $obj->company_website = @$requestData['company_website'];
 
-			if(!$saved)
-			{
-				return redirect()->back()->with('error', config('constants.server_error'));
-			}
-			else
-			{
-				return Redirect::to('/my_profile')->with('success', 'Your Profile has been edited successfully.');
-			}
-		}
-		else
-		{
-			$id = Auth::user()->id;
-			$fetchedData = \App\Models\Staff::query()->whereKey((int) $id)->first();
+            $saved = $obj->save();
 
-			return view('crm.my_profile', compact(['fetchedData', 'countries']));
-		}
-	}
-	/**
+            if (! $saved) {
+                return redirect()->back()->with('error', config('constants.server_error'));
+            } else {
+                return Redirect::to('/my_profile')->with('success', 'Your Profile has been edited successfully.');
+            }
+        } else {
+            $id = Auth::user()->id;
+            $fetchedData = Staff::query()->whereKey((int) $id)->first();
+
+            return view('crm.my_profile', compact(['fetchedData', 'countries']));
+        }
+    }
+
+    /**
      * Change password and Logout automatiaclly.
      *
      * @return \Illuminate\Http\Response
      */
-	public function change_password(Request $request)
-	{
-		//check authorization start
-			/* $check = $this->checkAuthorizationAction('Admin', $request->route()->getActionMethod(), Auth::user()->role);
-			if($check)
-			{
-				return Redirect::to('/dashboard')->with('error',config('constants.unauthorized'));
-			} */
-		//check authorization end
+    public function change_password(Request $request)
+    {
+        // check authorization start
+        /* $check = $this->checkAuthorizationAction('Admin', $request->route()->getActionMethod(), Auth::user()->role);
+        if($check)
+        {
+            return Redirect::to('/dashboard')->with('error',config('constants.unauthorized'));
+        } */
+        // check authorization end
 
-		if ($request->isMethod('post'))
-		{
-			$this->validate($request, [
-										'old_password' => 'required|min:6',
-										'password' => 'required|confirmed|min:6',
-										'password_confirmation' => 'required|min:6'
-									  ]);
+        if ($request->isMethod('post')) {
+            $this->validate($request, [
+                'old_password' => 'required|min:6',
+                'password' => 'required|confirmed|min:6',
+                'password_confirmation' => 'required|min:6',
+            ]);
 
-			$requestData 	= 	$request->all();
-			$admin_id = Auth::user()->id;
+            $requestData = $request->all();
+            $admin_id = Auth::user()->id;
 
-			$fetchedData = \App\Models\Staff::query()->where('id', '=', $admin_id, 'and')->first();
-			if(!empty($fetchedData))
-				{
-					if($admin_id == trim($requestData['admin_id']))
-						{
-							 if (!(Hash::check($request->get('old_password'), Auth::user()->password)))
-								{
-									return redirect()->back()->with("error","Your current password does not matches with the password you provided. Please try again.");
-								}
-							else
-								{
-									$admin = \App\Models\Staff::query()->whereKey((int) $requestData['admin_id'])->first();
-									$admin->password = Hash::make($requestData['password']);
-									if($admin->save())
-										{
-											Auth::guard('admin')->logout();
-											$request->session()->flush();
+            $fetchedData = Staff::query()->where('id', '=', $admin_id, 'and')->first();
+            if (! empty($fetchedData)) {
+                if ($admin_id == trim($requestData['admin_id'])) {
+                    if (! (Hash::check($request->get('old_password'), Auth::user()->password))) {
+                        return redirect()->back()->with('error', 'Your current password does not matches with the password you provided. Please try again.');
+                    } else {
+                        $admin = Staff::query()->whereKey((int) $requestData['admin_id'])->first();
+                        $admin->password = Hash::make($requestData['password']);
+                        if ($admin->save()) {
+                            Auth::guard('admin')->logout();
+                            $request->session()->flush();
 
-											return redirect()->route('dashboard')->with('success', 'Your Password has been changed successfully.');
-										}
-									else
-										{
-											return redirect()->back()->with('error', config('constants.server_error'));
-										}
-								}
-						}
-					else
-						{
-							return redirect()->back()->with('error', 'You can change the password only your account.');
-						}
-				}
-			else
-				{
-					return redirect()->back()->with('error', 'Staff member does not exist, so you cannot change the password.');
-				}
-		}
-		return view('crm.change_password');
-	}
+                            return redirect()->route('dashboard')->with('success', 'Your Password has been changed successfully.');
+                        } else {
+                            return redirect()->back()->with('error', config('constants.server_error'));
+                        }
+                    }
+                } else {
+                    return redirect()->back()->with('error', 'You can change the password only your account.');
+                }
+            } else {
+                return redirect()->back()->with('error', 'Staff member does not exist, so you cannot change the password.');
+            }
+        }
 
+        return view('crm.change_password');
+    }
 
-	public function websiteSetting(Request $request)
-	{
-		//check authorization start
-			$check = $this->checkAuthorizationAction('Admin', $request->route()->getActionMethod(), Auth::user()->role);
-			if($check)
-			{
-				return Redirect::to('/dashboard')->with('error',config('constants.unauthorized'));
-			}
-		//check authorization end
+    public function websiteSetting(Request $request)
+    {
+        // check authorization start
+        $check = $this->checkAuthorizationAction('Admin', $request->route()->getActionMethod(), Auth::user()->role);
+        if ($check) {
+            return Redirect::to('/dashboard')->with('error', config('constants.unauthorized'));
+        }
+        // check authorization end
 
-		if ($request->isMethod('post'))
-		{
-			$requestData 		= 	$request->all();
+        if ($request->isMethod('post')) {
+            $requestData = $request->all();
 
-			$this->validate($request, [
-										'phone' => 'required|max:20',
-										'ofc_timing' => 'nullable|max:255',
-										'email' => 'required|max:255'
-									  ]);
+            $this->validate($request, [
+                'phone' => 'required|max:20',
+                'ofc_timing' => 'nullable|max:255',
+                'email' => 'required|max:255',
+            ]);
 
-			/* Logo Upload Function Start */
-				if($request->hasfile('logo'))
-				{
-					/* Unlink File Function Start */
-						if(@$requestData['logo'] != '')
-							{
-								$this->unlinkFile(@$requestData['old_logo'], config('constants.logo'));
-							}
-					/* Unlink File Function End */
+            /* Logo Upload Function Start */
+            if ($request->hasfile('logo')) {
+                /* Unlink File Function Start */
+                if (@$requestData['logo'] != '') {
+                    $this->unlinkFile(@$requestData['old_logo'], config('constants.logo'));
+                }
+                /* Unlink File Function End */
 
-					$logo = $this->uploadFile($request->file('logo'), config('constants.logo'));
-				}
-				else
-				{
-					$logo = @$requestData['old_logo'];
-				}
-			/* Logoe Upload Function End */
+                $logo = $this->uploadFile($request->file('logo'), config('constants.logo'));
+            } else {
+                $logo = @$requestData['old_logo'];
+            }
+            /* Logoe Upload Function End */
 
-		// Website settings functionality disabled - WebsiteSetting model has been removed
-		return redirect()->back()->with('error', 'Website settings functionality has been disabled - WebsiteSetting model has been removed');
-		}
-	else
-	{
-		// Website settings functionality disabled - WebsiteSetting model has been removed
-		return redirect()->back()->with('error', 'Website settings functionality has been disabled - WebsiteSetting model has been removed');
-	}
-	}
+            // Website settings functionality disabled - WebsiteSetting model has been removed
+            return redirect()->back()->with('error', 'Website settings functionality has been disabled - WebsiteSetting model has been removed');
+        } else {
+            // Website settings functionality disabled - WebsiteSetting model has been removed
+            return redirect()->back()->with('error', 'Website settings functionality has been disabled - WebsiteSetting model has been removed');
+        }
+    }
 
-	public function editapi(Request $request)
-	{
-		//check authorization start
-			$check = $this->checkAuthorizationAction('api_key', $request->route()->getActionMethod(), Auth::user()->role);
-			if($check)
-			{
-				return Redirect::to('/dashboard')->with('error',config('constants.unauthorized'));
-			}
-		//check authorization end
-		if ($request->isMethod('post'))
-		{
-			$obj	= 	\App\Models\Staff::query()->whereKey((int) Auth::user()->id)->first();
-			$obj->client_id	=	md5(Auth::user()->id.time());
-			$saved				=	$obj->save();
-			if(!$saved)
-			{
-				return redirect()->back()->with('error', config('constants.server_error'));
-			}
-			else
-			{
-				return Redirect::to('/api-key')->with('success', 'Api Key'.config('constants.edited'));
-			}
-		}else{
-			return view('crm.apikey');
-		}
-	}
+    public function editapi(Request $request)
+    {
+        // check authorization start
+        $check = $this->checkAuthorizationAction('api_key', $request->route()->getActionMethod(), Auth::user()->role);
+        if ($check) {
+            return Redirect::to('/dashboard')->with('error', config('constants.unauthorized'));
+        }
+        // check authorization end
+        if ($request->isMethod('post')) {
+            $obj = Staff::query()->whereKey((int) Auth::user()->id)->first();
+            $obj->client_id = md5(Auth::user()->id.time());
+            $saved = $obj->save();
+            if (! $saved) {
+                return redirect()->back()->with('error', config('constants.server_error'));
+            } else {
+                return Redirect::to('/api-key')->with('success', 'Api Key'.config('constants.edited'));
+            }
+        } else {
+            return view('crm.apikey');
+        }
+    }
 
-	public function updateAction(Request $request)
-	{
-		$status 			= 	0;
-		$method 			= 	$request->method();
-		if ($request->isMethod('post'))
-		{
-			$requestData 	= 	$request->all();
+    public function updateAction(Request $request)
+    {
+        $status = 0;
+        $method = $request->method();
+        if ($request->isMethod('post')) {
+            $requestData = $request->all();
 
-			$requestData['id'] = trim($requestData['id']);
-			$requestData['current_status'] = trim($requestData['current_status']);
-			$requestData['table'] = trim($requestData['table']);
-			$requestData['col'] = trim($requestData['colname']);
-
-			$role = Auth::user()->role;
-			$userType = Auth::user()->type ?? '';
-			if($role == 1 || in_array($userType, ['client', 'lead']))
-			{
-				if(isset($requestData['id']) && !empty($requestData['id']) && isset($requestData['current_status']) && isset($requestData['table']) && !empty($requestData['table']))
-				{
-					$tableExist = Schema::hasTable(trim($requestData['table']));
-
-					if($tableExist)
-					{
-						$recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
-
-						if($recordExist)
-						{
-							if($requestData['current_status'] == 0)
-							{
-								$updated_status = 1;
-								$message = 'Record has been enabled successfully.';
-							}
-							else
-							{
-								$updated_status = 0;
-								$message = 'Record has been disabled successfully.';
-							}
-							$response 	= 	DB::table($requestData['table'])->where('id', $requestData['id'])->update([$requestData['col'] => $updated_status]);
-							if($response)
-							{
-								$status = 1;
-							}
-							else
-							{
-								$message = config('constants.server_error');
-							}
-						}
-						else
-						{
-							$message = 'ID does not exist, please check it once again.';
-						}
-					}
-					else
-					{
-						$message = 'Table does not exist, please check it once again.';
-					}
-				}
-				else
-				{
-					$message = 'Id OR Current Status OR Table does not exist, please check it once again.';
-				}
-			}
-			else
-			{
-				$message = 'You are not authorized person to perform this action.';
-			}
-		}
-		else
-		{
-			$message = config('constants.post_method');
-		}
-		echo json_encode(array('status'=>$status, 'message'=>$message));
-		 die;
-
-	}
-
-	public function moveAction(Request $request)
-	{
-		$status 			= 	0;
-		$method 			= 	$request->method();
-		if ($request->isMethod('post'))
-		{
-			$requestData 	= 	$request->all();
-
-			$requestData['id'] = trim($requestData['id']);
-
-			$requestData['table'] = trim($requestData['table']);
-			$requestData['col'] = trim($requestData['col']);
-
-				if(isset($requestData['id']) && !empty($requestData['id']) && isset($requestData['table']) && !empty($requestData['table']))
-				{
-					$tableExist = Schema::hasTable(trim($requestData['table']));
-
-					if($tableExist)
-					{
-						$recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
-
-						if($recordExist)
-						{
-
-							$update = [$requestData['col'] => 0];
-							if ($requestData['col'] === 'is_archived') {
-								$update['archived_by'] = null;
-								$update['archived_on'] = null;
-							}
-
-							$response 	= 	DB::table($requestData['table'])->where('id', $requestData['id'])->update($update);
-							if($response)
-							{
-								$status = 1;
-								$message = 'Record successfully moved';
-							}
-							else
-							{
-								$message = config('constants.server_error');
-							}
-						}
-						else
-						{
-							$message = 'ID does not exist, please check it once again.';
-						}
-					}
-					else
-					{
-						$message = 'Table does not exist, please check it once again.';
-					}
-				}
-				else
-				{
-					$message = 'Id OR Current Status OR Table does not exist, please check it once again.';
-				}
-
-		}
-		else
-		{
-			$message = config('constants.post_method');
-		}
-		echo json_encode(array('status'=>$status, 'message'=>$message));
-		die;
-	}
-
-	public function declinedAction(Request $request)
-	{
-		$status 			= 	0;
-		$method 			= 	$request->method();
-		if ($request->isMethod('post'))
-		{
-			$requestData 	= 	$request->all();
-
-			$requestData['id'] = trim($requestData['id']);
-
-			$requestData['table'] = trim($requestData['table']);
-
-			$role = Auth::user()->role;
-			$userType = Auth::user()->type ?? '';
-			if($role == 1 || in_array($userType, ['client', 'lead']))
-			{
-				if(isset($requestData['id']) && !empty($requestData['id'])  && isset($requestData['table']) && !empty($requestData['table']))
-				{
-					$tableExist = Schema::hasTable(trim($requestData['table']));
-
-					if($tableExist)
-					{
-						$recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
-
-						if($recordExist)
-						{
-
-								$updated_status = 2;
-								$message = 'Record has been disabled successfully.';
-
-							$response 	= 	DB::table($requestData['table'])->where('id', $requestData['id'])->update(['status' => $updated_status]);
-							if($response)
-							{
-								$status = 1;
-							}
-							else
-							{
-								$message = config('constants.server_error');
-							}
-						}
-						else
-						{
-							$message = 'ID does not exist, please check it once again.';
-						}
-					}
-					else
-					{
-						$message = 'Table does not exist, please check it once again.';
-					}
-				}
-				else
-				{
-					$message = 'Id OR Current Status OR Table does not exist, please check it once again.';
-				}
-			}
-			else
-			{
-				$message = 'You are not authorized person to perform this action.';
-			}
-		}
-		else
-		{
-			$message = config('constants.post_method');
-		}
-		echo json_encode(array('status'=>$status, 'message'=>$message));
-		die;
-	}
-
-	public function approveAction(Request $request)
-	{
-		$status 			= 	0;
-		$method 			= 	$request->method();
-		if ($request->isMethod('post'))
-		{
-			$requestData 	= 	$request->all();
-
-			$requestData['id'] = trim($requestData['id']);
-
-			$requestData['table'] = trim($requestData['table']);
-
-			$role = Auth::user()->role;
-			$userType = Auth::user()->type ?? '';
-			if($role == 1 || in_array($userType, ['client', 'lead']))
-			{
-				if(isset($requestData['id']) && !empty($requestData['id'])  && isset($requestData['table']) && !empty($requestData['table']))
-				{
-					$tableExist = Schema::hasTable(trim($requestData['table']));
-
-					if($tableExist)
-					{
-						$recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
-
-						if($recordExist)
-						{
-
-								$updated_status = 1;
-								$message = 'Record has been approved successfully.';
-
-							$response 	= 	DB::table($requestData['table'])->where('id', $requestData['id'])->update(['status' => $updated_status]);
-							if($response)
-							{
-								$status = 1;
-							}
-							else
-							{
-								$message = config('constants.server_error').'sss';
-							}
-						}
-						else
-						{
-							$message = 'ID does not exist, please check it once again.';
-						}
-					}
-					else
-					{
-						$message = 'Table does not exist, please check it once again.';
-					}
-				}
-				else
-				{
-					$message = 'Id OR Current Status OR Table does not exist, please check it once again.';
-				}
-			}
-			else
-			{
-				$message = 'You are not authorized person to perform this action.';
-			}
-		}
-		else
-		{
-			$message = config('constants.post_method');
-		}
-		echo json_encode(array('status'=>$status, 'message'=>$message));
-		die;
-	}
-
-	public function processAction(Request $request)
-	{
-		$status 			= 	0;
-		$method 			= 	$request->method();
-		if ($request->isMethod('post'))
-		{
-			$requestData 	= 	$request->all();
-
-			$requestData['id'] = trim($requestData['id']);
-
-			$requestData['table'] = trim($requestData['table']);
-
-			$role = Auth::user()->role;
-			$userType = Auth::user()->type ?? '';
-			if($role == 1 || in_array($userType, ['client', 'lead']))
-			{
-				if(isset($requestData['id']) && !empty($requestData['id'])  && isset($requestData['table']) && !empty($requestData['table']))
-				{
-					$tableExist = Schema::hasTable(trim($requestData['table']));
-
-					if($tableExist)
-					{
-						$recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
-
-						if($recordExist)
-						{
-
-								$updated_status = 4;
-								$message = 'Record has been processed successfully.';
-
-							$response 	= 	DB::table($requestData['table'])->where('id', $requestData['id'])->update(['status' => $updated_status]);
-							if($response)
-							{
-								$status = 1;
-							}
-							else
-							{
-								$message = config('constants.server_error').'sss';
-							}
-						}
-						else
-						{
-							$message = 'ID does not exist, please check it once again.';
-						}
-					}
-					else
-					{
-						$message = 'Table does not exist, please check it once again.';
-					}
-				}
-				else
-				{
-					$message = 'Id OR Current Status OR Table does not exist, please check it once again.';
-				}
-			}
-			else
-			{
-				$message = 'You are not authorized person to perform this action.';
-			}
-		}
-		else
-		{
-			$message = config('constants.post_method');
-		}
-		echo json_encode(array('status'=>$status, 'message'=>$message));
-		die;
-	}
-
-	public function archiveAction(Request $request)
-	{
-		$status 			= 	0;
-		$astatus            =   '';
-		$method 			= 	$request->method();
-		if ($request->isMethod('post'))
-		{
-			$requestData 	= 	$request->all();
-
-			$requestData['id'] = trim($requestData['id']);
-
-			$requestData['table'] = trim($requestData['table']);
-
-			$astatus = '';
-			$role = Auth::user()->role;
-			$userType = Auth::user()->type ?? '';
-			if($role == 1 || in_array($userType, ['client', 'lead']))
-			{
-				if(isset($requestData['id']) && !empty($requestData['id'])  && isset($requestData['table']) && !empty($requestData['table']))
-				{
-					$tableExist = Schema::hasTable(trim($requestData['table']));
-
-					if($tableExist)
-					{
-						$recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
-
-						if($recordExist)
-						{
-
-								$updated_status = 1;
-								$message = 'Record has been archived successfully.';
-
-							$response 	= 	DB::table($requestData['table'])->where('id', $requestData['id'])->update(['is_archive' => $updated_status]);
-							$getarchive 	= 	DB::table($requestData['table'])->where('id', $requestData['id'])->first();
-							if($getarchive->status == 0){
-								$astatus = '<span title="draft" class="ui label uppercase">Draft</span><span> (Archived)</span>';
-							}else if($getarchive->status == 1){
-								$astatus = '<span title="draft" class="ui label uppercase yellow">Sent</span><span> (Archived)</span>';
-							}else if($getarchive->status == 2){
-								$astatus = '<span title="draft" class="ui label uppercase text-danger">Declined</span><span> (Archived)</span>';
-							}
-							if($response)
-							{
-								$status = 1;
-							}
-							else
-							{
-								$message = config('constants.server_error');
-							}
-						}
-						else
-						{
-							$message = 'ID does not exist, please check it once again.';
-						}
-					}
-					else
-					{
-						$message = 'Table does not exist, please check it once again.';
-					}
-				}
-				else
-				{
-					$message = 'Id OR Current Status OR Table does not exist, please check it once again.';
-				}
-			}
-			else
-			{
-				$message = 'You are not authorized person to perform this action.';
-			}
-		}
-		else
-		{
-			$message = config('constants.post_method');
-		}
-		echo json_encode(array('status'=>$status, 'message'=>$message, 'astatus'=>$astatus));
-		die;
-	}
-
-	public function deleteAction(Request $request)
-	{
-		$status 			= 	0;
-		$method 			= 	$request->method();
-		if ($request->isMethod('post'))
-		{
-			$requestData 	= 	$request->all(); //dd($requestData);
             $requestData['id'] = trim($requestData['id']);
-			$requestData['table'] = trim($requestData['table']);
+            $requestData['current_status'] = trim($requestData['current_status']);
+            $requestData['table'] = trim($requestData['table']);
+            $requestData['col'] = trim($requestData['colname']);
+
             $role = Auth::user()->role;
-            if(isset($requestData['id']) && !empty($requestData['id']) && isset($requestData['table']) && !empty($requestData['table']))
-			{
-				$tableExist = Schema::hasTable(trim($requestData['table']));
-                if($tableExist)
-				{
-					$recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
-                    if($recordExist)
-					{
-						if($requestData['table'] == 'admins'){
-                            $o = \App\Models\Admin::query()->where('id', '=', $requestData['id'], 'and')->first();
-							if($o->status == 1){
-								$is_status = 0;
-							}else{
-								$is_status = 1;
-							}
-							$response 	= 	DB::table($requestData['table'])->where('id', $requestData['id'])->update(['status' => $is_status, 'updated_at' => date('Y-m-d H:i:s')]);
-							if($response) {
-								$status = 1;
-                                if($is_status == 0 ) {
+            $userType = Auth::user()->type ?? '';
+            if ($role == 1 || in_array($userType, ['client', 'lead'])) {
+                if (isset($requestData['id']) && ! empty($requestData['id']) && isset($requestData['current_status']) && isset($requestData['table']) && ! empty($requestData['table'])) {
+                    $tableExist = Schema::hasTable(trim($requestData['table']));
+
+                    if ($tableExist) {
+                        $recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
+
+                        if ($recordExist) {
+                            if ($requestData['current_status'] == 0) {
+                                $updated_status = 1;
+                                $message = 'Record has been enabled successfully.';
+                            } else {
+                                $updated_status = 0;
+                                $message = 'Record has been disabled successfully.';
+                            }
+                            $response = DB::table($requestData['table'])->where('id', $requestData['id'])->update([$requestData['col'] => $updated_status]);
+                            if ($response) {
+                                $status = 1;
+                            } else {
+                                $message = config('constants.server_error');
+                            }
+                        } else {
+                            $message = 'ID does not exist, please check it once again.';
+                        }
+                    } else {
+                        $message = 'Table does not exist, please check it once again.';
+                    }
+                } else {
+                    $message = 'Id OR Current Status OR Table does not exist, please check it once again.';
+                }
+            } else {
+                $message = 'You are not authorized person to perform this action.';
+            }
+        } else {
+            $message = config('constants.post_method');
+        }
+        echo json_encode(['status' => $status, 'message' => $message]);
+        exit;
+
+    }
+
+    public function moveAction(Request $request)
+    {
+        $status = 0;
+        $method = $request->method();
+        if ($request->isMethod('post')) {
+            $requestData = $request->all();
+
+            $requestData['id'] = trim($requestData['id']);
+
+            $requestData['table'] = trim($requestData['table']);
+            $requestData['col'] = trim($requestData['col']);
+
+            if (isset($requestData['id']) && ! empty($requestData['id']) && isset($requestData['table']) && ! empty($requestData['table'])) {
+                $tableExist = Schema::hasTable(trim($requestData['table']));
+
+                if ($tableExist) {
+                    $recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
+
+                    if ($recordExist) {
+
+                        $update = [$requestData['col'] => 0];
+                        if ($requestData['col'] === 'is_archived') {
+                            $update['archived_by'] = null;
+                            $update['archived_on'] = null;
+                        }
+
+                        $response = DB::table($requestData['table'])->where('id', $requestData['id'])->update($update);
+                        if ($response) {
+                            $status = 1;
+                            $message = 'Record successfully moved';
+                        } else {
+                            $message = config('constants.server_error');
+                        }
+                    } else {
+                        $message = 'ID does not exist, please check it once again.';
+                    }
+                } else {
+                    $message = 'Table does not exist, please check it once again.';
+                }
+            } else {
+                $message = 'Id OR Current Status OR Table does not exist, please check it once again.';
+            }
+
+        } else {
+            $message = config('constants.post_method');
+        }
+        echo json_encode(['status' => $status, 'message' => $message]);
+        exit;
+    }
+
+    public function declinedAction(Request $request)
+    {
+        $status = 0;
+        $method = $request->method();
+        if ($request->isMethod('post')) {
+            $requestData = $request->all();
+
+            $requestData['id'] = trim($requestData['id']);
+
+            $requestData['table'] = trim($requestData['table']);
+
+            $role = Auth::user()->role;
+            $userType = Auth::user()->type ?? '';
+            if ($role == 1 || in_array($userType, ['client', 'lead'])) {
+                if (isset($requestData['id']) && ! empty($requestData['id']) && isset($requestData['table']) && ! empty($requestData['table'])) {
+                    $tableExist = Schema::hasTable(trim($requestData['table']));
+
+                    if ($tableExist) {
+                        $recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
+
+                        if ($recordExist) {
+
+                            $updated_status = 2;
+                            $message = 'Record has been disabled successfully.';
+
+                            $response = DB::table($requestData['table'])->where('id', $requestData['id'])->update(['status' => $updated_status]);
+                            if ($response) {
+                                $status = 1;
+                            } else {
+                                $message = config('constants.server_error');
+                            }
+                        } else {
+                            $message = 'ID does not exist, please check it once again.';
+                        }
+                    } else {
+                        $message = 'Table does not exist, please check it once again.';
+                    }
+                } else {
+                    $message = 'Id OR Current Status OR Table does not exist, please check it once again.';
+                }
+            } else {
+                $message = 'You are not authorized person to perform this action.';
+            }
+        } else {
+            $message = config('constants.post_method');
+        }
+        echo json_encode(['status' => $status, 'message' => $message]);
+        exit;
+    }
+
+    public function approveAction(Request $request)
+    {
+        $status = 0;
+        $method = $request->method();
+        if ($request->isMethod('post')) {
+            $requestData = $request->all();
+
+            $requestData['id'] = trim($requestData['id']);
+
+            $requestData['table'] = trim($requestData['table']);
+
+            $role = Auth::user()->role;
+            $userType = Auth::user()->type ?? '';
+            if ($role == 1 || in_array($userType, ['client', 'lead'])) {
+                if (isset($requestData['id']) && ! empty($requestData['id']) && isset($requestData['table']) && ! empty($requestData['table'])) {
+                    $tableExist = Schema::hasTable(trim($requestData['table']));
+
+                    if ($tableExist) {
+                        $recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
+
+                        if ($recordExist) {
+
+                            $updated_status = 1;
+                            $message = 'Record has been approved successfully.';
+
+                            $response = DB::table($requestData['table'])->where('id', $requestData['id'])->update(['status' => $updated_status]);
+                            if ($response) {
+                                $status = 1;
+                            } else {
+                                $message = config('constants.server_error').'sss';
+                            }
+                        } else {
+                            $message = 'ID does not exist, please check it once again.';
+                        }
+                    } else {
+                        $message = 'Table does not exist, please check it once again.';
+                    }
+                } else {
+                    $message = 'Id OR Current Status OR Table does not exist, please check it once again.';
+                }
+            } else {
+                $message = 'You are not authorized person to perform this action.';
+            }
+        } else {
+            $message = config('constants.post_method');
+        }
+        echo json_encode(['status' => $status, 'message' => $message]);
+        exit;
+    }
+
+    public function processAction(Request $request)
+    {
+        $status = 0;
+        $method = $request->method();
+        if ($request->isMethod('post')) {
+            $requestData = $request->all();
+
+            $requestData['id'] = trim($requestData['id']);
+
+            $requestData['table'] = trim($requestData['table']);
+
+            $role = Auth::user()->role;
+            $userType = Auth::user()->type ?? '';
+            if ($role == 1 || in_array($userType, ['client', 'lead'])) {
+                if (isset($requestData['id']) && ! empty($requestData['id']) && isset($requestData['table']) && ! empty($requestData['table'])) {
+                    $tableExist = Schema::hasTable(trim($requestData['table']));
+
+                    if ($tableExist) {
+                        $recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
+
+                        if ($recordExist) {
+
+                            $updated_status = 4;
+                            $message = 'Record has been processed successfully.';
+
+                            $response = DB::table($requestData['table'])->where('id', $requestData['id'])->update(['status' => $updated_status]);
+                            if ($response) {
+                                $status = 1;
+                            } else {
+                                $message = config('constants.server_error').'sss';
+                            }
+                        } else {
+                            $message = 'ID does not exist, please check it once again.';
+                        }
+                    } else {
+                        $message = 'Table does not exist, please check it once again.';
+                    }
+                } else {
+                    $message = 'Id OR Current Status OR Table does not exist, please check it once again.';
+                }
+            } else {
+                $message = 'You are not authorized person to perform this action.';
+            }
+        } else {
+            $message = config('constants.post_method');
+        }
+        echo json_encode(['status' => $status, 'message' => $message]);
+        exit;
+    }
+
+    public function archiveAction(Request $request)
+    {
+        $status = 0;
+        $astatus = '';
+        $method = $request->method();
+        if ($request->isMethod('post')) {
+            $requestData = $request->all();
+
+            $requestData['id'] = trim($requestData['id']);
+
+            $requestData['table'] = trim($requestData['table']);
+
+            $astatus = '';
+            $role = Auth::user()->role;
+            $userType = Auth::user()->type ?? '';
+            if ($role == 1 || in_array($userType, ['client', 'lead'])) {
+                if (isset($requestData['id']) && ! empty($requestData['id']) && isset($requestData['table']) && ! empty($requestData['table'])) {
+                    $tableExist = Schema::hasTable(trim($requestData['table']));
+
+                    if ($tableExist) {
+                        $recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
+
+                        if ($recordExist) {
+
+                            $updated_status = 1;
+                            $message = 'Record has been archived successfully.';
+
+                            $response = DB::table($requestData['table'])->where('id', $requestData['id'])->update(['is_archive' => $updated_status]);
+                            $getarchive = DB::table($requestData['table'])->where('id', $requestData['id'])->first();
+                            if ($getarchive->status == 0) {
+                                $astatus = '<span title="draft" class="ui label uppercase">Draft</span><span> (Archived)</span>';
+                            } elseif ($getarchive->status == 1) {
+                                $astatus = '<span title="draft" class="ui label uppercase yellow">Sent</span><span> (Archived)</span>';
+                            } elseif ($getarchive->status == 2) {
+                                $astatus = '<span title="draft" class="ui label uppercase text-danger">Declined</span><span> (Archived)</span>';
+                            }
+                            if ($response) {
+                                $status = 1;
+                            } else {
+                                $message = config('constants.server_error');
+                            }
+                        } else {
+                            $message = 'ID does not exist, please check it once again.';
+                        }
+                    } else {
+                        $message = 'Table does not exist, please check it once again.';
+                    }
+                } else {
+                    $message = 'Id OR Current Status OR Table does not exist, please check it once again.';
+                }
+            } else {
+                $message = 'You are not authorized person to perform this action.';
+            }
+        } else {
+            $message = config('constants.post_method');
+        }
+        echo json_encode(['status' => $status, 'message' => $message, 'astatus' => $astatus]);
+        exit;
+    }
+
+    public function deleteAction(Request $request)
+    {
+        $status = 0;
+        $method = $request->method();
+        if ($request->isMethod('post')) {
+            $requestData = $request->all(); // dd($requestData);
+            $requestData['id'] = trim($requestData['id']);
+            $requestData['table'] = trim($requestData['table']);
+            $role = Auth::user()->role;
+            if (isset($requestData['id']) && ! empty($requestData['id']) && isset($requestData['table']) && ! empty($requestData['table'])) {
+                $tableExist = Schema::hasTable(trim($requestData['table']));
+                if ($tableExist) {
+                    $recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
+                    if ($recordExist) {
+                        if ($requestData['table'] == 'admins') {
+                            $o = Admin::query()->where('id', '=', $requestData['id'], 'and')->first();
+                            if ($o->status == 1) {
+                                $is_status = 0;
+                            } else {
+                                $is_status = 1;
+                            }
+                            $response = DB::table($requestData['table'])->where('id', $requestData['id'])->update(['status' => $is_status, 'updated_at' => date('Y-m-d H:i:s')]);
+                            if ($response) {
+                                $status = 1;
+                                if ($is_status == 0) {
                                     $message = 'Record has been inactive successfully.';
                                 } else {
                                     $message = 'Record has been active successfully.';
                                 }
+                            } else {
+                                $message = config('constants.server_error');
                             }
-							else {
-								$message = config('constants.server_error');
-							}
-						}
-                        else if($requestData['table'] == 'client_matters'){
+                        } elseif ($requestData['table'] == 'client_matters') {
                             $matterId = (int) $requestData['id'];
                             $response = false;
 
@@ -769,80 +641,75 @@ class CRMUtilityController extends Controller
                                 }
                             });
 
-							if($response) {
-								$status = 1;
-								$message = 'Record has been enabled successfully.';
-							} else {
-								$message = config('constants.server_error');
-							}
-						}
-                        else if($requestData['table'] == 'quotations'){
-                            $response 	= 	DB::table($requestData['table'])->where('id', $requestData['id'])->update(['is_archive' => 1]);
-							if($response) {
-								$status = 1;
-								$message = 'Record has been enabled successfully.';
-							} else {
-								$message = config('constants.server_error');
-							}
-						}
-                        else if($requestData['table'] == 'templates'){
-                            $isexist	=	$recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
-                            if($isexist){
-                                $response	=	DB::table($requestData['table'])->where('id', @$requestData['id'])->delete();
+                            if ($response) {
+                                $status = 1;
+                                $message = 'Record has been enabled successfully.';
+                            } else {
+                                $message = config('constants.server_error');
+                            }
+                        } elseif ($requestData['table'] == 'quotations') {
+                            $response = DB::table($requestData['table'])->where('id', $requestData['id'])->update(['is_archive' => 1]);
+                            if ($response) {
+                                $status = 1;
+                                $message = 'Record has been enabled successfully.';
+                            } else {
+                                $message = config('constants.server_error');
+                            }
+                        } elseif ($requestData['table'] == 'templates') {
+                            $isexist = $recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
+                            if ($isexist) {
+                                $response = DB::table($requestData['table'])->where('id', @$requestData['id'])->delete();
                                 DB::table('template_infos')->where('quotation_id', @$requestData['id'])->delete();
-                                if($response) {
+                                if ($response) {
                                     $status = 1;
                                     $message = 'Record has been deleted successfully.';
                                 } else {
                                     $message = config('constants.server_error');
                                 }
-                            }else{
+                            } else {
                                 $message = 'ID does not exist, please check it once again.';
                             }
-						}
-                        else if($requestData['table'] == 'products'){
+                        } elseif ($requestData['table'] == 'products') {
                             // applications table removed - product_id check no longer needed
                             $applicationisexist = false;
 
-                            if($applicationisexist){
+                            if ($applicationisexist) {
                                 $message = "Can't Delete its have relation with other records";
-                            }else{
-                                $isexist	=	$recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
-                                if($isexist){
-                                $response	=	DB::table($requestData['table'])->where('id', @$requestData['id'])->delete();
-                                DB::table('template_infos')->where('quotation_id', @$requestData['id'])->delete();
-
-                                if($response) {
-                                    $status = 1;
-                                    $message = 'Record has been deleted successfully.';
-                                } else {
-                                    $message = config('constants.server_error');
-                                }
-                                }else{
-                                    $message = 'ID does not exist, please check it once again.';
-                                }
-                            }
-                        }
-                        else if($requestData['table'] == 'email_labels'){
-                            $label = DB::table($requestData['table'])->where('id', $requestData['id'])->first();
-                            if($label && $label->type == 'system'){
-                                $message = 'System labels cannot be deleted.';
                             } else {
-                                $isexist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
-                                if($isexist){
+                                $isexist = $recordExist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
+                                if ($isexist) {
                                     $response = DB::table($requestData['table'])->where('id', @$requestData['id'])->delete();
-                                    if($response) {
+                                    DB::table('template_infos')->where('quotation_id', @$requestData['id'])->delete();
+
+                                    if ($response) {
                                         $status = 1;
                                         $message = 'Record has been deleted successfully.';
                                     } else {
                                         $message = config('constants.server_error');
                                     }
-                                }else{
+                                } else {
                                     $message = 'ID does not exist, please check it once again.';
                                 }
                             }
-                        }
-                        else if ($requestData['table'] == 'workflow_stages') {
+                        } elseif ($requestData['table'] == 'email_labels') {
+                            $label = DB::table($requestData['table'])->where('id', $requestData['id'])->first();
+                            if ($label && $label->type == 'system') {
+                                $message = 'System labels cannot be deleted.';
+                            } else {
+                                $isexist = DB::table($requestData['table'])->where('id', $requestData['id'])->exists();
+                                if ($isexist) {
+                                    $response = DB::table($requestData['table'])->where('id', @$requestData['id'])->delete();
+                                    if ($response) {
+                                        $status = 1;
+                                        $message = 'Record has been deleted successfully.';
+                                    } else {
+                                        $message = config('constants.server_error');
+                                    }
+                                } else {
+                                    $message = 'ID does not exist, please check it once again.';
+                                }
+                            }
+                        } elseif ($requestData['table'] == 'workflow_stages') {
                             $stage = WorkflowStage::with('workflow')->find($requestData['id']);
                             if ($stage && $stage->isFrozen()) {
                                 $message = 'This workflow stage is frozen and cannot be deleted.';
@@ -855,610 +722,577 @@ class CRMUtilityController extends Controller
                                     $message = config('constants.server_error');
                                 }
                             }
-                        }
-                        else{
-                            $response	=	DB::table($requestData['table'])->where('id', @$requestData['id'])->delete();
-                            if($response) {
+                        } else {
+                            $response = DB::table($requestData['table'])->where('id', @$requestData['id'])->delete();
+                            if ($response) {
                                 $status = 1;
                                 $message = 'Record has been deleted successfully.';
                             } else {
                                 $message = config('constants.server_error');
                             }
                         }
-					}
-                    else
-                    {
+                    } else {
                         $message = 'ID does not exist, please check it once again.';
                     }
-                }
-                else
-                {
+                } else {
                     $message = 'Table does not exist, please check it once again.';
                 }
-            }
-            else
-            {
+            } else {
                 $message = 'Id OR Table does not exist, please check it once again.';
             }
+        } else {
+            $message = config('constants.post_method');
         }
-		else {
-			$message = config('constants.post_method');
-		}
-		echo json_encode(array('status'=>$status, 'message'=>$message));
-		die;
-	}
+        echo json_encode(['status' => $status, 'message' => $message]);
+        exit;
+    }
 
-	public function getStates(Request $request)
-	{
-		$status 			= 	0;
-		$data				=	array();
-		$method 			= 	$request->method();
+    public function getStates(Request $request)
+    {
+        $status = 0;
+        $data = [];
+        $method = $request->method();
 
-		if ($request->isMethod('post'))
-		{
-			$requestData 	= 	$request->all();
+        if ($request->isMethod('post')) {
+            $requestData = $request->all();
 
-			$requestData['id'] = trim($requestData['id']);
+            $requestData['id'] = trim($requestData['id']);
 
-			if(isset($requestData['id']) && !empty($requestData['id']))
-			{
-				$recordExist = Country::query()->where('id', '=', $requestData['id'], 'and')->exists();
+            if (isset($requestData['id']) && ! empty($requestData['id'])) {
+                $recordExist = Country::query()->where('id', '=', $requestData['id'], 'and')->exists();
 
-			if($recordExist)
-			{
-				// State functionality disabled - State model has been removed
-				$data = [];
-				$status = 0;
-				$message = 'State functionality has been disabled - State model has been removed';
-			}
-			else
-			{
-				$message = 'ID does not exist, please check it once again.';
-			}
-		}
-		else
-		{
-			$message = 'ID does not exist, please check it once again.';
-		}
-	}
-	else
-	{
-		$message = config('constants.post_method');
-	}
-	echo json_encode(array('status'=>$status, 'message'=>$message, 'data'=>$data));
-	die;
-}
+                if ($recordExist) {
+                    // State functionality disabled - State model has been removed
+                    $data = [];
+                    $status = 0;
+                    $message = 'State functionality has been disabled - State model has been removed';
+                } else {
+                    $message = 'ID does not exist, please check it once again.';
+                }
+            } else {
+                $message = 'ID does not exist, please check it once again.';
+            }
+        } else {
+            $message = config('constants.post_method');
+        }
+        echo json_encode(['status' => $status, 'message' => $message, 'data' => $data]);
+        exit;
+    }
 
-public function getChapters(Request $request)
-	{
-		$status 			= 	0;
-		$data				=	array();
-		$method 			= 	$request->method();
+    public function getChapters(Request $request)
+    {
+        $status = 0;
+        $data = [];
+        $method = $request->method();
 
-		if ($request->isMethod('post'))
-		{
-			$requestData 	= 	$request->all();
+        if ($request->isMethod('post')) {
+            $requestData = $request->all();
 
-			$requestData['id'] = trim($requestData['id']);
+            $requestData['id'] = trim($requestData['id']);
 
-			if(isset($requestData['id']) && !empty($requestData['id']))
-			{
-				$recordExist = McqSubject::query()->where('id', '=', $requestData['id'], 'and')->exists();
+            if (isset($requestData['id']) && ! empty($requestData['id'])) {
+                $recordExist = McqSubject::query()->where('id', '=', $requestData['id'], 'and')->exists();
 
-				if($recordExist)
-				{
-					$data 	= 	McqChapter::query()->where('subject_id', '=', $requestData['id'], 'and')->get();
+                if ($recordExist) {
+                    $data = McqChapter::query()->where('subject_id', '=', $requestData['id'], 'and')->get();
 
-					if($data)
-					{
-						$status = 1;
-						$message = 'Record has been fetched successfully.';
-					}
-					else
-					{
-						$message = config('constants.server_error');
-					}
-				}
-				else
-				{
-					$message = 'ID does not exist, please check it once again.';
-				}
-			}
-			else
-			{
-				$message = 'ID does not exist, please check it once again.';
-			}
-		}
-		else
-		{
-			$message = config('constants.post_method');
-		}
-		echo json_encode(array('status'=>$status, 'message'=>$message, 'data'=>$data));
-		die;
-	}
+                    if ($data) {
+                        $status = 1;
+                        $message = 'Record has been fetched successfully.';
+                    } else {
+                        $message = config('constants.server_error');
+                    }
+                } else {
+                    $message = 'ID does not exist, please check it once again.';
+                }
+            } else {
+                $message = 'ID does not exist, please check it once again.';
+            }
+        } else {
+            $message = config('constants.post_method');
+        }
+        echo json_encode(['status' => $status, 'message' => $message, 'data' => $data]);
+        exit;
+    }
 
-	public function addCkeditiorImage(Request $request)
-	{
-		echo "<pre>";
-		print_r($_FILES);die;
+    public function addCkeditiorImage(Request $request)
+    {
+        echo '<pre>';
+        print_r($_FILES);
+        exit;
 
-		$status 			= 	0;
-		$method 			= 	$request->method();
+        $status = 0;
+        $method = $request->method();
 
-		if ($request->isMethod('post'))
-		{
-			$requestData 	= 	$request->all();
+        if ($request->isMethod('post')) {
+            $requestData = $request->all();
 
-			echo "<pre>";
-			print_r($requestData);die;
+            echo '<pre>';
+            print_r($requestData);
+            exit;
 
-			if(isset($requestData['id']) && !empty($requestData['id']))
-			{
-			$recordExist = Country::query()->where('id', '=', $requestData['id'], 'and')->exists();
+            if (isset($requestData['id']) && ! empty($requestData['id'])) {
+                $recordExist = Country::query()->where('id', '=', $requestData['id'], 'and')->exists();
 
-			if($recordExist)
-			{
-				// State functionality disabled - State model has been removed
-				$data = [];
-				$status = 0;
-				$message = 'State functionality has been disabled - State model has been removed';
-			}
-			else
-			{
-				$message = 'ID does not exist, please check it once again.';
-			}
-		}
-		else
-		{
-			$message = 'ID does not exist, please check it once again.';
-		}
-	}
-	else
-	{
-		$message = config('constants.post_method');
-	}
-	echo json_encode(array('status'=>$status, 'message'=>$message, 'data'=>$data));
-	die;
-}
+                if ($recordExist) {
+                    // State functionality disabled - State model has been removed
+                    $data = [];
+                    $status = 0;
+                    $message = 'State functionality has been disabled - State model has been removed';
+                } else {
+                    $message = 'ID does not exist, please check it once again.';
+                }
+            } else {
+                $message = 'ID does not exist, please check it once again.';
+            }
+        } else {
+            $message = config('constants.post_method');
+        }
+        echo json_encode(['status' => $status, 'message' => $message, 'data' => $data]);
+        exit;
+    }
 
-	public function gettemplates(Request $request){
-		$id = $request->id;
-		$template = \App\Models\EmailTemplate::query()->whereKey((int) $id)->first();
-		if ($template) {
-			echo json_encode(array('subject' => $template->subject, 'description' => $template->description));
-		} else {
-			echo json_encode(array('subject' => '', 'description' => ''));
-		}
-	}
+    public function gettemplates(Request $request)
+    {
+        $id = $request->id;
+        $template = EmailTemplate::query()->whereKey((int) $id)->first();
+        if ($template) {
+            echo json_encode(['subject' => $template->subject, 'description' => $template->description]);
+        } else {
+            echo json_encode(['subject' => '', 'description' => '']);
+        }
+    }
 
-	/**
-	 * Get compose defaults for a client matter: first email template, dedicated checklist IDs, and macro values.
-	 * Used to auto-select matter's first email and checklists when opening compose modal.
-	 * macro_values enables replacement of {ClientID}, {ApplicantGivenNames}, {visa_apply}, etc. in First email template.
-	 */
-	public function getComposeDefaults(Request $request){
-		$clientMatterId = $request->client_matter_id;
-		if (!$clientMatterId) {
-			return response()->json(['template' => null, 'checklist_ids' => [], 'macro_values' => null]);
-		}
-		$clientMatter = ClientMatter::query()->whereKey((int) $clientMatterId)->first();
-		if (!$clientMatter || !$clientMatter->sel_matter_id) {
-			return response()->json(['template' => null, 'checklist_ids' => [], 'macro_values' => null]);
-		}
-		$matterId = $clientMatter->sel_matter_id;
-		$clientId = $clientMatter->client_id;
+    /**
+     * Get compose defaults for a client matter: first email template, dedicated checklist IDs, and macro values.
+     * Used to auto-select matter's first email and checklists when opening compose modal.
+     * macro_values enables replacement of {ClientID}, {ApplicantGivenNames}, {visa_apply}, etc. in First email template.
+     */
+    public function getComposeDefaults(Request $request)
+    {
+        $clientMatterId = $request->client_matter_id;
+        if (! $clientMatterId) {
+            return response()->json(['template' => null, 'checklist_ids' => [], 'macro_values' => null]);
+        }
+        $clientMatter = ClientMatter::query()->whereKey((int) $clientMatterId)->first();
+        if (! $clientMatter || ! $clientMatter->sel_matter_id) {
+            return response()->json(['template' => null, 'checklist_ids' => [], 'macro_values' => null]);
+        }
+        $matterId = $clientMatter->sel_matter_id;
+        $clientId = $clientMatter->client_id;
 
-		// First Email template - one per matter
-		$firstTemplate = \App\Models\EmailTemplate::forMatter($matterId)->ofType(\App\Models\EmailTemplate::TYPE_MATTER_FIRST)->orderBy('id', 'asc')->first();
+        // First Email template - one per matter
+        $firstTemplate = EmailTemplate::forMatter($matterId)->ofType(EmailTemplate::TYPE_MATTER_FIRST)->orderBy('id', 'asc')->first();
 
-		// Additional matter templates - multiple per matter
-		$otherTemplates = \App\Models\EmailTemplate::forMatter($matterId)->ofType(\App\Models\EmailTemplate::TYPE_MATTER_OTHER)->orderBy('id', 'asc')->get();
+        // Additional matter templates - multiple per matter
+        $otherTemplates = EmailTemplate::forMatter($matterId)->ofType(EmailTemplate::TYPE_MATTER_OTHER)->orderBy('id', 'asc')->get();
 
-		// Build full list: first email first, then other templates
-		$allTemplates = [];
-		if ($firstTemplate) {
-			$allTemplates[] = ['id' => $firstTemplate->id, 'name' => $firstTemplate->name, 'subject' => $firstTemplate->subject, 'description' => $firstTemplate->description];
-		}
-		foreach ($otherTemplates as $t) {
-			$allTemplates[] = ['id' => $t->id, 'name' => $t->name, 'subject' => $t->subject, 'description' => $t->description];
-		}
+        // Build full list: first email first, then other templates
+        $allTemplates = [];
+        if ($firstTemplate) {
+            $allTemplates[] = ['id' => $firstTemplate->id, 'name' => $firstTemplate->name, 'subject' => $firstTemplate->subject, 'description' => $firstTemplate->description];
+        }
+        foreach ($otherTemplates as $t) {
+            $allTemplates[] = ['id' => $t->id, 'name' => $t->name, 'subject' => $t->subject, 'description' => $t->description];
+        }
 
-		$checklistIds = \App\Models\UploadChecklist::query()->where('matter_id', '=', $matterId, 'and')->pluck('id')->toArray();
+        $checklistIds = UploadChecklist::query()->where('matter_id', '=', $matterId, 'and')->pluck('id')->toArray();
 
-		// Build macro values for First email template replacement
-		$macroValues = $this->getComposeMacroValues($clientId, $clientMatterId);
+        // Build macro values for First email template replacement
+        $macroValues = $this->getComposeMacroValues($clientId, $clientMatterId);
 
-		return response()->json([
-			'template' => $firstTemplate ? ['id' => $firstTemplate->id, 'name' => $firstTemplate->name, 'subject' => $firstTemplate->subject, 'description' => $firstTemplate->description] : null,
-			'matter_templates' => $allTemplates,
-			'checklist_ids' => $checklistIds,
-			'macro_values' => $macroValues,
-		]);
-	}
+        return response()->json([
+            'template' => $firstTemplate ? ['id' => $firstTemplate->id, 'name' => $firstTemplate->name, 'subject' => $firstTemplate->subject, 'description' => $firstTemplate->description] : null,
+            'matter_templates' => $allTemplates,
+            'checklist_ids' => $checklistIds,
+            'macro_values' => $macroValues,
+        ]);
+    }
 
-	/**
-	 * CRM compose dropdowns: templates (id/name) and checklist rows for #emailmodal.
-	 * Loaded on modal open so client-detail first paint does not dump EmailTemplate / UploadChecklist.
-	 */
-	public function getComposeOptionLists(): JsonResponse
-	{
-		$templates = \App\Models\EmailTemplate::crm()
-			->orderBy('id', 'desc')
-			->get(['id', 'name'])
-			->map(static function ($template): array {
-				return [
-					'id' => (int) $template->id,
-					'name' => (string) $template->name,
-				];
-			})
-			->values()
-			->all();
+    /**
+     * CRM compose dropdowns: templates (id/name) and checklist rows for #emailmodal.
+     * Loaded on modal open so client-detail first paint does not dump EmailTemplate / UploadChecklist.
+     */
+    public function getComposeOptionLists(): JsonResponse
+    {
+        $templates = EmailTemplate::crm()
+            ->orderBy('id', 'desc')
+            ->get(['id', 'name'])
+            ->map(static function ($template): array {
+                return [
+                    'id' => (int) $template->id,
+                    'name' => (string) $template->name,
+                ];
+            })
+            ->values()
+            ->all();
 
-		$checklists = \App\Models\UploadChecklist::query()
-			->orderBy('id')
-			->get(['id', 'name', 'file', 'matter_id'])
-			->map(static function ($checklist): array {
-				return [
-					'id' => (int) $checklist->id,
-					'name' => (string) $checklist->name,
-					'file' => (string) $checklist->file,
-					'matter_id' => $checklist->matter_id !== null ? (int) $checklist->matter_id : null,
-				];
-			})
-			->values()
-			->all();
+        $checklists = UploadChecklist::query()
+            ->orderBy('id')
+            ->get(['id', 'name', 'file', 'matter_id'])
+            ->map(static function ($checklist): array {
+                return [
+                    'id' => (int) $checklist->id,
+                    'name' => (string) $checklist->name,
+                    'file' => (string) $checklist->file,
+                    'matter_id' => $checklist->matter_id !== null ? (int) $checklist->matter_id : null,
+                ];
+            })
+            ->values()
+            ->all();
 
-		return response()->json([
-			'templates' => $templates,
-			'checklists' => $checklists,
-		]);
-	}
+        return response()->json([
+            'templates' => $templates,
+            'checklists' => $checklists,
+        ]);
+    }
 
-	/**
-	 * Check-in office + active assignee options. Loaded on #checkinmodal open
-	 * so the CRM layout does not dump Branch::all() / Staff on every page.
-	 */
-	public function getCheckinOptionLists(): JsonResponse
-	{
-		$offices = \App\Models\Branch::query()
-			->get(['id', 'office_name'])
-			->map(static function ($office): array {
-				return [
-					'id' => (int) $office->id,
-					'office_name' => (string) $office->office_name,
-				];
-			})
-			->values()
-			->all();
+    /**
+     * Check-in office + active assignee options. Loaded on #checkinmodal open
+     * so the CRM layout does not dump Branch::all() / Staff on every page.
+     */
+    public function getCheckinOptionLists(): JsonResponse
+    {
+        $offices = Branch::query()
+            ->get(['id', 'office_name'])
+            ->map(static function ($office): array {
+                return [
+                    'id' => (int) $office->id,
+                    'office_name' => (string) $office->office_name,
+                ];
+            })
+            ->values()
+            ->all();
 
-		$assignees = \App\Models\Staff::query()
-			->where('status', 1)
-			->orderBy('first_name')
-			->get(['id', 'first_name', 'email'])
-			->map(static function ($staff): array {
-				return [
-					'id' => (int) $staff->id,
-					'first_name' => (string) $staff->first_name,
-					'email' => (string) $staff->email,
-				];
-			})
-			->values()
-			->all();
+        $assignees = Staff::query()
+            ->where('status', 1)
+            ->orderBy('first_name')
+            ->get(['id', 'first_name', 'email'])
+            ->map(static function ($staff): array {
+                return [
+                    'id' => (int) $staff->id,
+                    'first_name' => (string) $staff->first_name,
+                    'email' => (string) $staff->email,
+                ];
+            })
+            ->values()
+            ->all();
 
-		return response()->json([
-			'offices' => $offices,
-			'assignees' => $assignees,
-		]);
-	}
+        return response()->json([
+            'offices' => $offices,
+            'assignees' => $assignees,
+        ]);
+    }
 
-	/**
-	 * Get macro replacement values for a client matter (ClientID, ApplicantGivenNames, visa_apply, fees, etc.)
-	 */
-	protected function getComposeMacroValues(int $clientId, int $clientMatterId)
-	{
-		$client = Admin::query()->whereKey((int) $clientId)->first();
-		if (!$client) {
-			return null;
-		}
+    /**
+     * Get macro replacement values for a client matter (ClientID, ApplicantGivenNames, visa_apply, fees, etc.)
+     */
+    protected function getComposeMacroValues(int $clientId, int $clientMatterId)
+    {
+        $client = Admin::query()->whereKey((int) $clientId)->first();
+        if (! $client) {
+            return null;
+        }
 
-		$clientMatter = ClientMatter::query()->whereKey((int) $clientMatterId)->first();
-		if (!$clientMatter) {
-			return null;
-		}
+        $clientMatter = ClientMatter::query()->whereKey((int) $clientMatterId)->first();
+        if (! $clientMatter) {
+            return null;
+        }
 
-		$values = [
-			'ClientID' => $client->client_id ?? '',
-			'ApplicantGivenNames' => $client->first_name ?? '',
-			'ApplicantSurname' => $client->last_name ?? '',
-			'client_firstname' => ($client->first_name ?? '') ? ucfirst($client->first_name) : '',
-			'client_reference' => $client->client_id ?? '',
-			'visa_apply' => '',
-			'Blocktotalfeesincltax' => '',
-			'TotalDoHASurcharges' => '',
-			'TotalEstimatedOthCosts' => '',
-			'DiscountAmount' => '0.00',
-			'GrandTotalFeesAndCosts' => '',
-			'PDF_url_for_sign' => '',
-		];
+        $values = [
+            'ClientID' => $client->client_id ?? '',
+            'ApplicantGivenNames' => $client->first_name ?? '',
+            'ApplicantSurname' => $client->last_name ?? '',
+            'client_firstname' => ($client->first_name ?? '') ? ucfirst($client->first_name) : '',
+            'client_reference' => $client->client_id ?? '',
+            'visa_apply' => '',
+            'Blocktotalfeesincltax' => '',
+            'TotalDoHASurcharges' => '',
+            'TotalEstimatedOthCosts' => '',
+            'DiscountAmount' => '0.00',
+            'GrandTotalFeesAndCosts' => '',
+            'PDF_url_for_sign' => '',
+        ];
 
-		// Get matter/cost assignment info
-		$matterInfo = null;
-		$costAssignment = \App\Models\CostAssignmentForm::query()
+        // Get matter/cost assignment info
+        $matterInfo = null;
+        $costAssignment = CostAssignmentForm::query()
             ->where('client_id', '=', $clientId, 'and')
             ->where('client_matter_id', '=', $clientMatterId, 'and')
             ->first();
-		if ($costAssignment) {
-			$matterInfo = DB::table('cost_assignment_forms')->where('client_id', $clientId)->where('client_matter_id', $clientMatterId)->first();
-		}
-		if (!$matterInfo && $clientMatter->sel_matter_id) {
-			$clientMatterInfo = DB::table('client_matters')->select('sel_matter_id')->where('id', $clientMatterId)->first();
-			if ($clientMatterInfo) {
-				$matterInfo = DB::table('matters')->where('id', $clientMatterInfo->sel_matter_id)->first();
-			}
-		}
-
-		// visa_apply must always come from matter title (matters table), not cost_assignment_forms
-		if ($clientMatter->sel_matter_id) {
-			$matterTitleRow = DB::table('matters')->select('title')->where('id', $clientMatter->sel_matter_id)->first();
-			$values['visa_apply'] = $matterTitleRow->title ?? '';
-		}
-
-		if ($matterInfo) {
-
-			$block1 = floatval($matterInfo->Block_1_Ex_Tax ?? 0);
-			$block2 = floatval($matterInfo->Block_2_Ex_Tax ?? 0);
-			$block3 = floatval($matterInfo->Block_3_Ex_Tax ?? 0);
-			$blockTotal = $block1 + $block2 + $block3;
-			$totalSurcharges = floatval($matterInfo->TotalDoHASurcharges ?? 0);
-			$totalOther = floatval($matterInfo->additional_fee_1 ?? 0);
-			// Department charges total (Dept. Charges on checklist) - from TotalDoHACharges when present (e.g. cost_assignment_forms), else sum Dept_* for compatibility
-			$totalDepartmentCharges = floatval($matterInfo->TotalDoHACharges ?? 0);
-			if ($totalDepartmentCharges == 0 && isset($costAssignment)) {
-				$totalDepartmentCharges =
-					floatval($matterInfo->Dept_Base_Application_Charge ?? 0) +
-					floatval($matterInfo->Dept_Non_Internet_Application_Charge ?? 0) +
-					floatval($matterInfo->Dept_Additional_Applicant_Charge_18_Plus ?? 0) +
-					floatval($matterInfo->Dept_Additional_Applicant_Charge_Under_18 ?? 0) +
-					floatval($matterInfo->Dept_Subsequent_Temp_Application_Charge ?? 0) +
-					floatval($matterInfo->Dept_Second_VAC_Instalment_Charge_18_Plus ?? 0) +
-					floatval($matterInfo->Dept_Second_VAC_Instalment_Under_18 ?? 0) +
-					floatval($matterInfo->Dept_Nomination_Application_Charge ?? 0) +
-					floatval($matterInfo->Dept_Sponsorship_Application_Charge ?? 0);
-			}
-			$discount = $costAssignment
-				? \App\Models\CostAssignmentForm::appliedDiscountFromRow($costAssignment)
-				: 0.0;
-			$feeMacros = CompanyVisaAgreementMacroBuilder::buildFirstEmailComposeFeeMacros(
-				$blockTotal,
-				$totalDepartmentCharges,
-				$totalSurcharges,
-				$totalOther,
-				$discount
-			);
-			$values = array_merge($values, $feeMacros);
-		}
-
-		$signingUrl = $this->getAgreementSigningUrlForMatter($clientMatterId);
-		if ($signingUrl !== '') {
-			$values['PDF_url_for_sign'] = $signingUrl;
-		}
-
-		return $values;
-	}
-
-	/**
-	 * Resolve the pending agreement signing URL for a client matter (compose email / First email macro).
-	 * Matches checklist logic: latest agreement doc with signature_doc_link when not yet signed.
-	 */
-	protected function getAgreementSigningUrlForMatter(int $clientMatterId): string
-	{
-		$agreementDoc = Document::query()
-            ->where('client_matter_id', '=', $clientMatterId, 'and')
-			->where('doc_type', '=', 'agreement', 'and')
-			->latest()
-			->first();
-
-		if (!$agreementDoc || $agreementDoc->status === 'signed' || empty($agreementDoc->signature_doc_link)) {
-			return '';
-		}
-
-		$signatureLinks = json_decode($agreementDoc->signature_doc_link, true);
-		if (!is_array($signatureLinks)) {
-			return '';
-		}
-
-		$primaryLink = $signatureLinks[0] ?? null;
-		$url = is_array($primaryLink) ? trim((string) ($primaryLink['url'] ?? '')) : '';
-
-		if ($url === '') {
-			return '';
-		}
-
-		return ComposeEmailPayload::normalizeSigningUrl($url) ?? '';
-	}
-
-	/**
-	 * Convert plain URLs in HTML content to clickable links (open in new tab, copyable).
-	 * Skips text inside existing <a>...</a> blocks so link text URLs are not double-wrapped.
-	 */
-	protected function linkifyUrlsInHtml(string $html): string
-	{
-		if (empty(trim($html))) {
-			return $html;
-		}
-
-		$parts = preg_split('#(<a\b[^>]*>.*?</a>)#is', $html, -1, PREG_SPLIT_DELIM_CAPTURE);
-		if ($parts === false) {
-			return $this->linkifyPlainUrlsInHtml($html);
-		}
-
-		$result = '';
-		foreach ($parts as $i => $part) {
-			if ($i % 2 === 1) {
-				$result .= $part;
-				continue;
-			}
-			$result .= $this->linkifyPlainUrlsInHtml($part);
-		}
-
-		return $result;
-	}
-
-	/**
-	 * Linkify bare URLs in HTML fragments that are not already inside anchor tags.
-	 */
-	protected function linkifyPlainUrlsInHtml(string $html): string
-	{
-		if ($html === '') {
-			return $html;
-		}
-
-		$pattern = '#(^|[\s>])(https?://[^\s<>"\']+)#i';
-
-		return preg_replace_callback($pattern, function ($m) {
-			$prefix = $m[1];
-			$url = $m[2];
-			$link = '<a href="' . htmlspecialchars($url) . '" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;word-break:break-all;">' . htmlspecialchars($url) . '</a>';
-
-			return $prefix . $link;
-		}, $html);
-	}
-
-    public function sendmail(Request $request){
-		$requestData = $request->all();
-		// WAF-safe transport: subject placeholders + optional base64 message body (see ComposeEmailPayload)
-		$requestData['subject'] = ComposeEmailPayload::decodeSubject($requestData);
-		$requestData['message'] = ComposeEmailPayload::decodeMessage($requestData);
-		//echo '<pre>'; print_r($requestData); die;
-
-		// Compose email: explicit CRM record access + structured deny message + audit log
-		$associatedAdminId = $requestData['client_id'] ?? $requestData['lead_id'] ?? null;
-		if ($associatedAdminId) {
-			$this->assertComposeEmailCanAccessCrmRecord($request, (int) $associatedAdminId);
-		}
-
-		$fromForCompose = trim((string) ($requestData['email_from'] ?? ''));
-		if ($fromForCompose === '' || ! SendGridFromAllowedDomains::allowsEmail($fromForCompose)) {
-			$msg = 'The selected From address is not allowed for this CRM.';
-			if ($request->ajax() || $request->wantsJson()) {
-				return response()->json([
-					'status' => false,
-					'success' => false,
-					'message' => $msg,
-				], 422);
-			}
-
-			return redirect()->back()->withErrors(['email_from' => $msg])->withInput();
-		}
-
-		$requestData['email_from'] = $fromForCompose;
-
-		$user_id = @Auth::user()->id;
-		$reciept_id = null;
-
-		$obj = new \App\Models\EmailLog;
-		$obj->user_id 		=  $user_id;
-		$obj->from_mail 	=  $requestData['email_from'];
-		// email_to / email_cc are Admin or Agent row IDs from the compose UI — store actual addresses
-		$emailToList = isset($requestData['email_to']) && is_array($requestData['email_to'])
-			? $requestData['email_to']
-			: array_filter([(string) ($requestData['email_to'] ?? '')]);
-		$resolvedTo = [];
-		$unresolvedRecipientLabels = [];
-		foreach ($emailToList as $recipientId) {
-			if ($recipientId === '' || $recipientId === null) {
-				continue;
-			}
-			if (($requestData['type'] ?? '') === 'agent') {
-				$r = \App\Models\AgentDetails::query()->where('id', '=', $recipientId, 'and')->first();
-				if ($r) {
-					$em = $r->email ?: $r->business_email;
-					if ($em) {
-						$resolvedTo[] = $em;
-					}
-				}
-			} else {
-				$r = \App\Models\Admin::query()->where('id', '=', $recipientId, 'and')->first();
-				if (! $r) {
-					continue;
-				}
-				// Prefer real contact/client_emails over company @lead.internal placeholders
-				$em = $r->resolveDeliverableEmail();
-				if ($em) {
-					$resolvedTo[] = $em;
-				} else {
-					$label = trim((string) (($r->first_name ?? '') . ' ' . ($r->last_name ?? '')));
-					if ($label === '') {
-						$label = trim((string) ($r->company_name ?? ''));
-					}
-					$unresolvedRecipientLabels[] = $label !== '' ? $label : ('ID ' . $r->id);
-				}
-			}
-		}
-		if ($unresolvedRecipientLabels !== []) {
-			$msg = 'Cannot send email: no real recipient email found for '
-				. implode(', ', array_unique($unresolvedRecipientLabels))
-				. '. Please add a real email on the company/contact profile.';
-			if ($request->ajax() || $request->wantsJson()) {
-				return response()->json([
-					'status' => false,
-					'success' => false,
-					'message' => $msg,
-				], 422);
-			}
-
-			return redirect()->back()->with('error', $msg)->withInput();
-		}
-		$obj->to_mail = $resolvedTo !== []
-			? implode(',', array_unique($resolvedTo))
-			: implode(',', $emailToList);
-		if (isset($requestData['email_cc']) && ! empty($requestData['email_cc'])) {
-			$obj->cc = implode(',', $this->resolveComposeEmailCcAddresses($requestData['email_cc']));
-		}
-        $obj->template_id 	=  $requestData['template'] ?? null;
-		$obj->reciept_id 	=  $reciept_id;
-		$obj->subject		=  $requestData['subject'];
-		if(isset($requestData['type'])){
-		    $obj->type 			=  @$requestData['type'];
-		}
-		$obj->message		 =  $requestData['message'];
-        $obj->mail_type		 =  $requestData['mail_type'] ?? 1;
-        $obj->client_id		 =  $requestData['client_id'] ?? $requestData['lead_id'] ?? null;
-        $obj->client_matter_id	=  $requestData['compose_client_matter_id'] ?? null;
-        $obj->delivery_status  =  'pending';
-
-		$attachments = array();
-		if(isset($requestData['checklistfile'])){
-            if(!empty($requestData['checklistfile'])){
-                $checklistfiles = $requestData['checklistfile'];
-                $attachments = array();
-                foreach($checklistfiles as $checklistfile){
-                    $filechecklist =  \App\Models\UploadChecklist::query()->where('id', '=', $checklistfile, 'and')->first();
-                    if($filechecklist){
-                        $attachments[] = array('file_name' => $filechecklist->name,'file_url' => $filechecklist->file);
-                    }
-                }
-                //$obj->attachments = json_encode($attachments);
+        if ($costAssignment) {
+            $matterInfo = DB::table('cost_assignment_forms')->where('client_id', $clientId)->where('client_matter_id', $clientMatterId)->first();
+        }
+        if (! $matterInfo && $clientMatter->sel_matter_id) {
+            $clientMatterInfo = DB::table('client_matters')->select('sel_matter_id')->where('id', $clientMatterId)->first();
+            if ($clientMatterInfo) {
+                $matterInfo = DB::table('matters')->where('id', $clientMatterInfo->sel_matter_id)->first();
             }
         }
 
-        $attachments2 = array();
-        if(isset($requestData['checklistfile_document'])){
-            if(!empty($requestData['checklistfile_document'])){
+        // visa_apply must always come from matter title (matters table), not cost_assignment_forms
+        if ($clientMatter->sel_matter_id) {
+            $matterTitleRow = DB::table('matters')->select('title')->where('id', $clientMatter->sel_matter_id)->first();
+            $values['visa_apply'] = $matterTitleRow->title ?? '';
+        }
+
+        if ($matterInfo) {
+
+            $block1 = floatval($matterInfo->Block_1_Ex_Tax ?? 0);
+            $block2 = floatval($matterInfo->Block_2_Ex_Tax ?? 0);
+            $block3 = floatval($matterInfo->Block_3_Ex_Tax ?? 0);
+            $blockTotal = $block1 + $block2 + $block3;
+            $totalSurcharges = floatval($matterInfo->TotalDoHASurcharges ?? 0);
+            $totalOther = floatval($matterInfo->additional_fee_1 ?? 0);
+            // Department charges total (Dept. Charges on checklist) - from TotalDoHACharges when present (e.g. cost_assignment_forms), else sum Dept_* for compatibility
+            $totalDepartmentCharges = floatval($matterInfo->TotalDoHACharges ?? 0);
+            if ($totalDepartmentCharges == 0 && isset($costAssignment)) {
+                $totalDepartmentCharges =
+                    floatval($matterInfo->Dept_Base_Application_Charge ?? 0) +
+                    floatval($matterInfo->Dept_Non_Internet_Application_Charge ?? 0) +
+                    floatval($matterInfo->Dept_Additional_Applicant_Charge_18_Plus ?? 0) +
+                    floatval($matterInfo->Dept_Additional_Applicant_Charge_Under_18 ?? 0) +
+                    floatval($matterInfo->Dept_Subsequent_Temp_Application_Charge ?? 0) +
+                    floatval($matterInfo->Dept_Second_VAC_Instalment_Charge_18_Plus ?? 0) +
+                    floatval($matterInfo->Dept_Second_VAC_Instalment_Under_18 ?? 0) +
+                    floatval($matterInfo->Dept_Nomination_Application_Charge ?? 0) +
+                    floatval($matterInfo->Dept_Sponsorship_Application_Charge ?? 0);
+            }
+            $discount = $costAssignment
+                ? CostAssignmentForm::appliedDiscountFromRow($costAssignment)
+                : 0.0;
+            $feeMacros = CompanyVisaAgreementMacroBuilder::buildFirstEmailComposeFeeMacros(
+                $blockTotal,
+                $totalDepartmentCharges,
+                $totalSurcharges,
+                $totalOther,
+                $discount
+            );
+            $values = array_merge($values, $feeMacros);
+        }
+
+        $signingUrl = $this->getAgreementSigningUrlForMatter($clientMatterId);
+        if ($signingUrl !== '') {
+            $values['PDF_url_for_sign'] = $signingUrl;
+        }
+
+        return $values;
+    }
+
+    /**
+     * Resolve the pending agreement signing URL for a client matter (compose email / First email macro).
+     * Matches checklist logic: latest agreement doc with signature_doc_link when not yet signed.
+     */
+    protected function getAgreementSigningUrlForMatter(int $clientMatterId): string
+    {
+        $agreementDoc = Document::query()
+            ->where('client_matter_id', '=', $clientMatterId, 'and')
+            ->where('doc_type', '=', 'agreement', 'and')
+            ->latest()
+            ->first();
+
+        if (! $agreementDoc || $agreementDoc->status === 'signed' || empty($agreementDoc->signature_doc_link)) {
+            return '';
+        }
+
+        $signatureLinks = json_decode($agreementDoc->signature_doc_link, true);
+        if (! is_array($signatureLinks)) {
+            return '';
+        }
+
+        $primaryLink = $signatureLinks[0] ?? null;
+        $url = is_array($primaryLink) ? trim((string) ($primaryLink['url'] ?? '')) : '';
+
+        if ($url === '') {
+            return '';
+        }
+
+        return ComposeEmailPayload::normalizeSigningUrl($url) ?? '';
+    }
+
+    /**
+     * Convert plain URLs in HTML content to clickable links (open in new tab, copyable).
+     * Skips text inside existing <a>...</a> blocks so link text URLs are not double-wrapped.
+     */
+    protected function linkifyUrlsInHtml(string $html): string
+    {
+        if (empty(trim($html))) {
+            return $html;
+        }
+
+        $parts = preg_split('#(<a\b[^>]*>.*?</a>)#is', $html, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) {
+            return $this->linkifyPlainUrlsInHtml($html);
+        }
+
+        $result = '';
+        foreach ($parts as $i => $part) {
+            if ($i % 2 === 1) {
+                $result .= $part;
+
+                continue;
+            }
+            $result .= $this->linkifyPlainUrlsInHtml($part);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Linkify bare URLs in HTML fragments that are not already inside anchor tags.
+     */
+    protected function linkifyPlainUrlsInHtml(string $html): string
+    {
+        if ($html === '') {
+            return $html;
+        }
+
+        $pattern = '#(^|[\s>])(https?://[^\s<>"\']+)#i';
+
+        return preg_replace_callback($pattern, function ($m) {
+            $prefix = $m[1];
+            $url = $m[2];
+            $link = '<a href="'.htmlspecialchars($url).'" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;word-break:break-all;">'.htmlspecialchars($url).'</a>';
+
+            return $prefix.$link;
+        }, $html);
+    }
+
+    public function sendmail(Request $request)
+    {
+        $requestData = $request->all();
+        // WAF-safe transport: subject placeholders + optional base64 message body (see ComposeEmailPayload)
+        $requestData['subject'] = ComposeEmailPayload::decodeSubject($requestData);
+        $requestData['message'] = ComposeEmailPayload::decodeMessage($requestData);
+        // echo '<pre>'; print_r($requestData); die;
+
+        // Compose email: explicit CRM record access + structured deny message + audit log
+        $associatedAdminId = $requestData['client_id'] ?? $requestData['lead_id'] ?? null;
+        if ($associatedAdminId) {
+            $this->assertComposeEmailCanAccessCrmRecord($request, (int) $associatedAdminId);
+        }
+
+        $fromForCompose = trim((string) ($requestData['email_from'] ?? ''));
+        if ($fromForCompose === '' || ! MailFromAllowedDomains::allowsEmail($fromForCompose)) {
+            $msg = 'The selected From address is not allowed for this CRM.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'status' => false,
+                    'success' => false,
+                    'message' => $msg,
+                ], 422);
+            }
+
+            return redirect()->back()->withErrors(['email_from' => $msg])->withInput();
+        }
+
+        $requestData['email_from'] = $fromForCompose;
+
+        $user_id = @Auth::user()->id;
+        $reciept_id = null;
+
+        $obj = new EmailLog;
+        $obj->user_id = $user_id;
+        $obj->from_mail = $requestData['email_from'];
+        // email_to / email_cc are Admin or Agent row IDs from the compose UI — store actual addresses
+        $emailToList = isset($requestData['email_to']) && is_array($requestData['email_to'])
+            ? $requestData['email_to']
+            : array_filter([(string) ($requestData['email_to'] ?? '')]);
+        $resolvedTo = [];
+        $unresolvedRecipientLabels = [];
+        foreach ($emailToList as $recipientId) {
+            if ($recipientId === '' || $recipientId === null) {
+                continue;
+            }
+            if (($requestData['type'] ?? '') === 'agent') {
+                $r = AgentDetails::query()->where('id', '=', $recipientId, 'and')->first();
+                if ($r) {
+                    $em = $r->email ?: $r->business_email;
+                    if ($em) {
+                        $resolvedTo[] = $em;
+                    }
+                }
+            } else {
+                $r = Admin::query()->where('id', '=', $recipientId, 'and')->first();
+                if (! $r) {
+                    continue;
+                }
+                // Prefer real contact/client_emails over company @lead.internal placeholders
+                $em = $r->resolveDeliverableEmail();
+                if ($em) {
+                    $resolvedTo[] = $em;
+                } else {
+                    $label = trim((string) (($r->first_name ?? '').' '.($r->last_name ?? '')));
+                    if ($label === '') {
+                        $label = trim((string) ($r->company_name ?? ''));
+                    }
+                    $unresolvedRecipientLabels[] = $label !== '' ? $label : ('ID '.$r->id);
+                }
+            }
+        }
+        if ($unresolvedRecipientLabels !== []) {
+            $msg = 'Cannot send email: no real recipient email found for '
+                .implode(', ', array_unique($unresolvedRecipientLabels))
+                .'. Please add a real email on the company/contact profile.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'status' => false,
+                    'success' => false,
+                    'message' => $msg,
+                ], 422);
+            }
+
+            return redirect()->back()->with('error', $msg)->withInput();
+        }
+        $obj->to_mail = $resolvedTo !== []
+            ? implode(',', array_unique($resolvedTo))
+            : implode(',', $emailToList);
+        if (isset($requestData['email_cc']) && ! empty($requestData['email_cc'])) {
+            $obj->cc = implode(',', $this->resolveComposeEmailCcAddresses($requestData['email_cc']));
+        }
+        $obj->template_id = $requestData['template'] ?? null;
+        $obj->reciept_id = $reciept_id;
+        $obj->subject = $requestData['subject'];
+        if (isset($requestData['type'])) {
+            $obj->type = @$requestData['type'];
+        }
+        $obj->message = $requestData['message'];
+        $obj->mail_type = $requestData['mail_type'] ?? 1;
+        $obj->client_id = $requestData['client_id'] ?? $requestData['lead_id'] ?? null;
+        $obj->client_matter_id = $requestData['compose_client_matter_id'] ?? null;
+        $obj->delivery_status = 'pending';
+
+        $attachments = [];
+        if (isset($requestData['checklistfile'])) {
+            if (! empty($requestData['checklistfile'])) {
+                $checklistfiles = $requestData['checklistfile'];
+                $attachments = [];
+                foreach ($checklistfiles as $checklistfile) {
+                    $filechecklist = UploadChecklist::query()->where('id', '=', $checklistfile, 'and')->first();
+                    if ($filechecklist) {
+                        $attachments[] = ['file_name' => $filechecklist->name, 'file_url' => $filechecklist->file];
+                    }
+                }
+                // $obj->attachments = json_encode($attachments);
+            }
+        }
+
+        $attachments2 = [];
+        if (isset($requestData['checklistfile_document'])) {
+            if (! empty($requestData['checklistfile_document'])) {
                 $checklistfiles_documents = $requestData['checklistfile_document'];
-                $attachments2 = array();
-                foreach($checklistfiles_documents as $checklistfile1){
-                    $filechecklist_doc =  \App\Models\Document::query()->where('id', '=', $checklistfile1, 'and')->first();
-                    if($filechecklist_doc){
-                        if( $filechecklist_doc->doc_type == "education" || $filechecklist_doc->doc_type == "migration" ){
-                            $attachments2[] = array('file_name' => $filechecklist_doc->name,'file_url' => $filechecklist_doc->file);
-                        }
-                        else if( $filechecklist_doc->doc_type == "documents")  {
-                            $attachments2[] = array('file_name' => $filechecklist_doc->file_name,'file_url' => $filechecklist_doc->myfile);
+                $attachments2 = [];
+                foreach ($checklistfiles_documents as $checklistfile1) {
+                    $filechecklist_doc = Document::query()->where('id', '=', $checklistfile1, 'and')->first();
+                    if ($filechecklist_doc) {
+                        if ($filechecklist_doc->doc_type == 'education' || $filechecklist_doc->doc_type == 'migration') {
+                            $attachments2[] = ['file_name' => $filechecklist_doc->name, 'file_url' => $filechecklist_doc->file];
+                        } elseif ($filechecklist_doc->doc_type == 'documents') {
+                            $attachments2[] = ['file_name' => $filechecklist_doc->file_name, 'file_url' => $filechecklist_doc->myfile];
                         }
                     }
                 }
-                //$obj->attachments = json_encode($attachments);
+                // $obj->attachments = json_encode($attachments);
             }
         }
 
@@ -1473,281 +1307,286 @@ public function getChapters(Request $request)
                 }
             }
         }
-        if (!empty($attachments) && count($attachments) > 0) {
+        if (! empty($attachments) && count($attachments) > 0) {
             $obj->attachments = json_encode($attachments);
         }
 
-        $saved	=	$obj->save();
+        $saved = $obj->save();
         // Checklist activity / visa-sheet side effects run only after a successful send (see below).
         $activityClientId = $requestData['client_id'] ?? $requestData['lead_id'] ?? null;
         if ($activityClientId === null && ! empty($emailToList) && ($requestData['type'] ?? '') !== 'agent') {
             $activityClientId = (int) reset($emailToList);
         }
-        $checklistWasSent = (!empty($requestData['checklistfile']) || !empty($requestData['checklistfile_document']));
+        $checklistWasSent = (! empty($requestData['checklistfile']) || ! empty($requestData['checklistfile_document']));
         $clientMatterId = $requestData['compose_client_matter_id'] ?? null;
         $isLead = (($requestData['type'] ?? '') === 'lead');
         $leadId = $requestData['lead_id'] ?? ($requestData['client_id'] ?? null);
         $composeMatterId = $requestData['compose_matter_id'] ?? null;
         $checklistSideEffectsDone = false;
 
-		$subject = $requestData['subject'];
-		$message = $requestData['message'];
+        $subject = $requestData['subject'];
+        $message = $requestData['message'];
 
-		// Replace First email macros when matter context is present
-		$clientMatterIdForMacros = $requestData['compose_client_matter_id'] ?? null;
-		$clientIdForMacros = $requestData['client_id'] ?? null;
-		if ($clientMatterIdForMacros && $clientIdForMacros) {
-			$macroValues = $this->getComposeMacroValues($clientIdForMacros, $clientMatterIdForMacros);
-		if ($macroValues) {
-			$message = ComposeEmailPayload::applyDiscountRowToMessage(
-				$message,
-				floatval($macroValues['DiscountAmount'] ?? 0)
-			);
-			foreach ($macroValues as $key => $val) {
-				if ((string)$val === '' || $key === 'PDF_url_for_sign') continue;
-				$subject = str_replace('{' . $key . '}', $val, $subject);
-				$subject = str_replace('${' . $key . '}', $val, $subject);
-				$message = str_replace('{' . $key . '}', $val, $message);
-				$message = str_replace('${' . $key . '}', $val, $message);
-			}
-		}
-		}
+        // Replace First email macros when matter context is present
+        $clientMatterIdForMacros = $requestData['compose_client_matter_id'] ?? null;
+        $clientIdForMacros = $requestData['client_id'] ?? null;
+        if ($clientMatterIdForMacros && $clientIdForMacros) {
+            $macroValues = $this->getComposeMacroValues($clientIdForMacros, $clientMatterIdForMacros);
+            if ($macroValues) {
+                $message = ComposeEmailPayload::applyDiscountRowToMessage(
+                    $message,
+                    floatval($macroValues['DiscountAmount'] ?? 0)
+                );
+                foreach ($macroValues as $key => $val) {
+                    if ((string) $val === '' || $key === 'PDF_url_for_sign') {
+                        continue;
+                    }
+                    $subject = str_replace('{'.$key.'}', $val, $subject);
+                    $subject = str_replace('${'.$key.'}', $val, $subject);
+                    $message = str_replace('{'.$key.'}', $val, $message);
+                    $message = str_replace('${'.$key.'}', $val, $message);
+                }
+            }
+        }
 
-		$signingUrl = ComposeEmailPayload::decodeSigningUrl($requestData);
-		if ($signingUrl === null && $clientMatterIdForMacros) {
-			$dbSigningUrl = $this->getAgreementSigningUrlForMatter($clientMatterIdForMacros);
-			$signingUrl = $dbSigningUrl !== '' ? $dbSigningUrl : null;
-		}
+        $signingUrl = ComposeEmailPayload::decodeSigningUrl($requestData);
+        if ($signingUrl === null && $clientMatterIdForMacros) {
+            $dbSigningUrl = $this->getAgreementSigningUrlForMatter($clientMatterIdForMacros);
+            $signingUrl = $dbSigningUrl !== '' ? $dbSigningUrl : null;
+        }
 
-		$message = ComposeEmailPayload::applySigningLinkToMessage($message, $signingUrl);
+        $message = ComposeEmailPayload::applySigningLinkToMessage($message, $signingUrl);
 
-		// Convert plain URLs to clickable links (open in new tab, copyable)
-		$message = $this->linkifyUrlsInHtml($message);
+        // Convert plain URLs to clickable links (open in new tab, copyable)
+        $message = $this->linkifyUrlsInHtml($message);
 
-		$baseSubject = $subject;
-		$baseMessage = $message;
+        $baseSubject = $subject;
+        $baseMessage = $message;
 
-		$preparedSendPaths = [];
-		if (isset($requestData['checklistfile']) && !empty($requestData['checklistfile'])) {
-			foreach ($requestData['checklistfile'] as $checklistfile) {
-				$filechecklist = \App\Models\UploadChecklist::query()->where('id', '=', $checklistfile, 'and')->first();
-				if ($filechecklist) {
-					$preparedSendPaths[] = public_path('checklists' . DIRECTORY_SEPARATOR . $filechecklist->file);
-				}
-			}
-		}
-		if (isset($requestData['checklistfile_document']) && !empty($requestData['checklistfile_document'])) {
-			foreach ($requestData['checklistfile_document'] as $checklistfile1) {
-				$filechecklist_doc = \App\Models\Document::query()->where('id', '=', $checklistfile1, 'and')->first();
-				if ($filechecklist_doc) {
-					if ($filechecklist_doc->doc_type == 'education' || $filechecklist_doc->doc_type == 'migration') {
-						$preparedSendPaths[] = public_path('img' . DIRECTORY_SEPARATOR . 'documents' . DIRECTORY_SEPARATOR . $filechecklist_doc->myfile);
-					} elseif ($filechecklist_doc->doc_type == 'documents') {
-						$fileUrl = $filechecklist_doc->myfile;
-						if (filter_var($fileUrl, FILTER_VALIDATE_URL)) {
-							$tempPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . basename($fileUrl);
-							@file_put_contents($tempPath, @file_get_contents($fileUrl));
-							$preparedSendPaths[] = $tempPath;
-						} else {
-							$preparedSendPaths[] = $fileUrl;
-						}
-					}
-				}
-			}
-		}
-		if ($request->hasFile('attach')) {
-			foreach ($request->file('attach') as $file1) {
-				if ($file1->isValid()) {
-					$displayName = preg_replace('/[^a-zA-Z0-9._\-\s]/', '_', $file1->getClientOriginalName());
-					$content = file_get_contents($file1->getRealPath());
-					if ($content === false || $content === '') {
-						continue;
-					}
-					$preparedSendPaths[] = [
-						'content' => $content,
-						'name' => $displayName !== '' ? $displayName : 'attachment',
-					];
-				}
-			}
-		}
+        $preparedSendPaths = [];
+        if (isset($requestData['checklistfile']) && ! empty($requestData['checklistfile'])) {
+            foreach ($requestData['checklistfile'] as $checklistfile) {
+                $filechecklist = UploadChecklist::query()->where('id', '=', $checklistfile, 'and')->first();
+                if ($filechecklist) {
+                    $preparedSendPaths[] = public_path('checklists'.DIRECTORY_SEPARATOR.$filechecklist->file);
+                }
+            }
+        }
+        if (isset($requestData['checklistfile_document']) && ! empty($requestData['checklistfile_document'])) {
+            foreach ($requestData['checklistfile_document'] as $checklistfile1) {
+                $filechecklist_doc = Document::query()->where('id', '=', $checklistfile1, 'and')->first();
+                if ($filechecklist_doc) {
+                    if ($filechecklist_doc->doc_type == 'education' || $filechecklist_doc->doc_type == 'migration') {
+                        $preparedSendPaths[] = public_path('img'.DIRECTORY_SEPARATOR.'documents'.DIRECTORY_SEPARATOR.$filechecklist_doc->myfile);
+                    } elseif ($filechecklist_doc->doc_type == 'documents') {
+                        $fileUrl = $filechecklist_doc->myfile;
+                        if (filter_var($fileUrl, FILTER_VALIDATE_URL)) {
+                            $tempPath = sys_get_temp_dir().DIRECTORY_SEPARATOR.basename($fileUrl);
+                            @file_put_contents($tempPath, @file_get_contents($fileUrl));
+                            $preparedSendPaths[] = $tempPath;
+                        } else {
+                            $preparedSendPaths[] = $fileUrl;
+                        }
+                    }
+                }
+            }
+        }
+        if ($request->hasFile('attach')) {
+            foreach ($request->file('attach') as $file1) {
+                if ($file1->isValid()) {
+                    $displayName = preg_replace('/[^a-zA-Z0-9._\-\s]/', '_', $file1->getClientOriginalName());
+                    $content = file_get_contents($file1->getRealPath());
+                    if ($content === false || $content === '') {
+                        continue;
+                    }
+                    $preparedSendPaths[] = [
+                        'content' => $content,
+                        'name' => $displayName !== '' ? $displayName : 'attachment',
+                    ];
+                }
+            }
+        }
 
-		$attachmentTuplesForArchive = [];
-		foreach ($preparedSendPaths as $p) {
-			if (is_array($p) && !empty($p['content'])) {
-				$attachmentTuplesForArchive[] = [
-					'content' => $p['content'],
-					'name' => $p['name'] ?? 'attachment',
-				];
-			} elseif (is_string($p) && is_readable($p)) {
-				$attachmentTuplesForArchive[] = ['path' => $p, 'name' => basename($p)];
-			}
-		}
+        $attachmentTuplesForArchive = [];
+        foreach ($preparedSendPaths as $p) {
+            if (is_array($p) && ! empty($p['content'])) {
+                $attachmentTuplesForArchive[] = [
+                    'content' => $p['content'],
+                    'name' => $p['name'] ?? 'attachment',
+                ];
+            } elseif (is_string($p) && is_readable($p)) {
+                $attachmentTuplesForArchive[] = ['path' => $p, 'name' => basename($p)];
+            }
+        }
 
-		$emailToRecipients = $requestData['email_to'] ?? null;
-		if (!is_array($emailToRecipients)) {
-			$emailToRecipients = $emailToRecipients !== null && $emailToRecipients !== '' ? [(string) $emailToRecipients] : [];
-		}
+        $emailToRecipients = $requestData['email_to'] ?? null;
+        if (! is_array($emailToRecipients)) {
+            $emailToRecipients = $emailToRecipients !== null && $emailToRecipients !== '' ? [(string) $emailToRecipients] : [];
+        }
 
-		$anySendSuccess = false;
-		$lastSendSubject = $baseSubject;
-		$lastSendMessage = $baseMessage;
+        $anySendSuccess = false;
+        $lastSendSubject = $baseSubject;
+        $lastSendMessage = $baseMessage;
 
-		if ($saved && $obj->id) {
-		foreach ($emailToRecipients as $l) {
-			$subject = $baseSubject;
-			$message = $baseMessage;
-			if (@$requestData['type'] == 'agent') {
-				$client = \App\Models\AgentDetails::query()->where('id', '=', $l, 'and')->first();
-				if (!$client) {
-					continue;
-				}
-				$subject = str_replace('{Client First Name}', $client->full_name, $subject);
-				$message = str_replace('{Client First Name}', $client->full_name, $message);
-			} else {
-				$client = \App\Models\Admin::query()->where('id', '=', $l, 'and')->first();
-				if (!$client) {
-					continue;
-				}
-				$subject = str_replace('{Client First Name}', $client->first_name, $subject);
-				$message = str_replace('{Client First Name}', $client->first_name, $message);
-			}
+        if ($saved && $obj->id) {
+            foreach ($emailToRecipients as $l) {
+                $subject = $baseSubject;
+                $message = $baseMessage;
+                if (@$requestData['type'] == 'agent') {
+                    $client = AgentDetails::query()->where('id', '=', $l, 'and')->first();
+                    if (! $client) {
+                        continue;
+                    }
+                    $subject = str_replace('{Client First Name}', $client->full_name, $subject);
+                    $message = str_replace('{Client First Name}', $client->full_name, $message);
+                } else {
+                    $client = Admin::query()->where('id', '=', $l, 'and')->first();
+                    if (! $client) {
+                        continue;
+                    }
+                    $subject = str_replace('{Client First Name}', $client->first_name, $subject);
+                    $message = str_replace('{Client First Name}', $client->first_name, $message);
+                }
 
-			$message = str_replace('{Client Assignee Name}', $client->first_name, $message);
-			$message = str_replace('{Company Name}', optional(Auth::user())->company_name ?? '', $message);
+                $message = str_replace('{Client Assignee Name}', $client->first_name, $message);
+                $message = str_replace('{Company Name}', optional(Auth::user())->company_name ?? '', $message);
 
-			$ccarray = $this->resolveComposeEmailCcAddresses($requestData['email_cc'] ?? []);
+                $ccarray = $this->resolveComposeEmailCcAddresses($requestData['email_cc'] ?? []);
 
-			try {
-				// Clients/leads: resolve real address (skip @lead.internal). Agents: unchanged.
-				if (@$requestData['type'] == 'agent') {
-					$recipientEmail = $client->email;
-				} else {
-					$recipientEmail = $client->resolveDeliverableEmail();
-					if (! $recipientEmail) {
-						$label = trim((string) (($client->first_name ?? '') . ' ' . ($client->last_name ?? '')));
-						if ($label === '') {
-							$label = trim((string) ($client->company_name ?? 'recipient'));
-						}
-						throw new \RuntimeException(
-							'No real recipient email found for ' . $label . '. Please add a real email on the company/contact profile.'
-						);
-					}
-				}
+                try {
+                    // Clients/leads: resolve real address (skip @lead.internal). Agents: unchanged.
+                    if (@$requestData['type'] == 'agent') {
+                        $recipientEmail = $client->email;
+                    } else {
+                        $recipientEmail = $client->resolveDeliverableEmail();
+                        if (! $recipientEmail) {
+                            $label = trim((string) (($client->first_name ?? '').' '.($client->last_name ?? '')));
+                            if ($label === '') {
+                                $label = trim((string) ($client->company_name ?? 'recipient'));
+                            }
+                            throw new \RuntimeException(
+                                'No real recipient email found for '.$label.'. Please add a real email on the company/contact profile.'
+                            );
+                        }
+                    }
 
-				$this->emailService->sendEmail(
-					'emails.template',
-					['content' => $message],
-					$recipientEmail,
-					$subject,
-					$requestData['email_from'],
-					$preparedSendPaths,
-					$ccarray,
-					$obj->id
-				);
-				$anySendSuccess = true;
-				$lastSendSubject = $subject;
-				$lastSendMessage = $message;
+                    $this->emailService->sendEmail(
+                        'emails.template',
+                        ['content' => $message],
+                        $recipientEmail,
+                        $subject,
+                        $requestData['email_from'],
+                        $preparedSendPaths,
+                        $ccarray,
+                        $obj->id
+                    );
+                    $anySendSuccess = true;
+                    $lastSendSubject = $subject;
+                    $lastSendMessage = $message;
 
-				// Run once on first successful send so multi-recipient partial success
-				// still records activity even if a later recipient fails and returns early.
-				if (! $checklistSideEffectsDone && $checklistWasSent) {
-					if (! empty($requestData['checklistfile']) && $activityClientId) {
-						$objs = new \App\Models\ActivitiesLog;
-						$objs->client_id = $activityClientId;
-						$objs->created_by = Auth::user()->id;
-						$objs->subject = 'Checklist sent to client';
-						$objs->task_status = 0;
-						$objs->pin = 0;
-						$objs->save();
-					}
-					if (! empty($requestData['checklistfile_document']) && $activityClientId) {
-						$objs = new \App\Models\ActivitiesLog;
-						$objs->client_id = $activityClientId;
-						$objs->created_by = Auth::user()->id;
-						$objs->subject = 'Document Checklist sent to client';
-						$objs->task_status = 0;
-						$objs->pin = 0;
-						$objs->save();
-					}
-					// Visa sheet: update the correct reference table per subclass
-					if ($clientMatterId) {
-						$clientMatter = ClientMatter::with('matter')->find($clientMatterId);
-						if ($clientMatter) {
-							$clientMatter->recordChecklistSent(Auth::user()->id);
-						}
-					} elseif ($isLead && $leadId && $composeMatterId) {
-						\App\Services\VisaSheetService::recordLeadChecklistSent((int) $leadId, (int) $composeMatterId, Auth::user()->id);
-					}
-					$checklistSideEffectsDone = true;
-				}
+                    // Run once on first successful send so multi-recipient partial success
+                    // still records activity even if a later recipient fails and returns early.
+                    if (! $checklistSideEffectsDone && $checklistWasSent) {
+                        if (! empty($requestData['checklistfile']) && $activityClientId) {
+                            $objs = new ActivitiesLog;
+                            $objs->client_id = $activityClientId;
+                            $objs->created_by = Auth::user()->id;
+                            $objs->subject = 'Checklist sent to client';
+                            $objs->task_status = 0;
+                            $objs->pin = 0;
+                            $objs->save();
+                        }
+                        if (! empty($requestData['checklistfile_document']) && $activityClientId) {
+                            $objs = new ActivitiesLog;
+                            $objs->client_id = $activityClientId;
+                            $objs->created_by = Auth::user()->id;
+                            $objs->subject = 'Document Checklist sent to client';
+                            $objs->task_status = 0;
+                            $objs->pin = 0;
+                            $objs->save();
+                        }
+                        // Visa sheet: update the correct reference table per subclass
+                        if ($clientMatterId) {
+                            $clientMatter = ClientMatter::with('matter')->find($clientMatterId);
+                            if ($clientMatter) {
+                                $clientMatter->recordChecklistSent(Auth::user()->id);
+                            }
+                        } elseif ($isLead && $leadId && $composeMatterId) {
+                            VisaSheetService::recordLeadChecklistSent((int) $leadId, (int) $composeMatterId, Auth::user()->id);
+                        }
+                        $checklistSideEffectsDone = true;
+                    }
 
-				Log::info('Compose email sent successfully', [
-					'staff_id' => Auth::guard('admin')->id(),
-					'email_log_id' => $obj->id,
-					'crm_admin_id' => $obj->client_id,
-					'recipient_admin_or_agent_id' => $l,
-					'recipient_email' => $recipientEmail,
-					'mail_type' => $requestData['type'] ?? 'client',
-				]);
-			} catch (\Exception $e) {
-				if (! $anySendSuccess) {
-					$obj->update([
-						'delivery_status' => 'send_failed',
-						'status_reason'   => \Illuminate\Support\Str::limit($e->getMessage(), 500),
-					]);
-				}
+                    Log::info('Compose email sent successfully', [
+                        'staff_id' => Auth::guard('admin')->id(),
+                        'email_log_id' => $obj->id,
+                        'crm_admin_id' => $obj->client_id,
+                        'recipient_admin_or_agent_id' => $l,
+                        'recipient_email' => $recipientEmail,
+                        'mail_type' => $requestData['type'] ?? 'client',
+                    ]);
+                } catch (\Exception $e) {
+                    if (! $anySendSuccess) {
+                        $obj->update([
+                            'delivery_status' => 'send_failed',
+                            'status_reason' => Str::limit($e->getMessage(), 500),
+                        ]);
+                    }
 
-				Log::error('Compose email send failed', [
-					'staff_id' => Auth::guard('admin')->id(),
-					'crm_admin_id' => $requestData['client_id'] ?? $requestData['lead_id'] ?? null,
-					'error' => $e->getMessage(),
-				]);
-				if ($request->ajax() || $request->wantsJson()) {
-					return response()->json([
-						'status' => false,
-						'success' => false,
-						'message' => 'Failed to send email: ' . $e->getMessage(),
-					], 422);
-				}
-				return redirect()->back()->with('error', 'Failed to send email: ' . $e->getMessage())->withInput();
-			}
-		}
-		}
+                    Log::error('Compose email send failed', [
+                        'staff_id' => Auth::guard('admin')->id(),
+                        'crm_admin_id' => $requestData['client_id'] ?? $requestData['lead_id'] ?? null,
+                        'error' => $e->getMessage(),
+                    ]);
+                    if ($request->ajax() || $request->wantsJson()) {
+                        return response()->json([
+                            'status' => false,
+                            'success' => false,
+                            'message' => 'Failed to send email: '.$e->getMessage(),
+                        ], 422);
+                    }
 
-		if ($anySendSuccess) {
-			try {
-				$this->crmSentEmailS3Service->storeToS3(
-					$obj,
-					$lastSendSubject,
-					$lastSendMessage,
-					$attachmentTuplesForArchive
-				);
-			} catch (\Exception $s3Ex) {
-				Log::warning('CRM sent email S3 storage failed (email still sent)', ['error' => $s3Ex->getMessage()]);
-			}
-			$this->recordChecklistEmailReminderIfRequested(
-				$requestData,
-				$clientMatterId !== null && $clientMatterId !== '' ? (int) $clientMatterId : null,
-				$checklistWasSent
-			);
-			if ($request->ajax() || $request->wantsJson()) {
-				return response()->json([
-					'status' => true,
-					'success' => true,
-					'message' => 'Email sent successfully!',
-				]);
-			}
-			return redirect()->back()->with('success', 'Email sent successfully!');
-		}
-        if(!$saved) {
+                    return redirect()->back()->with('error', 'Failed to send email: '.$e->getMessage())->withInput();
+                }
+            }
+        }
+
+        if ($anySendSuccess) {
+            try {
+                $this->crmSentEmailS3Service->storeToS3(
+                    $obj,
+                    $lastSendSubject,
+                    $lastSendMessage,
+                    $attachmentTuplesForArchive
+                );
+            } catch (\Exception $s3Ex) {
+                Log::warning('CRM sent email S3 storage failed (email still sent)', ['error' => $s3Ex->getMessage()]);
+            }
+            $this->recordChecklistEmailReminderIfRequested(
+                $requestData,
+                $clientMatterId !== null && $clientMatterId !== '' ? (int) $clientMatterId : null,
+                $checklistWasSent
+            );
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'status' => true,
+                    'success' => true,
+                    'message' => 'Email sent successfully!',
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Email sent successfully!');
+        }
+        if (! $saved) {
             // Return JSON response for AJAX requests, redirect for regular form submissions
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'status' => false,
                     'success' => false,
-                    'message' => config('constants.server_error')
+                    'message' => config('constants.server_error'),
                 ], 500);
             }
+
             return redirect()->back()->with('error', config('constants.server_error'));
         } else {
             // Return JSON response for AJAX requests, redirect for regular form submissions
@@ -1755,254 +1594,262 @@ public function getChapters(Request $request)
                 return response()->json([
                     'status' => true,
                     'success' => true,
-                    'message' => 'Email Sent Successfully'
+                    'message' => 'Email Sent Successfully',
                 ]);
             }
+
             return redirect()->back()->with('success', 'Email Sent Successfully');
         }
-	}
+    }
 
-	/**
-	 * Log a visa-sheet email reminder when staff sent from the checklist reminder popup.
-	 */
-	private function recordChecklistEmailReminderIfRequested(array $requestData, ?int $clientMatterId, bool $checklistWasSent): void
-	{
-		if (($requestData['checklist_reminder_type'] ?? '') !== 'email') {
-			return;
-		}
+    /**
+     * Log a visa-sheet email reminder when staff sent from the checklist reminder popup.
+     */
+    private function recordChecklistEmailReminderIfRequested(array $requestData, ?int $clientMatterId, bool $checklistWasSent): void
+    {
+        if (($requestData['checklist_reminder_type'] ?? '') !== 'email') {
+            return;
+        }
 
-		$matterId = (int) ($clientMatterId ?? 0);
-		if ($matterId <= 0 || $checklistWasSent) {
-			return;
-		}
+        $matterId = (int) ($clientMatterId ?? 0);
+        if ($matterId <= 0 || $checklistWasSent) {
+            return;
+        }
 
-		$clientMatter = ClientMatter::query()->whereKey((int) $matterId)->first();
-		if ($clientMatter) {
-			$clientMatter->recordMatterReminder('email', Auth::user()->id);
-		}
-	}
+        $clientMatter = ClientMatter::query()->whereKey((int) $matterId)->first();
+        if ($clientMatter) {
+            $clientMatter->recordMatterReminder('email', Auth::user()->id);
+        }
+    }
 
-	/**
-	 * Resolve compose CC values: CRM Admin IDs or raw email addresses from Tom Select tags.
-	 *
-	 * @param  array<int|string>  $ccValues
-	 * @return array<int, string>
-	 */
-	private function resolveComposeEmailCcAddresses(array $ccValues): array
-	{
-		$ccEmails = [];
+    /**
+     * Resolve compose CC values: CRM Admin IDs or raw email addresses from Tom Select tags.
+     *
+     * @param  array<int|string>  $ccValues
+     * @return array<int, string>
+     */
+    private function resolveComposeEmailCcAddresses(array $ccValues): array
+    {
+        $ccEmails = [];
 
-		foreach ($ccValues as $ccValue) {
-			$ccValue = trim((string) $ccValue);
-			if ($ccValue === '') {
-				continue;
-			}
+        foreach ($ccValues as $ccValue) {
+            $ccValue = trim((string) $ccValue);
+            if ($ccValue === '') {
+                continue;
+            }
 
-			if (filter_var($ccValue, FILTER_VALIDATE_EMAIL)) {
-				$clean = Admin::sanitizeEmailAddress($ccValue);
-				// Never CC internal company-lead placeholders
-				if ($clean !== '' && ! Admin::isInternalPlaceholderEmail($clean)) {
-					$ccEmails[] = $clean;
-				}
-				continue;
-			}
+            if (filter_var($ccValue, FILTER_VALIDATE_EMAIL)) {
+                $clean = Admin::sanitizeEmailAddress($ccValue);
+                // Never CC internal company-lead placeholders
+                if ($clean !== '' && ! Admin::isInternalPlaceholderEmail($clean)) {
+                    $ccEmails[] = $clean;
+                }
 
-			if (! ctype_digit($ccValue)) {
-				continue;
-			}
+                continue;
+            }
 
-			$ccRow = Admin::query()->where('id', '=', (int) $ccValue, 'and')->first();
-			if ($ccRow) {
-				$em = $ccRow->resolveDeliverableEmail();
-				if ($em) {
-					$ccEmails[] = $em;
-				}
-			}
-		}
+            if (! ctype_digit($ccValue)) {
+                continue;
+            }
 
-		return array_values(array_unique($ccEmails));
-	}
+            $ccRow = Admin::query()->where('id', '=', (int) $ccValue, 'and')->first();
+            if ($ccRow) {
+                $em = $ccRow->resolveDeliverableEmail();
+                if ($em) {
+                    $ccEmails[] = $em;
+                }
+            }
+        }
 
-	/**
-	 * Same visibility rules as EnsuresCrmRecordAccess::ensureCrmRecordAccess, with a compose-email-specific
-	 * JSON message and logging so staff see a clear denial and support can trace failures.
-	 */
-	private function assertComposeEmailCanAccessCrmRecord(Request $request, int $adminId): void
-	{
-		if ($adminId <= 0) {
-			return;
-		}
+        return array_values(array_unique($ccEmails));
+    }
 
-		$user = Auth::guard('admin')->user();
+    /**
+     * Same visibility rules as EnsuresCrmRecordAccess::ensureCrmRecordAccess, with a compose-email-specific
+     * JSON message and logging so staff see a clear denial and support can trace failures.
+     */
+    private function assertComposeEmailCanAccessCrmRecord(Request $request, int $adminId): void
+    {
+        if ($adminId <= 0) {
+            return;
+        }
 
-		// Super Admin, Admin, and other exempt roles always may compose for any client/lead.
-		if ($user && StaffClientVisibility::isExemptFromAllocation($user)) {
-			return;
-		}
+        $user = Auth::guard('admin')->user();
 
-		$row = Admin::query()
-			->where('id', $adminId)
-			->whereIn('type', ['client', 'lead'])
-			->first(['id', 'type']);
+        // Super Admin, Admin, and other exempt roles always may compose for any client/lead.
+        if ($user && StaffClientVisibility::isExemptFromAllocation($user)) {
+            return;
+        }
 
-		if (! $row) {
-			return;
-		}
+        $row = Admin::query()
+            ->where('id', $adminId)
+            ->whereIn('type', ['client', 'lead'])
+            ->first(['id', 'type']);
 
-		if (StaffClientVisibility::canAccessClientOrLead($adminId, $user)) {
-			return;
-		}
+        if (! $row) {
+            return;
+        }
 
-		Log::warning('Compose email denied: staff not authorized for CRM record', [
-			'staff_id' => optional($user)->id,
-			'crm_admin_id' => $adminId,
-			'record_type' => $row->type,
-			'ip' => $request->ip(),
-			'user_agent' => substr((string) $request->userAgent(), 0, 500),
-		]);
+        if (StaffClientVisibility::canAccessClientOrLead($adminId, $user)) {
+            return;
+        }
 
-		$payload = [
-			'status' => false,
-			'success' => false,
-			'message' => 'You are not authorized to send email.',
-			'error_type' => 'compose_email_forbidden',
-		];
+        Log::warning('Compose email denied: staff not authorized for CRM record', [
+            'staff_id' => optional($user)->id,
+            'crm_admin_id' => $adminId,
+            'record_type' => $row->type,
+            'ip' => $request->ip(),
+            'user_agent' => substr((string) $request->userAgent(), 0, 500),
+        ]);
 
-		if ($request->expectsJson() || $request->ajax()) {
-			throw new HttpResponseException(response()->json($payload, 403));
-		}
+        $payload = [
+            'status' => false,
+            'success' => false,
+            'message' => 'You are not authorized to send email.',
+            'error_type' => 'compose_email_forbidden',
+        ];
 
-		abort(403, 'You are not authorized to send email.');
-	}
+        if ($request->expectsJson() || $request->ajax()) {
+            throw new HttpResponseException(response()->json($payload, 403));
+        }
 
-		public function getpartnerajax(Request $request){
-	    // Partner functionality removed - no partners available
-	    $agents = array();
-		echo json_encode($agents);
-	}
+        abort(403, 'You are not authorized to send email.');
+    }
 
-	public function getassigneeajax(Request $request){
-	    Log::info('📋 getassigneeajax called', [
-	        'search' => $request->likevalue,
-	        'user_id' => Auth::id(),
-	    ]);
-	    
-	    try {
-	        $squery = $request->likevalue;
-	        
-	        $query = \App\Models\Staff::query()
+    public function getpartnerajax(Request $request)
+    {
+        // Partner functionality removed - no partners available
+        $agents = [];
+        echo json_encode($agents);
+    }
+
+    public function getassigneeajax(Request $request)
+    {
+        Log::info('📋 getassigneeajax called', [
+            'search' => $request->likevalue,
+            'user_id' => Auth::id(),
+        ]);
+
+        try {
+            $squery = $request->likevalue;
+
+            $query = Staff::query()
                 ->where('status', 1);  // Only active staff
-                
+
             // Apply search filter if provided
-            if (!empty($squery)) {
-                $query->where(function($q) use ($squery) {
+            if (! empty($squery)) {
+                $query->where(function ($q) use ($squery) {
                     $squeryLower = strtolower($squery);
                     $q->whereRaw('LOWER(email) LIKE ?', ['%'.$squeryLower.'%'])
-                      ->orWhereRaw('LOWER(first_name) LIKE ?', ['%'.$squeryLower.'%'])
-                      ->orWhereRaw('LOWER(last_name) LIKE ?', ['%'.$squeryLower.'%'])
-                      ->orWhereRaw('LOWER(phone) LIKE ?', ['%'.$squeryLower.'%'])
-                      ->orWhereRaw("LOWER(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?", ['%'.$squeryLower.'%']);
+                        ->orWhereRaw('LOWER(first_name) LIKE ?', ['%'.$squeryLower.'%'])
+                        ->orWhereRaw('LOWER(last_name) LIKE ?', ['%'.$squeryLower.'%'])
+                        ->orWhereRaw('LOWER(phone) LIKE ?', ['%'.$squeryLower.'%'])
+                        ->orWhereRaw("LOWER(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?", ['%'.$squeryLower.'%']);
                 });
             }
-            
+
             $fetchedData = $query->orderBy('first_name')->orderBy('last_name')->get();
 
-    		$agents = array();
-    		foreach($fetchedData as $list){
-    			$agents[] = array(
-    				'id' => $list->id,
-    				'agent_id' => $list->first_name.' '.$list->last_name,
-    				'assignee' => $list->first_name.' '.$list->last_name,
-    			);
-    		}
-    
-    		Log::info('✅ getassigneeajax success', [
-    		    'count' => count($agents),
-    		    'sample' => array_slice($agents, 0, 3),
-    		]);
-    
-    		return response()->json($agents);
-	    } catch (\Exception $e) {
-	        Log::error('❌ getassigneeajax failed', [
-	            'error' => $e->getMessage(),
-	            'trace' => $e->getTraceAsString(),
-	        ]);
-	        
-	        return response()->json([
-	            'error' => 'Failed to load staff list',
-	            'message' => $e->getMessage(),
-	        ], 500);
-	    }
-	}
+            $agents = [];
+            foreach ($fetchedData as $list) {
+                $agents[] = [
+                    'id' => $list->id,
+                    'agent_id' => $list->first_name.' '.$list->last_name,
+                    'assignee' => $list->first_name.' '.$list->last_name,
+                ];
+            }
 
+            Log::info('✅ getassigneeajax success', [
+                'count' => count($agents),
+                'sample' => array_slice($agents, 0, 3),
+            ]);
 
-    public function checkclientexist(Request $request){
-        if($request->type == 'email'){
-         $clientexists = \App\Models\Admin::query()->where('email', '=', $request->vl, 'and')->whereIn('type', ['client', 'lead'], 'and', false)->exists();
-            if($clientexists){
+            return response()->json($agents);
+        } catch (\Exception $e) {
+            Log::error('❌ getassigneeajax failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to load staff list',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function checkclientexist(Request $request)
+    {
+        if ($request->type == 'email') {
+            $clientexists = Admin::query()->where('email', '=', $request->vl, 'and')->whereIn('type', ['client', 'lead'], 'and', false)->exists();
+            if ($clientexists) {
                 echo 1;
-            }else{
+            } else {
                 echo 0;
             }
-        }else if($request->type == 'clientid'){
-         $clientexists = \App\Models\Admin::query()->where('client_id', '=', $request->vl, 'and')->whereIn('type', ['client', 'lead'], 'and', false)->exists();
-            if($clientexists){
+        } elseif ($request->type == 'clientid') {
+            $clientexists = Admin::query()->where('client_id', '=', $request->vl, 'and')->whereIn('type', ['client', 'lead'], 'and', false)->exists();
+            if ($clientexists) {
                 echo 1;
-            }else{
+            } else {
                 echo 0;
             }
-        }else{
-            $clientexists = \App\Models\Admin::query()->where('phone', '=', $request->vl, 'and')->whereIn('type', ['client', 'lead'], 'and', false)->exists();
-            if($clientexists){
+        } else {
+            $clientexists = Admin::query()->where('phone', '=', $request->vl, 'and')->whereIn('type', ['client', 'lead'], 'and', false)->exists();
+            if ($clientexists) {
                 echo 1;
-            }else{
+            } else {
                 echo 0;
             }
         }
     }
 
-	public function allnotification(Request $request){
-		$lists = \App\Models\Notification::query()
+    public function allnotification(Request $request)
+    {
+        $lists = Notification::query()
             ->where('receiver_id', '=', (int) Auth::user()->id, 'and')
-            ->orderby('created_at','DESC')
+            ->orderby('created_at', 'DESC')
             ->paginate(20);
-		// Fix URLs for notifications that point to non-existent or wrong routes
-		$lists->getCollection()->transform(function ($notification) {
-			// Message notifications: /messages (404) -> client detail + client portal tab
-			if ($notification->notification_type === 'message' && ($notification->url === '/messages' || str_starts_with($notification->url ?? '', '/messages'))) {
-				$clientMatter = DB::table('client_matters')->where('id', $notification->module_id)->first();
-				if ($clientMatter) {
-					$path = '/clients/detail/' . base64_encode(convert_uuencode($clientMatter->client_id));
-					if (!empty($clientMatter->client_unique_matter_no)) {
-						$path .= '/' . $clientMatter->client_unique_matter_no;
-					}
-					$notification->url = url($path . '/client_portal');
-				}
-			}
-			// Broadcast notifications: /broadcasts/{uuid} (404) -> manage page with batch param
-			if ($notification->notification_type === 'broadcast' && str_starts_with($notification->url ?? '', '/broadcasts/')) {
-				$batchUuid = \Illuminate\Support\Str::afterLast($notification->url ?? '', '/');
-				if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $batchUuid)) {
-					$notification->url = url('/notifications/broadcasts/manage?batch=' . urlencode($batchUuid));
-				}
-			}
-			return $notification;
-		});
-		return view('crm.notifications', compact(['lists']));
-	}
+        // Fix URLs for notifications that point to non-existent or wrong routes
+        $lists->getCollection()->transform(function ($notification) {
+            // Message notifications: /messages (404) -> client detail + client portal tab
+            if ($notification->notification_type === 'message' && ($notification->url === '/messages' || str_starts_with($notification->url ?? '', '/messages'))) {
+                $clientMatter = DB::table('client_matters')->where('id', $notification->module_id)->first();
+                if ($clientMatter) {
+                    $path = '/clients/detail/'.base64_encode(convert_uuencode($clientMatter->client_id));
+                    if (! empty($clientMatter->client_unique_matter_no)) {
+                        $path .= '/'.$clientMatter->client_unique_matter_no;
+                    }
+                    $notification->url = url($path.'/client_portal');
+                }
+            }
+            // Broadcast notifications: /broadcasts/{uuid} (404) -> manage page with batch param
+            if ($notification->notification_type === 'broadcast' && str_starts_with($notification->url ?? '', '/broadcasts/')) {
+                $batchUuid = Str::afterLast($notification->url ?? '', '/');
+                if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $batchUuid)) {
+                    $notification->url = url('/notifications/broadcasts/manage?batch='.urlencode($batchUuid));
+                }
+            }
+
+            return $notification;
+        });
+
+        return view('crm.notifications', compact(['lists']));
+    }
 
     // Dashboard methods moved to DashboardController
 
-	//Get matter templates
-	public function getmattertemplates(Request $request){
-		$id = $request->id;
-		$template = \App\Models\EmailTemplate::query()->whereKey((int) $id)->first();
-		if ($template) {
-			echo json_encode(array('subject' => $template->subject, 'description' => $template->description));
-		} else {
-			echo json_encode(array('subject' => '', 'description' => ''));
-		}
-	}
+    // Get matter templates
+    public function getmattertemplates(Request $request)
+    {
+        $id = $request->id;
+        $template = EmailTemplate::query()->whereKey((int) $id)->first();
+        if ($template) {
+            echo json_encode(['subject' => $template->subject, 'description' => $template->description]);
+        } else {
+            echo json_encode(['subject' => '', 'description' => '']);
+        }
+    }
 
     // Column preferences method moved to DashboardController
 
@@ -2012,7 +1859,7 @@ public function getChapters(Request $request)
     public function fetchOfficeVisitNotifications(Request $request)
     {
         // Fetch notifications with sender relationship eager loaded
-        $notifications = \App\Models\Notification::with(['sender:id,first_name,last_name'])
+        $notifications = Notification::with(['sender:id,first_name,last_name'])
             ->where('receiver_id', '=', (int) Auth::id(), 'and')
             ->where('notification_type', '=', 'officevisit', 'and')
             ->where('receiver_status', '=', 0, 'and')
@@ -2028,8 +1875,8 @@ public function getChapters(Request $request)
         $receptionUserId = (int) config('constants.reception_user_id', 36730);
         $viewerIsReception = (int) Auth::id() === $receptionUserId;
 
-        $checkinQuery = \App\Models\CheckinLog::query()->whereIn('id', $checkinLogIds->all(), 'and', false);
-        if (!$viewerIsReception) {
+        $checkinQuery = CheckinLog::query()->whereIn('id', $checkinLogIds->all(), 'and', false);
+        if (! $viewerIsReception) {
             $checkinQuery->where('status', '=', 0, 'and');
         } else {
             // Reception: include attending (e.g. after "Pls Send") so poll/fetch can still show unread alerts
@@ -2043,7 +1890,7 @@ public function getChapters(Request $request)
 
         $clientIds = $checkinLogs->pluck('client_id')->filter()->unique()->values();
         $contacts = $clientIds->isNotEmpty()
-            ? \App\Models\Admin::query()
+            ? Admin::query()
                 ->whereIn('type', ['client', 'lead'], 'and', false)
                 ->whereIn('id', $clientIds->all(), 'and', false)
                 ->get()
@@ -2054,8 +1901,8 @@ public function getChapters(Request $request)
         $data = [];
         foreach ($notifications as $notification) {
             $checkinLog = $checkinLogs->get($notification->module_id);
-            
-            if (!$checkinLog) {
+
+            if (! $checkinLog) {
                 continue;
             }
 
@@ -2069,13 +1916,13 @@ public function getChapters(Request $request)
                 'checkin_id' => $checkinLog->id,
                 'is_reception_alert' => $isReceptionAlert,
                 'message' => $notification->message,
-                'sender_name' => $notification->sender 
-                    ? $notification->sender->first_name . ' ' . $notification->sender->last_name 
+                'sender_name' => $notification->sender
+                    ? $notification->sender->first_name.' '.$notification->sender->last_name
                     : 'System',
                 'client_name' => $checkinLog->contactDisplayLabel($preloaded),
                 'visit_purpose' => $checkinLog->visit_purpose,
                 'created_at' => $notification->created_at?->toIso8601String() ?? now()->toIso8601String(),
-                'url' => $notification->url
+                'url' => $notification->url,
             ];
         }
 
@@ -2087,7 +1934,7 @@ public function getChapters(Request $request)
      */
     public function fetchInPersonWaitingCount(Request $request)
     {
-        $InPersonwaitingCount = \App\Models\CheckinLog::inPersonWaitingCountForViewer();
+        $InPersonwaitingCount = CheckinLog::inPersonWaitingCountForViewer();
 
         return response()->json(['InPersonwaitingCount' => $InPersonwaitingCount]);
     }
@@ -2098,21 +1945,21 @@ public function getChapters(Request $request)
     public function fetchTotalActivityCount(Request $request)
     {
         if (Auth::user()->role == 1) {
-            $assigneesCount = \App\Models\Note::query()
+            $assigneesCount = Note::query()
                 ->where('type', '=', 'client', 'and')
                 ->whereNotNull('client_id')
                 ->where('is_action', '=', 1, 'and')
                 ->where('status', '=', 0, 'and')
                 ->count();
         } else {
-            $assigneesCount = \App\Models\Note::query()
+            $assigneesCount = Note::query()
                 ->where('assigned_to', '=', (int) Auth::user()->id, 'and')
                 ->where('type', '=', 'client', 'and')
                 ->where('is_action', '=', 1, 'and')
                 ->where('status', '=', 0, 'and')
                 ->count();
         }
-        
+
         return response()->json(['assigneesCount' => $assigneesCount]);
     }
 
@@ -2122,25 +1969,26 @@ public function getChapters(Request $request)
     public function fetchvisaexpirymessages(Request $request)
     {
         $this->validate($request, [
-            'client_id' => 'required|integer'
+            'client_id' => 'required|integer',
         ]);
 
         $this->ensureCrmRecordAccess((int) $request->client_id);
 
-        $expiry = \App\Support\CurrentVisaExpiry::latestDate((int) $request->client_id);
+        $expiry = CurrentVisaExpiry::latestDate((int) $request->client_id);
         if ($expiry === null) {
             return '';
         }
 
-        $visaExpiredAt = \Carbon\Carbon::parse($expiry)->startOfDay();
-        $today = \Carbon\Carbon::today();
+        $visaExpiredAt = Carbon::parse($expiry)->startOfDay();
+        $today = Carbon::today();
         $sevenDaysFromNow = $today->copy()->addDays(7);
 
         if ($visaExpiredAt->lt($today)) {
-            return "Your visa has expired. Please contact us immediately.";
+            return 'Your visa has expired. Please contact us immediately.';
         } elseif ($visaExpiredAt->gte($today) && $visaExpiredAt->lte($sevenDaysFromNow)) {
             $daysRemaining = $visaExpiredAt->diffInDays($today);
-            return "Your visa is expiring in next $daysRemaining day" . ($daysRemaining == 1 ? '' : 's');
+
+            return "Your visa is expiring in next $daysRemaining day".($daysRemaining == 1 ? '' : 's');
         }
 
         return '';
@@ -2151,16 +1999,16 @@ public function getChapters(Request $request)
      */
     public function markNotificationSeen(Request $request)
     {
-        $notification = \App\Models\Notification::query()->whereKey((int) $request->notification_id)->first();
-        
-        if (!$notification || $notification->receiver_id != Auth::id()) {
+        $notification = Notification::query()->whereKey((int) $request->notification_id)->first();
+
+        if (! $notification || $notification->receiver_id != Auth::id()) {
             return response()->json(['status' => 'error']);
         }
 
         $notification->receiver_status = 1;
         $notification->save();
 
-        \App\Support\CachedHeaderCounts::forgetNotificationUnread((int) Auth::id());
+        CachedHeaderCounts::forgetNotificationUnread((int) Auth::id());
 
         return response()->json(['status' => 'success']);
     }

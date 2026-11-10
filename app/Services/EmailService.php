@@ -14,7 +14,7 @@ class EmailService
      *
      * @var list<string>
      */
-    private const FAILOVER_DEFAULTS = ['failover', 'sendgrid', 'smtp', 'ses', 'zoho'];
+    private const FAILOVER_DEFAULTS = ['failover', 'smtp', 'ses', 'zoho'];
 
     /**
      * Get all active email configurations.
@@ -47,29 +47,10 @@ class EmailService
             $fromAddress = $this->resolveFromAddress($emailConfig, (string) $fromEmailId);
             $fromName = $emailConfig?->display_name ?: config('mail.from.name');
 
-            Mail::mailer($this->composeMailerName($emailConfig))->send($view, $data, function (Message $message) use ($to, $subject, $fromAddress, $fromName, $attachments, $cc, $emailLogId) {
+            Mail::mailer($this->composeMailerName($emailConfig))->send($view, $data, function (Message $message) use ($to, $subject, $fromAddress, $fromName, $attachments, $cc) {
                 $message->to($to)
                     ->subject($subject)
                     ->from($fromAddress, $fromName);
-
-                if ($emailLogId !== null) {
-                    $message->getSymfonyMessage()->getHeaders()->addTextHeader('X-SMTPAPI', json_encode([
-                        'unique_args' => [
-                            'email_log_id' => (string) $emailLogId,
-                        ],
-                        'filters' => [
-                            'clicktrack' => ['settings' => ['enable' => 0]],
-                            'opentrack' => ['settings' => ['enable' => 0]],
-                        ],
-                    ], JSON_UNESCAPED_UNICODE));
-                } else {
-                    $message->getSymfonyMessage()->getHeaders()->addTextHeader('X-SMTPAPI', json_encode([
-                        'filters' => [
-                            'clicktrack' => ['settings' => ['enable' => 0]],
-                            'opentrack' => ['settings' => ['enable' => 0]],
-                        ],
-                    ], JSON_UNESCAPED_UNICODE));
-                }
 
                 if (! empty($cc)) {
                     $message->cc($cc);

@@ -65,7 +65,7 @@ class EmailController extends Controller
     }
 
     /**
-     * From identities for Admin Console: emails table + SES_SENDERS env (not SendGrid).
+     * From identities for Admin Console: emails table + SES_SENDERS env.
      *
      * @return list<array{email: string, name: string, nickname?: string}>
      */

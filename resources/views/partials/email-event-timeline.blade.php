@@ -1,5 +1,5 @@
 @php
-    use App\Services\SendGridWebhookService;
+    use App\Services\EmailDeliveryStatus;
 @endphp
 
 <div class="email-event-timeline">
@@ -16,7 +16,7 @@
     @foreach($events as $event)
         @php
             $metadata = is_array($event->metadata) ? $event->metadata : [];
-            $device = SendGridWebhookService::summarizeUserAgent($metadata['useragent'] ?? null);
+            $device = EmailDeliveryStatus::summarizeUserAgent($metadata['useragent'] ?? null);
             $clickUrl = $metadata['url'] ?? null;
             $isSafeUrl = is_string($clickUrl) && preg_match('/^https?:\/\//i', $clickUrl);
         @endphp
@@ -48,13 +48,7 @@
 
     @if($events->isEmpty())
         <div class="email-event-empty text-muted">
-            <small>
-                @if(($deliveryStatus ?? 'pending') === 'pending')
-                    Waiting for SendGrid delivery events. Enable the Event Webhook in SendGrid if this stays empty.
-                @else
-                    No webhook events recorded for this email yet. New sends will show delivery and engagement activity here.
-                @endif
-            </small>
+            <small>No delivery events recorded for this email.</small>
         </div>
     @endif
 </div>

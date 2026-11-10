@@ -22,7 +22,7 @@
                         <div class="col-12 col-md-6 col-lg-6">
                             <div class="form-group">
                                 <label for="email_from">From <span class="span_req">*</span></label>
-                                @include('partials.email-from-sendgrid')
+                                @include('partials.email-from-select')
                             </div>
                         </div>
                         <div class="col-12 col-md-6 col-lg-6">

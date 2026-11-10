@@ -124,7 +124,7 @@
                         <div class="card-body">
                             @include('partials.email-event-timeline', [
                                 'sentAt' => $email->created_at,
-                                'events' => $email->sendgridEvents,
+                                'events' => $email->deliveryEvents,
                                 'deliveryStatus' => $email->delivery_status,
                             ])
                         </div>

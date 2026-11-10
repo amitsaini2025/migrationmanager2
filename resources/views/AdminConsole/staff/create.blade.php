@@ -207,7 +207,7 @@
                                         <label class="d-flex align-items-center mb-0">
                                             <input type="hidden" name="bulk_download_enabled" value="0">
                                             <input type="checkbox" name="bulk_download_enabled" value="1" class="mr-2"
-                                                @if(old('bulk_download_enabled')) checked @endif>
+                                                @checked(filter_var(old('bulk_download_enabled', false), FILTER_VALIDATE_BOOLEAN))>
                                             <span>Bulk download client documents</span>
                                         </label>
                                         <small class="text-muted d-block">Off for new staff. When on, they can select documents and download them as a ZIP. Their role must also allow bulk download.</small>

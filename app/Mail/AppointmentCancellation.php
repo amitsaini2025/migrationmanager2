@@ -11,7 +11,6 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Queue\SerializesModels;
 
 class AppointmentCancellation extends Mailable
@@ -36,24 +35,6 @@ class AppointmentCancellation extends Mailable
             from: $this->appointmentFromAddress(),
             subject: 'Appointment Cancellation - Bansal Immigration',
         );
-    }
-
-    /**
-     * Disable SendGrid click-tracking so mailto / tel / HTTPS call-bridge links are not rewritten.
-     */
-    public function headers(): Headers
-    {
-        return new Headers(text: [
-            'X-SMTPAPI' => json_encode([
-                'filters' => [
-                    'clicktrack' => [
-                        'settings' => [
-                            'enable' => 0,
-                        ],
-                    ],
-                ],
-            ]),
-        ]);
     }
 
     /**

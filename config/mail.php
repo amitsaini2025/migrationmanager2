@@ -80,19 +80,6 @@ return [
             'retry_after' => 60,
         ],
 
-        /*
-         * Deprecated name kept so queued jobs that still address "sendgrid"
-         * keep sending via AWS SMTP → Zoho instead of a missing mailer.
-         */
-        'sendgrid' => [
-            'transport' => 'failover',
-            'mailers' => [
-                'smtp',
-                'zoho',
-            ],
-            'retry_after' => 60,
-        ],
-
         'resend' => [
             'transport' => 'resend',
         ],

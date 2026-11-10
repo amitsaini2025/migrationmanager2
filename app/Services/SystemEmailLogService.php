@@ -4,10 +4,8 @@ namespace App\Services;
 
 use App\Models\EmailLog;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
-use Symfony\Component\Mime\Email as SymfonyEmail;
 
 class SystemEmailLogService
 {
@@ -77,38 +75,6 @@ class SystemEmailLogService
         ]);
     }
 
-    public function attachTrackingHeader(SymfonyEmail $message, int $emailLogId): void
-    {
-        $payload = [
-            'unique_args' => [
-                'email_log_id' => (string) $emailLogId,
-            ],
-        ];
-
-        $existing = $message->getHeaders()->get('X-SMTPAPI');
-        if ($existing) {
-            $decoded = json_decode($existing->getBodyAsString(), true);
-            if (is_array($decoded)) {
-                $payload = array_replace_recursive($decoded, $payload);
-            }
-            $message->getHeaders()->remove('X-SMTPAPI');
-        }
-
-        $message->getHeaders()->addTextHeader('X-SMTPAPI', json_encode($payload, JSON_UNESCAPED_UNICODE));
-    }
-
-    public function attachTrackingToMailMessage(Message $message, int $emailLogId): void
-    {
-        $this->attachTrackingHeader($message->getSymfonyMessage(), $emailLogId);
-    }
-
-    public function applyTrackingToMailable(Mailable $mailable, int $emailLogId): Mailable
-    {
-        return $mailable->withSymfonyMessage(function (SymfonyEmail $message) use ($emailLogId) {
-            $this->attachTrackingHeader($message, $emailLogId);
-        });
-    }
-
     /**
      * @param  array{
      *     category: string,
@@ -133,7 +99,7 @@ class SystemEmailLogService
         try {
             Mail::mailer($mailer)
                 ->to($to)
-                ->send($this->applyTrackingToMailable($mailable, $log->id));
+                ->send($mailable);
         } catch (\Throwable $e) {
             $this->markSendFailed($log, $e->getMessage());
             throw $e;

@@ -47,7 +47,7 @@
 | **J1 regression found** | `processAppointmentPayment` still log-only for Bansal; other payment paths fixed |
 | **H1 reclassified open** | Stripe verification exists but `STRIPE_ENFORCE_PORTAL_PAYMENT_VERIFICATION` defaults **false** |
 | **C1 reclassified open** | Endpoint/UI mitigated; correct merge still not implemented |
-| K1, L1 confirmed open | Webhooks fail-open when env secrets unset |
+| L1 confirmed open | SMS webhooks fail-open when env secrets unset |
 
 ---
 
@@ -76,17 +76,6 @@ Sorted by severity, then ID.
 **Evidence:** `ClientsController::merge_records` ~3880–3888 early return `"Merge is temporarily disabled."`; dead soft-delete of `merge_into` still at ~3893–3894; UI commented in `resources/views/crm/clients/index.blade.php` ~322–324, ~769–802.  
 **Exploitability now:** Not via UI/API (disabled). Risk returns if someone re-enables without rewriting.  
 **Fix needed:** Implement correct merge (survivor, related-row moves, visibility checks) before re-enabling UI.
-
----
-
-### K1. High — SendGrid event webhook authorizes all requests when token env is empty
-
-**Status:** Open — **verified**  
-**What breaks:** If `SENDGRID_WEBHOOK_TOKEN` is null/empty, `authorizeRequest` returns `true`. Anyone can POST forged delivery events and mutate `EmailLog` delivery status.  
-**Evidence:** `SendGridWebhookController.php` ~43–52 (`return true` when token empty); public route `POST /webhooks/sendgrid/events` in `routes/sms.php` ~34–35; `config/services.php` `webhook_token` → `env('SENDGRID_WEBHOOK_TOKEN')` (no default).  
-**Live config (this workspace):** SendGrid webhook token **unset** → fail-open is active here.  
-**Reproduce:** Unset token → POST to webhook URL without credentials → authorized.  
-**Fix needed:** Fail closed when token unset (or reject all requests in production).
 
 ---
 
@@ -472,9 +461,8 @@ Grouped by area. Items previously listed as open in the 2026-07-26 footer (B1, B
 
 1. **H1** — Enable portal payment verification in prod (`STRIPE_ENFORCE_PORTAL_PAYMENT_VERIFICATION=true`) or change default to enforced  
 2. **J1** — Wire `processAppointmentPayment` to `syncAppointmentPaidWithBansal`  
-3. **K1** — Fail closed SendGrid webhook when token unset  
-4. **L1** — Fail closed SMS webhooks when provider secrets unset  
-5. **C1** — Reimplement client/lead merge correctly before re-enabling UI  
+3. **L1** — Fail closed SMS webhooks when provider secrets unset  
+4. **C1** — Reimplement client/lead merge correctly before re-enabling UI  
 
 ---
 
@@ -482,7 +470,6 @@ Grouped by area. Items previously listed as open in the 2026-07-26 footer (B1, B
 
 | Env / setting | Risk if missing |
 |---------------|-----------------|
-| `SENDGRID_WEBHOOK_TOKEN` | K1 — forged email delivery events |
 | Twilio auth token / Cellcast webhook credentials | L1 — forged SMS status |
 | `STRIPE_ENFORCE_PORTAL_PAYMENT_VERIFICATION=true` | H1 — clients can mark invoices paid without verified Stripe PI |
 

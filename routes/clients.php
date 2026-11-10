@@ -22,7 +22,7 @@ use App\Http\Controllers\CRM\EoiRoiSheetController;
 use App\Http\Controllers\CRM\Form956Controller;
 use App\Http\Controllers\CRM\LmtSheetController;
 use App\Http\Controllers\CRM\PhoneVerificationController;
-use App\Http\Controllers\CRM\SendGridSendersController;
+use App\Http\Controllers\CRM\SesSendersController;
 use App\Http\Controllers\CRM\SmartEmailImportController;
 use App\Http\Controllers\CRM\UploadChecklistController;
 use App\Http\Controllers\CRM\VisaTypeSheetController;
@@ -161,8 +161,7 @@ Route::post('/clients/sms/send', [SmsSendController::class, 'send'])->name('clie
 Route::get('/get-compose-defaults', [CRMUtilityController::class, 'getComposeDefaults'])->name('clients.getComposeDefaults');
 Route::get('/get-compose-option-lists', [CRMUtilityController::class, 'getComposeOptionLists'])->name('clients.getComposeOptionLists');
 Route::get('/get-checkin-option-lists', [CRMUtilityController::class, 'getCheckinOptionLists'])->name('clients.getCheckinOptionLists');
-Route::get('/crm/ses-senders', [SendGridSendersController::class, 'senders'])->name('crm.ses.senders');
-Route::get('/crm/sendgrid-senders', [SendGridSendersController::class, 'senders'])->name('crm.sendgrid.senders');
+Route::get('/crm/ses-senders', [SesSendersController::class, 'senders'])->name('crm.ses.senders');
 Route::post('/sendmail', [CRMUtilityController::class, 'sendmail'])->name('clients.sendmail');
 
 Route::post('/upload-mail', [ClientsController::class, 'uploadmail']);

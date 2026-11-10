@@ -2707,7 +2707,7 @@ tr.unallocated-receipt[draggable="true"]:hover::after {
                 <div class="alert alert-danger account-send-error" style="display: none;" role="alert"></div>
                 <div class="form-group">
                     <label for="account_send_from">From <span class="text-danger">*</span></label>
-                    <select class="form-control email-from-sendgrid" name="account_send_email_from" id="account_send_from">
+                    <select class="form-control email-from-select" name="account_send_email_from" id="account_send_from">
                         <option value="">Select From</option>
                     </select>
                 </div>

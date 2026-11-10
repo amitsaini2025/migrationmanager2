@@ -3110,14 +3110,14 @@
     }
 
     /**
-     * Match and select a SendGrid From address after the modal opens.
+     * Match and select a From address after the modal opens.
      */
     function setComposeFromEmail(emailAddress) {
         const addr = extractEmailAddress(emailAddress);
         if (!addr) {
             return;
         }
-        const fromSelect = document.querySelector('#emailmodal .email-from-sendgrid, #emailmodal select[name="email_from"]');
+        const fromSelect = document.querySelector('#emailmodal .email-from-select, #emailmodal select[name="email_from"]');
         if (!fromSelect) {
             return;
         }
@@ -3198,7 +3198,7 @@
             }
         }
 
-        // Set To / From on modal shown (Tom Select + SendGrid From need the modal DOM ready)
+        // Set To / From on modal shown (Tom Select and the From list need the modal DOM ready)
         const applyComposeRecipients = () => {
             if (Array.isArray(data.recipients) && data.recipients.length && typeof window.initComposeEmailToField === 'function') {
                 window.initComposeEmailToField(

@@ -2922,7 +2922,7 @@
     @include('components.crm-layout-vite-config')
     @vite(['resources/js/layouts/crm-echo-broadcasts.js'])
 
-    @include('partials.email-from-sendgrid-script')
+    @include('partials.email-from-select-script')
     @yield('scripts')
 </body>
 </html>

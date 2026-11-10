@@ -180,12 +180,11 @@
                             @endif
                             @include('partials.email-event-timeline', [
                                 'sentAt' => $email->created_at,
-                                'events' => $email->sendgridEvents,
+                                'events' => $email->deliveryEvents,
                                 'deliveryStatus' => $email->delivery_status,
                             ])
                             <p class="text-muted mb-0 mt-2" style="font-size:0.78rem;">
                                 @icon('fa-info-circle')
-                                Delivery events (sent, delivered, bounced, etc.) are tracked via SendGrid.
                                 Open and click tracking are disabled to maximise deliverability and preserve link integrity.
                             </p>
                         </div>

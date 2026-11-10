@@ -32,7 +32,7 @@ use App\Support\AccountClientSendComposer;
 use App\Support\AccountReceiptDocumentUrls;
 use App\Support\AccountsListAccess;
 use App\Support\InvoiceListAging;
-use App\Support\SendGridFromAllowedDomains;
+use App\Support\MailFromAllowedDomains;
 use App\Support\StaffClientVisibility;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Carbon\Carbon;
@@ -180,7 +180,7 @@ class ClientAccountsController extends Controller
 
     /**
      * Persist PDF copy for Emails → Sent attachment UI (same path as CRM compose).
-     * Does not affect SendGrid delivery — failures are logged only.
+     * Failures are logged only.
      */
     protected function archiveAccountSendEmailPdf($emailLog, string $subject, string $messageHtml, string $pdfContent, string $fileName): void
     {
@@ -6617,7 +6617,7 @@ class ClientAccountsController extends Controller
             app(SesSenderService::class)->getComposeSenders()
         );
 
-        if ($sender === null || ! SendGridFromAllowedDomains::allowsEmail($from)) {
+        if ($sender === null || ! MailFromAllowedDomains::allowsEmail($from)) {
             return response()->json([
                 'status' => false,
                 'message' => 'The selected From address is not allowed for this CRM.',

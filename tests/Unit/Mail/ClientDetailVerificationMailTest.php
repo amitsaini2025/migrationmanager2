@@ -32,19 +32,6 @@ class ClientDetailVerificationMailTest extends TestCase
     }
 
     #[Test]
-    public function it_disables_sendgrid_click_tracking_so_the_token_url_is_not_rewritten(): void
-    {
-        $headers = (new ClientDetailVerificationMail(
-            'Vipul',
-            'https://example.test/verify-details/abc123abc123abc123abc123abc123ab',
-        ))->headers();
-
-        $smtpApi = $headers->text['X-SMTPAPI'] ?? '';
-        $this->assertStringContainsString('clicktrack', $smtpApi);
-        $this->assertStringContainsString('"enable":0', $smtpApi);
-    }
-
-    #[Test]
     public function it_sends_from_the_zoho_info_address(): void
     {
         config([

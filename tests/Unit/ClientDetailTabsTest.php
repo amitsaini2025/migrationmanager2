@@ -162,7 +162,7 @@ class ClientDetailTabsTest extends TestCase
         Assert::assertStringNotContainsString("$('#updateLedgerEntryBtn').on('click'", $accountsJs);
         Assert::assertStringContainsString('mmSoftRefreshAccountAfterClientFundCreate', $accountsJs);
 
-        $fromScript = file_get_contents($this->projectPath('resources/views/partials/email-from-sendgrid-script.blade.php'));
+        $fromScript = file_get_contents($this->projectPath('resources/views/partials/email-from-select-script.blade.php'));
         Assert::assertNotFalse($fromScript);
         Assert::assertStringContainsString('window.refreshEmailFromSenders = refreshEmailFromSenders', $fromScript);
 
@@ -260,7 +260,7 @@ class ClientDetailTabsTest extends TestCase
         $shellModals = file_get_contents($this->projectPath('resources/views/crm/clients/modals/shell_modals.blade.php'));
         Assert::assertNotFalse($shellModals);
         Assert::assertStringContainsString('id="emailmodal"', $shellModals);
-        Assert::assertStringContainsString('email-from-sendgrid', $shellModals);
+        Assert::assertStringContainsString('email-from-select', $shellModals);
         Assert::assertStringContainsString('js-reassign-client-ajax', $shellModals);
         Assert::assertStringNotContainsString('UploadChecklist::all()', $shellModals);
         Assert::assertStringNotContainsString("EmailTemplate::crm()->orderBy('id', 'desc')->get()", $shellModals);

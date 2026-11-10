@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\EmailLog;
 use App\Models\Staff;
+use App\Services\EmailDeliveryStatus;
 use App\Services\OutgoingEmailSearchService;
 use Illuminate\Http\Request;
 
@@ -43,17 +44,17 @@ class OutgoingEmailController extends Controller
             ->get(['id', 'first_name', 'last_name']);
 
         $emails = collect();
-        $total  = 0;
+        $total = 0;
 
         if ($request->hasAny(['search', 'date_from', 'date_to', 'sender_id', 'from_address', 'client_id', 'type', 'has_attachments', 'filter'])) {
             $query = $this->searchService->baseQuery();
             $query = $this->searchService->applyFilters($query, $request);
             $query->with(['uploader:id,first_name,last_name', 'client:id,first_name,last_name,client_id,type', 'attachments'])
-                  ->orderByDesc('created_at');
+                ->orderByDesc('created_at');
 
             $paginator = $query->paginate(50)->withQueryString();
-            $emails    = $paginator->getCollection()->map(fn (EmailLog $e) => $this->prepareListRow($e));
-            $total     = $paginator->total();
+            $emails = $paginator->getCollection()->map(fn (EmailLog $e) => $this->prepareListRow($e));
+            $total = $paginator->total();
         } else {
             $paginator = null;
         }
@@ -80,13 +81,13 @@ class OutgoingEmailController extends Controller
                 'client:id,first_name,last_name,client_id,type',
                 'clientMatter.matter:id,title,nick_name',
                 'attachments',
-                'sendgridEvents',
+                'deliveryEvents',
             ])
             ->findOrFail($id);
 
-        $previewUrl  = $this->searchService->resolveS3PreviewUrl($email);
-        $toDisplay   = EmailLog::resolveRecipientDisplay($email->to_mail, $email->type);
-        $ccDisplay   = EmailLog::resolveRecipientDisplay($email->cc, $email->type);
+        $previewUrl = $this->searchService->resolveS3PreviewUrl($email);
+        $toDisplay = EmailLog::resolveRecipientDisplay($email->to_mail, $email->type);
+        $ccDisplay = EmailLog::resolveRecipientDisplay($email->cc, $email->type);
         $attachments = $email->getFileAttachmentCollection();
 
         return view('AdminConsole.features.sent-emails.show',
@@ -99,24 +100,24 @@ class OutgoingEmailController extends Controller
     private function prepareListRow(EmailLog $email): array
     {
         return [
-            'id'           => $email->id,
-            'created_at'   => $email->created_at,
-            'sent_by'      => $email->uploader
-                                ? trim($email->uploader->first_name . ' ' . $email->uploader->last_name)
+            'id' => $email->id,
+            'created_at' => $email->created_at,
+            'sent_by' => $email->uploader
+                                ? trim($email->uploader->first_name.' '.$email->uploader->last_name)
                                 : '—',
-            'from_mail'    => $email->from_mail ?? '—',
-            'to_mail'      => EmailLog::resolveRecipientDisplay($email->to_mail, $email->type),
-            'subject'      => $email->subject ?? '(no subject)',
-            'client_name'  => $email->client
-                                ? trim($email->client->first_name . ' ' . $email->client->last_name)
+            'from_mail' => $email->from_mail ?? '—',
+            'to_mail' => EmailLog::resolveRecipientDisplay($email->to_mail, $email->type),
+            'subject' => $email->subject ?? '(no subject)',
+            'client_name' => $email->client
+                                ? trim($email->client->first_name.' '.$email->client->last_name)
                                 : '—',
-            'client_id'    => $email->client_id,
-            'client_ref'   => $email->client->client_id ?? null,
-            'type'         => $email->type,
+            'client_id' => $email->client_id,
+            'client_ref' => $email->client->client_id ?? null,
+            'type' => $email->type,
             'attach_count' => $email->getFileAttachmentCollection()->count(),
             'delivery_status' => $email->delivery_status ?? 'pending',
-            'delivery_status_label' => \App\Services\SendGridWebhookService::statusLabel($email->delivery_status),
-            'delivery_status_badge' => \App\Services\SendGridWebhookService::statusBadgeClass($email->delivery_status),
+            'delivery_status_label' => EmailDeliveryStatus::statusLabel($email->delivery_status),
+            'delivery_status_badge' => EmailDeliveryStatus::statusBadgeClass($email->delivery_status),
             'status_reason' => $email->status_reason,
             'delivered_at' => $email->delivered_at,
             'opened_at' => $email->opened_at,

@@ -7,7 +7,6 @@ This document describes the **staff-facing email screens** in this CRM: compose,
 | File | What it is |
 |------|------------|
 | `docs/CRM_EMAIL_SENDING.md` | **This file** — email UI |
-| `docs/SENDGRID_CRM_EMAIL_INSTRUCTIONS.md` | Transport migration (historical) |
 | `docs/CRM_EMAIL_S3_IMPLEMENTATION.md` | S3 archival of bodies/attachments |
 | `docs/CRM_ACTIVITY_FEED.md` | Timeline (compose also writes an activity row) |
 
@@ -77,7 +76,7 @@ Hidden fields on client detail:
 
 ### From (required)
 
-Empty `<select class="email-from-sendgrid" name="email_from">` (`partials/email-from-sendgrid.blade.php`). Options are filled in JS from `GET /crm/sendgrid-senders` (`partials/email-from-sendgrid-script.blade.php`). Staff pick a **display From**, not SMTP credentials.
+Empty `<select class="email-from-select" name="email_from">` (`partials/email-from-select.blade.php`). Options are filled in JS from `GET /crm/ses-senders` (`partials/email-from-select-script.blade.php`). Staff pick a **display From**, not SMTP credentials.
 
 ### To (required)
 
@@ -221,7 +220,7 @@ Sidebar: `Elements/CRM/setting`. Pages:
 
 ### Sender accounts (`AdminConsole/features/emails`)
 
-List of From identities. Create/edit: Email Id, Enable checkbox, Display Name, **User Sharing** (multi staff), HTML **Company Email Signature** (TinyMCE). These identities feed the compose From dropdown (together with verified SendGrid senders in this CRM).
+List of From identities. Create/edit: Email Id, Enable checkbox, Display Name, **User Sharing** (multi staff), HTML **Company Email Signature** (TinyMCE). These identities feed the compose From dropdown (together with SES sender addresses configured for this CRM).
 
 ### CRM Email Template
 
@@ -279,7 +278,7 @@ Match these behaviours even if the backend is different:
 | Role | Path |
 |------|------|
 | Compose modal | `resources/views/crm/clients/detail.blade.php` (`#emailmodal`) |
-| From select | `resources/views/partials/email-from-sendgrid.blade.php` + `-script` |
+| From select | `resources/views/partials/email-from-select.blade.php` + `-script` |
 | Compose JS | `public/js/crm/clients/detail-main.js` |
 | Emails tab shell | `resources/views/crm/emails.blade.php` |
 | Emails tab JS/CSS | `public/js/emails.js`, `public/css/emails.css` |

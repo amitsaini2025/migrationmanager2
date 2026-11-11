@@ -138,41 +138,50 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
     {
         $blade = (string) file_get_contents(resource_path('views/emails/geninvoice.blade.php'));
         $invoicePos = strpos($blade, 'Total Invoice Amount:');
-        $discountPos = strpos($blade, 'Discount:');
+        $paidPos = strpos($blade, 'totals-label">Paid:');
         $pendingPos = strpos($blade, 'Total Pending Amount:');
 
         Assert::assertNotFalse($invoicePos);
-        Assert::assertNotFalse($discountPos);
+        Assert::assertNotFalse($paidPos);
         Assert::assertNotFalse($pendingPos);
-        Assert::assertGreaterThan($invoicePos, $discountPos);
-        Assert::assertGreaterThan($discountPos, $pendingPos);
+        Assert::assertGreaterThan($invoicePos, $paidPos);
+        Assert::assertGreaterThan($paidPos, $pendingPos);
         Assert::assertStringContainsString('$displayOfficeDiscount > 0', $blade);
         Assert::assertStringContainsString('office_discount_amount', $blade);
+        Assert::assertStringNotContainsString('totals-label">Discount:', $blade);
     }
 
     #[Test]
-    public function invoice_pdf_shows_adjustments_section_without_code_after_professional_fee(): void
+    public function invoice_pdf_shows_adjustments_section_without_code_after_department_charges(): void
     {
         $blade = (string) file_get_contents(resource_path('views/emails/geninvoice.blade.php'));
         $professionalPos = strpos($blade, 'section-title">Professional Fee');
-        $adjustmentsPos = strpos($blade, 'section-title">Adjustments');
         $departmentPos = strpos($blade, 'section-title">Department Charges');
+        $adjustmentsPos = strpos($blade, 'section-title">Adjustments');
+        $surchargePos = strpos($blade, 'section-title">Surcharge');
 
         Assert::assertNotFalse($professionalPos);
-        Assert::assertNotFalse($adjustmentsPos);
         Assert::assertNotFalse($departmentPos);
-        Assert::assertGreaterThan($professionalPos, $adjustmentsPos);
-        Assert::assertGreaterThan($adjustmentsPos, $departmentPos);
+        Assert::assertNotFalse($adjustmentsPos);
+        Assert::assertNotFalse($surchargePos);
+        Assert::assertGreaterThan($professionalPos, $departmentPos);
+        Assert::assertGreaterThan($departmentPos, $adjustmentsPos);
+        Assert::assertGreaterThan($adjustmentsPos, $surchargePos);
         Assert::assertStringContainsString('officeDiscountCnt > 0', $blade);
         Assert::assertStringContainsString('record_get_Office_Discount', $blade);
         Assert::assertStringContainsString('-$', $blade);
 
-        $adjustmentsBlock = substr($blade, $adjustmentsPos, $departmentPos - $adjustmentsPos);
+        $adjustmentsBlock = substr($blade, $adjustmentsPos, $surchargePos - $adjustmentsPos);
         Assert::assertStringNotContainsString('>Code<', $adjustmentsBlock);
         Assert::assertStringContainsString('>Date<', $adjustmentsBlock);
         Assert::assertStringContainsString('>Description<', $adjustmentsBlock);
         Assert::assertStringContainsString('>GST<', $adjustmentsBlock);
         Assert::assertStringContainsString('>Amount<', $adjustmentsBlock);
+        Assert::assertStringContainsString('$adjustmentGstIncl', $adjustmentsBlock);
+        Assert::assertStringContainsString('record_get_Professional_Fee', $blade);
+        Assert::assertStringContainsString('record_get_Department_Charges', $blade);
+        Assert::assertStringContainsString('gst_included', $blade);
+        Assert::assertStringNotContainsString('<td>N/A</td>', $adjustmentsBlock);
     }
 
     #[Test]

@@ -418,6 +418,57 @@
             </div>
         @endif
 
+        @php
+            $officeDiscountRows = $record_get_Office_Discount ?? collect();
+            $officeDiscountCnt = isset($record_get_Office_Discount_cnt)
+                ? (int) $record_get_Office_Discount_cnt
+                : (is_countable($officeDiscountRows) ? count($officeDiscountRows) : 0);
+        @endphp
+        @if($officeDiscountCnt > 0)
+            <h4 class="section-title">Adjustments</h4>
+            <div class="ledger-table-wrapper">
+                <table class="ledger-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>GST</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($officeDiscountRows as $officeDiscount)
+                            <tr>
+                                <td>{{ $officeDiscount->trans_date ?? '' }}</td>
+                                <td>{{ $officeDiscount->description ?? '' }}</td>
+                                <td>N/A</td>
+                                <td style="text-align:right;">
+                                    @php
+                                        $adjustmentAmount = 0;
+                                        try {
+                                            $adjustmentAmount = floatval($officeDiscount->deposit_amount ?? 0);
+                                        } catch (\Exception $e) {
+                                            $adjustmentAmount = 0;
+                                        }
+                                        if (!is_numeric($adjustmentAmount) || !is_finite($adjustmentAmount)) {
+                                            $adjustmentAmount = 0;
+                                        }
+                                        $formattedAdjustment = '0.00';
+                                        try {
+                                            $formattedAdjustment = number_format((float) $adjustmentAmount, 2);
+                                        } catch (\Exception $e) {
+                                            $formattedAdjustment = '0.00';
+                                        }
+                                    @endphp
+                                    -${{ $formattedAdjustment }}
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+
         @if($record_get_Department_Charges_cnt > 0)
             <h4 class="section-title">Department Charges</h4>
             <div class="ledger-table-wrapper">

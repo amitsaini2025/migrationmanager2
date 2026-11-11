@@ -150,6 +150,47 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
         Assert::assertStringContainsString('office_discount_amount', $blade);
     }
 
+    #[Test]
+    public function invoice_pdf_shows_adjustments_section_without_code_after_professional_fee(): void
+    {
+        $blade = (string) file_get_contents(resource_path('views/emails/geninvoice.blade.php'));
+        $professionalPos = strpos($blade, 'section-title">Professional Fee');
+        $adjustmentsPos = strpos($blade, 'section-title">Adjustments');
+        $departmentPos = strpos($blade, 'section-title">Department Charges');
+
+        Assert::assertNotFalse($professionalPos);
+        Assert::assertNotFalse($adjustmentsPos);
+        Assert::assertNotFalse($departmentPos);
+        Assert::assertGreaterThan($professionalPos, $adjustmentsPos);
+        Assert::assertGreaterThan($adjustmentsPos, $departmentPos);
+        Assert::assertStringContainsString('officeDiscountCnt > 0', $blade);
+        Assert::assertStringContainsString('record_get_Office_Discount', $blade);
+        Assert::assertStringContainsString('-$', $blade);
+
+        $adjustmentsBlock = substr($blade, $adjustmentsPos, $departmentPos - $adjustmentsPos);
+        Assert::assertStringNotContainsString('>Code<', $adjustmentsBlock);
+        Assert::assertStringContainsString('>Date<', $adjustmentsBlock);
+        Assert::assertStringContainsString('>Description<', $adjustmentsBlock);
+        Assert::assertStringContainsString('>GST<', $adjustmentsBlock);
+        Assert::assertStringContainsString('>Amount<', $adjustmentsBlock);
+    }
+
+    #[Test]
+    public function office_discount_receipts_are_returned_for_invoice_pdf_adjustments(): void
+    {
+        $this->createDiscountSchema();
+        $this->insertFinalInvoice(1, 'INV-ADJ', 100.00);
+
+        app(ApplyInvoiceOfficeDiscount::class)->handle(1, 'INV-ADJ', 20.00, 'Adjust Invoice No. INV-ADJ', 9);
+
+        $rows = app(InvoicePaymentSyncService::class)->officeDiscountReceiptsForInvoice(1, 'INV-ADJ');
+
+        Assert::assertCount(1, $rows);
+        Assert::assertSame(20.0, (float) $rows[0]->deposit_amount);
+        Assert::assertSame('Adjust Invoice No. INV-ADJ', $rows[0]->description);
+        Assert::assertSame(20.0, app(InvoicePaymentSyncService::class)->sumOfficeDiscountForInvoice(1, 'INV-ADJ'));
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

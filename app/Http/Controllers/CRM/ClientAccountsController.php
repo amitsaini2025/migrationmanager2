@@ -3241,6 +3241,10 @@ class ClientAccountsController extends Controller
         $office_discount_amount = $invoiceKeyForDiscount !== ''
             ? $invoicePaymentSyncPdf->sumOfficeDiscountForInvoice((int) $queryClientId, $invoiceKeyForDiscount)
             : 0.0;
+        $record_get_Office_Discount = $invoiceKeyForDiscount !== ''
+            ? $invoicePaymentSyncPdf->officeDiscountReceiptsForInvoice((int) $queryClientId, $invoiceKeyForDiscount)
+            : collect();
+        $record_get_Office_Discount_cnt = $record_get_Office_Discount->count();
 
         Log::info('Total Pending Amount: '.$total_Pending_amount);
 
@@ -3353,6 +3357,7 @@ class ClientAccountsController extends Controller
                     'record_get_Disbursements_cnt',
                     'record_get_Other_Cost_cnt',
                     'record_get_Discount_cnt',
+                    'record_get_Office_Discount_cnt',
 
                     'record_get_Professional_Fee',
                     'record_get_Department_Charges',
@@ -3360,6 +3365,7 @@ class ClientAccountsController extends Controller
                     'record_get_Disbursements',
                     'record_get_Other_Cost',
                     'record_get_Discount',
+                    'record_get_Office_Discount',
 
                     'total_Gross_Amount',
                     'total_Invoice_Amount',
@@ -3436,6 +3442,7 @@ class ClientAccountsController extends Controller
                     'record_get_Disbursements_cnt',
                     'record_get_Other_Cost_cnt',
                     'record_get_Discount_cnt',
+                    'record_get_Office_Discount_cnt',
 
                     'record_get_Professional_Fee',
                     'record_get_Department_Charges',
@@ -3443,6 +3450,7 @@ class ClientAccountsController extends Controller
                     'record_get_Disbursements',
                     'record_get_Other_Cost',
                     'record_get_Discount',
+                    'record_get_Office_Discount',
 
                     'total_Gross_Amount',
                     'total_Invoice_Amount',
@@ -6104,6 +6112,10 @@ class ClientAccountsController extends Controller
             $office_discount_amount = $invoiceKeyForDiscount !== ''
                 ? $invoicePaymentSyncHubdoc->sumOfficeDiscountForInvoice((int) $record_get[0]->client_id, $invoiceKeyForDiscount)
                 : 0.0;
+            $record_get_Office_Discount = $invoiceKeyForDiscount !== ''
+                ? $invoicePaymentSyncHubdoc->officeDiscountReceiptsForInvoice((int) $record_get[0]->client_id, $invoiceKeyForDiscount)
+                : collect();
+            $record_get_Office_Discount_cnt = $record_get_Office_Discount->count();
 
             // Get payment method
             $invoice_payment_method = '';
@@ -6169,6 +6181,7 @@ class ClientAccountsController extends Controller
                     'record_get_Disbursements_cnt',
                     'record_get_Other_Cost_cnt',
                     'record_get_Discount_cnt',
+                    'record_get_Office_Discount_cnt',
 
                     'record_get_Professional_Fee',
                     'record_get_Department_Charges',
@@ -6176,6 +6189,7 @@ class ClientAccountsController extends Controller
                     'record_get_Disbursements',
                     'record_get_Other_Cost',
                     'record_get_Discount',
+                    'record_get_Office_Discount',
 
                     'total_Gross_Amount',
                     'total_Invoice_Amount',

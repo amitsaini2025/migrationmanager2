@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\AccountAllInvoiceReceipt;
 use App\Models\AccountClientReceipt;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -61,7 +63,36 @@ class InvoicePaymentSyncService
 
     public function sumOfficeDiscountForInvoice(int $clientId, string $invoiceKey): float
     {
-        $sum = (float) DB::table((new AccountClientReceipt)->getTable())
+        $sum = (float) $this->officeDiscountReceiptsQuery($clientId, $invoiceKey)
+            ->sum('deposit_amount');
+
+        return round($sum, 2);
+    }
+
+    /**
+     * Office-receipt discount rows for an invoice (Account-tab Apply Discount).
+     *
+     * @return Collection<int, object>
+     */
+    public function officeDiscountReceiptsForInvoice(int $clientId, string $invoiceKey)
+    {
+        return $this->officeDiscountReceiptsQuery($clientId, $invoiceKey)
+            ->orderBy('id')
+            ->get([
+                'id',
+                'trans_date',
+                'description',
+                'deposit_amount',
+                'invoice_no',
+            ]);
+    }
+
+    /**
+     * @return Builder
+     */
+    private function officeDiscountReceiptsQuery(int $clientId, string $invoiceKey)
+    {
+        return DB::table((new AccountClientReceipt)->getTable())
             ->where('receipt_type', 2)
             ->where('invoice_no', $invoiceKey)
             ->where('client_id', $clientId)
@@ -69,10 +100,7 @@ class InvoicePaymentSyncService
             ->where(function ($q) {
                 $q->where('save_type', 'final')
                     ->orWhereNull('save_type');
-            })
-            ->sum('deposit_amount');
-
-        return round($sum, 2);
+            });
     }
 
     /**

@@ -3242,7 +3242,7 @@ class ClientAccountsController extends Controller
             ? $invoicePaymentSyncPdf->sumOfficeDiscountForInvoice((int) $queryClientId, $invoiceKeyForDiscount)
             : 0.0;
         $invoice_paid_amount = $invoiceKeyForDiscount !== ''
-            ? $invoicePaymentSyncPdf->sumTotalPaidForInvoice((int) $queryClientId, $invoiceKeyForDiscount)
+            ? $invoicePaymentSyncPdf->sumInvoicePaidForPdf((int) $queryClientId, $invoiceKeyForDiscount)
             : 0.0;
         $record_get_Office_Discount = $invoiceKeyForDiscount !== ''
             ? $invoicePaymentSyncPdf->officeDiscountReceiptsForInvoice((int) $queryClientId, $invoiceKeyForDiscount)
@@ -6136,7 +6136,7 @@ class ClientAccountsController extends Controller
                 ? $invoicePaymentSyncHubdoc->sumOfficeDiscountForInvoice((int) $record_get[0]->client_id, $invoiceKeyForDiscount)
                 : 0.0;
             $invoice_paid_amount = $invoiceKeyForDiscount !== ''
-                ? $invoicePaymentSyncHubdoc->sumTotalPaidForInvoice((int) $record_get[0]->client_id, $invoiceKeyForDiscount)
+                ? $invoicePaymentSyncHubdoc->sumInvoicePaidForPdf((int) $record_get[0]->client_id, $invoiceKeyForDiscount)
                 : 0.0;
             $record_get_Office_Discount = $invoiceKeyForDiscount !== ''
                 ? $invoicePaymentSyncHubdoc->officeDiscountReceiptsForInvoice((int) $record_get[0]->client_id, $invoiceKeyForDiscount)

@@ -238,6 +238,32 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
         Assert::assertSame('No', $sync->resolveGstIncludedFromFeeLines([]));
     }
 
+    #[Test]
+    public function pdf_paid_excludes_office_discount_when_adjustment_exists(): void
+    {
+        $this->createDiscountSchema();
+        $this->insertFinalInvoice(1, 'INV-PAID-PDF', 50.00);
+
+        DB::table('account_client_receipts')->insert([
+            'client_id' => 1,
+            'receipt_id' => 60,
+            'receipt_type' => 2,
+            'trans_no' => 'REC-060',
+            'invoice_no' => 'INV-PAID-PDF',
+            'payment_method' => 'Cash',
+            'deposit_amount' => 30,
+            'save_type' => 'final',
+            'void_invoice' => 0,
+        ]);
+
+        app(ApplyInvoiceOfficeDiscount::class)->handle(1, 'INV-PAID-PDF', 20.00, 'debt off demo', 9);
+
+        $sync = app(InvoicePaymentSyncService::class);
+        Assert::assertSame(50.0, $sync->sumTotalPaidForInvoice(1, 'INV-PAID-PDF'));
+        Assert::assertSame(20.0, $sync->sumOfficeDiscountForInvoice(1, 'INV-PAID-PDF'));
+        Assert::assertSame(30.0, $sync->sumInvoicePaidForPdf(1, 'INV-PAID-PDF'));
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

@@ -61,6 +61,22 @@ class InvoicePaymentSyncService
         return round($totalPaidOffice + $totalPaidFeeTransfer, 2);
     }
 
+    /**
+     * PDF Paid total: excludes office % Adjustments so Paid matches net invoice totals.
+     * Payment sync / Pending still use sumTotalPaidForInvoice (includes Discount receipts).
+     */
+    public function sumInvoicePaidForPdf(int $clientId, string $invoiceKey): float
+    {
+        $totalPaid = $this->sumTotalPaidForInvoice($clientId, $invoiceKey);
+        $officeDiscount = $this->sumOfficeDiscountForInvoice($clientId, $invoiceKey);
+
+        if ($officeDiscount <= 0) {
+            return $totalPaid;
+        }
+
+        return round(max(0.0, $totalPaid - $officeDiscount), 2);
+    }
+
     public function sumOfficeDiscountForInvoice(int $clientId, string $invoiceKey): float
     {
         $sum = (float) $this->officeDiscountReceiptsQuery($clientId, $invoiceKey)

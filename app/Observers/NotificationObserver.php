@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Notification;
 use App\Support\CachedHeaderCounts;
+use Illuminate\Support\Facades\DB;
 
 class NotificationObserver
 {
@@ -24,6 +25,8 @@ class NotificationObserver
             return;
         }
 
-        CachedHeaderCounts::forgetNotificationUnread($receiverId);
+        DB::afterCommit(static function () use ($receiverId): void {
+            CachedHeaderCounts::forgetNotificationUnread($receiverId);
+        });
     }
 }

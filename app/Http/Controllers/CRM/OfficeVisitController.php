@@ -672,7 +672,10 @@ class OfficeVisitController extends Controller
                     default => 'waiting',
                 };
                 if ($correctTab !== $activeTab) {
-                    return redirect()->to(NotificationUrl::withQuery(url('/office-visits/'.$correctTab), $request->query()));
+                    return redirect()->to(NotificationUrl::withQuery(
+                        url('/office-visits/'.$correctTab),
+                        $request->except('page')
+                    ));
                 }
             }
         }

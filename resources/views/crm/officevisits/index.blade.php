@@ -4,7 +4,7 @@
 
 @php
 	$baseUrl = '/office-visits/' . $activeTab;
-	$officeVisitQuerySuffix = request()->except('page', 't');
+	$officeVisitQuerySuffix = request()->except('page', 't', 'checkin');
 	$officeVisitQuerySuffix = ! empty($officeVisitQuerySuffix) ? '?' . http_build_query($officeVisitQuerySuffix) : '';
 @endphp
 

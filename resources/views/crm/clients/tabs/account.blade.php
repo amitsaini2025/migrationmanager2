@@ -3373,7 +3373,7 @@ $(document).ready(function() {
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="apply_discount_submit_btn">@icon('fa-check') Apply Discount</button>
+                    <button type="submit" class="btn btn-primary" id="apply_discount_submit_btn">@icon('fa-check') Apply</button>
                 </div>
             </form>
         </div>

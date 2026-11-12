@@ -121,7 +121,7 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
         $invoicesJs = (string) file_get_contents(public_path('js/crm/clients/modules/invoices.js'));
 
         Assert::assertStringContainsString('apply-invoice-discount', $blade);
-        Assert::assertStringContainsString("@icon('fa-percentage') Apply Discount", $blade);
+        Assert::assertStringContainsString("@icon('fa-percentage') Adjustments", $blade);
         Assert::assertStringContainsString('id="applyInvoiceDiscountModal"', $blade);
         Assert::assertStringContainsString("$('#applyInvoiceDiscountModal').appendTo('body')", $blade);
         Assert::assertStringContainsString('applyInvoiceDiscount', $invoicesJs);

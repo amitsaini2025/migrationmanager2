@@ -328,7 +328,7 @@
                                                     data-invoice-no="<?php echo $inc_val->trans_no; ?>"
                                                     data-invoice-balance="{{ $inc_val->balance_amount }}"
                                                     data-client-id="{{ $fetchedData->id }}">
-                                                    @icon('fa-percentage') Apply Discount
+                                                    @icon('fa-percentage') Adjustments
                                                 </a>
                                                 <?php } ?>
                                                 <?php } ?>

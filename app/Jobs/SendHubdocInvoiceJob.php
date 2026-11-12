@@ -129,6 +129,24 @@ class SendHubdocInvoiceJob implements ShouldQueue
                 : collect();
             $record_get_Office_Discount_cnt = $record_get_Office_Discount->count();
 
+            if ($office_discount_amount > 0) {
+                $netPdfTotals = $invoicePaymentSync->netInvoiceTotalsAfterOfficeDiscount(
+                    (float) $total_Gross_Amount,
+                    (float) $total_Invoice_Amount,
+                    (float) $office_discount_amount,
+                    $invoicePaymentSync->resolveGstIncludedFromFeeLines(
+                        $record_get_Professional_Fee,
+                        $record_get_Department_Charges,
+                        $record_get_Surcharge,
+                        $record_get_Disbursements,
+                        $record_get_Other_Cost
+                    )
+                );
+                $total_Gross_Amount = $netPdfTotals['gross'];
+                $total_Invoice_Amount = $netPdfTotals['invoice'];
+                $total_GST_amount = $netPdfTotals['gst'];
+            }
+
             // Get payment method
             $invoice_payment_method = '';
             if (! empty($record_get) && $record_get[0]->invoice_no != '') {

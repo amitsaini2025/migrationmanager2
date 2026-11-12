@@ -88,6 +88,65 @@ class InvoicePaymentSyncService
     }
 
     /**
+     * PDF display only: net Gross / Invoice / GST by office % Adjustments.
+     * Does not change payment sync, Paid, or Pending calculations.
+     *
+     * @return array{gross: float, invoice: float, gst: float}
+     */
+    public function netInvoiceTotalsAfterOfficeDiscount(
+        float $grossAmount,
+        float $invoiceAmount,
+        float $officeDiscountAmount,
+        string $gstIncluded = 'No'
+    ): array {
+        $grossAmount = round($grossAmount, 2);
+        $invoiceAmount = round($invoiceAmount, 2);
+        $officeDiscountAmount = round(max(0.0, $officeDiscountAmount), 2);
+
+        if ($officeDiscountAmount <= 0) {
+            return [
+                'gross' => $grossAmount,
+                'invoice' => $invoiceAmount,
+                'gst' => round($invoiceAmount - $grossAmount, 2),
+            ];
+        }
+
+        $invoiceAmount = round(max(0.0, $invoiceAmount - $officeDiscountAmount), 2);
+
+        if ($gstIncluded === 'Yes') {
+            $grossDiscount = round($officeDiscountAmount - ($officeDiscountAmount / 11), 2);
+            $grossAmount = round(max(0.0, $grossAmount - $grossDiscount), 2);
+        } else {
+            $grossAmount = round(max(0.0, $grossAmount - $officeDiscountAmount), 2);
+        }
+
+        return [
+            'gross' => $grossAmount,
+            'invoice' => $invoiceAmount,
+            'gst' => round($invoiceAmount - $grossAmount, 2),
+        ];
+    }
+
+    /**
+     * Resolve GST Incl. for office-adjustment PDF netting from invoice fee lines.
+     *
+     * @param  iterable<int, object>  ...$feeLineGroups
+     */
+    public function resolveGstIncludedFromFeeLines(iterable ...$feeLineGroups): string
+    {
+        foreach ($feeLineGroups as $feeLines) {
+            foreach ($feeLines as $feeLine) {
+                $gstIncluded = isset($feeLine->gst_included) ? trim((string) $feeLine->gst_included) : '';
+                if ($gstIncluded !== '') {
+                    return $gstIncluded;
+                }
+            }
+        }
+
+        return 'No';
+    }
+
+    /**
      * @return Builder
      */
     private function officeDiscountReceiptsQuery(int $clientId, string $invoiceKey)

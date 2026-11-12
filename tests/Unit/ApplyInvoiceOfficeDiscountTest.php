@@ -201,6 +201,32 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
         Assert::assertSame(20.0, app(InvoicePaymentSyncService::class)->sumOfficeDiscountForInvoice(1, 'INV-ADJ'));
     }
 
+    #[Test]
+    public function pdf_totals_net_office_discount_only_when_adjustment_exists(): void
+    {
+        $sync = app(InvoicePaymentSyncService::class);
+
+        $unchanged = $sync->netInvoiceTotalsAfterOfficeDiscount(13.64, 15.00, 0.0, 'Yes');
+        Assert::assertSame(13.64, $unchanged['gross']);
+        Assert::assertSame(15.0, $unchanged['invoice']);
+        Assert::assertSame(1.36, $unchanged['gst']);
+
+        $netted = $sync->netInvoiceTotalsAfterOfficeDiscount(13.64, 15.00, 5.00, 'Yes');
+        Assert::assertSame(9.09, $netted['gross']);
+        Assert::assertSame(10.0, $netted['invoice']);
+        Assert::assertSame(0.91, $netted['gst']);
+
+        $nettedNoGst = $sync->netInvoiceTotalsAfterOfficeDiscount(15.00, 15.00, 5.00, 'No');
+        Assert::assertSame(10.0, $nettedNoGst['gross']);
+        Assert::assertSame(10.0, $nettedNoGst['invoice']);
+        Assert::assertSame(0.0, $nettedNoGst['gst']);
+
+        Assert::assertSame('Yes', $sync->resolveGstIncludedFromFeeLines([
+            (object) ['gst_included' => 'Yes'],
+        ]));
+        Assert::assertSame('No', $sync->resolveGstIncludedFromFeeLines([]));
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

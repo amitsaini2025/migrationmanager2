@@ -3249,6 +3249,24 @@ class ClientAccountsController extends Controller
             : collect();
         $record_get_Office_Discount_cnt = $record_get_Office_Discount->count();
 
+        if ($office_discount_amount > 0) {
+            $netPdfTotals = $invoicePaymentSyncPdf->netInvoiceTotalsAfterOfficeDiscount(
+                (float) $total_Gross_Amount,
+                (float) $total_Invoice_Amount,
+                (float) $office_discount_amount,
+                $invoicePaymentSyncPdf->resolveGstIncludedFromFeeLines(
+                    $record_get_Professional_Fee,
+                    $record_get_Department_Charges,
+                    $record_get_Surcharge,
+                    $record_get_Disbursements,
+                    $record_get_Other_Cost
+                )
+            );
+            $total_Gross_Amount = $netPdfTotals['gross'];
+            $total_Invoice_Amount = $netPdfTotals['invoice'];
+            $total_GST_amount = $netPdfTotals['gst'];
+        }
+
         Log::info('Total Pending Amount: '.$total_Pending_amount);
 
         $clientname = DB::table('admins')->where('id', $record_get[0]->client_id)->first();
@@ -6124,6 +6142,24 @@ class ClientAccountsController extends Controller
                 ? $invoicePaymentSyncHubdoc->officeDiscountReceiptsForInvoice((int) $record_get[0]->client_id, $invoiceKeyForDiscount)
                 : collect();
             $record_get_Office_Discount_cnt = $record_get_Office_Discount->count();
+
+            if ($office_discount_amount > 0) {
+                $netPdfTotals = $invoicePaymentSyncHubdoc->netInvoiceTotalsAfterOfficeDiscount(
+                    (float) $total_Gross_Amount,
+                    (float) $total_Invoice_Amount,
+                    (float) $office_discount_amount,
+                    $invoicePaymentSyncHubdoc->resolveGstIncludedFromFeeLines(
+                        $record_get_Professional_Fee,
+                        $record_get_Department_Charges,
+                        $record_get_Surcharge,
+                        $record_get_Disbursements,
+                        $record_get_Other_Cost
+                    )
+                );
+                $total_Gross_Amount = $netPdfTotals['gross'];
+                $total_Invoice_Amount = $netPdfTotals['invoice'];
+                $total_GST_amount = $netPdfTotals['gst'];
+            }
 
             // Get payment method
             $invoice_payment_method = '';

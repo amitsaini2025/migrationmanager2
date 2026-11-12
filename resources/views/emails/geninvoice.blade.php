@@ -543,7 +543,7 @@
             }
         @endphp
         @if($officeDiscountCnt > 0)
-            <h4 class="section-title">% Adjustments</h4>
+            <h4 class="section-title">Adjustments</h4>
             <div class="ledger-table-wrapper">
                 <table class="ledger-table">
                     <thead>
@@ -1037,7 +1037,13 @@
         </div>
 
         <div class="payment-instructions">
-            <p class="payment-method-highlight">Payment Method: {{ $invoice_payment_method ?? 'N/A' }}</p>
+            @php
+                $displayInvoicePaymentMethod = trim((string) ($invoice_payment_method ?? ''));
+                if ($displayInvoicePaymentMethod === \App\Services\ApplyInvoiceOfficeDiscount::PAYMENT_METHOD) {
+                    $displayInvoicePaymentMethod = 'Adjustment';
+                }
+            @endphp
+            <p class="payment-method-highlight">Payment Method: {{ $displayInvoicePaymentMethod !== '' ? $displayInvoicePaymentMethod : 'N/A' }}</p>
             <p>If you wish to make payment by Direct Debit, use the following details in your Electronic Funds Transfer. Please remember to quote your MATTER NO <strong>{{ $client_matter_display ?? $client_matter_no ?? 'N/A' }}</strong> and advise us by email when you have made the transfer.</p>
             <div class="bank-details">
                 <strong>Account Name:</strong> Bansal Immigration<br/>

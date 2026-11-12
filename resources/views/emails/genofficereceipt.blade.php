@@ -213,11 +213,17 @@
                 </thead>
                 <tbody>
                     @if($record_get)
+                        @php
+                            $isOfficeAdjustmentReceipt = trim((string) ($record_get->payment_method ?? '')) === \App\Services\ApplyInvoiceOfficeDiscount::PAYMENT_METHOD;
+                            $officeReceiptPaymentMethodLabel = $isOfficeAdjustmentReceipt
+                                ? 'Adjustment'
+                                : (string) ($record_get->payment_method ?? '');
+                        @endphp
                         <tr>
                             <td>{{@$record_get->trans_date}}</td>
                             <td>{{@$record_get->entry_date}}</td>
                             <td>{{@$record_get->description}}@if(!empty($record_get->invoice_no)) ({{@$record_get->invoice_no}})@endif</td>
-                            <td>{{@$record_get->payment_method}}</td>
+                            <td>{{ $officeReceiptPaymentMethodLabel }}</td>
                             <td style="text-align:right;">${{number_format($record_get->deposit_amount, 2)}}</td>
                         </tr>
                     @endif
@@ -227,7 +233,8 @@
 
         <div class="total-section">
             @php
-                $isOfficeAdjustmentReceipt = trim((string) ($record_get->payment_method ?? '')) === \App\Services\ApplyInvoiceOfficeDiscount::PAYMENT_METHOD;
+                $isOfficeAdjustmentReceipt = $isOfficeAdjustmentReceipt
+                    ?? (trim((string) ($record_get->payment_method ?? '')) === \App\Services\ApplyInvoiceOfficeDiscount::PAYMENT_METHOD);
             @endphp
             <span class="total-label">{{ $isOfficeAdjustmentReceipt ? 'Total Adjustment Amount: ' : 'Total Amount Received: ' }}</span>
             <span class="total-value">${{number_format($record_get->deposit_amount ?? 0, 2)}}</span>

@@ -122,6 +122,7 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
 
         Assert::assertStringContainsString('apply-invoice-discount', $blade);
         Assert::assertStringContainsString("@icon('fa-percentage') Adjustments", $blade);
+        Assert::assertStringContainsString("officeReceiptMethodLabel = 'Adjustments'", $blade);
         Assert::assertStringContainsString('id="applyInvoiceDiscountModal"', $blade);
         Assert::assertStringContainsString("$('#applyInvoiceDiscountModal').appendTo('body')", $blade);
         Assert::assertStringContainsString('applyInvoiceDiscount', $invoicesJs);
@@ -158,7 +159,7 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
         $blade = (string) file_get_contents(resource_path('views/emails/geninvoice.blade.php'));
         $professionalPos = strpos($blade, 'section-title">Professional Fee');
         $departmentPos = strpos($blade, 'section-title">Department Charges');
-        $adjustmentsPos = strpos($blade, 'section-title">% Adjustments');
+        $adjustmentsPos = strpos($blade, 'section-title">Adjustments');
         $surchargePos = strpos($blade, 'section-title">Surcharge');
 
         Assert::assertNotFalse($professionalPos);
@@ -205,11 +206,15 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
     public function office_receipt_pdf_shows_total_adjustment_amount_for_discount_method_only(): void
     {
         $blade = (string) file_get_contents(resource_path('views/emails/genofficereceipt.blade.php'));
+        $invoiceBlade = (string) file_get_contents(resource_path('views/emails/geninvoice.blade.php'));
 
         Assert::assertStringContainsString('isOfficeAdjustmentReceipt', $blade);
         Assert::assertStringContainsString('Total Adjustment Amount:', $blade);
         Assert::assertStringContainsString('Total Amount Received:', $blade);
         Assert::assertStringContainsString('ApplyInvoiceOfficeDiscount::PAYMENT_METHOD', $blade);
+        Assert::assertStringContainsString('officeReceiptPaymentMethodLabel = $isOfficeAdjustmentReceipt', $blade);
+        Assert::assertStringContainsString("'Adjustment'", $blade);
+        Assert::assertStringContainsString("displayInvoicePaymentMethod = 'Adjustment'", $invoiceBlade);
     }
 
     #[Test]

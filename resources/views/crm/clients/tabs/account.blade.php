@@ -511,7 +511,13 @@
                                 <td class="type-cell" style="text-align: left; vertical-align: middle;">
                                    {!! \App\Helpers\IconHelper::fromLegacy('fas ' . ($payClassMap[$off_val->payment_method] ?? 'fa-money-bill'), ['class' => 'type-icon']) !!}
                                    <span>
-                                    {{$off_val->payment_method}}
+                                    <?php
+                                    $officeReceiptMethodLabel = $off_val->payment_method;
+                                    if (trim((string) ($off_val->payment_method ?? '')) === \App\Services\ApplyInvoiceOfficeDiscount::PAYMENT_METHOD) {
+                                        $officeReceiptMethodLabel = 'Adjustments';
+                                    }
+                                    echo htmlspecialchars((string) $officeReceiptMethodLabel, ENT_QUOTES, 'UTF-8');
+                                    ?>
                                     
 
                                     <?php

@@ -202,6 +202,17 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
     }
 
     #[Test]
+    public function office_receipt_pdf_shows_total_adjustment_amount_for_discount_method_only(): void
+    {
+        $blade = (string) file_get_contents(resource_path('views/emails/genofficereceipt.blade.php'));
+
+        Assert::assertStringContainsString('isOfficeAdjustmentReceipt', $blade);
+        Assert::assertStringContainsString('Total Adjustment Amount:', $blade);
+        Assert::assertStringContainsString('Total Amount Received:', $blade);
+        Assert::assertStringContainsString('ApplyInvoiceOfficeDiscount::PAYMENT_METHOD', $blade);
+    }
+
+    #[Test]
     public function pdf_totals_net_office_discount_only_when_adjustment_exists(): void
     {
         $sync = app(InvoicePaymentSyncService::class);

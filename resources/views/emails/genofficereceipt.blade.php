@@ -226,7 +226,10 @@
         </div>
 
         <div class="total-section">
-            <span class="total-label">Total Amount Received: </span>
+            @php
+                $isOfficeAdjustmentReceipt = trim((string) ($record_get->payment_method ?? '')) === \App\Services\ApplyInvoiceOfficeDiscount::PAYMENT_METHOD;
+            @endphp
+            <span class="total-label">{{ $isOfficeAdjustmentReceipt ? 'Total Adjustment Amount: ' : 'Total Amount Received: ' }}</span>
             <span class="total-value">${{number_format($record_get->deposit_amount ?? 0, 2)}}</span>
         </div>
 

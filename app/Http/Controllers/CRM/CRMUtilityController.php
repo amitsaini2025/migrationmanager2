@@ -1806,10 +1806,22 @@ class CRMUtilityController extends Controller
 
     public function allnotification(Request $request)
     {
-        $lists = Notification::query()
-            ->where('receiver_id', '=', (int) Auth::user()->id, 'and')
-            ->orderby('created_at', 'DESC')
-            ->paginate(20);
+        $viewer = Auth::user();
+        $seesAll = $viewer instanceof Staff && $viewer->seesAllCrmNotifications();
+
+        $query = Notification::query()->orderByDesc('created_at');
+        if ($seesAll) {
+            $query->with(['receiver:id,first_name,last_name']);
+        } else {
+            $query->where('receiver_id', (int) $viewer->id);
+        }
+        if ($request->query('unread') === '1') {
+            $query->where(function ($inner) {
+                $inner->where('receiver_status', 0)->orWhereNull('receiver_status');
+            });
+        }
+
+        $lists = $query->paginate(20)->withQueryString();
         // Fix URLs for notifications that point to non-existent or wrong routes
         $lists->getCollection()->transform(function ($notification) {
             // Message notifications: /messages (404) -> client detail + client portal tab
@@ -1834,7 +1846,54 @@ class CRMUtilityController extends Controller
             return $notification;
         });
 
-        return view('crm.notifications', compact(['lists']));
+        return view('crm.notifications', compact('lists', 'seesAll'));
+    }
+
+    /**
+     * Mark every unread notification that belongs to the logged-in user.
+     * Super admins viewing the full list do not mark other people's rows.
+     */
+    public function markAllNotificationsRead(Request $request)
+    {
+        $userId = (int) Auth::id();
+        Notification::query()
+            ->where('receiver_id', $userId)
+            ->where(function ($query) {
+                $query->where('receiver_status', 0)->orWhereNull('receiver_status');
+            })
+            ->update([
+                'receiver_status' => 1,
+                'updated_at' => now(),
+            ]);
+        CachedHeaderCounts::forgetNotificationUnread($userId);
+
+        return redirect()->back()->with('success', 'Your notifications are marked as read.');
+    }
+
+    /**
+     * Delete notifications that belong to the logged-in user.
+     */
+    public function clearMyNotifications(Request $request)
+    {
+        $userId = (int) Auth::id();
+        Notification::query()->where('receiver_id', $userId)->delete();
+        CachedHeaderCounts::forgetNotificationUnread($userId);
+
+        return redirect('/all-notifications')->with('success', 'Your notifications were cleared.');
+    }
+
+    public function clearNotification(Request $request, int $id)
+    {
+        $userId = (int) Auth::id();
+        $notification = Notification::query()->whereKey($id)->first();
+        if (! $notification || (int) $notification->receiver_id !== $userId) {
+            return redirect()->back()->with('error', 'That notification is not yours.');
+        }
+
+        $notification->delete();
+        CachedHeaderCounts::forgetNotificationUnread($userId);
+
+        return redirect()->back()->with('success', 'Notification cleared.');
     }
 
     // Dashboard methods moved to DashboardController

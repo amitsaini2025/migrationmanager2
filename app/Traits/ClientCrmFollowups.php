@@ -4683,12 +4683,8 @@ trait ClientCrmFollowups
             });
         }
 
-        if (isset($request->t)) {
-            if (Notification::where('id', $request->t)->exists()) {
-                $ovv = Notification::find($request->t);
-                $ovv->receiver_status = 1;
-                $ovv->save();
-            }
+        if ($request->filled('t')) {
+            Notification::markReadIfOwned((int) $request->query('t'), (int) Auth::id());
         }
 
         if (isset($id) && ! empty($id)) {

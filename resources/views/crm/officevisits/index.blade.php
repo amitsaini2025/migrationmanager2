@@ -108,7 +108,7 @@ body, html { overflow-x: hidden !important; max-width: 100% !important; }
 											<tbody class="tdata checindata">
 												@if(@$totalData !== 0)
 												@foreach (@$lists as $list)
-												<tr did="{{@$list->id}}" id="id_{{@$list->id}}" data-status="{{ (int) $list->status }}">
+												<tr did="{{@$list->id}}" id="id_{{@$list->id}}" data-status="{{ (int) $list->status }}" @if((int) request('checkin') === (int) $list->id) style="background-color:#e8f1ff;" @endif>
 													<td style="white-space: initial;"><a id="{{@$list->id}}" class="opencheckindetail" href="javascript:;">#{{$list->id}}</a></td>
 													<td style="white-space: initial;"><a href="javascript:;">{{date('l',strtotime($list->created_at))}}</a><br>{{date('d/m/Y',strtotime($list->created_at))}}</td>
 													<td style="white-space: initial;"><?php if($list->sesion_start != ''){ echo date('h:i A',strtotime($list->sesion_start)); }else{ echo '-'; } ?></td>

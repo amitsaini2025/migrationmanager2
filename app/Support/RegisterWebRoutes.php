@@ -13,13 +13,13 @@ use App\Http\Controllers\CRM\CRMUtilityController;
 use App\Http\Controllers\CRM\DashboardController;
 use App\Http\Controllers\CRM\DashboardMyDayController;
 use App\Http\Controllers\CRM\EmailVerificationController;
-use App\Http\Controllers\CRM\OutlookAddinController;
 use App\Http\Controllers\CRM\EoiRoiSheetController;
 use App\Http\Controllers\CRM\FrontDeskCheckInController;
 use App\Http\Controllers\CRM\Leads\LeadAnalyticsController;
 use App\Http\Controllers\CRM\Leads\LeadAssignmentController;
 use App\Http\Controllers\CRM\Leads\LeadController;
 use App\Http\Controllers\CRM\Leads\LeadConversionController;
+use App\Http\Controllers\CRM\OutlookAddinController;
 use App\Http\Controllers\CRM\ReportController;
 use App\Http\Controllers\CRM\ReverbMessagingLabController;
 use App\Http\Controllers\CRM\StaffLoginAnalyticsController;
@@ -403,6 +403,9 @@ final class RegisterWebRoutes
             $this->router->get('/check-checkin-status', [DashboardController::class, 'checkCheckinStatus']);
             $this->router->post('/update-checkin-status', [DashboardController::class, 'updateCheckinStatus']);
             $this->router->get('/all-notifications', [CRMUtilityController::class, 'allnotification']);
+            $this->router->post('/all-notifications/mark-all-read', [CRMUtilityController::class, 'markAllNotificationsRead']);
+            $this->router->post('/all-notifications/clear', [CRMUtilityController::class, 'clearMyNotifications']);
+            $this->router->post('/all-notifications/{id}/clear', [CRMUtilityController::class, 'clearNotification'])->whereNumber('id');
             $this->router->get('/fetch-InPersonWaitingCount', [CRMUtilityController::class, 'fetchInPersonWaitingCount']);
             $this->router->get('/fetch-TotalActivityCount', [CRMUtilityController::class, 'fetchTotalActivityCount']);
 

@@ -31,11 +31,24 @@
 					<div class="card">
 						<div class="card-header">
 							<h4>Notifications</h4>
-							<div class="card-header-action">
+							<div class="card-header-action" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+								<a href="{{ url('/all-notifications') }}" class="btn btn-sm {{ request('unread') === '1' ? 'btn-outline-primary' : 'btn-primary' }}">All</a>
+								<a href="{{ url('/all-notifications?unread=1') }}" class="btn btn-sm {{ request('unread') === '1' ? 'btn-primary' : 'btn-outline-primary' }}">Unread</a>
+								<form method="POST" action="{{ url('/all-notifications/mark-all-read') }}" style="display:inline;margin:0;">
+									@csrf
+									<button type="submit" class="btn btn-sm btn-outline-secondary">Mark all read</button>
+								</form>
+								<form method="POST" action="{{ url('/all-notifications/clear') }}" style="display:inline;margin:0;" onsubmit="return confirm('Clear all of your notifications?');">
+									@csrf
+									<button type="submit" class="btn btn-sm btn-outline-danger">Clear</button>
+								</form>
 								<span class="badge badge-primary">{{ $lists->total() }} Total</span>
 							</div>
 						</div>
 						<div class="card-body">
+							@if(!empty($seesAll))
+							<p class="text-muted" style="margin-top:0;">Showing every staff notification. Mark all read and Clear only change yours.</p>
+							@endif
 							@if($lists->count() > 0)
 							<div class="table-responsive">
 								<table class="table">
@@ -43,7 +56,11 @@
 										<tr>
 										  <th width="50">Status</th>
 										  <th>Message</th>
+										  @if(!empty($seesAll))
+										  <th width="180">For</th>
+										  @endif
 										  <th width="200">Date</th>
+										  <th width="80"></th>
 										</tr> 
 									</thead>
 									<tbody class="tdata">	
@@ -57,12 +74,25 @@
 												@endif
 											</td>
 											<td>
-												<a href="{{$list->url}}?t={{$list->id}}">
+												<a href="{{ \App\Support\NotificationUrl::withQuery($list->url, ['t' => $list->id]) }}">
 													{{$list->message}}
 												</a>
-											</td> 
+											</td>
+											@if(!empty($seesAll))
+											<td>
+												{{ trim(($list->receiver->first_name ?? '').' '.($list->receiver->last_name ?? '')) ?: '—' }}
+											</td>
+											@endif
 											<td>
 												{{date('d/m/Y h:i A', strtotime($list->created_at))}}
+											</td>
+											<td>
+												@if((int) $list->receiver_id === (int) Auth::id())
+												<form method="POST" action="{{ url('/all-notifications/'.$list->id.'/clear') }}" style="margin:0;">
+													@csrf
+													<button type="submit" class="btn btn-sm btn-link">Clear</button>
+												</form>
+												@endif
 											</td>
 										</tr>	
 										@endforeach	
@@ -79,7 +109,7 @@
 						</div>
 						@if($lists->count() > 0)
 						<div class="card-footer">
-							{!! $lists->appends(\Request::except('page'))->render() !!}
+							{!! $lists->withQueryString()->links() !!}
 						</div>
 						@endif
 					</div>

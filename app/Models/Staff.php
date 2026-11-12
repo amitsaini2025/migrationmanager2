@@ -150,6 +150,15 @@ class Staff extends Authenticatable
     }
 
     /**
+     * Role id 1 is Super Admin (user_roles). Admins and every other role
+     * only see notifications addressed to themselves.
+     */
+    public function seesAllCrmNotifications(): bool
+    {
+        return (int) ($this->role ?? 0) === 1;
+    }
+
+    /**
      * Get avatar URL (replaces profile_img - uses static avatar.png).
      */
     public function getProfileImgAttribute(): string

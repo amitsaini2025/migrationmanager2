@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\CRM;
 
-use App\Events\OfficeVisitNotificationCreated;
 use App\Helpers\IconHelper;
 use App\Http\Controllers\Concerns\EnsuresCrmRecordAccess;
 use App\Http\Controllers\Controller;
@@ -14,12 +13,16 @@ use App\Models\CheckinLog;
 use App\Models\Lead;
 use App\Models\Notification;
 use App\Models\Staff;
+use App\Services\OfficeVisitNotificationService;
+use App\Support\NotificationUrl;
 use Auth;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 class OfficeVisitController extends Controller
 {
@@ -30,7 +33,7 @@ class OfficeVisitController extends Controller
      *
      * @return void
      */
-    public function __construct()
+    public function __construct(private OfficeVisitNotificationService $officeVisitNotifications)
     {
         $this->middleware('auth:admin');
     }
@@ -143,45 +146,16 @@ class OfficeVisitController extends Controller
                     throw new \Exception('Failed to save check-in log.');
                 }
 
-                // Create Notification
-                $notification = new Notification;
-                $notification->sender_id = Auth::user()->id;
-                $notification->receiver_id = $assigneeId;
-                $notification->module_id = $obj->id;
-                $notification->url = \URL::to('/office-visits/waiting');
-                $notification->notification_type = 'officevisit';
-                $notification->message = 'Office visit Assigned by '.Auth::user()->first_name.' '.Auth::user()->last_name;
-                $notification->seen = 0;              // Mark as unseen
-                $notification->receiver_status = 0;   // Mark as unread by receiver
-                $notification->sender_status = 1;     // Mark as sent by sender
-
-                if (! $notification->save()) {
+                $sender = Auth::user();
+                if (! $sender instanceof Staff) {
                     throw new \Exception('Failed to save notification.');
                 }
-
-                // Broadcast real-time notification via Reverb (wrap in try-catch to prevent failures)
-                try {
-                    broadcast(new OfficeVisitNotificationCreated(
-                        $notification->id,
-                        $notification->receiver_id,
-                        [
-                            'id' => $notification->id,
-                            'checkin_id' => $obj->id,
-                            'message' => $notification->message,
-                            'sender_name' => Auth::user()->first_name.' '.Auth::user()->last_name,
-                            'client_name' => $obj->contactDisplayLabel(),
-                            'visit_purpose' => $obj->visit_purpose,
-                            'created_at' => $notification->created_at?->toIso8601String() ?? now()->toIso8601String(),
-                            'url' => $notification->url,
-                        ]
-                    ));
-                } catch (\Exception $broadcastException) {
-                    // Log broadcast error but don't fail the entire operation
-                    Log::warning('Failed to broadcast office visit notification', [
-                        'notification_id' => $notification->id,
-                        'error' => $broadcastException->getMessage(),
-                    ]);
-                }
+                $this->officeVisitNotifications->upsert(
+                    $obj,
+                    (int) $assigneeId,
+                    OfficeVisitNotificationService::ACTION_CHECKED_IN,
+                    $sender
+                );
 
                 // Create CheckinHistory
                 $checkinHistory = new CheckinHistory;
@@ -551,49 +525,15 @@ class OfficeVisitController extends Controller
         $objs->user_id = $request->assinee;
 
         $saved = $objs->save();
-        if ($objs->status == 2) {
-            $t = 'attending';
-        } elseif ($objs->status == 1) {
-            $t = 'completed';
-        } elseif ($objs->status == 0) {
-            $t = 'waiting';
-        }
         if ($saved) {
-            $o = new Notification;
-            $o->sender_id = Auth::user()->id;
-            $o->receiver_id = $request->assinee;
-            $o->module_id = $request->id;
-            $o->url = \URL::to('/office-visits/'.$t);
-            $o->notification_type = 'officevisit';
-            $o->message = 'Office Visit Assigned by '.Auth::user()->first_name.' '.Auth::user()->last_name;
-            $o->seen = 0;              // Mark as unseen
-            $o->receiver_status = 0;   // Mark as unread by receiver
-            $o->sender_status = 1;     // Mark as sent by sender
-            $o->save();
-
-            $notifyClientName = $objs->contactDisplayLabel();
-
-            // Broadcast real-time notification via Reverb (wrap in try-catch)
-            try {
-                broadcast(new OfficeVisitNotificationCreated(
-                    $o->id,
-                    $o->receiver_id,
-                    [
-                        'id' => $o->id,
-                        'checkin_id' => $objs->id,
-                        'message' => $o->message,
-                        'sender_name' => Auth::user()->first_name.' '.Auth::user()->last_name,
-                        'client_name' => $notifyClientName,
-                        'visit_purpose' => $objs->visit_purpose,
-                        'created_at' => $o->created_at?->toIso8601String() ?? now()->toIso8601String(),
-                        'url' => $o->url,
-                    ]
-                ));
-            } catch (\Exception $e) {
-                Log::warning('Failed to broadcast office visit assignee notification', [
-                    'notification_id' => $o->id,
-                    'error' => $e->getMessage(),
-                ]);
+            $assignee = Auth::user();
+            if ($assignee instanceof Staff) {
+                $this->officeVisitNotifications->upsert(
+                    $objs,
+                    (int) $request->assinee,
+                    OfficeVisitNotificationService::ACTION_REASSIGNED,
+                    $assignee
+                );
             }
 
             $response['status'] = true;
@@ -616,52 +556,23 @@ class OfficeVisitController extends Controller
 
         if ($request->waitingtype == 1) { // waiting type = Pls send
             $obj->status = 2; // attending session
-            $t = 'attending';
         } else {  // waiting type = waiting
             $obj->status = 0; // waiting session
             $obj->wait_type = 1; // waiting type = Pls send
-            $t = 'waiting';
         }
 
         $saved = $obj->save();
 
-        if ($saved) {
-            // Notify reception on both: red "Waiting" (escalate to Pls Send) and green "Pls Send" (session started).
-            // Real-time delivery is via OfficeVisitNotificationCreated + Echo; no page refresh needed on reception side.
-            $receiverId = config('constants.reception_user_id', 36730);
-            $o = new Notification;
-            $o->sender_id = Auth::user()->id;
-            $o->receiver_id = $receiverId;
-            $o->module_id = $request->id;
-            $o->url = \URL::to('/office-visits/'.$t);
-            $o->notification_type = 'officevisit';
-            $o->message = 'Office Visit Assigned by '.Auth::user()->first_name.' '.Auth::user()->last_name;
-            $o->seen = 0;              // Mark as unseen
-            $o->receiver_status = 0;   // Mark as unread by receiver
-            $o->sender_status = 1;     // Mark as sent by sender
-            $o->save();
-
-            try {
-                broadcast(new OfficeVisitNotificationCreated(
-                    $o->id,
-                    $o->receiver_id,
-                    [
-                        'id' => $o->id,
-                        'checkin_id' => $obj->id,
-                        'is_reception_alert' => true,
-                        'message' => $o->message,
-                        'sender_name' => Auth::user()->first_name.' '.Auth::user()->last_name,
-                        'client_name' => $obj->contactDisplayLabel(),
-                        'visit_purpose' => $obj->visit_purpose,
-                        'created_at' => $o->created_at?->toIso8601String() ?? now()->toIso8601String(),
-                        'url' => $o->url,
-                    ]
-                ));
-            } catch (\Exception $e) {
-                Log::warning('Failed to broadcast office visit attend notification', [
-                    'notification_id' => $o->id,
-                    'error' => $e->getMessage(),
-                ]);
+        if ($saved && (int) $request->waitingtype !== 1) {
+            $sender = Auth::user();
+            if ($sender instanceof Staff) {
+                $receiverId = (int) config('constants.reception_user_id', 36730);
+                $this->officeVisitNotifications->upsert(
+                    $obj,
+                    $receiverId,
+                    OfficeVisitNotificationService::ACTION_PLEASE_SEND,
+                    $sender
+                );
             }
         }
 
@@ -732,81 +643,50 @@ class OfficeVisitController extends Controller
 
     public function waiting(Request $request)
     {
-        if (isset($request->t)) {
-            if (Notification::where('id', $request->t)->exists()) {
-                $ovv = Notification::find($request->t);
-                $ovv->receiver_status = 1;
-                $ovv->save();
-            }
-        }
-        $officeId = $this->officeFilterFromRequest($request);
-        $query = CheckinLog::where('status', '=', 0)->forOfficeVisitViewer();
-        if ($officeId !== null) {
-            $query->where('office', '=', $officeId);
-        }
-        $totalData = (clone $query)->count();
-        $lists = $query->with('assignee')->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
-
-        $activeTab = 'waiting';
-        $tabCounts = CheckinLog::officeVisitTabCounts($officeId);
-
-        return view('crm.officevisits.index', array_merge(
-            compact('lists', 'totalData', 'activeTab'),
-            [
-                'InPersonCount_waiting_type' => $tabCounts['waiting'],
-                'InPersonCount_attending_type' => $tabCounts['attending'],
-                'InPersonCount_completed_type' => $tabCounts['completed'],
-            ]
-        ));
+        return $this->renderOfficeVisitTab($request, 'waiting', 0);
     }
 
     public function attending(Request $request)
     {
-        if (isset($request->t)) {
-            if (Notification::where('id', $request->t)->exists()) {
-                $ovv = Notification::find($request->t);
-                $ovv->receiver_status = 1;
-                $ovv->save();
-            }
-        }
-        $officeId = $this->officeFilterFromRequest($request);
-        $query = CheckinLog::where('status', '=', '2')->forOfficeVisitViewer();
-        if ($officeId !== null) {
-            $query->where('office', '=', $officeId);
-        }
-        $totalData = (clone $query)->count();
-        $lists = $query->with('assignee')->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
-
-        $activeTab = 'attending';
-        $tabCounts = CheckinLog::officeVisitTabCounts($officeId);
-
-        return view('crm.officevisits.index', array_merge(
-            compact('lists', 'totalData', 'activeTab'),
-            [
-                'InPersonCount_waiting_type' => $tabCounts['waiting'],
-                'InPersonCount_attending_type' => $tabCounts['attending'],
-                'InPersonCount_completed_type' => $tabCounts['completed'],
-            ]
-        ));
+        return $this->renderOfficeVisitTab($request, 'attending', 2);
     }
 
     public function completed(Request $request)
     {
-        if (isset($request->t)) {
-            if (Notification::where('id', $request->t)->exists()) {
-                $ovv = Notification::find($request->t);
-                $ovv->receiver_status = 1;
-                $ovv->save();
+        return $this->renderOfficeVisitTab($request, 'completed', 1);
+    }
+
+    private function renderOfficeVisitTab(Request $request, string $activeTab, int $status): View|RedirectResponse
+    {
+        if ($request->filled('t')) {
+            Notification::markReadIfOwned((int) $request->query('t'), (int) Auth::id());
+        }
+
+        $checkinId = (int) $request->query('checkin', 0);
+        if ($checkinId > 0) {
+            $target = CheckinLog::query()->find($checkinId);
+            if ($target) {
+                $correctTab = match ((int) $target->status) {
+                    2 => 'attending',
+                    1 => 'completed',
+                    default => 'waiting',
+                };
+                if ($correctTab !== $activeTab) {
+                    return redirect()->to(NotificationUrl::withQuery(url('/office-visits/'.$correctTab), $request->query()));
+                }
             }
         }
+
         $officeId = $this->officeFilterFromRequest($request);
-        $query = CheckinLog::where('status', '=', '1')->forOfficeVisitViewer();
+        $query = CheckinLog::where('status', '=', $status)->forOfficeVisitViewer();
         if ($officeId !== null) {
             $query->where('office', '=', $officeId);
         }
+        if ($checkinId > 0) {
+            $query->where('id', $checkinId);
+        }
         $totalData = (clone $query)->count();
         $lists = $query->with('assignee')->sortable(['id' => 'desc'])->paginate(config('constants.limit'));
-        $activeTab = 'completed';
         $tabCounts = CheckinLog::officeVisitTabCounts($officeId);
 
         return view('crm.officevisits.index', array_merge(

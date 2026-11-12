@@ -134,7 +134,7 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
     }
 
     #[Test]
-    public function invoice_pdf_shows_office_discount_between_invoice_and_pending_totals(): void
+    public function invoice_pdf_shows_total_paid_between_invoice_and_pending_totals(): void
     {
         $blade = (string) file_get_contents(resource_path('views/emails/geninvoice.blade.php'));
         $invoicePos = strpos($blade, 'Total Invoice Amount:');
@@ -146,9 +146,10 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
         Assert::assertNotFalse($pendingPos);
         Assert::assertGreaterThan($invoicePos, $paidPos);
         Assert::assertGreaterThan($paidPos, $pendingPos);
-        Assert::assertStringContainsString('$displayOfficeDiscount > 0', $blade);
-        Assert::assertStringContainsString('office_discount_amount', $blade);
+        Assert::assertStringContainsString('$displayInvoicePaid > 0', $blade);
+        Assert::assertStringContainsString('invoice_paid_amount', $blade);
         Assert::assertStringNotContainsString('totals-label">Discount:', $blade);
+        Assert::assertStringNotContainsString('$displayOfficeDiscount', $blade);
     }
 
     #[Test]
@@ -157,7 +158,7 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
         $blade = (string) file_get_contents(resource_path('views/emails/geninvoice.blade.php'));
         $professionalPos = strpos($blade, 'section-title">Professional Fee');
         $departmentPos = strpos($blade, 'section-title">Department Charges');
-        $adjustmentsPos = strpos($blade, 'section-title">Adjustments');
+        $adjustmentsPos = strpos($blade, 'section-title">% Adjustments');
         $surchargePos = strpos($blade, 'section-title">Surcharge');
 
         Assert::assertNotFalse($professionalPos);

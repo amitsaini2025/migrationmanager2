@@ -3241,6 +3241,9 @@ class ClientAccountsController extends Controller
         $office_discount_amount = $invoiceKeyForDiscount !== ''
             ? $invoicePaymentSyncPdf->sumOfficeDiscountForInvoice((int) $queryClientId, $invoiceKeyForDiscount)
             : 0.0;
+        $invoice_paid_amount = $invoiceKeyForDiscount !== ''
+            ? $invoicePaymentSyncPdf->sumTotalPaidForInvoice((int) $queryClientId, $invoiceKeyForDiscount)
+            : 0.0;
         $record_get_Office_Discount = $invoiceKeyForDiscount !== ''
             ? $invoicePaymentSyncPdf->officeDiscountReceiptsForInvoice((int) $queryClientId, $invoiceKeyForDiscount)
             : collect();
@@ -3371,6 +3374,7 @@ class ClientAccountsController extends Controller
                     'total_Invoice_Amount',
                     'total_GST_amount',
                     'office_discount_amount',
+                    'invoice_paid_amount',
                     'total_Pending_amount',
 
                     'clientname',
@@ -3456,6 +3460,7 @@ class ClientAccountsController extends Controller
                     'total_Invoice_Amount',
                     'total_GST_amount',
                     'office_discount_amount',
+                    'invoice_paid_amount',
                     'total_Pending_amount',
 
                     'clientname',
@@ -6112,6 +6117,9 @@ class ClientAccountsController extends Controller
             $office_discount_amount = $invoiceKeyForDiscount !== ''
                 ? $invoicePaymentSyncHubdoc->sumOfficeDiscountForInvoice((int) $record_get[0]->client_id, $invoiceKeyForDiscount)
                 : 0.0;
+            $invoice_paid_amount = $invoiceKeyForDiscount !== ''
+                ? $invoicePaymentSyncHubdoc->sumTotalPaidForInvoice((int) $record_get[0]->client_id, $invoiceKeyForDiscount)
+                : 0.0;
             $record_get_Office_Discount = $invoiceKeyForDiscount !== ''
                 ? $invoicePaymentSyncHubdoc->officeDiscountReceiptsForInvoice((int) $record_get[0]->client_id, $invoiceKeyForDiscount)
                 : collect();
@@ -6195,6 +6203,7 @@ class ClientAccountsController extends Controller
                     'total_Invoice_Amount',
                     'total_GST_amount',
                     'office_discount_amount',
+                    'invoice_paid_amount',
                     'total_Pending_amount',
 
                     'clientname',

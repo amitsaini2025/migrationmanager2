@@ -121,6 +121,9 @@ class SendHubdocInvoiceJob implements ShouldQueue
             $office_discount_amount = $invoiceKeyForDiscount !== ''
                 ? $invoicePaymentSync->sumOfficeDiscountForInvoice((int) $record_get[0]->client_id, $invoiceKeyForDiscount)
                 : 0.0;
+            $invoice_paid_amount = $invoiceKeyForDiscount !== ''
+                ? $invoicePaymentSync->sumTotalPaidForInvoice((int) $record_get[0]->client_id, $invoiceKeyForDiscount)
+                : 0.0;
             $record_get_Office_Discount = $invoiceKeyForDiscount !== ''
                 ? $invoicePaymentSync->officeDiscountReceiptsForInvoice((int) $record_get[0]->client_id, $invoiceKeyForDiscount)
                 : collect();
@@ -189,6 +192,7 @@ class SendHubdocInvoiceJob implements ShouldQueue
                     'total_Invoice_Amount',
                     'total_GST_amount',
                     'office_discount_amount',
+                    'invoice_paid_amount',
                     'total_Pending_amount',
 
                     'clientname',

@@ -543,7 +543,7 @@
             }
         @endphp
         @if($officeDiscountCnt > 0)
-            <h4 class="section-title">Adjustments</h4>
+            <h4 class="section-title">% Adjustments</h4>
             <div class="ledger-table-wrapper">
                 <table class="ledger-table">
                     <thead>
@@ -1007,9 +1007,9 @@
                 }
 
                 try {
-                    $displayOfficeDiscount = floatval($office_discount_amount ?? 0);
+                    $displayInvoicePaid = floatval($invoice_paid_amount ?? 0);
                 } catch (\Exception $e) {
-                    $displayOfficeDiscount = 0;
+                    $displayInvoicePaid = 0;
                 }
             @endphp
             <div class="totals-row">
@@ -1024,10 +1024,10 @@
                 <span class="totals-label">Total Invoice Amount:</span>
                 <span class="totals-value">${{ number_format($displayInvoice, 2) }}</span>
             </div>
-            @if($displayOfficeDiscount > 0)
+            @if($displayInvoicePaid > 0)
             <div class="totals-row">
                 <span class="totals-label">Paid:</span>
-                <span class="totals-value">${{ number_format($displayOfficeDiscount, 2) }}</span>
+                <span class="totals-value">${{ number_format($displayInvoicePaid, 2) }}</span>
             </div>
             @endif
             <div class="totals-row">

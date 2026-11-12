@@ -1119,8 +1119,6 @@
             displaySignatureOnDocument(currentActiveField, signatureData, fieldElement);
             closeSignatureModal();
             updateProgress();
-            // Auto-advance to next field
-            goToNextUnsignedField(true);
         }
 
         // Paste signature to current field
@@ -1160,8 +1158,6 @@
             displaySignatureOnDocument(currentActiveField, userSavedSignatureData, fieldElement);
             closeSignatureModal();
             updateProgress();
-            // Auto-advance to next field
-            goToNextUnsignedField(true);
         }
 
         function displaySignatureOnDocument(fieldId, signatureData, fieldElement) {

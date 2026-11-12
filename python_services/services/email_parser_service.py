@@ -564,7 +564,7 @@ class EmailParserService:
             is_inline = 'inline' in disposition or bool(content_id)
 
             attachment_data = {
-                'filename': self._safe_get(filename, 'attachment'),
+                'filename': self._sanitize_attachment_filename(filename, 'attachment'),
                 'content_type': self._safe_get(part.get_content_type(), 'application/octet-stream'),
                 'content_id': content_id,
                 'is_inline': is_inline,
@@ -591,6 +591,14 @@ class EmailParserService:
             deduped.append(item.strip())
         return deduped
     
+    def _sanitize_attachment_filename(self, value: Any, default: str = 'attachment') -> str:
+        """Strip Outlook NUL/C0 controls from attachment filenames."""
+        text = self._safe_get(value, default)
+        if not isinstance(text, str):
+            return default
+        text = ''.join(ch for ch in text if ord(ch) >= 32 and ch != '\x7f').strip()
+        return text or default
+
     def _safe_get(self, value: Any, default: Any = None, _depth: int = 0) -> Any:
         """Safely get value and convert to JSON-serializable format."""
         if _depth > 50:
@@ -761,7 +769,10 @@ class EmailParserService:
                             is_inline = True
                     
                     attachment_data = {
-                        'filename': self._safe_get(attachment.longFilename or attachment.shortFilename, 'Unknown'),
+                        'filename': self._sanitize_attachment_filename(
+                            attachment.longFilename or attachment.shortFilename,
+                            'Unknown',
+                        ),
                         'content_type': self._safe_get(getattr(attachment, 'contentType', 'application/octet-stream'), 'application/octet-stream'),
                         'content_id': content_id,
                         'is_inline': is_inline,

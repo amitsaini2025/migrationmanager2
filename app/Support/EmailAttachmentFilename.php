@@ -8,13 +8,23 @@ namespace App\Support;
  */
 final class EmailAttachmentFilename
 {
-    public static function normalizeKey(?string $filename): string
+    /**
+     * Strip Outlook NUL / C0 control characters that break HTML attrs and matching.
+     */
+    public static function sanitize(?string $filename): string
     {
         if ($filename === null) {
             return '';
         }
 
-        $filename = trim($filename);
+        $filename = preg_replace('/[\x00-\x1F\x7F]+/u', '', $filename) ?? '';
+
+        return trim($filename);
+    }
+
+    public static function normalizeKey(?string $filename): string
+    {
+        $filename = self::sanitize($filename);
         if ($filename === '') {
             return '';
         }

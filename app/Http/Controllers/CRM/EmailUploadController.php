@@ -10,9 +10,11 @@ use App\Models\Document;
 use App\Models\EmailLabel;
 use App\Models\EmailLog;
 use App\Models\EmailLogAttachment;
+use App\Models\NominationDocumentType;
 use App\Models\PersonalDocumentType;
 use App\Models\VisaDocumentType;
 use App\Support\DocumentStoredFilename;
+use App\Support\EmailAttachmentFilename;
 use App\Support\EmailAttachmentStorageMap;
 use App\Traits\LogsClientActivity;
 use Illuminate\Database\QueryException;
@@ -143,11 +145,19 @@ class EmailUploadController extends Controller
                 if (! empty($attachmentData['is_inline'])) {
                     continue;
                 }
-                $filename = $attachmentData['filename'] ?? ('attachment_'.($index + 1));
+                $filename = EmailAttachmentFilename::sanitize(
+                    (string) ($attachmentData['filename'] ?? '')
+                );
+                if ($filename === '') {
+                    $filename = 'attachment_'.($index + 1);
+                }
+                $displayName = EmailAttachmentFilename::sanitize(
+                    (string) ($attachmentData['display_name'] ?? '')
+                );
                 $attachments[] = [
                     'index' => $index,
                     'filename' => $filename,
-                    'display_name' => $attachmentData['display_name'] ?? $filename,
+                    'display_name' => $displayName !== '' ? $displayName : $filename,
                     'file_size' => $attachmentData['file_size'] ?? $attachmentData['size'] ?? 0,
                     'content_type' => $attachmentData['content_type'] ?? 'application/octet-stream',
                 ];
@@ -169,7 +179,8 @@ class EmailUploadController extends Controller
     }
 
     /**
-     * Personal + visa document categories for the attachment storage modal.
+     * Document categories for the attachment storage modal.
+     * Person clients: Personal + Visa. Company clients: Company Documents + File Documents.
      */
     public function getAttachmentDocumentCategories(Request $request)
     {
@@ -190,13 +201,21 @@ class EmailUploadController extends Controller
         $matterId = $request->filled('client_matter_id') ? (int) $request->client_matter_id : null;
         $this->ensureCrmRecordAccess($clientId);
 
-        $personal = PersonalDocumentType::query()
+        $isCompany = Admin::query()
+            ->where('id', $clientId)
+            ->where('is_company', 1)
+            ->exists();
+        $clientKind = $isCompany ? 'company' : 'person';
+        $personalTypeScope = $isCompany ? ['company', 'both'] : ['personal', 'both'];
+
+        // Company Documents reuse Document.doc_type=personal; File Documents use nomination.
+        $primary = PersonalDocumentType::query()
             ->select('id', 'title')
             ->where('status', 1)
             ->where(function ($query) use ($clientId) {
                 $query->whereNull('client_id')->orWhere('client_id', $clientId);
             })
-            ->whereIn('type', ['personal', 'both'])
+            ->whereIn('type', $personalTypeScope)
             ->orderBy('id')
             ->get()
             ->map(static fn ($cat) => [
@@ -207,40 +226,69 @@ class EmailUploadController extends Controller
             ])
             ->values();
 
-        $visa = collect();
+        $secondary = collect();
         if ($matterId) {
-            $visa = VisaDocumentType::query()
-                ->select('id', 'title')
-                ->where('status', 1)
-                ->where(function ($query) use ($clientId, $matterId) {
-                    $query->where(function ($q) {
-                        $q->whereNull('client_id')->whereNull('client_matter_id');
-                    })
-                        ->orWhere(function ($q) use ($clientId) {
-                            $q->where('client_id', $clientId)->whereNull('client_matter_id');
+            if ($isCompany) {
+                $secondary = NominationDocumentType::query()
+                    ->select('id', 'title')
+                    ->where('status', 1)
+                    ->where(function ($query) use ($clientId, $matterId) {
+                        $query->where(function ($q) {
+                            $q->whereNull('client_id')->whereNull('client_matter_id');
                         })
-                        ->orWhere(function ($q) use ($clientId, $matterId) {
-                            $q->where('client_id', $clientId)->where('client_matter_id', $matterId);
-                        });
-                })
-                ->orderBy('id')
-                ->get()
-                ->map(static fn ($cat) => [
-                    'id' => $cat->id,
-                    'name' => $cat->title,
-                    'category_name' => $cat->title,
-                    'doc_type' => 'visa',
-                ])
-                ->values();
+                            ->orWhere(function ($q) use ($clientId) {
+                                $q->where('client_id', $clientId)->whereNull('client_matter_id');
+                            })
+                            ->orWhere(function ($q) use ($clientId, $matterId) {
+                                $q->where('client_id', $clientId)->where('client_matter_id', $matterId);
+                            });
+                    })
+                    ->orderBy('id')
+                    ->get()
+                    ->map(static fn ($cat) => [
+                        'id' => $cat->id,
+                        'name' => $cat->title,
+                        'category_name' => $cat->title,
+                        'doc_type' => 'nomination',
+                    ])
+                    ->values();
+            } else {
+                $secondary = VisaDocumentType::query()
+                    ->select('id', 'title')
+                    ->where('status', 1)
+                    ->where(function ($query) use ($clientId, $matterId) {
+                        $query->where(function ($q) {
+                            $q->whereNull('client_id')->whereNull('client_matter_id');
+                        })
+                            ->orWhere(function ($q) use ($clientId) {
+                                $q->where('client_id', $clientId)->whereNull('client_matter_id');
+                            })
+                            ->orWhere(function ($q) use ($clientId, $matterId) {
+                                $q->where('client_id', $clientId)->where('client_matter_id', $matterId);
+                            });
+                    })
+                    ->orderBy('id')
+                    ->get()
+                    ->map(static fn ($cat) => [
+                        'id' => $cat->id,
+                        'name' => $cat->title,
+                        'category_name' => $cat->title,
+                        'doc_type' => 'visa',
+                    ])
+                    ->values();
+            }
         }
 
-        $categories = $personal->concat($visa)->values();
+        $categories = $primary->concat($secondary)->values();
 
         return response()->json([
             'status' => true,
+            'client_kind' => $clientKind,
             'categories' => $categories,
-            'personal' => $personal,
-            'visa' => $visa,
+            // Keep legacy keys for person clients; company maps primary→personal, secondary→nomination.
+            'personal' => $primary,
+            'visa' => $isCompany ? collect() : $secondary,
+            'nomination' => $isCompany ? $secondary : collect(),
         ]);
     }
 
@@ -310,13 +358,32 @@ class EmailUploadController extends Controller
             return null;
         }
 
-        $docType = (string) ($storageConfig['doc_type'] ?? 'personal');
-        if (! in_array($docType, ['personal', 'visa'], true)) {
-            $docType = 'personal';
+        $docType = $this->normalizeAttachmentDocumentType((string) ($storageConfig['doc_type'] ?? 'personal'));
+        $admin = Admin::select(['id', 'client_id', 'first_name', 'is_company'])->where('id', $clientId)->first();
+        $isCompany = (bool) ($admin?->is_company);
+
+        if (! $this->attachmentDocumentDestinationAllowed($docType, $isCompany)) {
+            throw new \Exception(
+                $isCompany
+                    ? 'Company clients can only save attachments to Company Documents or File Documents.'
+                    : 'Personal clients can only save attachments to Personal Documents or Visa Documents.'
+            );
+        }
+
+        if ($docType === 'personal' && ! $this->personalDocumentCategoryAccessible($categoryId, $clientId, $isCompany)) {
+            throw new \Exception(
+                $isCompany
+                    ? 'Selected company document category is not available for this client.'
+                    : 'Selected personal document category is not available for this client.'
+            );
         }
 
         if ($docType === 'visa' && ! $this->visaDocumentCategoryAccessible($categoryId, $clientId, $matterId)) {
             throw new \Exception('Selected visa document category is not available for this client and matter.');
+        }
+
+        if ($docType === 'nomination' && ! $this->nominationDocumentCategoryAccessible($categoryId, $clientId, $matterId)) {
+            throw new \Exception('Selected file document category is not available for this client and matter.');
         }
 
         $originalFilename = $attachmentData['filename'] ?? 'attachment';
@@ -332,7 +399,6 @@ class EmailUploadController extends Controller
             $checklistName = $this->sanitizeAttachmentDisplayName(pathinfo($originalFilename, PATHINFO_FILENAME));
         }
 
-        $admin = Admin::select(['id', 'client_id', 'first_name', 'is_company'])->where('id', $clientId)->first();
         $clientFirstName = $admin
             ? preg_replace('/[^a-zA-Z0-9_\-]/', '_', (string) ($admin->first_name ?? ''))
             : 'client';
@@ -359,6 +425,7 @@ class EmailUploadController extends Controller
 
         $fileUrl = Storage::disk('s3')->url($filePath);
         $fileSize = strlen($decodedData);
+        $requiresMatter = in_array($docType, ['visa', 'nomination'], true);
 
         $document->file_name = $namePrefix.'_'.$checklistName.'_'.$timestamp;
         $document->filetype = $extension;
@@ -371,7 +438,7 @@ class EmailUploadController extends Controller
         $document->doc_type = $docType;
         $document->folder_name = (string) $categoryId;
         $document->checklist = $checklistName;
-        if ($docType === 'visa') {
+        if ($requiresMatter) {
             $document->client_matter_id = $matterId;
         } elseif ($matterId) {
             $document->client_matter_id = $matterId;
@@ -385,7 +452,7 @@ class EmailUploadController extends Controller
             'display_name' => $document->file_name.'.'.$extension,
             'doc_type' => $docType,
             'category_id' => $categoryId,
-            'client_matter_id' => $docType === 'visa' ? $matterId : ($matterId ?? null),
+            'client_matter_id' => $requiresMatter ? $matterId : ($matterId ?? null),
         ];
     }
 
@@ -421,7 +488,7 @@ class EmailUploadController extends Controller
             ->where('checklist', $checklistName)
             ->whereNull('not_used_doc');
 
-        if ($docType === 'visa') {
+        if (in_array($docType, ['visa', 'nomination'], true)) {
             $query->where('client_matter_id', $matterId);
         }
 
@@ -437,7 +504,7 @@ class EmailUploadController extends Controller
         $document->doc_type = $docType;
         $document->folder_name = (string) $categoryId;
         $document->checklist = $checklistName;
-        if ($docType === 'visa') {
+        if (in_array($docType, ['visa', 'nomination'], true)) {
             $document->client_matter_id = $matterId;
         } elseif ($matterId) {
             $document->client_matter_id = $matterId;
@@ -447,6 +514,43 @@ class EmailUploadController extends Controller
         return $document;
     }
 
+    protected function normalizeAttachmentDocumentType(string $docType): string
+    {
+        $docType = strtolower(trim($docType));
+        if ($docType === 'company') {
+            return 'personal';
+        }
+
+        if (! in_array($docType, ['personal', 'visa', 'nomination'], true)) {
+            return 'personal';
+        }
+
+        return $docType;
+    }
+
+    protected function attachmentDocumentDestinationAllowed(string $docType, bool $isCompany): bool
+    {
+        if ($isCompany) {
+            return in_array($docType, ['personal', 'nomination'], true);
+        }
+
+        return in_array($docType, ['personal', 'visa'], true);
+    }
+
+    protected function personalDocumentCategoryAccessible(int $categoryId, int $clientId, bool $isCompany): bool
+    {
+        $typeScope = $isCompany ? ['company', 'both'] : ['personal', 'both'];
+
+        return PersonalDocumentType::query()
+            ->where('id', $categoryId)
+            ->where('status', 1)
+            ->where(function ($query) use ($clientId) {
+                $query->whereNull('client_id')->orWhere('client_id', $clientId);
+            })
+            ->whereIn('type', $typeScope)
+            ->exists();
+    }
+
     protected function visaDocumentCategoryAccessible(int $categoryId, int $clientId, ?int $matterId): bool
     {
         if ($matterId === null || $matterId <= 0) {
@@ -454,6 +558,29 @@ class EmailUploadController extends Controller
         }
 
         return VisaDocumentType::query()
+            ->where('id', $categoryId)
+            ->where('status', 1)
+            ->where(function ($query) use ($clientId, $matterId) {
+                $query->where(function ($q) {
+                    $q->whereNull('client_id')->whereNull('client_matter_id');
+                })
+                    ->orWhere(function ($q) use ($clientId) {
+                        $q->where('client_id', $clientId)->whereNull('client_matter_id');
+                    })
+                    ->orWhere(function ($q) use ($clientId, $matterId) {
+                        $q->where('client_id', $clientId)->where('client_matter_id', $matterId);
+                    });
+            })
+            ->exists();
+    }
+
+    protected function nominationDocumentCategoryAccessible(int $categoryId, int $clientId, ?int $matterId): bool
+    {
+        if ($matterId === null || $matterId <= 0) {
+            return false;
+        }
+
+        return NominationDocumentType::query()
             ->where('id', $categoryId)
             ->where('status', 1)
             ->where(function ($query) use ($clientId, $matterId) {
@@ -1116,7 +1243,20 @@ class EmailUploadController extends Controller
                     }
 
                     try {
-                        $originalFilename = (string) ($attachmentData['filename'] ?? '');
+                        $originalFilename = EmailAttachmentFilename::sanitize(
+                            (string) ($attachmentData['filename'] ?? '')
+                        );
+                        if ($originalFilename !== '') {
+                            $attachmentData['filename'] = $originalFilename;
+                        }
+                        if (isset($attachmentData['display_name'])) {
+                            $cleanDisplay = EmailAttachmentFilename::sanitize(
+                                (string) $attachmentData['display_name']
+                            );
+                            if ($cleanDisplay !== '') {
+                                $attachmentData['display_name'] = $cleanDisplay;
+                            }
+                        }
                         $storageConfig = $this->resolveAttachmentStorageConfig($storageMap, $originalFilename);
 
                         // Reviewed list from the modal: omitted filenames were removed by the user.

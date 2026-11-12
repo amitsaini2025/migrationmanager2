@@ -834,12 +834,17 @@
                     continue;
                 }
 
-                if (category.doc_type === 'visa') {
+                if (category.doc_type === 'visa' || category.doc_type === 'nomination') {
                     $('.migdocumnetlist_' + category.category_id).html(result.data);
                     $('.miggriddata').html(result.griddata);
-                    if (typeof initVisaDocDragDrop === 'function') {
+                    if (category.doc_type === 'visa' && typeof initVisaDocDragDrop === 'function') {
                         setTimeout(function() {
                             initVisaDocDragDrop();
+                        }, 100);
+                    }
+                    if (category.doc_type === 'nomination' && typeof initNominationDocDragDrop === 'function') {
+                        setTimeout(function() {
+                            initNominationDocDragDrop();
                         }, 100);
                     }
                 } else {

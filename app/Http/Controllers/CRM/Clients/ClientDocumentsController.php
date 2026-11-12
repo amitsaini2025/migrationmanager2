@@ -1124,7 +1124,7 @@ class ClientDocumentsController extends Controller
             $recordType = $request->type ?? 'client';
             $folderName = (string) $request->folder_name;
 
-            if ($doctype === 'visa') {
+            if ($doctype === 'visa' || $doctype === 'nomination') {
                 $payload = $this->buildVisaDocumentCategoryListHtml(
                     (int) $clientid,
                     $folderName,
@@ -1289,11 +1289,16 @@ class ClientDocumentsController extends Controller
             ->orderBy('updated_at', 'DESC')
             ->get();
 
+        $isNomination = $docType === 'nomination';
+        $previewContainerId = $isNomination ? 'preview-container-nomdocumnetlist' : 'preview-container-migdocumnetlist';
+
         ob_start();
         foreach ($documents as $fetch) {
             $admin = $fetch->staff;
-            $visaDocumentType = VisaDocumentType::query()->where('id', $fetch->folder_name)->first();
-            $fileUrl = $fetch->myfile_key ? $fetch->myfile : 'https://'.env('AWS_BUCKET').'.s3.'.env('AWS_DEFAULT_REGION').'.amazonaws.com/'.$fetch->client_id.'/visa/'.$fetch->myfile;
+            $categoryTitle = $isNomination
+                ? (NominationDocumentType::query()->where('id', $fetch->folder_name)->value('title') ?? '')
+                : (VisaDocumentType::query()->where('id', $fetch->folder_name)->value('title') ?? '');
+            $fileUrl = $fetch->myfile_key ? $fetch->myfile : 'https://'.env('AWS_BUCKET').'.s3.'.env('AWS_DEFAULT_REGION').'.amazonaws.com/'.$fetch->client_id.'/'.$docType.'/'.$fetch->myfile;
             $previewUrl = $fetch->getInlinePreviewUrl() ?? $fileUrl;
 
             if ($clientMatterId != $fetch->client_matter_id || $folderName != $fetch->folder_name) {
@@ -1312,7 +1317,7 @@ class ClientDocumentsController extends Controller
                 <td style="white-space: initial;">
                     <?php if (isset($fetch->file_name) && $fetch->file_name != '') { ?>
                         <div data-id="<?php echo $fetch->id; ?>" data-name="<?php echo htmlspecialchars($fetch->file_name); ?>" class="doc-row" title="Uploaded by: <?php echo htmlspecialchars($admin->first_name ?? 'NA'); ?> on <?php echo date('d/m/Y H:i', strtotime($fetch->created_at)); ?>" oncontextmenu="showVisaFileContextMenu(event, <?php echo $fetch->id; ?>, '<?php echo htmlspecialchars($fetch->getPreviewFileExtension()); ?>', '<?php echo addslashes($previewUrl); ?>', '<?php echo $fetch->folder_name; ?>', '<?php echo $fetch->status ?? 'draft'; ?>'); return false;">
-                            <a href="javascript:void(0);" onclick="previewFile('<?php echo $fetch->getPreviewFileExtension(); ?>','<?php echo addslashes($previewUrl); ?>','preview-container-migdocumnetlist')">
+                            <a href="javascript:void(0);" onclick="previewFile('<?php echo $fetch->getPreviewFileExtension(); ?>','<?php echo addslashes($previewUrl); ?>','<?php echo $previewContainerId; ?>')">
                                 <?php echo IconHelper::fromLegacy('fas fa-file-image'); ?> <span><?php echo htmlspecialchars($fetch->getFilenameWithExtensionForDisplay()); ?></span>
                             </a>
                         </div>
@@ -1324,8 +1329,8 @@ class ClientDocumentsController extends Controller
                                 <input type="hidden" name="client_matter_id" value="<?php echo $fetch->client_matter_id; ?>">
                                 <input type="hidden" name="fileid" value="<?php echo $fetch->id; ?>">
                                 <input type="hidden" name="type" value="client">
-                                <input type="hidden" name="doctype" value="visa">
-                                <input type="hidden" name="doccategory" value="<?php echo $visaDocumentType->title ?? ''; ?>">
+                                <input type="hidden" name="doctype" value="<?php echo htmlspecialchars($docType); ?>">
+                                <input type="hidden" name="doccategory" value="<?php echo htmlspecialchars($categoryTitle); ?>">
                                 <div class="document-drag-drop-zone visa-doc-drag-zone"
                                      data-fileid="<?php echo $fetch->id; ?>"
                                      data-doccategory="<?php echo $fetch->folder_name; ?>"
@@ -1353,7 +1358,7 @@ class ClientDocumentsController extends Controller
                     <?php if ($fetch->myfile) { ?>
                         <a class="renamedoc" data-id="<?php echo $fetch->id; ?>" href="javascript:;" style="display: none;"></a>
                         <a class="download-file" data-filelink="<?php echo $fetch->myfile; ?>" data-filename="<?php echo $fetch->myfile_key; ?>" href="#" style="display: none;"></a>
-                        <a class="notuseddoc" data-id="<?php echo $fetch->id; ?>" data-doctype="visa" data-href="documents/not-used" href="javascript:;" style="display: none;"></a>
+                        <a class="notuseddoc" data-id="<?php echo $fetch->id; ?>" data-doctype="<?php echo htmlspecialchars($docType); ?>" data-href="documents/not-used" href="javascript:;" style="display: none;"></a>
                     <?php } ?>
                 </td>
             </tr>
@@ -1376,7 +1381,7 @@ class ClientDocumentsController extends Controller
                             <div class="dropdown-menu">
                                 <a target="_blank" class="dropdown-item" href="<?php echo $fetch->myfile; ?>">Preview</a>
                                 <a href="#" class="dropdown-item download-file" data-filelink="<?php echo $fetch->myfile; ?>" data-filename="<?php echo $fetch->myfile_key; ?>">Download</a>
-                                <a data-id="<?php echo $fetch->id; ?>" class="dropdown-item notuseddoc" data-doctype="visa" data-href="notuseddoc" href="javascript:;">Not Used</a>
+                                <a data-id="<?php echo $fetch->id; ?>" class="dropdown-item notuseddoc" data-doctype="<?php echo htmlspecialchars($docType); ?>" data-href="notuseddoc" href="javascript:;">Not Used</a>
                             </div>
                         </div>
                     </div>

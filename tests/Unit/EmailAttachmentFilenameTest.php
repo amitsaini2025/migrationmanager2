@@ -41,4 +41,22 @@ class EmailAttachmentFilenameTest extends TestCase
         $this->assertSame('', EmailAttachmentFilename::normalizeKey(''));
         $this->assertSame('', EmailAttachmentFilename::normalizeKey('   '));
     }
+
+    public function test_sanitize_strips_outlook_nul_and_control_characters(): void
+    {
+        $this->assertSame('image001.png', EmailAttachmentFilename::sanitize("image001.png\0"));
+        $this->assertSame(
+            'Loveleen Singh_PTE.pdf',
+            EmailAttachmentFilename::sanitize("Loveleen Singh_PTE.pdf\0\0")
+        );
+        $this->assertSame('a.pdf', EmailAttachmentFilename::sanitize("a\x01\x02.pdf"));
+    }
+
+    public function test_normalize_key_matches_clean_and_nul_suffixed_names(): void
+    {
+        $this->assertSame(
+            EmailAttachmentFilename::normalizeKey('image001.png'),
+            EmailAttachmentFilename::normalizeKey("image001.png\0")
+        );
+    }
 }

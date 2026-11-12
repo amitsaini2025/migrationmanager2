@@ -22,9 +22,19 @@ final class EmailAttachmentStorageMap
             if (! is_array($item)) {
                 continue;
             }
-            $key = $item['original_filename'] ?? $item['filename'] ?? null;
-            if (! is_string($key) || $key === '') {
+            $rawKey = $item['original_filename'] ?? $item['filename'] ?? null;
+            if (! is_string($rawKey)) {
                 continue;
+            }
+
+            $key = EmailAttachmentFilename::sanitize($rawKey);
+            if ($key === '') {
+                continue;
+            }
+
+            $item['original_filename'] = $key;
+            if (isset($item['filename']) && is_string($item['filename'])) {
+                $item['filename'] = EmailAttachmentFilename::sanitize($item['filename']) ?: $key;
             }
 
             $map[$key] = $item;
@@ -71,14 +81,16 @@ final class EmailAttachmentStorageMap
     }
 
     /**
-     * True when the client sent attachment_storage (including an empty list
-     * meaning the user removed every attachment row in the modal).
+     * True when the client sent a usable attachment_storage preference map.
+     * An empty list is treated as "no prefs" (not "remove all") so a broken
+     * modal submit cannot drop every attachment. Explicit remove-all uses a
+     * skip sentinel entry (see email-upload-flow.js).
      *
      * @param  array<string, array<string, mixed>>  $storageMap
      */
     public static function isReviewedList(bool $requestHasAttachmentStorage, array $storageMap = []): bool
     {
-        return $requestHasAttachmentStorage;
+        return $requestHasAttachmentStorage && $storageMap !== [];
     }
 
     /**

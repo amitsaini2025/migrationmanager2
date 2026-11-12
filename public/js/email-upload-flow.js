@@ -11,6 +11,15 @@
 
     let documentCategoriesCache = null;
     let documentCategoriesCacheKey = null;
+    let documentCategoriesClientKind = 'person';
+
+    // Outlook .msg filenames often include trailing NUL; strip C0 controls for HTML attrs/matching.
+    function sanitizeAttachmentFilename(name) {
+        if (!name || typeof name !== 'string') {
+            return '';
+        }
+        return name.replace(/[\u0000-\u001F\u007F]+/g, '').trim();
+    }
 
     function getDocumentCategoriesCacheKey() {
         const deps = getDeps();
@@ -76,9 +85,13 @@
             });
             const data = await response.json();
             documentCategoriesCache = (response.ok && data && data.status && data.categories) ? data.categories : [];
+            documentCategoriesClientKind = (response.ok && data && data.client_kind === 'company')
+                ? 'company'
+                : 'person';
             documentCategoriesCacheKey = cacheKey;
         } catch (e) {
             documentCategoriesCache = [];
+            documentCategoriesClientKind = 'person';
             documentCategoriesCacheKey = cacheKey;
         }
         return documentCategoriesCache;
@@ -165,9 +178,10 @@
             return { categoryId: 0, docType: null };
         }
         const parts = String(value).split(':');
-        if (parts.length === 2 && (parts[0] === 'personal' || parts[0] === 'visa')) {
+        const allowed = ['personal', 'visa', 'nomination', 'company'];
+        if (parts.length === 2 && allowed.indexOf(parts[0]) !== -1) {
             return {
-                docType: parts[0],
+                docType: parts[0] === 'company' ? 'personal' : parts[0],
                 categoryId: parseInt(parts[1], 10) || 0
             };
         }
@@ -175,15 +189,29 @@
         return { docType: legacyId > 0 ? 'personal' : null, categoryId: legacyId };
     }
 
+    function normalizeCategoryDocType(docType) {
+        if (docType === 'visa') {
+            return 'visa';
+        }
+        if (docType === 'nomination') {
+            return 'nomination';
+        }
+        return 'personal';
+    }
+
     function buildDocumentCategoryOptionsHtml(categories) {
         const deps = getDeps();
         const escapeHtml = deps.escapeHtml || function(t) { return t; };
+        const isCompany = documentCategoriesClientKind === 'company';
         const personal = [];
         const visa = [];
+        const nomination = [];
         (categories || []).forEach(function(cat) {
-            const docType = cat.doc_type === 'visa' ? 'visa' : 'personal';
+            const docType = normalizeCategoryDocType(cat.doc_type);
             if (docType === 'visa') {
                 visa.push(cat);
+            } else if (docType === 'nomination') {
+                nomination.push(cat);
             } else {
                 personal.push(cat);
             }
@@ -203,8 +231,12 @@
             });
             html += '</optgroup>';
         }
-        appendGroup('Personal Documents', personal, 'personal');
-        appendGroup('Visa Documents', visa, 'visa');
+        appendGroup(isCompany ? 'Company Documents' : 'Personal Documents', personal, 'personal');
+        if (isCompany) {
+            appendGroup('File Documents', nomination, 'nomination');
+        } else {
+            appendGroup('Visa Documents', visa, 'visa');
+        }
         return html;
     }
 
@@ -284,18 +316,21 @@
             }
 
             function renderAttachmentRow(att, showEmailLabel) {
-                const stem = (att.display_name || att.filename || 'attachment').replace(/\.[^.]+$/, '');
+                const safeFilename = sanitizeAttachmentFilename(att.filename) || 'attachment';
+                const safeDisplay = sanitizeAttachmentFilename(att.display_name) || safeFilename;
+                const stem = safeDisplay.replace(/\.[^.]+$/, '');
                 const emailKey = att._email_key || '';
-                const emailFilenameAttr = att.email_filename
-                    ? ' data-email-filename="' + escapeHtml(att.email_filename) + '"'
+                const safeEmailFilename = sanitizeAttachmentFilename(att.email_filename);
+                const emailFilenameAttr = safeEmailFilename
+                    ? ' data-email-filename="' + escapeHtml(safeEmailFilename) + '"'
                     : '';
                 const emailKeyAttr = emailKey ? ' data-email-key="' + escapeHtml(emailKey) + '"' : '';
-                const emailLabel = showEmailLabel && att.email_filename
-                    ? '<div class="attachment-storage-email-label">' + escapeHtml(att.email_filename) + '</div>'
+                const emailLabel = showEmailLabel && safeEmailFilename
+                    ? '<div class="attachment-storage-email-label">' + escapeHtml(safeEmailFilename) + '</div>'
                     : '';
-                return '<tr data-original-filename="' + escapeHtml(att.filename) + '"' +
+                return '<tr data-original-filename="' + escapeHtml(safeFilename) + '"' +
                     emailFilenameAttr + emailKeyAttr + '>' +
-                    '<td>' + emailLabel + escapeHtml(att.filename) + '</td>' +
+                    '<td>' + emailLabel + escapeHtml(safeFilename) + '</td>' +
                     '<td>' + formatFileSize(att.file_size || 0) + '</td>' +
                     '<td><input type="text" class="attachment-rename-input" value="' + escapeHtml(stem) + '" aria-label="Save as"></td>' +
                     '<td class="attachment-storage-actions-col">' + getDeleteButtonHtml() + '</td>' +
@@ -512,11 +547,18 @@
                 const rows = body.querySelectorAll('tr[data-original-filename]');
                 const storageList = [];
                 rows.forEach(function(row) {
-                    const originalFilename = row.getAttribute('data-original-filename');
-                    const emailFilename = row.getAttribute('data-email-filename');
+                    const originalFilename = sanitizeAttachmentFilename(
+                        row.getAttribute('data-original-filename') || ''
+                    );
+                    if (!originalFilename) {
+                        return;
+                    }
+                    const emailFilename = sanitizeAttachmentFilename(
+                        row.getAttribute('data-email-filename') || ''
+                    );
                     const emailKey = row.getAttribute('data-email-key');
                     const input = row.querySelector('.attachment-rename-input');
-                    const fileName = input ? input.value.trim() : '';
+                    const fileName = sanitizeAttachmentFilename(input ? input.value.trim() : '');
                     let storageType = globalStorageType;
                     let categoryId = globalStorageType === 'documents' ? globalCategoryId : null;
                     let docType = globalStorageType === 'documents' ? globalDocType : null;
@@ -545,6 +587,17 @@
                     storageList.push(entry);
                 });
                 closeModal();
+                // Empty list must not mean "no field sent" vs "remove all" ambiguity on the server.
+                // Explicit skip sentinel keeps intentional remove-all working.
+                if (storageList.length === 0) {
+                    resolve([{
+                        original_filename: '__removed_all__',
+                        filename: '__removed_all__',
+                        storage_type: 'skip',
+                        category_id: null
+                    }]);
+                    return;
+                }
                 resolve(storageList);
             }
 

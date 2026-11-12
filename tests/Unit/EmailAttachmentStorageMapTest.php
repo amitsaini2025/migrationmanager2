@@ -83,4 +83,50 @@ class EmailAttachmentStorageMapTest extends TestCase
         $this->assertSame([], EmailAttachmentStorageMap::fromJson('not-json'));
         $this->assertSame([], EmailAttachmentStorageMap::fromJson('[]'));
     }
+
+    public function test_is_reviewed_list_ignores_empty_map(): void
+    {
+        $this->assertFalse(EmailAttachmentStorageMap::isReviewedList(true, []));
+        $this->assertFalse(EmailAttachmentStorageMap::isReviewedList(false, []));
+        $this->assertTrue(EmailAttachmentStorageMap::isReviewedList(true, [
+            'kept.pdf' => [
+                'original_filename' => 'kept.pdf',
+                'storage_type' => 'documents',
+                'category_id' => 1,
+            ],
+        ]));
+    }
+
+    public function test_from_list_sanitizes_nul_suffixed_keys_for_matching(): void
+    {
+        $map = EmailAttachmentStorageMap::fromList([
+            [
+                'original_filename' => "image001.png\0",
+                'storage_type' => 'documents',
+                'category_id' => 1,
+                'doc_type' => 'visa',
+            ],
+        ]);
+
+        $resolved = EmailAttachmentStorageMap::resolve($map, "image001.png\0");
+        $this->assertNotNull($resolved);
+        $this->assertSame('image001.png', $resolved['original_filename']);
+        $this->assertSame(1, $resolved['category_id']);
+
+        $resolvedClean = EmailAttachmentStorageMap::resolve($map, 'image001.png');
+        $this->assertNotNull($resolvedClean);
+    }
+
+    public function test_remove_all_sentinel_marks_list_as_reviewed(): void
+    {
+        $map = EmailAttachmentStorageMap::fromList([
+            [
+                'original_filename' => '__removed_all__',
+                'storage_type' => 'skip',
+            ],
+        ]);
+
+        $this->assertTrue(EmailAttachmentStorageMap::isReviewedList(true, $map));
+        $this->assertNull(EmailAttachmentStorageMap::resolve($map, 'image001.png'));
+    }
 }

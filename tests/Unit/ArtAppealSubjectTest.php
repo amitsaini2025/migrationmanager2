@@ -44,6 +44,8 @@ class ArtAppealSubjectTest extends TestCase
     public function catalogue_nick_picks_the_person_or_company_list(): void
     {
         $this->assertSame(ArtAppealSubject::PERSON, ArtAppealSubject::kindFromNick('ART'));
+        $this->assertSame(ArtAppealSubject::PERSON, ArtAppealSubject::kindFromNick('r ART'));
+        $this->assertSame(ArtAppealSubject::PERSON, ArtAppealSubject::kindFromNick('c ART'));
         $this->assertSame(ArtAppealSubject::COMPANY, ArtAppealSubject::kindFromNick('EmpART'));
         $this->assertSame(ArtAppealSubject::COMPANY, ArtAppealSubject::kindFromNick('EmployerART'));
         $this->assertNull(ArtAppealSubject::kindFromNick('SBS'));
@@ -81,6 +83,10 @@ class ArtAppealSubjectTest extends TestCase
         $this->assertSame(
             'Choose the visa this ART is about.',
             ArtAppealSubject::rejectionForNick('ART', '')
+        );
+        $this->assertSame(
+            'Choose the visa this ART is about.',
+            ArtAppealSubject::rejectionForNick('r ART', '')
         );
         $this->assertSame(
             'Choose the company matter this ART is about.',

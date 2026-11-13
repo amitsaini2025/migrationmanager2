@@ -8,7 +8,7 @@ use App\Models\Matter;
 /**
  * Visa or company matter recorded when an ART or EmpART catalogue file is opened.
  *
- * ART is a person file. EmpART is a company file. The choice is stored on the
+ * ART is a person file. EmpART and EmployerART are company files. The choice is stored on the
  * ART sheet column refused_visa_type. Blank historical rows are left blank.
  * Both lists are the active matters catalogue. A person file lists personal
  * matters. A company file lists company matters. The ART file itself is left out.
@@ -35,7 +35,7 @@ final class ArtAppealSubject
     {
         return match (strtolower(trim((string) $nick))) {
             'art' => self::PERSON,
-            'empart' => self::COMPANY,
+            'empart', 'employerart' => self::COMPANY,
             default => null,
         };
     }

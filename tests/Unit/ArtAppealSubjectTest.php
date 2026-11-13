@@ -45,6 +45,7 @@ class ArtAppealSubjectTest extends TestCase
     {
         $this->assertSame(ArtAppealSubject::PERSON, ArtAppealSubject::kindFromNick('ART'));
         $this->assertSame(ArtAppealSubject::COMPANY, ArtAppealSubject::kindFromNick('EmpART'));
+        $this->assertSame(ArtAppealSubject::COMPANY, ArtAppealSubject::kindFromNick('EmployerART'));
         $this->assertNull(ArtAppealSubject::kindFromNick('SBS'));
         $this->assertNull(ArtAppealSubject::kindFromNick('Partner'));
     }
@@ -84,6 +85,10 @@ class ArtAppealSubjectTest extends TestCase
         $this->assertSame(
             'Choose the company matter this ART is about.',
             ArtAppealSubject::rejectionForNick('EmpART', 'student')
+        );
+        $this->assertSame(
+            'Choose the company matter this ART is about.',
+            ArtAppealSubject::rejectionForNick('EmployerART', '')
         );
         $this->assertSame(
             'Choose the visa this ART is about.',

@@ -1156,7 +1156,7 @@ jQuery(document).ready(function($) {
             },
             success: function(response) {
                 if (response.success) {
-                    // Toggle star appearance
+                    // Toggle star appearance in place (no full-page reload)
                     $star.toggleClass('pinned', !!response.is_pinned);
                     $star.attr('title', response.verified_star_title || (response.is_pinned ? 'Verified' : 'Mark as verified'));
                     
@@ -1169,11 +1169,6 @@ jQuery(document).ready(function($) {
                             timeout: 2000
                         });
                     }
-                    
-                    // Reload page after short delay to show updated order
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 500);
                 } else {
                     if (typeof iziToast !== 'undefined') {
                         iziToast.error({
@@ -1182,8 +1177,8 @@ jQuery(document).ready(function($) {
                             position: 'topRight'
                         });
                     }
-                    $star.css('pointer-events', 'auto');
                 }
+                $star.css('pointer-events', 'auto');
             },
             error: function(xhr) {
                 if (typeof iziToast !== 'undefined') {

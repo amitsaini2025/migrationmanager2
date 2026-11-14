@@ -117,4 +117,24 @@ class VisaSheetVerificationActivityTest extends TestCase
         $this->assertSame('Verified', $controller->title(true, '  '));
         $this->assertSame('Mark as verified', $controller->title(false, 'Ada Lovelace'));
     }
+
+    #[Test]
+    public function verified_star_click_updates_in_place_without_full_page_reload(): void
+    {
+        $sheet = file_get_contents(resource_path('views/crm/clients/sheets/visa-type-sheet.blade.php'));
+        $this->assertIsString($sheet);
+
+        $start = strpos($sheet, "var star = e.target.closest('.pin-star')");
+        $this->assertNotFalse($start);
+
+        $end = strpos($sheet, '}, true); // capture phase', $start);
+        $this->assertNotFalse($end);
+
+        $handler = substr($sheet, $start, $end - $start);
+
+        $this->assertStringContainsString("\$star.toggleClass('pinned'", $handler);
+        $this->assertStringContainsString('verified_star_title', $handler);
+        $this->assertStringContainsString("\$star.css('pointer-events', 'auto')", $handler);
+        $this->assertStringNotContainsString('window.location.reload()', $handler);
+    }
 }

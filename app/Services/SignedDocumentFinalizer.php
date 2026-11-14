@@ -139,6 +139,13 @@ class SignedDocumentFinalizer
 
                 // Agreement-specific activity log (Cost Agreement)
                 if ($document->doc_type === 'agreement') {
+                    // Drop sibling active agreements so Checklist keeps this signed row.
+                    ClientDetailDocumentsTab::archiveOtherActiveAgreements(
+                        (int) $document->client_id,
+                        (int) $document->client_matter_id,
+                        (int) $document->id
+                    );
+
                     $clientMatterInfo = ClientMatter::select(['client_unique_matter_no', 'sel_person_responsible'])
                         ->where('id', '=', $document->client_matter_id)->first();
                     if ($clientMatterInfo && $clientMatterInfo->sel_person_responsible) {

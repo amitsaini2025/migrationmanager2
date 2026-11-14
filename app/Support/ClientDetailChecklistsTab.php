@@ -105,9 +105,11 @@ final class ClientDetailChecklistsTab
             return;
         }
 
+        // Only active agreements — re-uploads archive prior rows via archiveOtherActiveAgreements().
         $docsByMatter = Document::query()
             ->whereIn('client_matter_id', $matterIds->all())
             ->where('doc_type', 'agreement')
+            ->whereNull('not_used_doc')
             ->orderByDesc('id')
             ->get()
             ->groupBy('client_matter_id');

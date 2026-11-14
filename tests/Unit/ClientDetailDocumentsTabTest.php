@@ -406,6 +406,55 @@ class ClientDetailDocumentsTabTest extends TestCase
     }
 
     #[Test]
+    public function archive_other_active_agreements_marks_siblings_unused_for_same_matter(): void
+    {
+        $this->createDocumentsSchema();
+
+        $keepId = DB::table('documents')->insertGetId([
+            'client_id' => 40,
+            'client_matter_id' => 9,
+            'doc_type' => 'agreement',
+            'type' => 'client',
+            'file_name' => 'new_agreement.pdf',
+            'status' => null,
+            'not_used_doc' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $oldId = DB::table('documents')->insertGetId([
+            'client_id' => 40,
+            'client_matter_id' => 9,
+            'doc_type' => 'agreement',
+            'type' => 'client',
+            'file_name' => 'old_signed.pdf',
+            'status' => 'signed',
+            'not_used_doc' => null,
+            'created_at' => now()->subDay(),
+            'updated_at' => now()->subDay(),
+        ]);
+
+        $otherMatterId = DB::table('documents')->insertGetId([
+            'client_id' => 40,
+            'client_matter_id' => 10,
+            'doc_type' => 'agreement',
+            'type' => 'client',
+            'file_name' => 'other_matter.pdf',
+            'status' => 'signed',
+            'not_used_doc' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $archived = ClientDetailDocumentsTab::archiveOtherActiveAgreements(40, 9, $keepId);
+
+        Assert::assertSame(1, $archived);
+        Assert::assertSame(1, (int) DB::table('documents')->where('id', $oldId)->value('not_used_doc'));
+        Assert::assertNull(DB::table('documents')->where('id', $keepId)->value('not_used_doc'));
+        Assert::assertNull(DB::table('documents')->where('id', $otherMatterId)->value('not_used_doc'));
+    }
+
+    #[Test]
     public function visa_bulk_mapping_ui_only_lists_visible_current_matter_checklists(): void
     {
         $visaBlade = file_get_contents($this->projectPath('resources/views/crm/clients/tabs/visa_documents.blade.php'));

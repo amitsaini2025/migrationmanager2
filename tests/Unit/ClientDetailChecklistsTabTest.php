@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\CostAssignmentForm;
 use App\Support\ClientDetailChecklistsTab;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -104,6 +105,67 @@ class ClientDetailChecklistsTabTest extends TestCase
         Assert::assertTrue($payload['checklistCurrentMatterNeedsCostAssignment']);
     }
 
+    #[Test]
+    public function attach_agreement_documents_binds_latest_active_and_ignores_archived_rows(): void
+    {
+        $this->createChecklistsTabSchema();
+
+        DB::table('documents')->insert([
+            [
+                'id' => 100,
+                'client_id' => 2,
+                'client_matter_id' => 20,
+                'doc_type' => 'agreement',
+                'status' => 'signed',
+                'signed_doc_link' => 'https://example.test/signed.pdf',
+                'signature_doc_link' => null,
+                'not_used_doc' => 1,
+                'created_at' => now()->subDay(),
+                'updated_at' => now()->subDay(),
+            ],
+            [
+                'id' => 101,
+                'client_id' => 2,
+                'client_matter_id' => 20,
+                'doc_type' => 'agreement',
+                'status' => 'signed',
+                'signed_doc_link' => 'https://example.test/active-signed.pdf',
+                'signature_doc_link' => null,
+                'not_used_doc' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => 102,
+                'client_id' => 2,
+                'client_matter_id' => 20,
+                'doc_type' => 'agreement',
+                'status' => 'sent',
+                'signed_doc_link' => null,
+                'signature_doc_link' => '[{"url":"https://example.test/sign"}]',
+                'not_used_doc' => 1,
+                'created_at' => now()->addMinute(),
+                'updated_at' => now()->addMinute(),
+            ],
+        ]);
+
+        $form = new CostAssignmentForm;
+        $form->forceFill([
+            'id' => 30,
+            'client_id' => 2,
+            'client_matter_id' => 20,
+        ]);
+        $forms = collect([$form]);
+
+        $method = new \ReflectionMethod(ClientDetailChecklistsTab::class, 'attachAgreementDocuments');
+        $method->invoke(null, $forms);
+
+        $agreementDoc = $form->agreement_document;
+        Assert::assertNotNull($agreementDoc);
+        Assert::assertSame(101, (int) $agreementDoc->id);
+        Assert::assertSame('signed', $agreementDoc->status);
+    }
+
     private function createChecklistsTabSchema(): void
     {
         $schema = $this->app->make('db')->connection()->getSchemaBuilder();
@@ -163,11 +225,30 @@ class ClientDetailChecklistsTabTest extends TestCase
         if (! $schema->hasTable('documents')) {
             $schema->create('documents', function (Blueprint $table) {
                 $table->id();
+                $table->unsignedBigInteger('client_id')->nullable();
                 $table->unsignedBigInteger('client_matter_id')->nullable();
                 $table->string('doc_type')->nullable();
+                $table->string('status')->nullable();
+                $table->text('signed_doc_link')->nullable();
+                $table->text('signature_doc_link')->nullable();
+                $table->unsignedTinyInteger('not_used_doc')->nullable();
                 $table->string('myfile')->nullable();
                 $table->timestamps();
             });
+        } else {
+            foreach ([
+                'client_id' => fn (Blueprint $table) => $table->unsignedBigInteger('client_id')->nullable(),
+                'status' => fn (Blueprint $table) => $table->string('status')->nullable(),
+                'signed_doc_link' => fn (Blueprint $table) => $table->text('signed_doc_link')->nullable(),
+                'signature_doc_link' => fn (Blueprint $table) => $table->text('signature_doc_link')->nullable(),
+                'not_used_doc' => fn (Blueprint $table) => $table->unsignedTinyInteger('not_used_doc')->nullable(),
+            ] as $column => $definition) {
+                if (! $schema->hasColumn('documents', $column)) {
+                    $schema->table('documents', function (Blueprint $table) use ($definition) {
+                        $definition($table);
+                    });
+                }
+            }
         }
     }
 }

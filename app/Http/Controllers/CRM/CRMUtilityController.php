@@ -1088,6 +1088,7 @@ class CRMUtilityController extends Controller
         $agreementDoc = Document::query()
             ->where('client_matter_id', '=', $clientMatterId, 'and')
             ->where('doc_type', '=', 'agreement', 'and')
+            ->whereNull('not_used_doc')
             ->latest()
             ->first();
 

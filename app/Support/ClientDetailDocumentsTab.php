@@ -131,6 +131,48 @@ final class ClientDetailDocumentsTab
     }
 
     /**
+     * Keep one active cost/service agreement per client matter.
+     * Marks other active agreement rows as Not Used (same as manual archive).
+     * Call when uploading a replacement or when an agreement finishes signing.
+     */
+    public static function archiveOtherActiveAgreements(
+        int $clientId,
+        ?int $clientMatterId,
+        ?int $exceptDocumentId = null
+    ): int {
+        if ($clientId <= 0) {
+            return 0;
+        }
+
+        $query = Document::query()
+            ->where('client_id', $clientId)
+            ->where('doc_type', 'agreement')
+            ->whereNull('not_used_doc');
+
+        $matterId = (int) ($clientMatterId ?? 0);
+        if ($matterId > 0) {
+            $query->where('client_matter_id', $matterId);
+        } else {
+            $query->where(function (Builder $inner): void {
+                $inner->whereNull('client_matter_id')
+                    ->orWhere('client_matter_id', 0);
+            });
+        }
+
+        if ($exceptDocumentId !== null && $exceptDocumentId > 0) {
+            $query->where('id', '!=', $exceptDocumentId);
+        }
+
+        $archived = 0;
+        foreach ($query->get() as $document) {
+            self::markUnused($document);
+            $archived++;
+        }
+
+        return $archived;
+    }
+
+    /**
      * When a visa/nomination *_signed companion row is active, archive the unsigned
      * parent (same as manual Not Used) so Forms/Visa lists show only the signed copy.
      * No-op for other doc types, already-unused parents, *_signed rows, or missing companions.

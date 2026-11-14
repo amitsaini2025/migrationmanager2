@@ -18,7 +18,8 @@ use App\Models\Document;
 use App\Models\Matter;
 use App\Models\Staff;
 use App\Services\CompanyAgreementDocxPatcher;
-use App\Services\CompanyVisaAgreementMacroBuilder; // Import the ClientAddress model
+use App\Services\CompanyVisaAgreementMacroBuilder;
+use App\Services\JobReadyAgreementFeeTablePatcher; // Import the ClientAddress model
 // Import the ClientAddress model
 // Import the ClientAddress model
 // Import the ClientAddress model
@@ -27,14 +28,14 @@ use App\Services\CompanyVisaAgreementMacroBuilder; // Import the ClientAddress m
 // Import the ClientAddress model
 // Import the ClientAddress model
 // Import the ClientAddress model
-use App\Services\JobReadyAgreementFeeTablePatcher; // Import the AppointmentConsultant model
-use App\Services\PsaAgreementSection4SummaryTablePatcher;
+use App\Services\PsaAgreementSection4SummaryTablePatcher; // Import the AppointmentConsultant model
 use App\Services\PsaAgreementServiceTypeRowPatcher;
 use App\Services\VisaAgreementAmountTablePatcher;
 use App\Services\VisaAgreementApplicantAddressResolver;
 use App\Services\VisaAgreementGeneralServiceTypeTablePatcher;
 use App\Services\VisaAgreementServiceTypeRowPatcher;
 use App\Services\VisaAgreementTemplateResolver;
+use App\Support\ClientDetailDocumentsTab;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -1277,6 +1278,15 @@ trait ClientAgreements
         $matterIdRaw = $requestData['clientmatterid'] ?? null;
         $doc->client_matter_id = ($matterIdRaw === null || $matterIdRaw === '') ? null : (int) $matterIdRaw;
         $saved = $doc->save();
+
+        // One active agreement per matter: archive prior rows so Checklist binds this upload.
+        if ($saved) {
+            ClientDetailDocumentsTab::archiveOtherActiveAgreements(
+                (int) $admin->id,
+                $doc->client_matter_id ? (int) $doc->client_matter_id : null,
+                (int) $doc->id
+            );
+        }
 
         // 6. Log activity if saved
         if ($saved) {

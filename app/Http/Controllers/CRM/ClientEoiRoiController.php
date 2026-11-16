@@ -588,6 +588,9 @@ class ClientEoiRoiController extends Controller
     /**
      * Get visa documents for EOI email attachment selection (compose modal)
      *
+     * Uses DB file_size + batched category titles so the compose modal list
+     * stays fast. S3 is only touched later when selected files are attached/sent.
+     *
      * GET /clients/{client}/eoi-roi/visa-documents?eoi_number=E012345
      */
     public function getVisaDocuments(Request $request, Admin $client): JsonResponse
@@ -596,39 +599,40 @@ class ClientEoiRoiController extends Controller
             $eoiNumber = $request->input('eoi_number');
 
             // Get all visa documents for this client
-            $documents = Document::where('client_id', $client->id)
+            $documents = Document::query()
+                ->select([
+                    'id',
+                    'file_name',
+                    'folder_name',
+                    'file_size',
+                    'created_at',
+                ])
+                ->where('client_id', $client->id)
                 ->where('doc_type', 'visa')
                 ->where('type', 'client')
                 ->whereNull('not_used_doc')
                 ->whereNotNull('myfile')
-                ->orderBy('created_at', 'desc')
+                ->orderByDesc('created_at')
                 ->get();
+
+            $categoryTitles = VisaDocumentType::query()
+                ->whereIn(
+                    'id',
+                    $documents->pluck('folder_name')->filter()->unique()->values()->all()
+                )
+                ->pluck('title', 'id');
 
             $eoiReferences = [];
             $otherDocuments = [];
 
             foreach ($documents as $doc) {
-                // Get category title from VisaDocumentType
                 $categoryTitle = 'Uncategorized';
-                if ($doc->folder_name) {
-                    $visaDocType = VisaDocumentType::find($doc->folder_name);
-                    if ($visaDocType) {
-                        $categoryTitle = $visaDocType->title;
-                    }
+                if ($doc->folder_name && isset($categoryTitles[$doc->folder_name])) {
+                    $categoryTitle = (string) $categoryTitles[$doc->folder_name];
                 }
 
-                // Calculate file size
-                $fileSizeMb = 0;
-                $s3Key = $this->getS3KeyFromUrl($doc->myfile, $doc->myfile_key, $client->id);
-                if ($s3Key) {
-                    try {
-                        if (Storage::disk('s3')->exists($s3Key)) {
-                            $fileSizeMb = round(Storage::disk('s3')->size($s3Key) / 1048576, 2);
-                        }
-                    } catch (\Exception $e) {
-                        Log::warning('Failed to get file size', ['doc_id' => $doc->id, 'error' => $e->getMessage()]);
-                    }
-                }
+                // Prefer stored size (bytes) — avoid per-file S3 round-trips on list
+                $fileSizeMb = round(max(0, (float) $doc->file_size) / 1048576, 2);
 
                 $docData = [
                     'id' => $doc->id,

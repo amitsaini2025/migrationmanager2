@@ -1821,7 +1821,12 @@ class DocumentController extends Controller
         try {
             $document = Document::findOrFail($id);
             $this->authorizeDocumentAssociatedAccess($document);
-            $signer = $document->signers()->where('user_id', auth('admin')->id())->first();
+
+            // Signers are identified by email (see Document visibility / sendSigningLink), not user_id.
+            $adminEmail = auth('admin')->user()?->email;
+            $signer = $adminEmail
+                ? $document->signers()->where('email', $adminEmail)->first()
+                : null;
 
             if (! $signer || $signer->status === 'signed') {
                 return redirect('/')->with('error', 'Invalid or expired signing link.');

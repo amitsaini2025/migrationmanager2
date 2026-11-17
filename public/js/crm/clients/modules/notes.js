@@ -46,7 +46,15 @@
             data: { clientid: window.ClientDetailConfig.clientId, type: 'client' },
             success: function(responses) {
                 $('.popuploader').hide();
-                $('.note_term_list').html(responses);
+                var $notesList = $('.note_term_list');
+                $notesList.html(responses);
+
+                // AJAX HTML uses Lucide data-lucide placeholders; hydrate before filter/layout.
+                if (typeof refreshLucideIcons === 'function') {
+                    $notesList.each(function() {
+                        refreshLucideIcons(this);
+                    });
+                }
 
                 if (typeof window.filterNotes === 'function') {
                     window.filterNotes();

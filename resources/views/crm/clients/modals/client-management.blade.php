@@ -124,9 +124,9 @@
 </div>
 
 <style>
-    .dropdown-toggle::after {
-        margin-left: 16.255em !important;
-    }
+    /* Do not set a global .dropdown-toggle::after margin here — it pushes
+       Bootstrap carets off-screen on notes and other kebab menus. Assign Staff
+       uses a custom input + chevron, not .dropdown-toggle. */
 
     /* Custom styles for the assignee dropdown */
     #create_action_popup .dropdown-menu {

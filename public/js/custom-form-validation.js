@@ -898,8 +898,13 @@ function customValidate(formName, savetype = '')
 									type:'GET',
 									data:{clientid:client_id,type:'partner'},
 									success: function(responses){
-
-										$('.note_term_list').html(responses);
+										var $notesList = $('.note_term_list');
+										$notesList.html(responses);
+										if (typeof refreshLucideIcons === 'function') {
+											$notesList.each(function() {
+												refreshLucideIcons(this);
+											});
+										}
 									}
 								});
 
@@ -2656,7 +2661,13 @@ function customValidate(formName, savetype = '')
 										type:'GET',
 										data:{clientid:client_id,type:'client'},
 										success: function(responses){
-											$('.note_term_list').html(responses);
+											var $notesList = $('.note_term_list');
+											$notesList.html(responses);
+											if (typeof refreshLucideIcons === 'function') {
+												$notesList.each(function() {
+													refreshLucideIcons(this);
+												});
+											}
 											if (typeof window.filterNotes === 'function') {
 												window.filterNotes();
 											}
@@ -2711,7 +2722,13 @@ function customValidate(formName, savetype = '')
 										type:'GET',
 										data:{clientid:client_id,type:'client'},
 										success: function(responses){
-											$('.note_term_list').html(responses);
+											var $notesList = $('.note_term_list');
+											$notesList.html(responses);
+											if (typeof refreshLucideIcons === 'function') {
+												$notesList.each(function() {
+													refreshLucideIcons(this);
+												});
+											}
 											if (typeof window.filterNotes === 'function') {
 												window.filterNotes();
 											}

@@ -206,8 +206,12 @@
                             vertical-align: baseline;
                         }
                         .note-toggle-btn-div-type {
-                            display:inline-grid;
-                            width: 133px;
+                            display: inline-flex;
+                            align-items: center;
+                            width: auto;
+                        }
+                        .note-toggle-btn-div .dropdown-toggle::after {
+                            margin-left: 0.35em;
                         }
                         .pined_note {
                             position: absolute;

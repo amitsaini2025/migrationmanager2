@@ -1418,10 +1418,13 @@
             var modal = document.getElementById('migrateLeadModal');
             var openBtn = document.getElementById('openMigrateLeadModal');
             var submitBtn = document.getElementById('migrateLeadSubmitBtn');
+            var submitLabel = submitBtn ? submitBtn.querySelector('.migrate-lead-submit-label') : null;
             var messageEl = document.getElementById('migrateLeadMessage');
             var emailInput = document.getElementById('migrate_lead_email');
             var phoneInput = document.getElementById('migrate_lead_phone');
             var channel = 'email';
+            var isSending = false;
+            var defaultSubmitLabel = 'Send invite';
             var sendUrl = @json(route('leads.migrate-invite.send'));
             var csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
                 || document.querySelector('#createLeadForm input[name="_token"]')?.value
@@ -1429,13 +1432,14 @@
 
             function showModal() {
                 if (!modal) return;
+                setSending(false);
                 modal.style.display = 'flex';
                 modal.setAttribute('aria-hidden', 'false');
                 clearMessage();
             }
 
             function hideModal() {
-                if (!modal) return;
+                if (!modal || isSending) return;
                 modal.style.display = 'none';
                 modal.setAttribute('aria-hidden', 'true');
             }
@@ -1454,7 +1458,26 @@
                 messageEl.textContent = text;
             }
 
+            function setSending(loading) {
+                isSending = !!loading;
+                if (!submitBtn) return;
+
+                submitBtn.disabled = isSending;
+                submitBtn.classList.toggle('is-loading', isSending);
+                submitBtn.setAttribute('aria-busy', isSending ? 'true' : 'false');
+                if (submitLabel) {
+                    submitLabel.textContent = isSending ? 'Sending…' : defaultSubmitLabel;
+                }
+
+                if (emailInput) emailInput.disabled = isSending;
+                if (phoneInput) phoneInput.disabled = isSending;
+                document.querySelectorAll('.migrate-lead-tab').forEach(function (tab) {
+                    tab.disabled = isSending;
+                });
+            }
+
             function setChannel(next) {
+                if (isSending) return;
                 channel = next;
                 document.querySelectorAll('.migrate-lead-tab').forEach(function (tab) {
                     tab.classList.toggle('active', tab.getAttribute('data-migrate-channel') === next);
@@ -1481,8 +1504,10 @@
 
             if (submitBtn) {
                 submitBtn.addEventListener('click', function () {
+                    if (isSending) return;
+
                     clearMessage();
-                    submitBtn.disabled = true;
+                    setSending(true);
                     var body = { channel: channel };
                     if (channel === 'email') {
                         body.email = (emailInput && emailInput.value || '').trim();
@@ -1514,7 +1539,7 @@
                     }).catch(function () {
                         showMessage('Unable to send invite. Please try again.', true);
                     }).finally(function () {
-                        submitBtn.disabled = false;
+                        setSending(false);
                     });
                 });
             }

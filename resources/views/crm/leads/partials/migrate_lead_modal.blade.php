@@ -28,7 +28,10 @@
         </div>
         <div class="migrate-lead-modal__footer">
             <button type="button" class="btn btn-secondary" data-migrate-lead-close>Cancel</button>
-            <button type="button" class="btn btn-primary" id="migrateLeadSubmitBtn">Send invite</button>
+            <button type="button" class="btn btn-primary" id="migrateLeadSubmitBtn">
+                <span class="migrate-lead-submit-spinner" aria-hidden="true"></span>
+                <span class="migrate-lead-submit-label">Send invite</span>
+            </button>
         </div>
     </div>
 </div>
@@ -45,10 +48,17 @@
 .migrate-lead-channel-tabs{display:flex;gap:8px;margin-bottom:14px}
 .migrate-lead-tab{flex:1;border:1px solid #c8d4e3;background:#fff;color:#314862;border-radius:8px;padding:9px 10px;font-size:13px;font-weight:600;cursor:pointer}
 .migrate-lead-tab.active{background:#e8f2ff;border-color:#0f4d93;color:#0f4d93}
+.migrate-lead-tab:disabled{opacity:.6;cursor:not-allowed}
 .migrate-lead-field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
 .migrate-lead-field input{width:100%;border:1px solid #c8d4e3;border-radius:8px;min-height:42px;padding:8px 12px;font-size:14px}
+.migrate-lead-field input:disabled{background:#f3f6fa;color:#4a5b70;cursor:not-allowed}
 .migrate-lead-message{margin-top:12px;padding:10px 12px;border-radius:8px;font-size:13px}
 .migrate-lead-message.is-error{background:#fff5f5;color:#8a1f2f;border:1px solid #f0c2c8}
 .migrate-lead-message.is-success{background:#f0fff4;color:#1e6b3a;border:1px solid #b7e4c7}
 .migrate-lead-modal__footer{display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid #e6eef8;background:#fafbfd}
+#migrateLeadSubmitBtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:118px}
+#migrateLeadSubmitBtn .migrate-lead-submit-spinner{display:none;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:migrate-lead-spin .7s linear infinite;flex-shrink:0}
+#migrateLeadSubmitBtn.is-loading{opacity:.85;cursor:wait;pointer-events:none}
+#migrateLeadSubmitBtn.is-loading .migrate-lead-submit-spinner{display:inline-block}
+@keyframes migrate-lead-spin{to{transform:rotate(360deg)}}
 </style>

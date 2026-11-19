@@ -19,6 +19,7 @@ class CheckInLookupService
      * Search clients and leads by phone (and optionally email).
      *
      * Returns a Collection of Admin models (type = client|lead).
+     * Excludes soft-deleted and archived records (same active CRM rules as uniqueness checks).
      * When $email is provided the query is ANDed so the result set is narrower.
      */
     public function lookup(string $rawPhone, ?string $email = null): Collection
@@ -31,7 +32,6 @@ class CheckInLookupService
         }
 
         $query = Admin::whereIn('type', ['client', 'lead'])
-            ->whereNull('is_deleted')
             ->where(function ($q) use ($normalized, $phone) {
                 $q->whereRaw(
                     "REGEXP_REPLACE(COALESCE(phone, ''), '[^0-9]', '', 'g') LIKE ?",
@@ -46,6 +46,9 @@ class CheckInLookupService
         if (! empty($email)) {
             $query->where('email', 'like', '%'.trim($email).'%');
         }
+
+        // Same active-record rules as CRM uniqueness/lists: exclude deleted + archived.
+        Admin::constrainToActiveCrmRecords($query);
 
         return $query
             ->with('company')

@@ -367,22 +367,24 @@
                 </div>
             </div>
 
-            {{-- ── STEP 2c: Minimal lead form ────────────────────── --}}
+            {{-- ── STEP 2c: New lead form (Migration Client Enquiry fields) ── --}}
             <div class="fd-wizard-step" id="fdStepLeadForm">
-                <h6 class="fd-step-title mb-3 text-uppercase small">Your Details</h6>
+                <h6 class="fd-step-title mb-3 text-uppercase small">Migration Client Enquiry Details</h6>
+                <p class="text-muted small mb-3">Same enquiry fields as the Migration Client Enquiry Form. Phone/email come from Look Up.</p>
 
                 <div class="row">
                     <div class="col-sm-6">
                         <div class="form-group">
                             <label class="font-weight-600">First Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="fdLeadFirstName" maxlength="100" autocomplete="off">
+                            <input type="text" class="form-control" id="fdLeadFirstName" maxlength="70" autocomplete="off" placeholder="Enter first name">
                             <div class="invalid-feedback" id="fdLeadFirstNameError"></div>
                         </div>
                     </div>
                     <div class="col-sm-6">
                         <div class="form-group">
-                            <label class="font-weight-600">Last Name</label>
-                            <input type="text" class="form-control" id="fdLeadLastName" maxlength="100" autocomplete="off">
+                            <label class="font-weight-600">Last Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="fdLeadLastName" maxlength="70" autocomplete="off" placeholder="Enter last name">
+                            <div class="invalid-feedback" id="fdLeadLastNameError"></div>
                         </div>
                     </div>
                 </div>
@@ -390,17 +392,104 @@
                 <div class="row">
                     <div class="col-sm-6">
                         <div class="form-group">
-                            <label class="font-weight-600">Phone</label>
+                            <label class="font-weight-600">Phone / WhatsApp Number <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="fdLeadPhoneDisplay" readonly>
                         </div>
                     </div>
                     <div class="col-sm-6">
                         <div class="form-group">
-                            <label class="font-weight-600">Email</label>
+                            <label class="font-weight-600">Email Address</label>
                             <input type="text" class="form-control" id="fdLeadEmailDisplay" readonly>
                         </div>
                     </div>
                 </div>
+
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="font-weight-600">Date of Birth</label>
+                            <input type="date" class="form-control" id="fdLeadDob">
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="font-weight-600">Marital Status</label>
+                            <select class="form-control" id="fdLeadMaritalStatus">
+                                <option value="">Select (optional)</option>
+                                @foreach (['Single','Married','De facto','Separated / Divorced','Widowed'] as $opt)
+                                    <option value="{{ $opt }}">{{ $opt }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-3">
+                <h6 class="text-uppercase small text-muted mb-3">Location &amp; Visa Information</h6>
+
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="font-weight-600">City / State / Country</label>
+                            <input type="text" class="form-control" id="fdLeadCity" maxlength="120" placeholder="e.g. Melbourne, VIC">
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="font-weight-600">Current Australian Visa (if applicable)</label>
+                            <select class="form-control" id="fdLeadCurrentVisa">
+                                <option value="">Select (optional)</option>
+                                @foreach (\App\Support\LeadMigrateInviteChannels::currentVisaOptions() as $opt)
+                                    <option value="{{ $opt }}">{{ $opt }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="font-weight-600">Current Visa Expiry Date</label>
+                            <input type="date" class="form-control" id="fdLeadVisaExpiry">
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-3">
+                <h6 class="text-uppercase small text-muted mb-3">Qualification &amp; Work Experience</h6>
+
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="font-weight-600">Highest Completed Qualification</label>
+                            <select class="form-control" id="fdLeadQualification">
+                                <option value="">Select (optional)</option>
+                                @foreach (\App\Support\LeadMigrateInviteChannels::qualificationLevels() as $opt)
+                                    <option value="{{ $opt }}">{{ \App\Support\LeadMigrateInviteChannels::qualificationLevelLabel($opt) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="font-weight-600">Qualification Completion Date</label>
+                            <input type="date" class="form-control" id="fdLeadQualificationDate">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="font-weight-600">Current / Most Recent Occupation</label>
+                            <input type="text" class="form-control" id="fdLeadOccupation" maxlength="130" placeholder="e.g. Chef, Accountant, Engineer">
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-3">
+                <h6 class="text-uppercase small text-muted mb-3">Visit</h6>
 
                 <div class="form-group">
                     <label class="font-weight-600">Reason for Visit <span class="text-danger">*</span></label>
@@ -787,12 +876,22 @@
         // Clear any previous lead-form values and validation state
         $('#fdLeadFirstName').value          = '';
         $('#fdLeadLastName').value           = '';
+        $('#fdLeadDob').value                = '';
+        $('#fdLeadMaritalStatus').value      = '';
+        $('#fdLeadCity').value               = '';
+        $('#fdLeadCurrentVisa').value        = '';
+        $('#fdLeadVisaExpiry').value         = '';
+        $('#fdLeadQualification').value      = '';
+        $('#fdLeadQualificationDate').value  = '';
+        $('#fdLeadOccupation').value         = '';
         $('#fdLeadVisitReason').value        = '';
         $('#fdLeadVisitNotes').value         = '';
         $('#fdLeadFirstName').classList.remove('is-invalid');
+        $('#fdLeadLastName').classList.remove('is-invalid');
         $('#fdLeadVisitReason').classList.remove('is-invalid');
         $('#fdLeadVisitNotes').classList.remove('is-invalid');
         $('#fdLeadFirstNameError').textContent    = '';
+        $('#fdLeadLastNameError').textContent     = '';
         $('#fdLeadVisitReasonError').textContent  = '';
         $('#fdLeadVisitNotesError').textContent   = '';
         hide($('#fdLeadNotesRequired'));
@@ -827,6 +926,7 @@
 
     $('#fdLeadSubmitBtn').addEventListener('click', function () {
         var firstName = $('#fdLeadFirstName').value.trim();
+        var lastName  = $('#fdLeadLastName').value.trim();
         var reason    = $('#fdLeadVisitReason').value;
         var notes     = $('#fdLeadVisitNotes').value.trim();
         var valid     = true;
@@ -837,6 +937,14 @@
             valid = false;
         } else {
             $('#fdLeadFirstName').classList.remove('is-invalid');
+        }
+
+        if (!lastName) {
+            $('#fdLeadLastName').classList.add('is-invalid');
+            $('#fdLeadLastNameError').textContent = 'Last name is required.';
+            valid = false;
+        } else {
+            $('#fdLeadLastName').classList.remove('is-invalid');
         }
 
         if (!reason) {
@@ -862,9 +970,17 @@
 
         post(BASE + '/create-lead', {
             first_name:   firstName,
-            last_name:    $('#fdLeadLastName').value.trim() || null,
+            last_name:    lastName,
             phone:        state.phone,
             email:        state.email || null,
+            dob:          $('#fdLeadDob').value || null,
+            marital_status: $('#fdLeadMaritalStatus').value || null,
+            city:         $('#fdLeadCity').value.trim() || null,
+            current_visa: $('#fdLeadCurrentVisa').value || null,
+            visa_expiry:  $('#fdLeadVisaExpiry').value || null,
+            qualification: $('#fdLeadQualification').value || null,
+            qualification_date: $('#fdLeadQualificationDate').value || null,
+            occupation:   $('#fdLeadOccupation').value.trim() || null,
             visit_reason: reason || null,
             visit_notes:  notes  || null,
         }).then(function (data) {

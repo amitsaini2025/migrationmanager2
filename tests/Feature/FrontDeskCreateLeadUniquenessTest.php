@@ -54,6 +54,8 @@ class FrontDeskCreateLeadUniquenessTest extends TestCase
                 'last_name' => 'Visitor',
                 'phone' => '0412 345-678',
                 'email' => 'brand.new@test.com',
+                'visit_reason' => 'other',
+                'visit_notes' => 'test',
             ]);
 
         $response->assertStatus(422);

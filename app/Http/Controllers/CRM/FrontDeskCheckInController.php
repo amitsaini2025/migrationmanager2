@@ -14,6 +14,7 @@ use App\Services\ClientReferenceService;
 use App\Services\FrontDesk\CheckInAppointmentService;
 use App\Services\FrontDesk\CheckInLookupService;
 use App\Services\FrontDesk\CheckInNotificationService;
+use App\Services\LeadEnquiryProfileService;
 use App\Support\StaffClientVisibility;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -34,6 +35,7 @@ class FrontDeskCheckInController extends Controller
         private readonly CheckInAppointmentService $appointments,
         private readonly CheckInNotificationService $notifier,
         private readonly ClientReferenceService $refService,
+        private readonly LeadEnquiryProfileService $enquiryProfile,
     ) {
         $this->middleware('auth:admin');
     }
@@ -299,14 +301,14 @@ class FrontDeskCheckInController extends Controller
 
         $reasonKeys = array_keys(FrontDeskCheckIn::visitReasons());
 
-        $validated = $request->validate([
-            'first_name' => 'required|string|max:100',
-            'last_name' => 'nullable|string|max:100',
-            'phone' => 'required|string|min:6|max:20',
-            'email' => 'nullable|email|max:255',
+        $validated = $request->validate(array_merge([
+            'first_name' => ['required', 'string', 'max:70'],
+            'last_name' => ['required', 'string', 'max:70'],
+            'phone' => ['required', 'string', 'min:6', 'max:25'],
+            'email' => ['nullable', 'email', 'max:150'],
             'visit_reason' => ['nullable', 'string', 'max:100', Rule::in($reasonKeys)],
-            'visit_notes' => 'nullable|string|max:2000',
-        ]);
+            'visit_notes' => ['nullable', 'string', 'max:2000'],
+        ], LeadEnquiryProfileService::detailRules()));
 
         if (($validated['visit_reason'] ?? null) === 'other' && empty($validated['visit_notes'])) {
             return response()->json([
@@ -361,7 +363,7 @@ class FrontDeskCheckInController extends Controller
 
             $lead = Admin::create([
                 'first_name' => $validated['first_name'],
-                'last_name' => $validated['last_name'] ?? null,
+                'last_name' => $validated['last_name'],
                 'phone' => $phone,
                 'email' => $email,
                 'type' => 'lead',
@@ -380,7 +382,13 @@ class FrontDeskCheckInController extends Controller
                 'specialist_education' => 0,
                 'regional_study' => 0,
                 'is_company' => 0,
+                'manual_form_fill' => 1,
+                'visa_type' => null,
             ]);
+
+            // forceFill: Admin::$fillable omits dob; keep city/marital/etc aligned with migrate enquiry.
+            $lead->forceFill($this->enquiryProfile->adminAttributesFromPayload($validated))->save();
+            $this->enquiryProfile->syncRelatedRecords($lead, (int) $staff->id, $validated);
 
             $checkIn = FrontDeskCheckIn::create([
                 'admin_id' => $staff->id,

@@ -107,6 +107,9 @@ body, html { overflow-x: hidden !important; max-width: 100% !important; }
 											</thead>
 											<tbody class="tdata checindata">
 												@if(@$totalData !== 0)
+												@php
+													$migrateAssigneeIds = ($migrateAssigneeStaff ?? collect())->pluck('id')->map(static fn ($id) => (int) $id)->all();
+												@endphp
 												@foreach (@$lists as $list)
 												<tr did="{{@$list->id}}" id="id_{{@$list->id}}" data-status="{{ (int) $list->status }}" @if((int) request('checkin') === (int) $list->id) style="background-color:#e8f1ff;" @endif>
 													<td style="white-space: initial;"><a id="{{@$list->id}}" class="opencheckindetail" href="javascript:;">#{{$list->id}}</a></td>
@@ -140,19 +143,24 @@ body, html { overflow-x: hidden !important; max-width: 100% !important; }
 														$isMigrateEnquiryWaiting = $activeTab === 'waiting'
 															&& (int) $list->status === 0
 															&& \App\Support\LeadMigrateInviteChannels::isMigrateEnquiryVisit($list->visit_purpose);
+														$hasAllowlistedMigrateAssignee = $isMigrateEnquiryWaiting
+															&& in_array((int) $list->user_id, $migrateAssigneeIds, true);
 														?>
-														@if($admin)
+														@if($isMigrateEnquiryWaiting)
+															{{-- Before allowlisted assign: only Set Assignee. After: assignee only (no link). --}}
+															@if($hasAllowlistedMigrateAssignee && $admin)
+																<a href="{{ route('adminconsole.staff.view', $admin->id) }}">{{$admin->first_name}} {{$admin->last_name}}</a><br>{{$admin->email}}
+															@else
+																<a href="javascript:;"
+																	class="open-migrate-enquiry-assignee"
+																	data-id="{{ $list->id }}"
+																	data-current-assignee=""
+																	style="font-size:12px;font-weight:600;">Set Assignee</a>
+															@endif
+														@elseif($admin)
 															<a href="{{ route('adminconsole.staff.view', $admin->id) }}">{{$admin->first_name}} {{$admin->last_name}}</a><br>{{$admin->email}}
 														@else
 															<span class="text-muted">Not Assigned</span>
-														@endif
-														@if($isMigrateEnquiryWaiting)
-															<br>
-															<a href="javascript:;"
-																class="open-migrate-enquiry-assignee"
-																data-id="{{ $list->id }}"
-																data-current-assignee="{{ (int) $list->user_id }}"
-																style="font-size:12px;font-weight:600;">Set Assignee</a>
 														@endif
 													</td>
 													<td id="count{{$list->id}}" data-checkintime="{{date('Y-m-d H:i:s',strtotime($list->created_at))}}"><?php if($list->status == 0){ ?><span id="waitcount"> 00h:00m:00s</span><?php }else if($list->status == 2){ echo '<span>'.$list->wait_time.'</span>'; }else if($list->status == 1){ echo '<span>'.($list->wait_time ?? '-').'</span>'; }else{ echo '<span>-</span>'; } ?></td>

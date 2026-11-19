@@ -308,7 +308,6 @@ class LeadMigrateInviteService
         $ref = $this->clientReferenceService->generateClientReference($firstName !== '' ? $firstName : 'Lead');
 
         $enquiryBits = array_filter([
-            trim((string) ($payload['migration_service'] ?? '')),
             trim((string) ($payload['city'] ?? '')),
             trim((string) ($payload['enquiry_notes'] ?? '')),
         ]);
@@ -342,7 +341,7 @@ class LeadMigrateInviteService
             'address' => $enquiryBits !== [] ? implode(' | ', $enquiryBits) : null,
             'city' => $this->nullableString($payload['city'] ?? null),
             'country' => $this->mapLivingInCountry($payload['currently_living_in'] ?? null),
-            'country_passport' => $this->nullableString($payload['nationality'] ?? null),
+            'country_passport' => null,
             'visa_type' => null,
             'manual_form_fill' => 1,
             'source' => $invite->source,
@@ -446,16 +445,10 @@ class LeadMigrateInviteService
     {
         $currentVisa = trim((string) ($payload['current_visa'] ?? ''));
         $expiry = $this->nullableDate($payload['visa_expiry'] ?? null);
-        $migrationService = trim((string) ($payload['migration_service'] ?? ''));
 
-        if ($currentVisa === '' && $expiry === null && $migrationService === '') {
+        if ($currentVisa === '' && $expiry === null) {
             return;
         }
-
-        $descriptionParts = array_filter([
-            $currentVisa !== '' ? $currentVisa : null,
-            $migrationService !== '' ? 'Service required: '.$migrationService : null,
-        ]);
 
         $matterId = $this->resolveMatterIdForCurrentVisa($currentVisa);
 
@@ -463,7 +456,7 @@ class LeadMigrateInviteService
             'admin_id' => $assigneeStaffId,
             'client_id' => $admin->id,
             'visa_type' => $matterId,
-            'visa_description' => $descriptionParts !== [] ? implode(' | ', $descriptionParts) : null,
+            'visa_description' => $currentVisa !== '' ? $currentVisa : null,
             'visa_expiry_date' => $expiry,
             'visa_grant_date' => null,
             'created_at' => now(),
@@ -578,13 +571,11 @@ class LeadMigrateInviteService
             'phone' => ['required', 'string', 'max:25'],
             'email' => ['required', 'email', 'max:150'],
             'dob' => ['nullable', 'date'],
-            'nationality' => ['nullable', 'string', 'max:70'],
             'marital_status' => ['nullable', 'string', 'max:70'],
             'currently_living_in' => ['required', 'string', 'max:70'],
             'city' => ['nullable', 'string', 'max:120'],
             'current_visa' => ['nullable', 'string', Rule::in(LeadMigrateInviteChannels::currentVisaOptions())],
             'visa_expiry' => ['nullable', 'date'],
-            'migration_service' => ['required', 'string', 'max:160'],
             'qualification' => ['nullable', 'string', Rule::in(LeadMigrateInviteChannels::qualificationLevels())],
             'qualification_date' => ['nullable', 'date'],
             'occupation' => ['nullable', 'string', 'max:130'],

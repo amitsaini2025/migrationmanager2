@@ -89,10 +89,6 @@
             <input id="dob" name="dob" type="date" value="{{ old('dob') }}">
           </div>
           <div class="field">
-            <label for="nationality">Citizenship / Nationality</label>
-            <input id="nationality" name="nationality" value="{{ old('nationality') }}" autocomplete="country-name" maxlength="70" placeholder="e.g. Indian">
-          </div>
-          <div class="field">
             <label for="marital_status">Marital Status</label>
             <select id="marital_status" name="marital_status">
               <option value="">Select (optional)</option>
@@ -137,22 +133,7 @@
       </section>
 
       <section>
-        <div class="section-title"><span class="number">03</span><h2>Migration Enquiry</h2></div>
-        <div class="fields">
-          <div class="field wide">
-            <label for="migration_service">Migration Service Required <span class="required">*</span></label>
-            <select id="migration_service" name="migration_service" required>
-              <option value="">Select the service you need</option>
-              @foreach (['Skilled Migration (189 / 190 / 491)','Skills Assessment','Employer Sponsored Visa (482 / 186 / 494)','Student Visa (500)','Temporary Graduate Visa (485)','Partner / Family Visa','Visitor Visa','Training Visa (407)','Visa Refusal / ART Review','Other / Unsure'] as $opt)
-                <option value="{{ $opt }}" @selected(old('migration_service') === $opt)>{{ $opt }}</option>
-              @endforeach
-            </select>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div class="section-title"><span class="number">04</span><h2>Qualification &amp; Work Experience</h2></div>
+        <div class="section-title"><span class="number">03</span><h2>Qualification &amp; Work Experience</h2></div>
         <div class="fields">
           <div class="field">
             <label for="qualification">Highest Completed Qualification</label>
@@ -193,7 +174,7 @@
       </section>
 
       <section>
-        <div class="section-title"><span class="number">05</span><h2>Additional Enquiry</h2></div>
+        <div class="section-title"><span class="number">04</span><h2>Additional Enquiry</h2></div>
         <div class="fields">
           <div class="field wide">
             <label for="enquiry_notes">Briefly Describe Your Enquiry (Optional)</label>

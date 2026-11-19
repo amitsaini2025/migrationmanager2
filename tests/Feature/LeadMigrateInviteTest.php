@@ -166,7 +166,6 @@ class LeadMigrateInviteTest extends TestCase
             'city' => 'Melbourne, VIC',
             'current_visa' => 'Student (500)',
             'visa_expiry' => '2027-01-31',
-            'migration_service' => 'Skilled Migration (189 / 190 / 491)',
             'qualification' => 'Bachelor Degree',
             'qualification_date' => '2020-06-15',
             'occupation' => 'Software Engineer',
@@ -204,8 +203,7 @@ class LeadMigrateInviteTest extends TestCase
         $visa = ClientVisaCountry::query()->where('client_id', $lead->id)->first();
         $this->assertNotNull($visa);
         $this->assertSame('2027-01-31', (string) $visa->visa_expiry_date);
-        $this->assertStringContainsString('Student (500)', (string) $visa->visa_description);
-        $this->assertStringContainsString('Skilled Migration (189 / 190 / 491)', (string) $visa->visa_description);
+        $this->assertSame('Student (500)', (string) $visa->visa_description);
 
         $invite->refresh();
         $this->assertFalse($invite->isUsable());

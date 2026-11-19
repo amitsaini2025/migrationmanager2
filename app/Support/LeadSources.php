@@ -7,6 +7,20 @@ use Illuminate\Validation\Rule;
 class LeadSources
 {
     /**
+     * System sources set outside the CRM dropdown (not staff-selectable on create).
+     *
+     * @return list<string>
+     */
+    public static function systemSources(): array
+    {
+        return [
+            'public_lead_inquiry',
+            LeadMigrateInviteChannels::SOURCE_EMAIL,
+            LeadMigrateInviteChannels::SOURCE_SMS,
+        ];
+    }
+
+    /**
      * Old CRM placeholder values — treat as "not selected" on edit/detail.
      *
      * @return list<string>
@@ -49,6 +63,15 @@ class LeadSources
     {
         if (self::isLegacyUnset($value)) {
             return null;
+        }
+
+        $migrateLabel = LeadMigrateInviteChannels::displaySourceLabel($value);
+        if ($migrateLabel !== $value && $migrateLabel !== null) {
+            return $migrateLabel;
+        }
+
+        if ($value === 'public_lead_inquiry') {
+            return 'Public Lead Inquiry';
         }
 
         return $value;

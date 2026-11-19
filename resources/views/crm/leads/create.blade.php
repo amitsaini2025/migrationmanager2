@@ -98,6 +98,72 @@
         .mm-select-contact-person {
             width: 100% !important;
         }
+
+        /* Migrate Lead sits above the Create New Lead box (create page only) */
+        .lead-create-sidebar-stack {
+            grid-column: 1;
+            grid-row: 2;
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 280px;
+            max-height: 80vh;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .lead-create-sidebar-stack .sidebar-navigation {
+            position: relative;
+            left: auto;
+            top: auto;
+            transform: none;
+            width: 100%;
+            max-height: none;
+            flex: 1 1 auto;
+            overflow-y: auto;
+        }
+
+        .migrate-lead-above-btn {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            gap: 10px;
+            padding: 12px 16px;
+            border: 1px solid #c8d4e3;
+            border-radius: 12px;
+            background: #fff;
+            color: #0f4d93;
+            font-size: 0.95em;
+            font-weight: 600;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .migrate-lead-above-btn:hover {
+            background: #e8f2ff;
+            border-color: #0f4d93;
+        }
+
+        .migrate-lead-above-btn i,
+        .migrate-lead-above-btn svg {
+            width: 16px;
+            text-align: center;
+        }
+
+        @media (max-width: 1024px) {
+            .lead-create-sidebar-stack {
+                position: relative;
+                left: auto;
+                top: auto;
+                transform: none;
+                width: 100%;
+                max-height: none;
+            }
+        }
     </style>
 @endpush
 
@@ -111,30 +177,39 @@
                 @icon('fa-bars')
             </button>
 
-            <!-- Sidebar Navigation -->
-            <div class="sidebar-navigation" id="sidebarNav">
-                <div class="nav-header">
-                    <h3>@icon('fa-user-plus') Create New Lead</h3>
-                </div>
-                <nav class="nav-menu">
-                    <button class="nav-item active" onclick="scrollToSection('personalSection')">
-                        @icon('fa-user-circle')
-                        <span>Personal</span>
-                    </button>
-                </nav>
-                
-                <!-- Actions in Sidebar -->
-                <div class="sidebar-actions">
-                    <button class="nav-item back-btn" onclick="window.location.href='{{ route('dashboard') }}'">
-                        @icon('fa-arrow-left')
-                        <span>Back</span>
-                    </button>
-                    <button type="submit" form="createLeadForm" class="nav-item save-btn">
-                        @icon('fa-save')
-                        <span>Save Lead</span>
-                    </button>
+            <!-- Sidebar stack: Migrate Lead above Create New Lead box -->
+            <div class="lead-create-sidebar-stack" id="sidebarNav">
+                <button type="button" class="migrate-lead-above-btn" id="openMigrateLeadModal">
+                    @icon('fa-paper-plane')
+                    <span>Migrate Lead</span>
+                </button>
+
+                <div class="sidebar-navigation">
+                    <div class="nav-header">
+                        <h3>@icon('fa-user-plus') Create New Lead</h3>
+                    </div>
+                    <nav class="nav-menu">
+                        <button class="nav-item active" onclick="scrollToSection('personalSection')">
+                            @icon('fa-user-circle')
+                            <span>Personal</span>
+                        </button>
+                    </nav>
+
+                    <!-- Actions in Sidebar -->
+                    <div class="sidebar-actions">
+                        <button class="nav-item back-btn" onclick="window.location.href='{{ route('dashboard') }}'">
+                            @icon('fa-arrow-left')
+                            <span>Back</span>
+                        </button>
+                        <button type="submit" form="createLeadForm" class="nav-item save-btn">
+                            @icon('fa-save')
+                            <span>Save Lead</span>
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            @include('crm.leads.partials.migrate_lead_modal')
 
             <!-- Main Content Area -->
             <div class="main-content-area">
@@ -1336,6 +1411,113 @@
                     syncLeadFollowupDateVisibility();
                 }
             });
+        })();
+    </script>
+    <script>
+        (function () {
+            var modal = document.getElementById('migrateLeadModal');
+            var openBtn = document.getElementById('openMigrateLeadModal');
+            var submitBtn = document.getElementById('migrateLeadSubmitBtn');
+            var messageEl = document.getElementById('migrateLeadMessage');
+            var emailInput = document.getElementById('migrate_lead_email');
+            var phoneInput = document.getElementById('migrate_lead_phone');
+            var channel = 'email';
+            var sendUrl = @json(route('leads.migrate-invite.send'));
+            var csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                || document.querySelector('#createLeadForm input[name="_token"]')?.value
+                || '';
+
+            function showModal() {
+                if (!modal) return;
+                modal.style.display = 'flex';
+                modal.setAttribute('aria-hidden', 'false');
+                clearMessage();
+            }
+
+            function hideModal() {
+                if (!modal) return;
+                modal.style.display = 'none';
+                modal.setAttribute('aria-hidden', 'true');
+            }
+
+            function clearMessage() {
+                if (!messageEl) return;
+                messageEl.style.display = 'none';
+                messageEl.className = 'migrate-lead-message';
+                messageEl.textContent = '';
+            }
+
+            function showMessage(text, isError) {
+                if (!messageEl) return;
+                messageEl.style.display = 'block';
+                messageEl.className = 'migrate-lead-message ' + (isError ? 'is-error' : 'is-success');
+                messageEl.textContent = text;
+            }
+
+            function setChannel(next) {
+                channel = next;
+                document.querySelectorAll('.migrate-lead-tab').forEach(function (tab) {
+                    tab.classList.toggle('active', tab.getAttribute('data-migrate-channel') === next);
+                });
+                document.querySelectorAll('[data-migrate-panel]').forEach(function (panel) {
+                    panel.style.display = panel.getAttribute('data-migrate-panel') === next ? 'block' : 'none';
+                });
+                clearMessage();
+            }
+
+            if (openBtn) {
+                openBtn.addEventListener('click', showModal);
+            }
+
+            document.querySelectorAll('[data-migrate-lead-close]').forEach(function (el) {
+                el.addEventListener('click', hideModal);
+            });
+
+            document.querySelectorAll('.migrate-lead-tab').forEach(function (tab) {
+                tab.addEventListener('click', function () {
+                    setChannel(tab.getAttribute('data-migrate-channel') || 'email');
+                });
+            });
+
+            if (submitBtn) {
+                submitBtn.addEventListener('click', function () {
+                    clearMessage();
+                    submitBtn.disabled = true;
+                    var body = { channel: channel };
+                    if (channel === 'email') {
+                        body.email = (emailInput && emailInput.value || '').trim();
+                    } else {
+                        body.phone = (phoneInput && phoneInput.value || '').trim();
+                    }
+
+                    fetch(sendUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrf,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify(body)
+                    }).then(function (res) {
+                        return res.json().then(function (data) {
+                            return { ok: res.ok, data: data };
+                        });
+                    }).then(function (result) {
+                        var msg = (result.data && result.data.message)
+                            || (result.ok ? 'Invite sent.' : 'Unable to send invite.');
+                        showMessage(msg, !result.ok);
+                        if (result.ok) {
+                            if (emailInput) emailInput.value = '';
+                            if (phoneInput) phoneInput.value = '';
+                        }
+                    }).catch(function () {
+                        showMessage('Unable to send invite. Please try again.', true);
+                    }).finally(function () {
+                        submitBtn.disabled = false;
+                    });
+                });
+            }
         })();
     </script>
 @endpush

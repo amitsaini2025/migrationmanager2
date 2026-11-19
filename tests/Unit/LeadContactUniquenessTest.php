@@ -99,6 +99,45 @@ class LeadContactUniquenessTest extends TestCase
         $this->assertFalse(Admin::phoneIsTaken('0412 999 888', (int) $lead->id));
     }
 
+    public function test_email_is_taken_can_ignore_archived_and_deleted_records(): void
+    {
+        Admin::factory()->create([
+            'type' => 'lead',
+            'email' => 'archived.unique@test.com',
+            'is_company' => 0,
+            'is_archived' => 1,
+            'is_deleted' => null,
+        ]);
+
+        Admin::factory()->create([
+            'type' => 'lead',
+            'email' => 'deleted.unique@test.com',
+            'is_company' => 0,
+            'is_archived' => 0,
+            'is_deleted' => 1,
+        ]);
+
+        $this->assertTrue(Admin::emailIsTaken('archived.unique@test.com'));
+        $this->assertFalse(Admin::emailIsTaken('archived.unique@test.com', null, true));
+        $this->assertTrue(Admin::emailIsTaken('deleted.unique@test.com'));
+        $this->assertFalse(Admin::emailIsTaken('deleted.unique@test.com', null, true));
+    }
+
+    public function test_phone_is_taken_can_ignore_archived_records(): void
+    {
+        Admin::factory()->create([
+            'type' => 'lead',
+            'email' => 'archived.phone@test.com',
+            'phone' => '0412555666',
+            'is_company' => 0,
+            'is_archived' => 1,
+            'is_deleted' => null,
+        ]);
+
+        $this->assertTrue(Admin::phoneIsTaken('0412 555 666'));
+        $this->assertFalse(Admin::phoneIsTaken('0412 555 666', null, true));
+    }
+
     public function test_find_personal_client_matches_normalized_email(): void
     {
         $lead = Admin::factory()->create([
@@ -209,10 +248,18 @@ class LeadContactUniquenessTest extends TestCase
                 $table->unsignedBigInteger('user_id')->nullable();
                 $table->timestamps();
             });
-        } elseif (! Schema::hasColumn('admins', 'is_company')) {
-            Schema::table('admins', function (Blueprint $table) {
-                $table->unsignedTinyInteger('is_company')->nullable();
-            });
+        } else {
+            foreach (['is_company', 'is_archived', 'is_deleted'] as $column) {
+                if (! Schema::hasColumn('admins', $column)) {
+                    Schema::table('admins', function (Blueprint $table) use ($column) {
+                        if ($column === 'is_company') {
+                            $table->unsignedTinyInteger($column)->nullable();
+                        } else {
+                            $table->unsignedInteger($column)->nullable();
+                        }
+                    });
+                }
+            }
         }
 
         if (! Schema::hasTable('client_emails')) {

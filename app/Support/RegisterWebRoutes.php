@@ -19,6 +19,7 @@ use App\Http\Controllers\CRM\Leads\LeadAnalyticsController;
 use App\Http\Controllers\CRM\Leads\LeadAssignmentController;
 use App\Http\Controllers\CRM\Leads\LeadController;
 use App\Http\Controllers\CRM\Leads\LeadConversionController;
+use App\Http\Controllers\CRM\Leads\LeadMigrateInviteController;
 use App\Http\Controllers\CRM\OutlookAddinController;
 use App\Http\Controllers\CRM\ReportController;
 use App\Http\Controllers\CRM\ReverbMessagingLabController;
@@ -29,6 +30,7 @@ use App\Http\Controllers\Public\PublicAppointmentActionController;
 use App\Http\Controllers\Public\PublicAppointmentPaymentController;
 use App\Http\Controllers\Public\PublicClientDetailVerificationController;
 use App\Http\Controllers\Public\PublicLeadInquiryController;
+use App\Http\Controllers\Public\PublicLeadMigrateInviteController;
 use App\Http\Controllers\Public\PublicPhoneCallController;
 use Illuminate\Config\Repository as ConfigRepository;
 use Illuminate\Container\Container;
@@ -319,6 +321,7 @@ final class RegisterWebRoutes
                 $this->router->get('/create', [LeadController::class, 'create'])->name('create');
                 $this->router->post('/store', [LeadController::class, 'store'])->name('store');
                 $this->router->get('/check-contact-match', [LeadController::class, 'checkContactMatch'])->name('check.contact.match');
+                $this->router->post('/migrate-invite', [LeadMigrateInviteController::class, 'send'])->name('migrate-invite.send');
 
                 // Edit & Update (RESTful pattern)
                 $this->router->get('/{id}/edit', [LeadController::class, 'edit'])->name('edit');
@@ -486,6 +489,16 @@ final class RegisterWebRoutes
             $this->router->post('/verify-details/{token}', [PublicClientDetailVerificationController::class, 'submit'])
                 ->where('token', '[A-Za-z0-9]{32,128}')
                 ->name('public.client-detail-verification.submit');
+        });
+
+        $migrateLeadPath = $this->config()->get('lead_migrate_invite.path_prefix', 'migrate-lead');
+        $this->router->middleware('throttle:20,1')->group(function () use ($migrateLeadPath) {
+            $this->router->get("/{$migrateLeadPath}/{token}", [PublicLeadMigrateInviteController::class, 'show'])
+                ->where('token', '[A-Za-z0-9]{32,128}')
+                ->name('public.lead-migrate-invite.show');
+            $this->router->post("/{$migrateLeadPath}/{token}", [PublicLeadMigrateInviteController::class, 'submit'])
+                ->where('token', '[A-Za-z0-9]{32,128}')
+                ->name('public.lead-migrate-invite.submit');
         });
         $this->router->middleware('throttle:40,1')->group(function () {
             $this->router->post('/verify-details/{token}/search-address', [PublicClientDetailVerificationController::class, 'searchAddress'])

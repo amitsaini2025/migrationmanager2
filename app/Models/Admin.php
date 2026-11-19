@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -484,9 +485,26 @@ class Admin extends Authenticatable
     }
 
     /**
-     * Whether this email is already stored on another client/lead (admins.email or client_emails).
+     * Active CRM records only (not archived, not soft-deleted).
+     *
+     * @param  Builder<Admin>|\Illuminate\Database\Query\Builder  $query
+     * @return Builder<Admin>|\Illuminate\Database\Query\Builder
      */
-    public static function emailIsTaken(string $email, ?int $excludeAdminId = null): bool
+    public static function constrainToActiveCrmRecords($query)
+    {
+        return $query
+            ->whereNull('is_deleted')
+            ->where(function ($q): void {
+                $q->whereNull('is_archived')->orWhere('is_archived', 0);
+            });
+    }
+
+    /**
+     * Whether this email is already stored on another client/lead (admins.email or client_emails).
+     *
+     * @param  bool  $onlyActiveRecords  When true, ignore archived / soft-deleted owners.
+     */
+    public static function emailIsTaken(string $email, ?int $excludeAdminId = null, bool $onlyActiveRecords = false): bool
     {
         $normalized = self::normalizeEmailForUniqueness($email);
         if ($normalized === '') {
@@ -495,6 +513,9 @@ class Admin extends Authenticatable
 
         $admins = static::query()
             ->whereRaw("LOWER(TRIM(COALESCE(email, ''))) = ?", [$normalized]);
+        if ($onlyActiveRecords) {
+            self::constrainToActiveCrmRecords($admins);
+        }
         if ($excludeAdminId !== null) {
             $admins->where('id', '!=', $excludeAdminId);
         }
@@ -504,6 +525,14 @@ class Admin extends Authenticatable
 
         $extras = ClientEmail::query()
             ->whereRaw("LOWER(TRIM(COALESCE(email, ''))) = ?", [$normalized]);
+        if ($onlyActiveRecords) {
+            $extras->whereExists(function ($q): void {
+                $q->selectRaw('1')
+                    ->from('admins')
+                    ->whereColumn('admins.id', 'client_emails.client_id');
+                self::constrainToActiveCrmRecords($q);
+            });
+        }
         if ($excludeAdminId !== null) {
             $extras->where('client_id', '!=', $excludeAdminId);
         }
@@ -513,8 +542,10 @@ class Admin extends Authenticatable
 
     /**
      * Whether this phone is already stored on another client/lead (admins.phone or client_contacts).
+     *
+     * @param  bool  $onlyActiveRecords  When true, ignore archived / soft-deleted owners.
      */
-    public static function phoneIsTaken(string $phone, ?int $excludeAdminId = null): bool
+    public static function phoneIsTaken(string $phone, ?int $excludeAdminId = null, bool $onlyActiveRecords = false): bool
     {
         $digits = self::normalizePhoneDigitsForUniqueness($phone);
         if ($digits === '') {
@@ -524,6 +555,9 @@ class Admin extends Authenticatable
         $expr = self::phoneDigitsSqlExpression('phone');
 
         $admins = static::query()->whereRaw($expr.' = ?', [$digits]);
+        if ($onlyActiveRecords) {
+            self::constrainToActiveCrmRecords($admins);
+        }
         if ($excludeAdminId !== null) {
             $admins->where('id', '!=', $excludeAdminId);
         }
@@ -532,6 +566,14 @@ class Admin extends Authenticatable
         }
 
         $contacts = ClientContact::query()->whereRaw($expr.' = ?', [$digits]);
+        if ($onlyActiveRecords) {
+            $contacts->whereExists(function ($q): void {
+                $q->selectRaw('1')
+                    ->from('admins')
+                    ->whereColumn('admins.id', 'client_contacts.client_id');
+                self::constrainToActiveCrmRecords($q);
+            });
+        }
         if ($excludeAdminId !== null) {
             $contacts->where('client_id', '!=', $excludeAdminId);
         }

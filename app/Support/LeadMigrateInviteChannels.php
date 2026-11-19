@@ -2,6 +2,10 @@
 
 namespace App\Support;
 
+use App\Models\Staff;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
+
 class LeadMigrateInviteChannels
 {
     public const CHANNEL_EMAIL = 'email';
@@ -140,5 +144,141 @@ class LeadMigrateInviteChannels
             'Australian Citizen' => ['Citizen'],
             default => [],
         };
+    }
+
+    public static function visitPurposePrefix(): string
+    {
+        $purpose = trim((string) config('lead_migrate_invite.visit_purpose', 'Migration Client Enquiry'));
+
+        return $purpose !== '' ? $purpose : 'Migration Client Enquiry';
+    }
+
+    public static function isMigrateEnquiryVisit(?string $visitPurpose): bool
+    {
+        $purpose = trim((string) $visitPurpose);
+        if ($purpose === '') {
+            return false;
+        }
+
+        $prefix = self::visitPurposePrefix();
+
+        return strcasecmp($purpose, $prefix) === 0
+            || str_starts_with(mb_strtolower($purpose), mb_strtolower($prefix));
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function migrateAssigneeStaffKeys(): array
+    {
+        $keys = config('lead_migrate_invite.assignee_staff_keys', []);
+        if (! is_array($keys)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($keys as $key) {
+            $key = strtolower(trim((string) $key));
+            if ($key !== '' && ! in_array($key, $out, true)) {
+                $out[] = $key;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function aliasesForMigrateAssigneeKey(string $key): array
+    {
+        $key = strtolower(trim($key));
+        $aliases = config('lead_migrate_invite.assignee_staff_aliases.'.$key, [$key]);
+        if (! is_array($aliases)) {
+            $aliases = [$key];
+        }
+
+        $out = [];
+        foreach ($aliases as $alias) {
+            $alias = strtolower(trim((string) $alias));
+            if ($alias !== '' && ! in_array($alias, $out, true)) {
+                $out[] = $alias;
+            }
+        }
+
+        if ($out === []) {
+            $out[] = $key;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Active staff matching the migrate-enquiry Set Assignee allowlist.
+     *
+     * @return Collection<int, Staff>
+     */
+    public static function resolveMigrateAssigneeStaff(): Collection
+    {
+        if (! Schema::hasTable('staff')) {
+            return collect();
+        }
+
+        $keys = self::migrateAssigneeStaffKeys();
+        if ($keys === []) {
+            return collect();
+        }
+
+        $aliasSet = [];
+        foreach ($keys as $key) {
+            foreach (self::aliasesForMigrateAssigneeKey($key) as $alias) {
+                $aliasSet[$alias] = true;
+            }
+        }
+        $aliases = array_keys($aliasSet);
+
+        return Staff::query()
+            ->active()
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->get(['id', 'first_name', 'last_name', 'email', 'status'])
+            ->filter(function (Staff $staff) use ($aliases): bool {
+                return self::staffMatchesMigrateAssigneeAliases($staff, $aliases);
+            })
+            ->values();
+    }
+
+    /**
+     * @param  list<string>  $aliases
+     */
+    public static function staffMatchesMigrateAssigneeAliases(Staff $staff, array $aliases): bool
+    {
+        $firstName = strtolower(trim((string) $staff->first_name));
+        $emailLocal = strtolower(trim((string) explode('@', (string) $staff->email, 2)[0]));
+
+        foreach ($aliases as $alias) {
+            if ($firstName === $alias) {
+                return true;
+            }
+
+            if ($firstName !== '' && str_starts_with($firstName, $alias.' ')) {
+                return true;
+            }
+
+            if ($emailLocal === $alias || str_starts_with($emailLocal, $alias.'.')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static function isAllowedMigrateAssigneeStaffId(int $staffId): bool
+    {
+        if ($staffId <= 0) {
+            return false;
+        }
+
+        return self::resolveMigrateAssigneeStaff()->contains(fn (Staff $staff): bool => (int) $staff->id === $staffId);
     }
 }

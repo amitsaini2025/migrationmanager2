@@ -114,6 +114,8 @@ Route::post('/update_visit_comment', [OfficeVisitController::class, 'update_visi
 Route::post('/attend_session', [OfficeVisitController::class, 'attend_session']);
 Route::post('/complete_session', [OfficeVisitController::class, 'complete_session']);
 Route::get('/office-visits/change_assignee', [OfficeVisitController::class, 'change_assignee']);
+Route::post('/office-visits/migrate-enquiry-assignee', [OfficeVisitController::class, 'setMigrateEnquiryAssignee'])
+    ->name('officevisits.migrate-enquiry-assignee');
 
 /*
 |--------------------------------------------------------------------------

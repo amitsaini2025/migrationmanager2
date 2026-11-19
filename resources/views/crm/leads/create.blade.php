@@ -1424,14 +1424,31 @@
             var phoneInput = document.getElementById('migrate_lead_phone');
             var channel = 'email';
             var isSending = false;
+            var autoCloseTimer = null;
             var defaultSubmitLabel = 'Send invite';
             var sendUrl = @json(route('leads.migrate-invite.send'));
             var csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
                 || document.querySelector('#createLeadForm input[name="_token"]')?.value
                 || '';
 
+            function clearAutoClose() {
+                if (autoCloseTimer) {
+                    clearTimeout(autoCloseTimer);
+                    autoCloseTimer = null;
+                }
+            }
+
+            function scheduleAutoClose() {
+                clearAutoClose();
+                autoCloseTimer = setTimeout(function () {
+                    autoCloseTimer = null;
+                    hideModal();
+                }, 1800);
+            }
+
             function showModal() {
                 if (!modal) return;
+                clearAutoClose();
                 setSending(false);
                 modal.style.display = 'flex';
                 modal.setAttribute('aria-hidden', 'false');
@@ -1440,6 +1457,7 @@
 
             function hideModal() {
                 if (!modal || isSending) return;
+                clearAutoClose();
                 modal.style.display = 'none';
                 modal.setAttribute('aria-hidden', 'true');
             }
@@ -1506,6 +1524,7 @@
                 submitBtn.addEventListener('click', function () {
                     if (isSending) return;
 
+                    clearAutoClose();
                     clearMessage();
                     setSending(true);
                     var body = { channel: channel };
@@ -1535,6 +1554,7 @@
                         if (result.ok) {
                             if (emailInput) emailInput.value = '';
                             if (phoneInput) phoneInput.value = '';
+                            scheduleAutoClose();
                         }
                     }).catch(function () {
                         showMessage('Unable to send invite. Please try again.', true);

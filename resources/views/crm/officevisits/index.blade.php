@@ -137,11 +137,22 @@ body, html { overflow-x: hidden !important; max-width: 100% !important; }
 														<?php
 														$admin = \App\Models\Staff::find($list->user_id);
 														// Staff IDs preserved - use admin->id for staff.view (no mapping table)
+														$isMigrateEnquiryWaiting = $activeTab === 'waiting'
+															&& (int) $list->status === 0
+															&& \App\Support\LeadMigrateInviteChannels::isMigrateEnquiryVisit($list->visit_purpose);
 														?>
 														@if($admin)
 															<a href="{{ route('adminconsole.staff.view', $admin->id) }}">{{$admin->first_name}} {{$admin->last_name}}</a><br>{{$admin->email}}
 														@else
 															<span class="text-muted">Not Assigned</span>
+														@endif
+														@if($isMigrateEnquiryWaiting)
+															<br>
+															<a href="javascript:;"
+																class="open-migrate-enquiry-assignee"
+																data-id="{{ $list->id }}"
+																data-current-assignee="{{ (int) $list->user_id }}"
+																style="font-size:12px;font-weight:600;">Set Assignee</a>
 														@endif
 													</td>
 													<td id="count{{$list->id}}" data-checkintime="{{date('Y-m-d H:i:s',strtotime($list->created_at))}}"><?php if($list->status == 0){ ?><span id="waitcount"> 00h:00m:00s</span><?php }else if($list->status == 2){ echo '<span>'.$list->wait_time.'</span>'; }else if($list->status == 1){ echo '<span>'.($list->wait_time ?? '-').'</span>'; }else{ echo '<span>-</span>'; } ?></td>
@@ -234,6 +245,42 @@ body, html { overflow-x: hidden !important; max-width: 100% !important; }
 		</div>
 	</div>
 </div>
+
+@if(($activeTab ?? '') === 'waiting')
+<div class="modal fade" id="migrateEnquiryAssigneeModal" tabindex="-1" role="dialog" aria-labelledby="migrateEnquiryAssigneeLabel" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="migrateEnquiryAssigneeLabel">Set Assignee</h5>
+				<button type="button" class="close" data-bs-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+			</div>
+			<div class="modal-body">
+				<p style="font-size:13px;color:#5d6f86;margin-bottom:12px;">Assign this Migration Client Enquiry waiting visit (and linked lead) to a staff member.</p>
+				<div class="form-group mb-0">
+					<label for="migrateEnquiryAssigneeSelect">Staff</label>
+					<select id="migrateEnquiryAssigneeSelect" class="form-control">
+						<option value="">Select staff</option>
+						@foreach(($migrateAssigneeStaff ?? collect()) as $staffOption)
+							<option value="{{ $staffOption->id }}">
+								{{ trim(($staffOption->first_name ?? '').' '.($staffOption->last_name ?? '')) }} — {{ $staffOption->email }}
+							</option>
+						@endforeach
+					</select>
+					@if(($migrateAssigneeStaff ?? collect())->isEmpty())
+						<small class="text-muted d-block mt-2">No matching staff found for the configured assignee list.</small>
+					@endif
+				</div>
+				<input type="hidden" id="migrateEnquiryCheckinId" value="">
+				<div id="migrateEnquiryAssigneeMessage" class="mt-3" style="display:none;"></div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-primary" id="migrateEnquiryAssigneeSaveBtn">Save</button>
+			</div>
+		</div>
+	</div>
+</div>
+@endif
 @endsection
 @push('scripts')
 <script>
@@ -265,6 +312,90 @@ jQuery(document).ready(function($){
 			success: function(response){
 				var obj = $.parseJSON(response);
 				if(obj.status){ alert(obj.message); location.reload(); } else { alert(obj.message); }
+			}
+		});
+	});
+
+	var migrateAssigneeUrl = @json(route('officevisits.migrate-enquiry-assignee'));
+	var $migrateModal = $('#migrateEnquiryAssigneeModal');
+	var $migrateSelect = $('#migrateEnquiryAssigneeSelect');
+	var $migrateMsg = $('#migrateEnquiryAssigneeMessage');
+	var $migrateSave = $('#migrateEnquiryAssigneeSaveBtn');
+
+	function showMigrateAssigneeMessage(text, isError) {
+		if (!$migrateMsg.length) return;
+		$migrateMsg
+			.css({
+				display: 'block',
+				padding: '8px 10px',
+				borderRadius: '6px',
+				fontSize: '13px',
+				background: isError ? '#fff5f5' : '#f0fff4',
+				color: isError ? '#8a1f2f' : '#1e6b3a',
+				border: isError ? '1px solid #f0c2c8' : '1px solid #b7e4c7'
+			})
+			.text(text);
+	}
+
+	$(document).on('click', '.open-migrate-enquiry-assignee', function () {
+		if (!$migrateModal.length) return;
+		var checkinId = $(this).data('id');
+		var currentAssignee = String($(this).data('current-assignee') || '');
+		$('#migrateEnquiryCheckinId').val(checkinId);
+		$migrateMsg.hide().text('');
+		$migrateSelect.val('');
+		if (currentAssignee && $migrateSelect.find('option[value="' + currentAssignee + '"]').length) {
+			$migrateSelect.val(currentAssignee);
+		}
+		if ($migrateModal.modal) {
+			$migrateModal.modal('show');
+		} else {
+			$migrateModal.addClass('show').css('display', 'block');
+		}
+	});
+
+	$migrateSave.on('click', function () {
+		var checkinId = $('#migrateEnquiryCheckinId').val();
+		var assigneeId = $migrateSelect.val();
+		if (!checkinId) {
+			showMigrateAssigneeMessage('Visit not found.', true);
+			return;
+		}
+		if (!assigneeId) {
+			showMigrateAssigneeMessage('Please select a staff member.', true);
+			return;
+		}
+
+		$migrateSave.prop('disabled', true);
+		$('.popuploader').show();
+		$.ajax({
+			url: migrateAssigneeUrl,
+			type: 'POST',
+			data: {
+				id: checkinId,
+				assignee_id: assigneeId
+			},
+			success: function (response) {
+				if (response && response.status) {
+					showMigrateAssigneeMessage(response.message || 'Assignee updated successfully.', false);
+					setTimeout(function () { location.reload(); }, 600);
+				} else {
+					showMigrateAssigneeMessage((response && response.message) || 'Please try again.', true);
+					$migrateSave.prop('disabled', false);
+					$('.popuploader').hide();
+				}
+			},
+			error: function (xhr) {
+				var msg = 'Please try again.';
+				if (xhr.responseJSON && xhr.responseJSON.message) {
+					msg = xhr.responseJSON.message;
+				} else if (xhr.responseJSON && xhr.responseJSON.errors) {
+					var first = Object.values(xhr.responseJSON.errors)[0];
+					if (Array.isArray(first) && first[0]) msg = first[0];
+				}
+				showMigrateAssigneeMessage(msg, true);
+				$migrateSave.prop('disabled', false);
+				$('.popuploader').hide();
 			}
 		});
 	});

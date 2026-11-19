@@ -22,6 +22,7 @@ class OfficeVisitRoutesTest extends TestCase
         $this->assertTrue(Route::has('officevisits.waiting'));
         $this->assertTrue(Route::has('officevisits.attending'));
         $this->assertTrue(Route::has('officevisits.completed'));
+        $this->assertTrue(Route::has('officevisits.migrate-enquiry-assignee'));
         $this->assertTrue(Route::has('front-desk.checkin.index'));
         $this->assertTrue(Route::has('front-desk.checkin.lookup'));
         $this->assertTrue(Route::has('front-desk.checkin.appointments'));

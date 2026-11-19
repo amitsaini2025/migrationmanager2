@@ -18,4 +18,33 @@ return [
      * (RECEPTION_USER_ID) — same reception user as existing CRM features.
      */
     'visit_purpose' => env('LEAD_MIGRATE_INVITE_VISIT_PURPOSE', 'Migration Client Enquiry'),
+
+    /**
+     * Waiting-tab "Set Assignee" allowlist for migrate-enquiry visits only.
+     * Matched against staff first_name / email local-part (see aliases).
+     *
+     * @var list<string>
+     */
+    'assignee_staff_keys' => [
+        'arun',
+        'ajay',
+        'pevy',
+        'ankit',
+        'sam',
+        'rakshita',
+        'sayed',
+        'ajneet',
+        'vijay',
+        'jsapreet',
+    ],
+
+    /**
+     * Optional alternate spellings for assignee_staff_keys.
+     *
+     * @var array<string, list<string>>
+     */
+    'assignee_staff_aliases' => [
+        'sayed' => ['sayed', 'syed'],
+        'jsapreet' => ['jsapreet', 'jaspreet'],
+    ],
 ];

@@ -369,9 +369,6 @@
 
             {{-- ── STEP 2c: New lead form (Migration Client Enquiry fields) ── --}}
             <div class="fd-wizard-step" id="fdStepLeadForm">
-                <h6 class="fd-step-title mb-3 text-uppercase small">Migration Client Enquiry Details</h6>
-                <p class="text-muted small mb-3">Same enquiry fields as the Migration Client Enquiry Form. Phone/email come from Look Up.</p>
-
                 <div class="row">
                     <div class="col-sm-6">
                         <div class="form-group">

@@ -3,7 +3,11 @@
 namespace App\Services;
 
 use App\Mail\LeadMigrateInviteMail;
+use App\Mail\LeadMigrateInviteReceptionMail;
 use App\Models\Admin;
+use App\Models\Branch;
+use App\Models\CheckinHistory;
+use App\Models\CheckinLog;
 use App\Models\ClientContact;
 use App\Models\ClientEmail;
 use App\Models\ClientExperience;
@@ -30,6 +34,7 @@ class LeadMigrateInviteService
         private UnifiedSmsManager $smsManager,
         private ClientReferenceService $clientReferenceService,
         private PublicLeadInquiryService $publicLeadInquiryService,
+        private OfficeVisitNotificationService $officeVisitNotifications,
     ) {}
 
     /**
@@ -235,7 +240,7 @@ class LeadMigrateInviteService
      */
     public function submit(LeadMigrateInvite $invite, array $payload, ?string $ip = null, ?string $userAgent = null): Admin
     {
-        return DB::transaction(function () use ($invite, $payload, $ip, $userAgent): Admin {
+        $result = DB::transaction(function () use ($invite, $payload, $ip, $userAgent): array {
             $locked = LeadMigrateInvite::query()
                 ->where('id', $invite->id)
                 ->lockForUpdate()
@@ -280,6 +285,7 @@ class LeadMigrateInviteService
             $payload['phone'] = $phoneNational;
 
             $admin = $this->createLeadFromPayload($locked, $payload);
+            $visit = $this->createWaitingOfficeVisit($admin, $locked);
 
             $locked->update([
                 'lead_id' => $admin->id,
@@ -290,8 +296,17 @@ class LeadMigrateInviteService
                 'user_agent' => $userAgent,
             ]);
 
-            return $admin;
+            return [
+                'admin' => $admin,
+                'visit' => $visit,
+            ];
         });
+
+        if ($result['visit'] instanceof CheckinLog) {
+            $this->notifyReceptionOfWaitingVisit($result['admin'], $result['visit']);
+        }
+
+        return $result['admin'];
     }
 
     /**
@@ -307,10 +322,7 @@ class LeadMigrateInviteService
 
         $ref = $this->clientReferenceService->generateClientReference($firstName !== '' ? $firstName : 'Lead');
 
-        $enquiryBits = array_filter([
-            trim((string) ($payload['city'] ?? '')),
-            trim((string) ($payload['enquiry_notes'] ?? '')),
-        ]);
+        $city = $this->nullableString($payload['city'] ?? null);
 
         $adminData = [
             'user_id' => $assigneeStaffId,
@@ -338,9 +350,9 @@ class LeadMigrateInviteService
             'phone' => $phone,
             'country_code' => '+61',
             'email' => $email,
-            'address' => $enquiryBits !== [] ? implode(' | ', $enquiryBits) : null,
-            'city' => $this->nullableString($payload['city'] ?? null),
-            'country' => $this->mapLivingInCountry($payload['currently_living_in'] ?? null),
+            'address' => $city,
+            'city' => $city,
+            'country' => null,
             'country_passport' => null,
             'visa_type' => null,
             'manual_form_fill' => 1,
@@ -382,7 +394,157 @@ class LeadMigrateInviteService
             app(LeadFollowUpNoteService::class)->syncNotesForLead($lead, null);
         }
 
-        return $admin->fresh();
+        return $admin->fresh() ?? $admin;
+    }
+
+    /**
+     * Create an In Person Waiting row for the new migrate-lead (additive; does not change Create In Person).
+     */
+    private function createWaitingOfficeVisit(Admin $lead, LeadMigrateInvite $invite): ?CheckinLog
+    {
+        if (! Schema::hasTable('checkin_logs')) {
+            return null;
+        }
+
+        $officeId = $this->resolveDefaultOfficeId();
+        if ($officeId === null) {
+            Log::warning('Migrate lead invite: skipped Waiting check-in because no office/branch was found', [
+                'lead_id' => $lead->id,
+                'invite_id' => $invite->id,
+            ]);
+
+            return null;
+        }
+
+        $assigneeStaffId = $this->resolveAssigneeStaffId($invite->sent_by);
+        $purpose = trim((string) config('lead_migrate_invite.visit_purpose', 'Migration Client Enquiry'));
+
+        $visit = CheckinLog::create([
+            'client_id' => $lead->id,
+            'user_id' => $assigneeStaffId,
+            'visit_purpose' => $purpose !== '' ? $purpose : 'Migration Client Enquiry',
+            'office' => $officeId,
+            'contact_type' => 'Lead',
+            'status' => 0,
+            'date' => now()->toDateString(),
+        ]);
+
+        if (Schema::hasTable('checkin_histories')) {
+            CheckinHistory::create([
+                'subject' => 'Check-in created via migrate lead enquiry form',
+                'created_by' => $assigneeStaffId,
+                'checkin_id' => $visit->id,
+            ]);
+        }
+
+        $sender = Staff::query()->find($invite->sent_by) ?? Staff::query()->find($assigneeStaffId);
+        if ($sender instanceof Staff) {
+            $receiverIds = array_unique(array_filter([
+                $assigneeStaffId,
+                (int) config('constants.reception_user_id', 0),
+            ]));
+
+            foreach ($receiverIds as $receiverId) {
+                if ($receiverId <= 0) {
+                    continue;
+                }
+
+                try {
+                    $this->officeVisitNotifications->upsert(
+                        $visit,
+                        (int) $receiverId,
+                        OfficeVisitNotificationService::ACTION_CHECKED_IN,
+                        $sender,
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('Migrate lead invite: office visit notification failed', [
+                        'checkin_id' => $visit->id,
+                        'receiver_id' => $receiverId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        return $visit;
+    }
+
+    private function notifyReceptionOfWaitingVisit(Admin $lead, CheckinLog $visit): void
+    {
+        $email = $this->resolveReceptionEmail();
+        if ($email === null) {
+            Log::warning('Migrate lead invite: reception staff email missing; skipped waiting email', [
+                'lead_id' => $lead->id,
+                'checkin_id' => $visit->id,
+                'reception_user_id' => (int) config('constants.reception_user_id', 0),
+            ]);
+
+            return;
+        }
+
+        $waitingUrl = $this->officeVisitNotifications->visitUrl($visit);
+
+        try {
+            $this->sendReceptionMailable($email, new LeadMigrateInviteReceptionMail($lead, $visit, $waitingUrl));
+        } catch (\Throwable $e) {
+            Log::error('Migrate lead invite: failed to email reception about waiting visit', [
+                'lead_id' => $lead->id,
+                'checkin_id' => $visit->id,
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function sendReceptionMailable(string $email, LeadMigrateInviteReceptionMail $mailable): void
+    {
+        try {
+            Mail::mailer('failover')->to($email)->send($mailable);
+        } catch (\Throwable $e) {
+            Log::warning('Migrate lead reception SES/failover send failed; retrying via Zoho', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+
+            Mail::mailer('zoho')->to($email)->send($mailable);
+        }
+    }
+
+    /**
+     * Same reception staff as the rest of CRM (constants.reception_user_id → staff.email).
+     */
+    private function resolveReceptionEmail(): ?string
+    {
+        $receptionUserId = (int) config('constants.reception_user_id', 0);
+        if ($receptionUserId <= 0) {
+            return null;
+        }
+
+        $email = trim((string) (Staff::query()->whereKey($receptionUserId)->value('email') ?? ''));
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $email;
+        }
+
+        return null;
+    }
+
+    private function resolveDefaultOfficeId(): ?int
+    {
+        $configured = config('lead_migrate_invite.default_office_id');
+        if ($configured !== null && $configured !== '') {
+            $officeId = (int) $configured;
+            if ($officeId > 0 && Branch::query()->whereKey($officeId)->exists()) {
+                return $officeId;
+            }
+        }
+
+        if (! Schema::hasTable('branches')) {
+            return null;
+        }
+
+        $first = Branch::query()->orderBy('id')->value('id');
+
+        return $first ? (int) $first : null;
     }
 
     /**
@@ -415,20 +577,17 @@ class LeadMigrateInviteService
     private function createExperienceFromPayload(int $clientId, int $assigneeStaffId, array $payload): void
     {
         $occupation = trim((string) ($payload['occupation'] ?? ''));
-        $workLocation = trim((string) ($payload['work_location'] ?? ''));
-        $yearsExperience = trim((string) ($payload['years_experience'] ?? ''));
-
-        if ($occupation === '' && $workLocation === '' && $yearsExperience === '') {
+        if ($occupation === '') {
             return;
         }
 
         ClientExperience::create([
             'admin_id' => $assigneeStaffId,
             'client_id' => $clientId,
-            'job_title' => $occupation !== '' ? $occupation : null,
-            'job_country' => LeadMigrateInviteChannels::jobCountryFromWorkLocation($workLocation),
-            'job_state' => $workLocation !== '' ? $workLocation : null,
-            'job_type' => $yearsExperience !== '' ? $yearsExperience : null,
+            'job_title' => $occupation,
+            'job_country' => null,
+            'job_state' => null,
+            'job_type' => null,
             'relevant_experience' => 0,
             'fte_multiplier' => 1.00,
             'created_at' => now(),
@@ -549,17 +708,6 @@ class LeadMigrateInviteService
         }
     }
 
-    private function mapLivingInCountry(mixed $value): ?string
-    {
-        $value = trim((string) ($value ?? ''));
-
-        return match ($value) {
-            'Australia' => 'Australia',
-            'Outside Australia' => null,
-            default => $this->nullableString($value),
-        };
-    }
-
     /**
      * @return array<string, mixed>
      */
@@ -572,16 +720,12 @@ class LeadMigrateInviteService
             'email' => ['required', 'email', 'max:150'],
             'dob' => ['nullable', 'date'],
             'marital_status' => ['nullable', 'string', 'max:70'],
-            'currently_living_in' => ['required', 'string', 'max:70'],
             'city' => ['nullable', 'string', 'max:120'],
             'current_visa' => ['nullable', 'string', Rule::in(LeadMigrateInviteChannels::currentVisaOptions())],
             'visa_expiry' => ['nullable', 'date'],
             'qualification' => ['nullable', 'string', Rule::in(LeadMigrateInviteChannels::qualificationLevels())],
             'qualification_date' => ['nullable', 'date'],
             'occupation' => ['nullable', 'string', 'max:130'],
-            'work_location' => ['nullable', 'string', Rule::in(LeadMigrateInviteChannels::workExperienceLocations())],
-            'years_experience' => ['nullable', 'string', Rule::in(LeadMigrateInviteChannels::yearsOfExperienceOptions())],
-            'enquiry_notes' => ['nullable', 'string', 'max:1500'],
         ];
     }
 }

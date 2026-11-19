@@ -101,17 +101,8 @@
       </section>
 
       <section>
-        <div class="section-title"><span class="number">02</span><h2>Current Location &amp; Visa Information</h2></div>
+        <div class="section-title"><span class="number">02</span><h2>Location &amp; Visa Information</h2></div>
         <div class="fields">
-          <div class="field">
-            <label for="currently_living_in">Currently Living In <span class="required">*</span></label>
-            <select id="currently_living_in" name="currently_living_in" required>
-              <option value="">Select</option>
-              @foreach (['Australia','Outside Australia'] as $opt)
-                <option value="{{ $opt }}" @selected(old('currently_living_in') === $opt)>{{ $opt }}</option>
-              @endforeach
-            </select>
-          </div>
           <div class="field">
             <label for="city">City / State / Country</label>
             <input id="city" name="city" value="{{ old('city') }}" maxlength="120" placeholder="e.g. Melbourne, VIC">
@@ -151,34 +142,6 @@
           <div class="field">
             <label for="occupation">Current / Most Recent Occupation</label>
             <input id="occupation" name="occupation" value="{{ old('occupation') }}" maxlength="130" placeholder="e.g. Chef, Accountant, Engineer">
-          </div>
-          <div class="field">
-            <label for="work_location">Work Experience Location</label>
-            <select id="work_location" name="work_location">
-              <option value="">Select (optional)</option>
-              @foreach (\App\Support\LeadMigrateInviteChannels::workExperienceLocations() as $opt)
-                <option value="{{ $opt }}" @selected(old('work_location') === $opt)>{{ $opt }}</option>
-              @endforeach
-            </select>
-          </div>
-          <div class="field">
-            <label for="years_experience">Years of Relevant Work Experience</label>
-            <select id="years_experience" name="years_experience">
-              <option value="">Select (optional)</option>
-              @foreach (\App\Support\LeadMigrateInviteChannels::yearsOfExperienceOptions() as $opt)
-                <option value="{{ $opt }}" @selected(old('years_experience') === $opt)>{{ $opt }}</option>
-              @endforeach
-            </select>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div class="section-title"><span class="number">04</span><h2>Additional Enquiry</h2></div>
-        <div class="fields">
-          <div class="field wide">
-            <label for="enquiry_notes">Briefly Describe Your Enquiry (Optional)</label>
-            <textarea id="enquiry_notes" name="enquiry_notes" maxlength="1500" placeholder="For example: my visa expires next month and I want to know my options...">{{ old('enquiry_notes') }}</textarea>
           </div>
         </div>
       </section>

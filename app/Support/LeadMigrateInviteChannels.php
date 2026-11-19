@@ -104,50 +104,6 @@ class LeadMigrateInviteChannels
     /**
      * @return list<string>
      */
-    public static function workExperienceLocations(): array
-    {
-        return [
-            'Onshore (Australia)',
-            'Offshore (Outside Australia)',
-            'Both onshore and offshore',
-        ];
-    }
-
-    /**
-     * @return list<string>
-     */
-    public static function yearsOfExperienceOptions(): array
-    {
-        return [
-            'No experience',
-            'Less than 1 year',
-            '1 year',
-            '2 years',
-            '3 years',
-            '4 years',
-            '5 years',
-            '6 years',
-            '7 years',
-            '8 years',
-            '9 years',
-            '10+ years',
-        ];
-    }
-
-    /**
-     * Map migrate-form work location onto CRM Work Experience country when possible.
-     */
-    public static function jobCountryFromWorkLocation(?string $workLocation): ?string
-    {
-        return match (trim((string) $workLocation)) {
-            'Onshore (Australia)' => 'Australia',
-            default => null,
-        };
-    }
-
-    /**
-     * @return list<string>
-     */
     public static function currentVisaOptions(): array
     {
         return [

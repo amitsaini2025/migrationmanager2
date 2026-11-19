@@ -5,7 +5,10 @@ namespace Tests\Feature;
 use App\Http\Middleware\TrackStaffCrmActivity;
 use App\Http\Middleware\VerifyCsrfToken;
 use App\Mail\LeadMigrateInviteMail;
+use App\Mail\LeadMigrateInviteReceptionMail;
 use App\Models\Admin;
+use App\Models\Branch;
+use App\Models\CheckinLog;
 use App\Models\ClientExperience;
 use App\Models\ClientQualification;
 use App\Models\ClientVisaCountry;
@@ -43,6 +46,16 @@ class LeadMigrateInviteTest extends TestCase
             'password' => Hash::make('password'),
             'role' => 1,
             'status' => 1,
+        ]);
+
+        $branch = Branch::query()->create([
+            'office_name' => 'Test Office',
+            'email' => 'office@test.com',
+        ]);
+
+        config([
+            'lead_migrate_invite.default_office_id' => $branch->id,
+            'constants.reception_user_id' => $this->staff->id,
         ]);
     }
 
@@ -162,16 +175,12 @@ class LeadMigrateInviteTest extends TestCase
             'last_name' => 'Patel',
             'phone' => '0412345678',
             'email' => 'changed.migrate@example.com',
-            'currently_living_in' => 'Australia',
             'city' => 'Melbourne, VIC',
             'current_visa' => 'Student (500)',
             'visa_expiry' => '2027-01-31',
             'qualification' => 'Bachelor Degree',
             'qualification_date' => '2020-06-15',
             'occupation' => 'Software Engineer',
-            'work_location' => 'Onshore (Australia)',
-            'years_experience' => '3 years',
-            'enquiry_notes' => 'Need PR options',
         ])->assertOk()
             ->assertSee('Thank you');
 
@@ -185,7 +194,7 @@ class LeadMigrateInviteTest extends TestCase
         $this->assertSame(LeadMigrateInviteChannels::SOURCE_EMAIL, $lead->source);
         $this->assertSame(1, (int) $lead->manual_form_fill);
         $this->assertSame('Asha', $lead->first_name);
-        $this->assertSame('Australia', $lead->country);
+        $this->assertNull($lead->country);
         $this->assertSame('Melbourne, VIC', $lead->city);
 
         $qualification = ClientQualification::query()->where('client_id', $lead->id)->first();
@@ -196,14 +205,23 @@ class LeadMigrateInviteTest extends TestCase
         $experience = ClientExperience::query()->where('client_id', $lead->id)->first();
         $this->assertNotNull($experience);
         $this->assertSame('Software Engineer', $experience->job_title);
-        $this->assertSame('Australia', $experience->job_country);
-        $this->assertSame('Onshore (Australia)', $experience->job_state);
-        $this->assertSame('3 years', $experience->job_type);
+        $this->assertNull($experience->job_country);
+        $this->assertNull($experience->job_state);
+        $this->assertNull($experience->job_type);
 
         $visa = ClientVisaCountry::query()->where('client_id', $lead->id)->first();
         $this->assertNotNull($visa);
         $this->assertSame('2027-01-31', (string) $visa->visa_expiry_date);
         $this->assertSame('Student (500)', (string) $visa->visa_description);
+
+        $visit = CheckinLog::query()->where('client_id', $lead->id)->first();
+        $this->assertNotNull($visit);
+        $this->assertSame(0, (int) $visit->status);
+        $this->assertSame('Lead', $visit->contact_type);
+        $this->assertStringContainsString('Migration Client Enquiry', (string) $visit->visit_purpose);
+        Mail::assertSent(LeadMigrateInviteReceptionMail::class, function (LeadMigrateInviteReceptionMail $mail): bool {
+            return $mail->hasTo('migrate-invite-staff@test.com');
+        });
 
         $invite->refresh();
         $this->assertFalse($invite->isUsable());
@@ -467,6 +485,61 @@ class LeadMigrateInviteTest extends TestCase
                 $table->string('title')->nullable();
                 $table->string('nick_name')->nullable();
                 $table->unsignedInteger('status')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        if (! Schema::hasTable('branches')) {
+            Schema::create('branches', function (Blueprint $table) {
+                $table->id();
+                $table->string('office_name')->nullable();
+                $table->string('email')->nullable();
+                $table->string('password')->nullable();
+                $table->rememberToken();
+                $table->timestamps();
+            });
+        }
+
+        if (! Schema::hasTable('checkin_logs')) {
+            Schema::create('checkin_logs', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('client_id')->nullable();
+                $table->string('walk_in_phone')->nullable();
+                $table->string('walk_in_email')->nullable();
+                $table->unsignedBigInteger('user_id')->nullable();
+                $table->string('visit_purpose')->nullable();
+                $table->unsignedBigInteger('office')->nullable();
+                $table->string('contact_type')->nullable();
+                $table->unsignedInteger('status')->nullable();
+                $table->date('date')->nullable();
+                $table->unsignedInteger('wait_type')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        if (! Schema::hasTable('checkin_histories')) {
+            Schema::create('checkin_histories', function (Blueprint $table) {
+                $table->id();
+                $table->string('subject')->nullable();
+                $table->unsignedBigInteger('created_by')->nullable();
+                $table->unsignedBigInteger('checkin_id')->nullable();
+                $table->text('description')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        if (! Schema::hasTable('notifications')) {
+            Schema::create('notifications', function (Blueprint $table) {
+                $table->id();
+                $table->string('notification_type')->nullable();
+                $table->unsignedBigInteger('module_id')->nullable();
+                $table->unsignedBigInteger('receiver_id')->nullable();
+                $table->unsignedBigInteger('sender_id')->nullable();
+                $table->string('url')->nullable();
+                $table->text('message')->nullable();
+                $table->unsignedTinyInteger('seen')->nullable();
+                $table->unsignedTinyInteger('receiver_status')->nullable();
+                $table->unsignedTinyInteger('sender_status')->nullable();
                 $table->timestamps();
             });
         }

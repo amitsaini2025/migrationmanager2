@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Schema;
 
 class FrontDeskCheckIn extends Model
 {
@@ -26,8 +27,8 @@ class FrontDeskCheckIn extends Model
 
     protected $casts = [
         'claimed_appointment' => 'boolean',
-        'notified_at'         => 'datetime',
-        'metadata'            => 'array',
+        'notified_at' => 'datetime',
+        'metadata' => 'array',
     ];
 
     public function submittedBy(): BelongsTo
@@ -66,17 +67,53 @@ class FrontDeskCheckIn extends Model
         if ($this->lead_id) {
             return Admin::find($this->lead_id);
         }
+
         return null;
+    }
+
+    /**
+     * Check-in log ids created by the public page (not the staff wizard).
+     *
+     * @param  list<int>  $checkinLogIds
+     * @return list<int>
+     */
+    public static function publicCheckInLogIds(array $checkinLogIds): array
+    {
+        $wanted = [];
+        foreach ($checkinLogIds as $id) {
+            $id = (int) $id;
+            if ($id > 0) {
+                $wanted[$id] = true;
+            }
+        }
+
+        if ($wanted === [] || ! Schema::hasTable('front_desk_check_ins')) {
+            return [];
+        }
+
+        return static::query()
+            ->where('metadata->source', 'public')
+            ->get(['metadata'])
+            ->map(fn (self $row): int => (int) data_get($row->metadata, 'checkin_log_id'))
+            ->filter(fn (int $id): bool => $id > 0 && isset($wanted[$id]))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public static function isPublicCheckInLog(int $checkinLogId): bool
+    {
+        return in_array($checkinLogId, self::publicCheckInLogIds([$checkinLogId]), true);
     }
 
     public static function visitReasons(): array
     {
         return [
-            'general_enquiry'      => 'General Enquiry',
+            'general_enquiry' => 'General Enquiry',
             'appointment_followup' => 'Appointment Follow-up',
-            'document_submission'  => 'Document Submission',
-            'payment'              => 'Payment',
-            'other'                => 'Other',
+            'document_submission' => 'Document Submission',
+            'payment' => 'Payment',
+            'other' => 'Other',
         ];
     }
 }

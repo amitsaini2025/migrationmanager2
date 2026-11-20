@@ -2,11 +2,12 @@
 
 namespace App\Services\FrontDesk;
 
+use App\Events\OfficeVisitNotificationCreated;
+use App\Models\Admin;
 use App\Models\BookingAppointment;
 use App\Models\FrontDeskCheckIn;
 use App\Models\Notification;
 use App\Models\Staff;
-use App\Events\OfficeVisitNotificationCreated;
 use Illuminate\Support\Facades\Log;
 
 class CheckInNotificationService
@@ -25,26 +26,27 @@ class CheckInNotificationService
     {
         $recipient = $this->resolveRecipient($checkIn);
 
-        if (!$recipient) {
+        if (! $recipient) {
             Log::info('[FrontDeskCheckIn] No notification recipient resolved', ['check_in_id' => $checkIn->id]);
+
             return null;
         }
 
         $clientName = $this->resolveClientName($checkIn);
-        $message    = "Front-desk check-in: {$clientName} has arrived" .
-                      ($checkIn->claimed_appointment ? ' (has appointment)' : '') .
-                      '. Checked in by ' . $sender->full_name . '.';
+        $message = "Front-desk check-in: {$clientName} has arrived".
+                      ($checkIn->claimed_appointment ? ' (has appointment)' : '').
+                      '. Checked in by '.$sender->full_name.'.';
 
         $notification = Notification::create([
-            'sender_id'         => $sender->id,
-            'receiver_id'       => $recipient->id,
-            'module_id'         => $checkIn->id,
-            'url'               => url('/office-visits/waiting'),
+            'sender_id' => $sender->id,
+            'receiver_id' => $recipient->id,
+            'module_id' => $checkIn->id,
+            'url' => url('/office-visits/waiting'),
             'notification_type' => 'front_desk_checkin',
-            'message'           => $message,
-            'seen'              => 0,
-            'receiver_status'   => 0,
-            'sender_status'     => 1,
+            'message' => $message,
+            'seen' => 0,
+            'receiver_status' => 0,
+            'sender_status' => 1,
         ]);
 
         // Broadcast via Reverb (reuse the office-visit event shape)
@@ -53,27 +55,89 @@ class CheckInNotificationService
                 $notification->id,
                 $notification->receiver_id,
                 [
-                    'id'            => $notification->id,
-                    'checkin_id'    => $checkIn->id,
-                    'message'       => $message,
-                    'sender_name'   => $sender->full_name,
-                    'client_name'   => $clientName,
+                    'id' => $notification->id,
+                    'checkin_id' => $checkIn->id,
+                    'message' => $message,
+                    'sender_name' => $sender->full_name,
+                    'client_name' => $clientName,
                     'visit_purpose' => $checkIn->visit_reason ?? 'Front-desk check-in',
-                    'created_at'    => $notification->created_at?->toIso8601String() ?? now()->toIso8601String(),
-                    'url'           => $notification->url,
+                    'created_at' => $notification->created_at?->toIso8601String() ?? now()->toIso8601String(),
+                    'url' => $notification->url,
                 ]
             ));
         } catch (\Exception $e) {
             Log::warning('[FrontDeskCheckIn] Broadcast failed (notification still saved)', [
                 'notification_id' => $notification->id,
-                'error'           => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
 
         // Persist who was notified and when
         $checkIn->update([
             'notified_staff_id' => $recipient->id,
-            'notified_at'       => now(),
+            'notified_at' => now(),
+        ]);
+
+        return $recipient;
+    }
+
+    /**
+     * Tell reception that a visitor checked in on the public page.
+     * Does not notify the client's assignee. The staff wizard still uses notify().
+     */
+    public function notifyPublicArrival(FrontDeskCheckIn $checkIn): ?Staff
+    {
+        $receptionId = (int) config('constants.reception_user_id', 0);
+        $recipient = $receptionId > 0 ? Staff::query()->find($receptionId) : null;
+
+        if (! $recipient) {
+            Log::info('[PublicCheckIn] No notification recipient resolved', ['check_in_id' => $checkIn->id]);
+
+            return null;
+        }
+
+        $clientName = $this->resolveClientName($checkIn);
+        $message = "Front-desk check-in: {$clientName} has arrived"
+            .($checkIn->claimed_appointment ? ' (has appointment)' : '')
+            .'.';
+
+        $notification = Notification::create([
+            'sender_id' => null,
+            'receiver_id' => $recipient->id,
+            'module_id' => $checkIn->id,
+            'url' => url('/office-visits/waiting'),
+            'notification_type' => 'front_desk_checkin',
+            'message' => $message,
+            'seen' => 0,
+            'receiver_status' => 0,
+            'sender_status' => 1,
+        ]);
+
+        try {
+            broadcast(new OfficeVisitNotificationCreated(
+                $notification->id,
+                $notification->receiver_id,
+                [
+                    'id' => $notification->id,
+                    'checkin_id' => $checkIn->id,
+                    'message' => $message,
+                    'sender_name' => 'Front desk',
+                    'client_name' => $clientName,
+                    'visit_purpose' => $checkIn->visit_reason ?? 'Front-desk check-in',
+                    'created_at' => $notification->created_at?->toIso8601String() ?? now()->toIso8601String(),
+                    'url' => $notification->url,
+                ]
+            ));
+        } catch (\Exception $e) {
+            Log::warning('[PublicCheckIn] Broadcast failed (notification still saved)', [
+                'notification_id' => $notification->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        $checkIn->update([
+            'notified_staff_id' => $recipient->id,
+            'notified_at' => now(),
         ]);
 
         return $recipient;
@@ -96,7 +160,7 @@ class CheckInNotificationService
 
         $adminId = $checkIn->client_id ?? $checkIn->lead_id;
         if ($adminId) {
-            $admin = \App\Models\Admin::find($adminId);
+            $admin = Admin::find($adminId);
             if ($admin) {
                 if ($admin->user_id) {
                     $staff = Staff::find($admin->user_id);
@@ -120,11 +184,12 @@ class CheckInNotificationService
     {
         $adminId = $checkIn->client_id ?? $checkIn->lead_id;
         if ($adminId) {
-            $admin = \App\Models\Admin::find($adminId);
+            $admin = Admin::find($adminId);
             if ($admin) {
-                return trim($admin->first_name . ' ' . $admin->last_name) ?: 'Walk-in';
+                return trim($admin->first_name.' '.$admin->last_name) ?: 'Walk-in';
             }
         }
+
         return 'Walk-in';
     }
 }

@@ -2829,9 +2829,14 @@ window.saveEmailAddresses = function() {
         
         // Update summary view on success
         const summaryView = document.getElementById('emailAddressesSummary');
-        const summaryGrid = summaryView.querySelector('.summary-grid');
+        let summaryGrid = summaryView.querySelector('.summary-grid');
         
         if (savedEmails.length > 0) {
+            // A lead or client with no emails yet renders an empty state, not a list.
+            if (!summaryGrid) {
+                summaryView.innerHTML = '<div class="summary-grid"></div>';
+                summaryGrid = summaryView.querySelector('.summary-grid');
+            }
             summaryGrid.innerHTML = savedEmails.map((email, index) => {
                 // Show verify button only for saved emails with valid ID
                 let verificationButton = '';

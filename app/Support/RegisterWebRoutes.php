@@ -29,6 +29,7 @@ use App\Http\Controllers\ExceptionController;
 use App\Http\Controllers\Public\PublicAppointmentActionController;
 use App\Http\Controllers\Public\PublicAppointmentPaymentController;
 use App\Http\Controllers\Public\PublicClientDetailVerificationController;
+use App\Http\Controllers\Public\PublicFrontDeskCheckInController;
 use App\Http\Controllers\Public\PublicLeadInquiryController;
 use App\Http\Controllers\Public\PublicLeadMigrateInviteController;
 use App\Http\Controllers\Public\PublicPhoneCallController;
@@ -105,6 +106,23 @@ final class RegisterWebRoutes
             ->name('public.lead-inquiry.cancel');
 
         $this->router->middleware('throttle:60,1')->get('/phone-call', PublicPhoneCallController::class)->name('public.phone-call');
+
+        /* Public front-desk check-in (no login). Staff wizard stays at /front-desk/checkin. */
+        $this->router->middleware('throttle:60,1')->group(function () {
+            $this->router->get('/check-in', [PublicFrontDeskCheckInController::class, 'index'])->name('public.check-in.index');
+        });
+        $this->router->post('/check-in/lookup', [PublicFrontDeskCheckInController::class, 'lookup'])
+            ->middleware('throttle:20,1')
+            ->name('public.check-in.lookup');
+        $this->router->post('/check-in/appointments', [PublicFrontDeskCheckInController::class, 'appointments'])
+            ->middleware('throttle:30,1')
+            ->name('public.check-in.appointments');
+        $this->router->post('/check-in/submit', [PublicFrontDeskCheckInController::class, 'submit'])
+            ->middleware('throttle:10,1')
+            ->name('public.check-in.submit');
+        $this->router->post('/check-in/create-lead', [PublicFrontDeskCheckInController::class, 'createLead'])
+            ->middleware('throttle:8,1')
+            ->name('public.check-in.create-lead');
 
         $this->router->middleware('throttle:60,1')->group(function () {
             $this->router->get('/appointment/pay/{token}', [PublicAppointmentPaymentController::class, 'show'])->name('public.appointment.pay');

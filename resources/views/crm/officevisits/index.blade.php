@@ -109,6 +109,7 @@ body, html { overflow-x: hidden !important; max-width: 100% !important; }
 												@if(@$totalData !== 0)
 												@php
 													$migrateAssigneeIds = ($migrateAssigneeStaff ?? collect())->pluck('id')->map(static fn ($id) => (int) $id)->all();
+													$publicCheckInLogIdSet = array_fill_keys(array_map('intval', $publicCheckInLogIds ?? []), true);
 												@endphp
 												@foreach (@$lists as $list)
 												<tr did="{{@$list->id}}" id="id_{{@$list->id}}" data-status="{{ (int) $list->status }}" @if((int) request('checkin') === (int) $list->id) style="background-color:#e8f1ff;" @endif>
@@ -145,6 +146,11 @@ body, html { overflow-x: hidden !important; max-width: 100% !important; }
 															&& \App\Support\LeadMigrateInviteChannels::isMigrateEnquiryVisit($list->visit_purpose);
 														$hasAllowlistedMigrateAssignee = $isMigrateEnquiryWaiting
 															&& in_array((int) $list->user_id, $migrateAssigneeIds, true);
+														$isPublicCheckInWaiting = in_array($activeTab, ['waiting', 'attending'], true)
+															&& in_array((int) $list->status, [0, 2], true)
+															&& isset($publicCheckInLogIdSet[(int) $list->id]);
+														$hasAllowlistedPublicAssignee = $isPublicCheckInWaiting
+															&& in_array((int) $list->user_id, $migrateAssigneeIds, true);
 														?>
 														@if($isMigrateEnquiryWaiting)
 															{{-- Before allowlisted assign: only Set Assignee. After: assignee only (no link). --}}
@@ -153,6 +159,16 @@ body, html { overflow-x: hidden !important; max-width: 100% !important; }
 															@else
 																<a href="javascript:;"
 																	class="open-migrate-enquiry-assignee"
+																	data-id="{{ $list->id }}"
+																	data-current-assignee=""
+																	style="font-size:12px;font-weight:600;">Set Assignee</a>
+															@endif
+														@elseif($isPublicCheckInWaiting)
+															@if($hasAllowlistedPublicAssignee && $admin)
+																<a href="{{ route('adminconsole.staff.view', $admin->id) }}">{{$admin->first_name}} {{$admin->last_name}}</a><br>{{$admin->email}}
+															@else
+																<a href="javascript:;"
+																	class="open-public-checkin-assignee"
 																	data-id="{{ $list->id }}"
 																	data-current-assignee=""
 																	style="font-size:12px;font-weight:600;">Set Assignee</a>
@@ -289,6 +305,41 @@ body, html { overflow-x: hidden !important; max-width: 100% !important; }
 	</div>
 </div>
 @endif
+@if(in_array(($activeTab ?? ''), ['waiting', 'attending'], true))
+<div class="modal fade" id="publicCheckInAssigneeModal" tabindex="-1" role="dialog" aria-labelledby="publicCheckInAssigneeLabel" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="publicCheckInAssigneeLabel">Set Assignee</h5>
+				<button type="button" class="close" data-bs-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+			</div>
+			<div class="modal-body">
+				<p style="font-size:13px;color:#5d6f86;margin-bottom:12px;">Assign this public check-in to a staff member.</p>
+				<div class="form-group mb-0">
+					<label for="publicCheckInAssigneeSelect">Staff</label>
+					<select id="publicCheckInAssigneeSelect" class="form-control">
+						<option value="">Select staff</option>
+						@foreach(($migrateAssigneeStaff ?? collect()) as $staffOption)
+							<option value="{{ $staffOption->id }}">
+								{{ trim(($staffOption->first_name ?? '').' '.($staffOption->last_name ?? '')) }} — {{ $staffOption->email }}
+							</option>
+						@endforeach
+					</select>
+					@if(($migrateAssigneeStaff ?? collect())->isEmpty())
+						<small class="text-muted d-block mt-2">No matching staff found for the configured assignee list.</small>
+					@endif
+				</div>
+				<input type="hidden" id="publicCheckInCheckinId" value="">
+				<div id="publicCheckInAssigneeMessage" class="mt-3" style="display:none;"></div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-primary" id="publicCheckInAssigneeSaveBtn">Save</button>
+			</div>
+		</div>
+	</div>
+</div>
+@endif
 @endsection
 @push('scripts')
 <script>
@@ -360,6 +411,90 @@ jQuery(document).ready(function($){
 		} else {
 			$migrateModal.addClass('show').css('display', 'block');
 		}
+	});
+
+	var publicAssigneeUrl = @json(route('officevisits.public-checkin-assignee'));
+	var $publicModal = $('#publicCheckInAssigneeModal');
+	var $publicSelect = $('#publicCheckInAssigneeSelect');
+	var $publicMsg = $('#publicCheckInAssigneeMessage');
+	var $publicSave = $('#publicCheckInAssigneeSaveBtn');
+
+	function showPublicAssigneeMessage(text, isError) {
+		if (!$publicMsg.length) return;
+		$publicMsg
+			.css({
+				display: 'block',
+				padding: '8px 10px',
+				borderRadius: '6px',
+				fontSize: '13px',
+				background: isError ? '#fff5f5' : '#f0fff4',
+				color: isError ? '#8a1f2f' : '#1e6b3a',
+				border: isError ? '1px solid #f0c2c8' : '1px solid #b7e4c7'
+			})
+			.text(text);
+	}
+
+	$(document).on('click', '.open-public-checkin-assignee', function () {
+		if (!$publicModal.length) return;
+		var checkinId = $(this).data('id');
+		var currentAssignee = String($(this).data('current-assignee') || '');
+		$('#publicCheckInCheckinId').val(checkinId);
+		$publicMsg.hide().text('');
+		$publicSelect.val('');
+		if (currentAssignee && $publicSelect.find('option[value="' + currentAssignee + '"]').length) {
+			$publicSelect.val(currentAssignee);
+		}
+		if ($publicModal.modal) {
+			$publicModal.modal('show');
+		} else {
+			$publicModal.addClass('show').css('display', 'block');
+		}
+	});
+
+	$publicSave.on('click', function () {
+		var checkinId = $('#publicCheckInCheckinId').val();
+		var assigneeId = $publicSelect.val();
+		if (!checkinId) {
+			showPublicAssigneeMessage('Visit not found.', true);
+			return;
+		}
+		if (!assigneeId) {
+			showPublicAssigneeMessage('Please select a staff member.', true);
+			return;
+		}
+
+		$publicSave.prop('disabled', true);
+		$('.popuploader').show();
+		$.ajax({
+			url: publicAssigneeUrl,
+			type: 'POST',
+			data: {
+				id: checkinId,
+				assignee_id: assigneeId
+			},
+			success: function (response) {
+				if (response && response.status) {
+					showPublicAssigneeMessage(response.message || 'Assignee updated successfully.', false);
+					setTimeout(function () { location.reload(); }, 600);
+				} else {
+					showPublicAssigneeMessage((response && response.message) || 'Please try again.', true);
+					$publicSave.prop('disabled', false);
+					$('.popuploader').hide();
+				}
+			},
+			error: function (xhr) {
+				var msg = 'Please try again.';
+				if (xhr.responseJSON && xhr.responseJSON.message) {
+					msg = xhr.responseJSON.message;
+				} else if (xhr.responseJSON && xhr.responseJSON.errors) {
+					var first = Object.values(xhr.responseJSON.errors)[0];
+					if (Array.isArray(first) && first[0]) msg = first[0];
+				}
+				showPublicAssigneeMessage(msg, true);
+				$publicSave.prop('disabled', false);
+				$('.popuploader').hide();
+			}
+		});
 	});
 
 	$migrateSave.on('click', function () {

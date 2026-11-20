@@ -116,6 +116,8 @@ Route::post('/complete_session', [OfficeVisitController::class, 'complete_sessio
 Route::get('/office-visits/change_assignee', [OfficeVisitController::class, 'change_assignee']);
 Route::post('/office-visits/migrate-enquiry-assignee', [OfficeVisitController::class, 'setMigrateEnquiryAssignee'])
     ->name('officevisits.migrate-enquiry-assignee');
+Route::post('/office-visits/public-checkin-assignee', [OfficeVisitController::class, 'setPublicCheckInAssignee'])
+    ->name('officevisits.public-checkin-assignee');
 
 /*
 |--------------------------------------------------------------------------

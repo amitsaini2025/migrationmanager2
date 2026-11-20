@@ -10,6 +10,7 @@ use App\Models\Admin;
 use App\Models\Branch;
 use App\Models\CheckinHistory;
 use App\Models\CheckinLog;
+use App\Models\FrontDeskCheckIn;
 use App\Models\Lead;
 use App\Models\Notification;
 use App\Models\Staff;
@@ -642,6 +643,103 @@ class OfficeVisitController extends Controller
         ]);
     }
 
+    /**
+     * Waiting-tab only: assign a public check-in visit to the same allowlisted staff.
+     * Does not change Migration Client Enquiry assignment.
+     */
+    public function setPublicCheckInAssignee(Request $request)
+    {
+        $validated = $request->validate([
+            'id' => ['required', 'integer'],
+            'assignee_id' => ['required', 'integer'],
+        ]);
+
+        $visit = CheckinLog::query()->find((int) $validated['id']);
+        if (! $visit) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Visit not found.',
+            ], 404);
+        }
+
+        if (! in_array((int) $visit->status, [0, 2], true) || ! FrontDeskCheckIn::isPublicCheckInLog((int) $visit->id)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Set Assignee is only available for open public check-in visits.',
+            ], 422);
+        }
+
+        $assigneeId = (int) $validated['assignee_id'];
+        if (! LeadMigrateInviteChannels::isAllowedMigrateAssigneeStaffId($assigneeId)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Selected staff is not allowed for this assignment.',
+            ], 422);
+        }
+
+        if ($visit->client_id) {
+            $this->ensureCrmRecordAccess((int) $visit->client_id);
+        }
+
+        $actor = Auth::user();
+        if (! $actor instanceof Staff) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized.',
+            ], 403);
+        }
+
+        try {
+            DB::transaction(function () use ($visit, $assigneeId): void {
+                $visit->user_id = $assigneeId;
+                $visit->save();
+
+                if ($visit->client_id && $visit->contact_type === 'Lead') {
+                    Admin::query()
+                        ->whereKey((int) $visit->client_id)
+                        ->where('type', 'lead')
+                        ->update([
+                            'user_id' => $assigneeId,
+                            'updated_at' => now(),
+                        ]);
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::error('Public check-in set assignee failed', [
+                'checkin_id' => $visit->id,
+                'assignee_id' => $assigneeId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Please try again.',
+            ], 500);
+        }
+
+        $visit->refresh();
+
+        try {
+            $this->officeVisitNotifications->upsert(
+                $visit,
+                $assigneeId,
+                OfficeVisitNotificationService::ACTION_REASSIGNED,
+                $actor
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Public check-in assignee notification failed', [
+                'checkin_id' => $visit->id,
+                'assignee_id' => $assigneeId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Assignee updated successfully.',
+        ]);
+    }
+
     public function attend_session(Request $request)
     {
         $obj = CheckinLog::find($request->id);
@@ -795,9 +893,14 @@ class OfficeVisitController extends Controller
                 'InPersonCount_waiting_type' => $tabCounts['waiting'],
                 'InPersonCount_attending_type' => $tabCounts['attending'],
                 'InPersonCount_completed_type' => $tabCounts['completed'],
-                'migrateAssigneeStaff' => $activeTab === 'waiting'
+                'migrateAssigneeStaff' => in_array($activeTab, ['waiting', 'attending'], true)
                     ? LeadMigrateInviteChannels::resolveMigrateAssigneeStaff()
                     : collect(),
+                'publicCheckInLogIds' => in_array($activeTab, ['waiting', 'attending'], true)
+                    ? FrontDeskCheckIn::publicCheckInLogIds(
+                        $lists->getCollection()->pluck('id')->map(static fn ($id): int => (int) $id)->all()
+                    )
+                    : [],
             ]
         ));
     }

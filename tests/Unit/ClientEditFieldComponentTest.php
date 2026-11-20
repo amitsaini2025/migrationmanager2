@@ -130,8 +130,8 @@ class ClientEditFieldComponentTest extends TestCase
         Assert::assertStringContainsString("date('d/m/Y', strtotime(\$occupation->expiry_dates))", $occupationField);
         Assert::assertStringNotContainsString('type="date"', $occupationField);
 
-        Assert::assertStringContainsString("class=\"dates date-picker\"", $js);
-        Assert::assertStringContainsString("class=\"expiry_dates date-picker\"", $js);
+        Assert::assertStringContainsString('class="dates date-picker"', $js);
+        Assert::assertStringContainsString('class="expiry_dates date-picker"', $js);
         Assert::assertStringContainsString("sectionType === 'occupationInfo'", $js);
         Assert::assertStringContainsString("sectionType === 'qualificationsInfo'", $js);
         Assert::assertStringContainsString("$('#qualificationsInfoEdit .date-picker')", $js);
@@ -152,6 +152,14 @@ class ClientEditFieldComponentTest extends TestCase
         Assert::assertStringNotContainsString('Staff::find', $edit);
         Assert::assertStringNotContainsString('ClientMatter::where', $company);
         Assert::assertStringNotContainsString('Staff::find', $company);
+    }
+
+    public function test_edit_client_js_creates_email_summary_when_none_exists_yet(): void
+    {
+        $js = $this->viewContents('public/js/clients/edit-client.js');
+
+        Assert::assertStringContainsString("summaryView.innerHTML = '<div class=\"summary-grid\"></div>';", $js);
+        Assert::assertStringContainsString("summaryView.innerHTML = '<div class=\"empty-state\"><p>No email addresses added yet.</p></div>';", $js);
     }
 
     public function test_client_edit_email_summary_guards_missing_is_verified(): void

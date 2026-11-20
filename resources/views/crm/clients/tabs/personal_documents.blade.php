@@ -1,13 +1,18 @@
            <!-- Personal Documents Tab (Client-Level) -->
            @php
-                $personalDocumentsTabFragmentUrl = ! empty($encodeId)
-                    ? route('clients.detail.personaldocuments-tab', array_filter([
+                $companyDocumentsFragment = ! empty($companyDocumentsOnlyGeneral);
+                $personalDocumentsTabFragmentUrl = '';
+                if (! empty($encodeId)) {
+                    $personalDocumentsTabFragmentUrl = route('clients.detail.personaldocuments-tab', array_filter([
                         'client_id' => $encodeId,
                         'client_unique_matter_ref_no' => $id1 ?? null,
                     ], static function ($value) {
                         return $value !== null && $value !== '';
-                    }))
-                    : '';
+                    }));
+                    if ($companyDocumentsFragment) {
+                        $personalDocumentsTabFragmentUrl .= '?company_documents=1';
+                    }
+                }
            @endphp
            <div class="tab-pane" id="personaldocuments-tab"
                 @if($personalDocumentsTabFragmentUrl !== '') data-personaldocuments-url="{{ $personalDocumentsTabFragmentUrl }}" @endif>

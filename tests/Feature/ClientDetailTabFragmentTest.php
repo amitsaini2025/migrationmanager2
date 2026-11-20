@@ -7,6 +7,7 @@ use App\Http\Middleware\VerifyCsrfToken;
 use App\Models\Admin;
 use App\Models\Branch;
 use App\Models\EmailTemplate;
+use App\Models\PersonalDocumentType;
 use App\Models\Staff;
 use App\Models\UploadChecklist;
 use App\Support\ClientDetailModals;
@@ -162,6 +163,77 @@ class ClientDetailTabFragmentTest extends TestCase
             ClientDetailTabs::fragmentRouteNames()['personaldocuments'],
             ClientDetailTabs::paneId('personaldocuments')
         );
+    }
+
+    #[Test]
+    public function company_documents_fragment_keeps_company_categories_and_person_fragment_stays_personal(): void
+    {
+        $personalTitle = 'PersOnlyCatZz';
+        $companyTitle = 'CoOnlyCatZz';
+
+        $company = Admin::query()->create([
+            'type' => 'client',
+            'first_name' => 'Mandair',
+            'last_name' => 'Transport',
+            'email' => 'company-doc-fragment@test.com',
+            'is_company' => 1,
+            'is_deleted' => null,
+            'cp_status' => 0,
+        ]);
+
+        PersonalDocumentType::query()->create([
+            'title' => $personalTitle,
+            'status' => 1,
+            'client_id' => $company->id,
+            'type' => 'personal',
+        ]);
+        PersonalDocumentType::query()->create([
+            'title' => $companyTitle,
+            'status' => 1,
+            'client_id' => $company->id,
+            'type' => 'company',
+        ]);
+        PersonalDocumentType::query()->create([
+            'title' => $personalTitle,
+            'status' => 1,
+            'client_id' => $this->client->id,
+            'type' => 'personal',
+        ]);
+        PersonalDocumentType::query()->create([
+            'title' => $companyTitle,
+            'status' => 1,
+            'client_id' => $this->client->id,
+            'type' => 'company',
+        ]);
+
+        $companyUrl = route('clients.detail.personaldocuments-tab', [
+            'client_id' => base64_encode(convert_uuencode((string) $company->id)),
+        ]);
+        $personUrl = route('clients.detail.personaldocuments-tab', [
+            'client_id' => $this->encodedClientId,
+        ]);
+
+        $companyFragment = $this->actingAs($this->staff, 'admin')
+            ->get($companyUrl.'?company_documents=1');
+        $companyFragment->assertOk();
+        $companyFragment->assertSee($companyTitle, false);
+        $companyFragment->assertDontSee($personalTitle, false);
+        $companyFragment->assertSee('company_documents=1', false);
+        $companyFragment->assertSee('Select Company Category:', false);
+
+        $personFragment = $this->actingAs($this->staff, 'admin')->get($personUrl);
+        $personFragment->assertOk();
+        $personFragment->assertSee($personalTitle, false);
+        $personFragment->assertDontSee($companyTitle, false);
+        $personFragment->assertDontSee('company_documents=1', false);
+        $personFragment->assertSee('Select Personal Category:', false);
+
+        $personWithCompanyFlag = $this->actingAs($this->staff, 'admin')
+            ->get($personUrl.'?company_documents=1');
+        $personWithCompanyFlag->assertOk();
+        $personWithCompanyFlag->assertSee($personalTitle, false);
+        $personWithCompanyFlag->assertDontSee($companyTitle, false);
+        $personWithCompanyFlag->assertSee('Select Personal Category:', false);
     }
 
     #[Test]

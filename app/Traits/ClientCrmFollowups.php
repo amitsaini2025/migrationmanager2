@@ -5134,11 +5134,17 @@ trait ClientCrmFollowups
             abort(404);
         }
 
+        // Company Documents reuses this fragment. The company page asks for
+        // company categories; a person/lead request keeps the personnel list.
+        $companyDocumentsOnlyGeneral = $request->boolean('company_documents')
+            && (bool) $fetchedData->is_company;
+
         return view('crm.clients.tabs.personal_documents', [
             'fetchedData' => $fetchedData,
             'encodeId' => $encodeId,
             'id1' => $client_unique_matter_ref_no,
             'activeTab' => 'personaldocuments',
+            'companyDocumentsOnlyGeneral' => $companyDocumentsOnlyGeneral,
         ]);
     }
 

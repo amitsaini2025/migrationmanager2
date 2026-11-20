@@ -37,6 +37,7 @@ class CompanyDocumentCategoryTest extends TestCase
         $personalDocumentsBlade = file_get_contents(base_path('resources/views/crm/clients/tabs/personal_documents.blade.php'));
         Assert::assertNotFalse($personalDocumentsBlade);
         Assert::assertStringContainsString("data-type=\"{{ \$companyDocumentsOnlyGeneral ? 'company' : 'personal' }}\"", $personalDocumentsBlade);
+        Assert::assertStringContainsString("\$personalDocumentsTabFragmentUrl .= '?company_documents=1';", $personalDocumentsBlade);
         Assert::assertStringNotContainsString('@if (!$companyDocumentsOnlyGeneral)', $personalDocumentsBlade);
     }
 

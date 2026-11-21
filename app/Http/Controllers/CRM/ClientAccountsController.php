@@ -2232,7 +2232,8 @@ class ClientAccountsController extends Controller
             (string) $validated['invoice_no'],
             (float) $validated['amount'],
             isset($validated['description']) ? (string) $validated['description'] : null,
-            Auth::guard('admin')->id() ?? Auth::id()
+            Auth::guard('admin')->id() ?? Auth::id(),
+            (string) $validated['trans_date']
         );
 
         return response()->json($result, $result['status'] ? 200 : 422);

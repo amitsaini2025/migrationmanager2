@@ -117,6 +117,53 @@
         return amount.toFixed(2);
     }
 
+    function todayReceiptDate() {
+        var today = new Date();
+        return ('0' + today.getDate()).slice(-2) + '/' +
+            ('0' + (today.getMonth() + 1)).slice(-2) + '/' +
+            today.getFullYear();
+    }
+
+    function isReceiptDate(value) {
+        if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+            return false;
+        }
+        var parts = value.split('/');
+        var day = parseInt(parts[0], 10);
+        var month = parseInt(parts[1], 10);
+        var year = parseInt(parts[2], 10);
+        var date = new Date(year, month - 1, day);
+        return date.getFullYear() === year && (date.getMonth() + 1) === month && date.getDate() === day;
+    }
+
+    function setDiscountReceiptDate(dateStr) {
+        var $input = $('#apply_discount_trans_date');
+        if (!$input.length) {
+            return;
+        }
+        $input.val(dateStr);
+        var existing = $input.data('flatpickr') || ($input[0] && $input[0]._flatpickr);
+        if (existing && typeof existing.setDate === 'function') {
+            existing.setDate(dateStr, false);
+            return;
+        }
+        if (typeof window.initFlatpickrForClass === 'function') {
+            window.initFlatpickrForClass('#apply_discount_trans_date');
+            return;
+        }
+        if (typeof flatpickr === 'undefined') {
+            return;
+        }
+        var fp = flatpickr($input[0], {
+            dateFormat: 'd/m/Y',
+            allowInput: true,
+            clickOpens: true,
+            defaultDate: dateStr,
+            locale: { firstDayOfWeek: 1 }
+        });
+        $input.data('flatpickr', fp);
+    }
+
     function ensureDiscountModalOnBody() {
         var $modal = $('#applyInvoiceDiscountModal');
         if ($modal.length && !$modal.parent().is('body')) {
@@ -143,6 +190,7 @@
         $('#apply_discount_outstanding').text(formatMoney(outstanding));
         $('#apply_discount_amount').val('').data('max', outstanding);
         $('#apply_discount_description').val('Discount for ' + invoiceNo);
+        setDiscountReceiptDate(todayReceiptDate());
         $modal.modal('show');
         setTimeout(function() {
             $('#apply_discount_amount').trigger('focus');
@@ -156,8 +204,13 @@
     $(document).on('submit', '#apply-invoice-discount-form', function(e) {
         e.preventDefault();
         var $submit = $('#apply_discount_submit_btn');
+        var transDate = ($('#apply_discount_trans_date').val() || '').trim();
         var amount = parseFloat($('#apply_discount_amount').val()) || 0;
         var outstanding = parseFloat($('#apply_discount_amount').data('max'));
+        if (!isReceiptDate(transDate)) {
+            alert('Enter a receipt date in dd/mm/yyyy format.');
+            return;
+        }
         if (amount <= 0) {
             alert('Enter a discount amount greater than 0.');
             return;
@@ -181,7 +234,8 @@
                 client_id: $('#apply_discount_client_id').val(),
                 invoice_no: $('#apply_discount_invoice_no').val(),
                 amount: amount.toFixed(2),
-                description: $('#apply_discount_description').val()
+                description: $('#apply_discount_description').val(),
+                trans_date: transDate
             }
         }).done(function(obj) {
             if (!obj || !(obj.status === true || obj.status === 1)) {

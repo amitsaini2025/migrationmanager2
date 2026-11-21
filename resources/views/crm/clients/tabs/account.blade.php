@@ -3368,6 +3368,10 @@ $(document).ready(function() {
                         Discount will be applied to <strong id="apply_discount_invoice_label"></strong> and listed under Direct Office Receipts.
                     </p>
                     <div class="form-group">
+                        <label for="apply_discount_trans_date">Receipt date <span class="span_req">*</span></label>
+                        <input type="text" class="form-control" id="apply_discount_trans_date" name="trans_date" placeholder="dd/mm/yyyy" autocomplete="off" required>
+                    </div>
+                    <div class="form-group">
                         <label for="apply_discount_amount">Discount amount <span class="span_req">*</span></label>
                         <input type="text" class="form-control" id="apply_discount_amount" name="amount" inputmode="decimal" autocomplete="off" placeholder="0.00" required>
                         <small class="text-muted">Outstanding: $<span id="apply_discount_outstanding">0.00</span></small>

@@ -22,6 +22,18 @@ class ApplyInvoiceDiscountRequest extends FormRequest
             'invoice_no' => ['required', 'string', 'max:64'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'description' => ['nullable', 'string', 'max:255'],
+            'trans_date' => ['required', 'date_format:d/m/Y'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'trans_date.required' => 'Enter a receipt date.',
+            'trans_date.date_format' => 'Enter a receipt date in dd/mm/yyyy format.',
         ];
     }
 }

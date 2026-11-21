@@ -35,6 +35,8 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
         Assert::assertSame(25.0, (float) $office[0]->deposit_amount);
         Assert::assertSame('Courtesy discount', $office[0]->description);
         Assert::assertSame('final', $office[0]->save_type);
+        Assert::assertSame(now()->format('d/m/Y'), $office[0]->trans_date);
+        Assert::assertSame(now()->format('d/m/Y'), $office[0]->entry_date);
 
         $invoiceDiscountLines = DB::table('account_client_receipts')
             ->where('receipt_type', 3)
@@ -83,6 +85,43 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
     }
 
     #[Test]
+    public function selected_receipt_date_is_stored_on_the_office_receipt_date_only(): void
+    {
+        $this->createDiscountSchema();
+        $this->insertFinalInvoice(1, 'INV-DATE', 100.00);
+
+        $result = app(ApplyInvoiceOfficeDiscount::class)->handle(
+            1,
+            'INV-DATE',
+            10.00,
+            'Discount for INV-DATE',
+            9,
+            '12/11/2026'
+        );
+
+        Assert::assertTrue($result['status']);
+        $office = DB::table('account_client_receipts')->where('receipt_type', 2)->first();
+        Assert::assertSame('12/11/2026', $office->trans_date);
+        Assert::assertSame(now()->format('d/m/Y'), $office->entry_date);
+        Assert::assertSame('12/11/2026', $result['requestData'][0]['trans_date']);
+        Assert::assertSame(90.0, $result['invoice_balance']);
+    }
+
+    #[Test]
+    public function invalid_receipt_date_does_not_create_an_office_receipt(): void
+    {
+        $this->createDiscountSchema();
+        $this->insertFinalInvoice(1, 'INV-BADDATE', 40.00);
+
+        $result = app(ApplyInvoiceOfficeDiscount::class)->handle(1, 'INV-BADDATE', 10.00, null, null, '32/13/2026');
+
+        Assert::assertFalse($result['status']);
+        Assert::assertStringContainsString('dd/mm/yyyy', $result['message']);
+        Assert::assertSame(0, DB::table('account_client_receipts')->where('receipt_type', 2)->count());
+        Assert::assertSame(40.0, (float) DB::table('account_client_receipts')->where('receipt_type', 3)->value('balance_amount'));
+    }
+
+    #[Test]
     public function rejects_discount_greater_than_outstanding_and_leaves_invoice_unchanged(): void
     {
         $this->createDiscountSchema();
@@ -124,6 +163,8 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
         Assert::assertStringContainsString("@icon('fa-percentage') Adjustments", $blade);
         Assert::assertStringContainsString("officeReceiptMethodLabel = 'Adjustments'", $blade);
         Assert::assertStringContainsString('id="applyInvoiceDiscountModal"', $blade);
+        Assert::assertStringContainsString('id="apply_discount_trans_date"', $blade);
+        Assert::assertStringContainsString('trans_date: transDate', $invoicesJs);
         Assert::assertStringContainsString("$('#applyInvoiceDiscountModal').appendTo('body')", $blade);
         Assert::assertStringContainsString('applyInvoiceDiscount', $invoicesJs);
         Assert::assertStringContainsString('.apply-invoice-discount', $invoicesJs);

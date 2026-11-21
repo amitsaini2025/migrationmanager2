@@ -20,7 +20,7 @@ class ApplyInvoiceOfficeDiscount
      *
      * @return array{status: bool, message: string, invoice_no?: string, invoice_balance?: float, invoice_status?: int, requestData?: array<int, array<string, mixed>>}
      */
-    public function handle(int $clientId, string $invoiceNo, float $amount, ?string $description, ?int $userId): array
+    public function handle(int $clientId, string $invoiceNo, float $amount, ?string $description, ?int $userId, ?string $transDate = null): array
     {
         $invoiceNo = trim($invoiceNo);
         $amount = round($amount, 2);
@@ -32,8 +32,17 @@ class ApplyInvoiceOfficeDiscount
             ];
         }
 
+        $entryDate = now()->format('d/m/Y');
+        $receiptDate = $this->normalizeReceiptDate($transDate);
+        if ($receiptDate === false) {
+            return [
+                'status' => false,
+                'message' => 'Enter a receipt date in dd/mm/yyyy format.',
+            ];
+        }
+
         try {
-            return DB::transaction(function () use ($clientId, $invoiceNo, $amount, $description, $userId) {
+            return DB::transaction(function () use ($clientId, $invoiceNo, $amount, $description, $userId, $receiptDate, $entryDate) {
                 $invoice = $this->lockInvoiceRow($clientId, $invoiceNo);
 
                 if ($invoice === null) {
@@ -48,7 +57,6 @@ class ApplyInvoiceOfficeDiscount
                     return $rejection;
                 }
 
-                $date = now()->format('d/m/Y');
                 $resolvedDescription = trim((string) $description);
                 if ($resolvedDescription === '') {
                     $resolvedDescription = 'Discount for '.$invoiceNo;
@@ -63,8 +71,8 @@ class ApplyInvoiceOfficeDiscount
                     'client_matter_id' => $invoice->client_matter_id ?? null,
                     'receipt_id' => $receiptGroupId,
                     'receipt_type' => 2,
-                    'trans_date' => $date,
-                    'entry_date' => $date,
+                    'trans_date' => $receiptDate,
+                    'entry_date' => $entryDate,
                     'trans_no' => $transNo,
                     'invoice_no' => $invoiceNo,
                     'payment_method' => self::PAYMENT_METHOD,
@@ -96,8 +104,8 @@ class ApplyInvoiceOfficeDiscount
                     'invoice_status' => $synced['invoice_status'],
                     'requestData' => [[
                         'id' => $insertedId,
-                        'trans_date' => $date,
-                        'entry_date' => $date,
+                        'trans_date' => $receiptDate,
+                        'entry_date' => $entryDate,
                         'trans_no' => $transNo,
                         'invoice_no' => $invoiceNo,
                         'payment_method' => self::PAYMENT_METHOD,
@@ -112,6 +120,26 @@ class ApplyInvoiceOfficeDiscount
                 'message' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Empty means the day the adjustment is applied. A supplied date must be dd/mm/yyyy.
+     */
+    private function normalizeReceiptDate(?string $transDate): string|false
+    {
+        $transDate = trim((string) $transDate);
+        if ($transDate === '') {
+            return now()->format('d/m/Y');
+        }
+
+        $parsed = \DateTime::createFromFormat('!d/m/Y', $transDate);
+        $errors = \DateTime::getLastErrors();
+        $hasErrors = is_array($errors) && (($errors['warning_count'] ?? 0) > 0 || ($errors['error_count'] ?? 0) > 0);
+        if ($parsed === false || $hasErrors || $parsed->format('d/m/Y') !== $transDate) {
+            return false;
+        }
+
+        return $transDate;
     }
 
     /**

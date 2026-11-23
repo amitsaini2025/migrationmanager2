@@ -32,6 +32,7 @@ use App\Http\Controllers\Public\PublicClientDetailVerificationController;
 use App\Http\Controllers\Public\PublicFrontDeskCheckInController;
 use App\Http\Controllers\Public\PublicLeadInquiryController;
 use App\Http\Controllers\Public\PublicLeadMigrateInviteController;
+use App\Http\Controllers\Public\PublicOfficeCheckInController;
 use App\Http\Controllers\Public\PublicPhoneCallController;
 use Illuminate\Config\Repository as ConfigRepository;
 use Illuminate\Container\Container;
@@ -107,10 +108,27 @@ final class RegisterWebRoutes
 
         $this->router->middleware('throttle:60,1')->get('/phone-call', PublicPhoneCallController::class)->name('public.phone-call');
 
-        /* Public front-desk check-in (no login). Staff wizard stays at /front-desk/checkin. */
-        $this->router->middleware('throttle:60,1')->group(function () {
-            $this->router->get('/check-in', [PublicFrontDeskCheckInController::class, 'index'])->name('public.check-in.index');
-        });
+        /* Public check-in chooser (no login). Immigration → /office-check-in; Education → bansalcrm. */
+        $this->router->middleware('throttle:60,1')->get('/check-in', [PublicOfficeCheckInController::class, 'index'])
+            ->name('public.check-in.index');
+
+        /* Immigration office check-in wizard (no login). Staff wizard stays at /front-desk/checkin. */
+        $this->router->middleware('throttle:60,1')->get('/office-check-in', [PublicFrontDeskCheckInController::class, 'index'])
+            ->name('public.office-check-in.index');
+        $this->router->post('/office-check-in/lookup', [PublicFrontDeskCheckInController::class, 'lookup'])
+            ->middleware('throttle:20,1')
+            ->name('public.office-check-in.lookup');
+        $this->router->post('/office-check-in/appointments', [PublicFrontDeskCheckInController::class, 'appointments'])
+            ->middleware('throttle:30,1')
+            ->name('public.office-check-in.appointments');
+        $this->router->post('/office-check-in/submit', [PublicFrontDeskCheckInController::class, 'submit'])
+            ->middleware('throttle:10,1')
+            ->name('public.office-check-in.submit');
+        $this->router->post('/office-check-in/create-lead', [PublicFrontDeskCheckInController::class, 'createLead'])
+            ->middleware('throttle:8,1')
+            ->name('public.office-check-in.create-lead');
+
+        /* Legacy aliases: keep /check-in API paths working for existing clients/bookmarks. */
         $this->router->post('/check-in/lookup', [PublicFrontDeskCheckInController::class, 'lookup'])
             ->middleware('throttle:20,1')
             ->name('public.check-in.lookup');

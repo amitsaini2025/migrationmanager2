@@ -279,7 +279,7 @@
 <script>
 (function () {
     var CSRF = document.querySelector('meta[name="csrf-token"]').content;
-    var BASE = @json(url('/check-in'));
+    var BASE = @json(url('/office-check-in'));
     var state = blank();
     var off = ['new', 'lead', 'help', 'done'];
 

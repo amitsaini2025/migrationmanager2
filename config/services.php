@@ -302,4 +302,16 @@ return [
         'service_account_path' => env('FCM_SERVICE_ACCOUNT_PATH', 'firebase-service-account.json'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Education office check-in (external bansalcrm)
+    |--------------------------------------------------------------------------
+    |
+    | Used by the public /check-in landing page Education option.
+    |
+    */
+    'education_check_in' => [
+        'url' => rtrim((string) env('EDUCATION_CHECK_IN_URL', 'https://bansalcrm.com/office-check-in'), '/'),
+    ],
+
 ];

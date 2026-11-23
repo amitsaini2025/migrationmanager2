@@ -35,6 +35,8 @@
         .err { color: #b42318; font-size: .82rem; margin-top: 4px; min-height: 0; }
         .alert { display: none; background: #fdecea; color: #7a1f16; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
         .actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+        .toolbar { display: flex; justify-content: flex-end; margin: -6px 0 12px; }
+        .toolbar .ghost { min-height: 40px; padding: 10px 14px; font-size: .9rem; }
         button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; padding: 14px 16px; font-weight: 700; min-height: 48px; }
         .primary { background: var(--navy); color: #fff; }
         .primary:disabled { opacity: .45; cursor: not-allowed; }
@@ -84,6 +86,9 @@
                 <div class="step" data-step="3"><div class="dot">3</div><div class="lbl">Confirm</div></div>
                 <div class="step" data-step="4"><div class="dot">4</div><div class="lbl">Appointment</div></div>
                 <div class="step" data-step="5"><div class="dot">5</div><div class="lbl">Reason</div></div>
+            </div>
+            <div class="toolbar" id="refresh-bar">
+                <button type="button" class="ghost" id="refresh" title="Clear and return to Step 1">Refresh</button>
             </div>
             <div class="alert" id="alert" role="alert"></div>
 
@@ -293,6 +298,8 @@
         var panel = $('step-' + step);
         if (panel) panel.classList.add('active');
         $('stepper').style.display = off.indexOf(step) === -1 ? '' : 'none';
+        // Keep Refresh available on every in-progress step (including new/lead/help); hide only on success.
+        $('refresh-bar').style.display = step === 'done' ? 'none' : '';
         document.querySelectorAll('.step').forEach(function (node) {
             var n = parseInt(node.getAttribute('data-step'), 10);
             node.classList.remove('active', 'done');
@@ -532,11 +539,38 @@
 
     function reset() {
         state = blank();
-        ['phone','email','reason','notes','first','last','lead-notes'].forEach(function (id) { if ($(id)) $(id).value = ''; });
-        $('matches').innerHTML = ''; $('appts').innerHTML = '';
-        $('next-2').disabled = true; $('next-4').disabled = true;
+        [
+            'phone','email','reason','notes',
+            'first','last','dob','city','job','lead-notes',
+            'marital','visa','visa-exp','qual','qual-date','lead-reason'
+        ].forEach(function (id) { if ($(id)) $(id).value = ''; });
+        [
+            'phone-err','first-err','last-err','lead-reason-err','lead-notes-err','notes-err'
+        ].forEach(function (id) { if ($(id)) $(id).textContent = ''; });
+        $('matches').innerHTML = '';
+        $('appts').innerHTML = '';
+        $('summary').innerHTML = '';
+        $('match-sub').textContent = '';
+        $('done-msg').textContent = '';
+        $('walkin').classList.remove('on');
+        $('appt-yes').classList.remove('on');
+        $('appt-no').classList.remove('on');
+        hide('appt-box');
+        hide('appt-none');
+        hide('lookup-spin');
+        hide('appt-spin');
+        hide('lead-spin');
+        hide('save-spin');
+        hide('lead-notes-req');
+        hide('notes-req');
+        $('lookup').disabled = false;
+        $('save-lead').disabled = false;
+        $('save').disabled = false;
+        $('next-2').disabled = true;
+        $('next-4').disabled = true;
         go(1);
     }
+    $('refresh').addEventListener('click', reset);
     $('again').addEventListener('click', reset);
 })();
 </script>

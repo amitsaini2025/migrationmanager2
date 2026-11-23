@@ -27,7 +27,9 @@ class PublicFrontDeskCheckInTest extends TestCase
             ->assertOk()
             ->assertSee('Front-Desk Check-In')
             ->assertSee('No login needed')
-            ->assertSee('Look Up');
+            ->assertSee('Look Up')
+            ->assertSee('>Refresh</button>', false)
+            ->assertSee('id="refresh"', false);
     }
 
     public function test_the_existing_staff_check_in_page_still_requires_login(): void

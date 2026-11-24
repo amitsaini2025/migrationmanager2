@@ -103,6 +103,73 @@
         border-bottom: none;
     }
 
+    /*
+     * Page-only overrides for layout crm_client_detail table !important rules.
+     * Scoped to .journal-receipt-list so other pages are untouched.
+     */
+    .main-content.journal-receipt-list .table-responsive {
+        overflow: auto;
+    }
+
+    .main-content.journal-receipt-list .table {
+        table-layout: auto;
+        width: max-content;
+        min-width: 100%;
+    }
+
+    .main-content.journal-receipt-list .table thead th,
+    .main-content.journal-receipt-list .table tbody td {
+        max-width: none !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        white-space: nowrap !important;
+        width: auto !important;
+        min-width: unset !important;
+    }
+
+    .main-content.journal-receipt-list .table tbody td {
+        padding: 14px 16px !important;
+        color: #1e293b !important;
+        font-weight: 500 !important;
+    }
+
+    .main-content.journal-receipt-list .table thead th {
+        padding: 14px 16px !important;
+    }
+
+    .main-content.journal-receipt-list .table th:nth-child(1),
+    .main-content.journal-receipt-list .table td:nth-child(1) {
+        width: 44px !important;
+        min-width: 44px !important;
+        max-width: 44px !important;
+        white-space: initial !important;
+    }
+
+    .main-content.journal-receipt-list .table th:nth-child(2),
+    .main-content.journal-receipt-list .table td:nth-child(2) { min-width: 110px !important; }
+    .main-content.journal-receipt-list .table th:nth-child(3),
+    .main-content.journal-receipt-list .table td:nth-child(3) { min-width: 110px !important; }
+    .main-content.journal-receipt-list .table th:nth-child(4),
+    .main-content.journal-receipt-list .table td:nth-child(4) { min-width: 140px !important; }
+    .main-content.journal-receipt-list .table th:nth-child(5),
+    .main-content.journal-receipt-list .table td:nth-child(5),
+    .main-content.journal-receipt-list .table th:nth-child(6),
+    .main-content.journal-receipt-list .table td:nth-child(6) { min-width: 110px !important; }
+    .main-content.journal-receipt-list .table th:nth-child(7),
+    .main-content.journal-receipt-list .table td:nth-child(7) { min-width: 120px !important; }
+    .main-content.journal-receipt-list .table th:nth-child(8),
+    .main-content.journal-receipt-list .table td:nth-child(8) { min-width: 130px !important; }
+    .main-content.journal-receipt-list .table th:nth-child(9),
+    .main-content.journal-receipt-list .table td:nth-child(9) { min-width: 160px !important; max-width: 240px !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+    .main-content.journal-receipt-list .table th:nth-child(10),
+    .main-content.journal-receipt-list .table td:nth-child(10) { min-width: 110px !important; }
+    .main-content.journal-receipt-list .table th:nth-child(11),
+    .main-content.journal-receipt-list .table td:nth-child(11) { min-width: 110px !important; }
+    .main-content.journal-receipt-list .table th:nth-child(12),
+    .main-content.journal-receipt-list .table td:nth-child(12) { min-width: 150px !important; }
+    .main-content.journal-receipt-list .table th:nth-child(13),
+    .main-content.journal-receipt-list .table td:nth-child(13) { min-width: 120px !important; }
+
     /* Modern Checkbox */
     .custom-checkbox .custom-control-input:checked ~ .custom-control-label::before {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -183,11 +250,13 @@
         margin-right: 6px;
     }
 
-    /* Amount Styling */
-    .table tbody td[id^="deposit_"] {
-        font-weight: 700;
-        color: #dc2626;
-        font-family: 'Courier New', monospace;
+    /* Amount Styling — !important beats layout crm_client_detail td rules */
+    .main-content.journal-receipt-list .table tbody td[id^="deposit_"] {
+        font-weight: 700 !important;
+        font-family: inherit !important;
+        font-variant-numeric: tabular-nums;
+        font-size: 14px !important;
+        color: #b91c1c !important;
     }
 
     /* Modern Pagination */
@@ -457,11 +526,11 @@
 @endsection
 
 @section('content')
-<div class="main-content">
+<div class="main-content journal-receipt-list">
     <section class="section" style="padding-top: 40px;">
         <div class="section-body">
             @include('../Elements/flash-message')
-            
+
             <div class="card">
                 <div class="custom-error-msg">
                 </div>

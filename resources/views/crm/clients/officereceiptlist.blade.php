@@ -230,6 +230,70 @@
         color: #334155;
     }
 
+    /*
+     * Page-only overrides for shared listing-container.css.
+     * Scoped to .office-receipt-list so other listing pages are untouched.
+     */
+    .listing-container.office-receipt-list .table-responsive {
+        overflow-x: auto !important;
+        overflow-y: auto;
+    }
+
+    .listing-container.office-receipt-list .table {
+        table-layout: auto;
+        width: max-content;
+        min-width: 100%;
+    }
+
+    .listing-container.office-receipt-list .table thead th,
+    .listing-container.office-receipt-list .table tbody td {
+        max-width: none !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        white-space: nowrap !important;
+        width: auto !important;
+        min-width: unset !important;
+    }
+
+    .listing-container.office-receipt-list .table tbody td {
+        padding: 14px 16px !important;
+        color: #1e293b !important;
+    }
+
+    .listing-container.office-receipt-list .table thead th {
+        padding: 14px 16px !important;
+    }
+
+    .listing-container.office-receipt-list .table th:nth-child(1),
+    .listing-container.office-receipt-list .table td:nth-child(1) {
+        width: 44px !important;
+        min-width: 44px !important;
+        max-width: 44px !important;
+    }
+
+    .listing-container.office-receipt-list .table th:nth-child(2),
+    .listing-container.office-receipt-list .table td:nth-child(2) { min-width: 110px !important; }
+    .listing-container.office-receipt-list .table th:nth-child(3),
+    .listing-container.office-receipt-list .table td:nth-child(3) { min-width: 150px !important; }
+    .listing-container.office-receipt-list .table th:nth-child(4),
+    .listing-container.office-receipt-list .table td:nth-child(4) { min-width: 140px !important; }
+    .listing-container.office-receipt-list .table th:nth-child(5),
+    .listing-container.office-receipt-list .table td:nth-child(5) { min-width: 110px !important; }
+    .listing-container.office-receipt-list .table th:nth-child(6),
+    .listing-container.office-receipt-list .table td:nth-child(6) { min-width: 120px !important; }
+    .listing-container.office-receipt-list .table th:nth-child(7),
+    .listing-container.office-receipt-list .table td:nth-child(7) { min-width: 110px !important; }
+    .listing-container.office-receipt-list .table th:nth-child(8),
+    .listing-container.office-receipt-list .table td:nth-child(8) { min-width: 130px !important; }
+    .listing-container.office-receipt-list .table th:nth-child(9),
+    .listing-container.office-receipt-list .table td:nth-child(9) { min-width: 160px !important; max-width: 240px !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+    .listing-container.office-receipt-list .table th:nth-child(10),
+    .listing-container.office-receipt-list .table td:nth-child(10) { min-width: 110px !important; }
+    .listing-container.office-receipt-list .table th:nth-child(11),
+    .listing-container.office-receipt-list .table td:nth-child(11) { min-width: 150px !important; }
+    .listing-container.office-receipt-list .table th:nth-child(12),
+    .listing-container.office-receipt-list .table td:nth-child(12) { min-width: 120px !important; }
+
     /* Modern Status Badges */
     .modern-badge {
         display: inline-flex;
@@ -327,11 +391,13 @@
         font-weight: 600;
     }
 
-    /* Amount Styling */
-    .listing-container .table tbody td[id^="deposit_"] {
-        font-weight: 700;
-        color: #059669;
-        font-family: 'Courier New', monospace;
+    /* Amount Styling — !important beats shared listing-container td color */
+    .listing-container.office-receipt-list .table tbody td[id^="deposit_"] {
+        font-weight: 700 !important;
+        font-family: inherit !important;
+        font-variant-numeric: tabular-nums;
+        font-size: 14px !important;
+        color: #047857 !important;
     }
 
     /* Responsive Design */
@@ -443,7 +509,7 @@
 @endsection
 
 @section('content')
-<div class="listing-container">
+<div class="listing-container office-receipt-list">
     <section class="listing-section" style="padding-top: 40px;">
         <div class="listing-section-body">
             @include('../Elements/flash-message')

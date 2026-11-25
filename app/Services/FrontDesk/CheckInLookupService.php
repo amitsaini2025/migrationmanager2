@@ -8,15 +8,70 @@ use Illuminate\Support\Collection;
 class CheckInLookupService
 {
     /**
-     * Normalize a phone string: strip all non-digit characters.
+     * Normalize a phone string to digits. Australian numbers become the 10-digit national form.
      */
     public function normalizePhone(string $phone): string
     {
-        return preg_replace('/\D/', '', $phone);
+        $canonical = $this->canonicalAustralianPhone($phone);
+        if ($canonical !== '') {
+            return $canonical;
+        }
+
+        return Admin::normalizePhoneDigitsForUniqueness($phone);
+    }
+
+    /**
+     * Canonical Australian national number (10 digits with leading 0), or empty if not AU.
+     *
+     * Accepts common entry forms: 04XXXXXXXX, 4XXXXXXXX, +61 4XX XXX XXX, 02/03/07/08 landlines.
+     */
+    public function canonicalAustralianPhone(string $phone): string
+    {
+        $digits = Admin::normalizePhoneDigitsForUniqueness($phone);
+        if ($digits === '') {
+            return '';
+        }
+
+        if (str_starts_with($digits, '61') && strlen($digits) === 11) {
+            $digits = '0'.substr($digits, 2);
+        } elseif (strlen($digits) === 9 && preg_match('/^[23478]/', $digits) === 1) {
+            $digits = '0'.$digits;
+        }
+
+        if (preg_match('/^0[23478]\d{8}$/', $digits) === 1) {
+            return $digits;
+        }
+
+        return '';
+    }
+
+    public function isValidAustralianPhone(string $phone): bool
+    {
+        return $this->canonicalAustralianPhone($phone) !== '';
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    public function australianPhoneValidationRules(): array
+    {
+        return [
+            'required',
+            'string',
+            'max:20',
+            function (string $attribute, mixed $value, \Closure $fail): void {
+                if (! is_string($value) || ! $this->isValidAustralianPhone($value)) {
+                    $fail('Please enter a valid Australian phone number (10 digits, with or without the leading 0).');
+                }
+            },
+        ];
     }
 
     /**
      * Search clients and leads by phone (and optionally email).
+     *
+     * Full Australian numbers match with/without leading 0 and +61 variants.
+     * Partial / non-AU input keeps the previous loose LIKE behaviour (staff wizard).
      *
      * Returns a Collection of Admin models (type = client|lead).
      * Excludes soft-deleted and archived records (same active CRM rules as uniqueness checks).
@@ -25,18 +80,29 @@ class CheckInLookupService
     public function lookup(string $rawPhone, ?string $email = null): Collection
     {
         $normalized = $this->normalizePhone($rawPhone);
-        $phone = $rawPhone;   // kept for fallback LIKE clause
+        $phone = $rawPhone;
 
-        if (empty($normalized)) {
+        if ($normalized === '') {
             return collect();
         }
 
         $query = Admin::whereIn('type', ['client', 'lead'])
-            ->where(function ($q) use ($normalized, $phone) {
-                $q->whereRaw(
-                    "REGEXP_REPLACE(COALESCE(phone, ''), '[^0-9]', '', 'g') LIKE ?",
-                    ["%{$normalized}%"]
-                );
+            ->where(function ($q) use ($normalized, $phone, $rawPhone): void {
+                $canonical = $this->canonicalAustralianPhone($rawPhone);
+                if ($canonical !== '') {
+                    $variants = array_values(array_unique(array_merge(
+                        Admin::phoneDigitMatchVariants($canonical),
+                        Admin::phoneDigitMatchVariants($rawPhone)
+                    )));
+                    $expr = Admin::phoneDigitsSqlExpression('phone');
+                    $placeholders = implode(',', array_fill(0, count($variants), '?'));
+                    $q->whereRaw("{$expr} IN ({$placeholders})", $variants);
+
+                    return;
+                }
+
+                $expr = Admin::phoneDigitsSqlExpression('phone');
+                $q->whereRaw("{$expr} LIKE ?", ['%'.$normalized.'%']);
                 $trimmed = trim($phone);
                 if ($trimmed !== '') {
                     $q->orWhere('phone', 'like', '%'.addcslashes($trimmed, '%_\\').'%');

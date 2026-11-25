@@ -54,6 +54,10 @@ class FrontDeskCreateLeadUniquenessTest extends TestCase
                 'last_name' => 'Visitor',
                 'phone' => '0412 345-678',
                 'email' => 'brand.new@test.com',
+                'dob' => '1990-05-01',
+                'marital_status' => 'Single',
+                'gender' => 'Male',
+                'source' => 'Walk-In',
                 'visit_reason' => 'other',
                 'visit_notes' => 'test',
             ]);
@@ -82,6 +86,10 @@ class FrontDeskCreateLeadUniquenessTest extends TestCase
                 'last_name' => 'Kumar',
                 'phone' => '0499000222',
                 'email' => '  VIPUL@yahoo.co.in ',
+                'dob' => '1990-05-01',
+                'marital_status' => 'Single',
+                'gender' => 'Male',
+                'source' => 'Walk-In',
             ]);
 
         $response->assertStatus(422);

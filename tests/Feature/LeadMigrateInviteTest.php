@@ -175,12 +175,17 @@ class LeadMigrateInviteTest extends TestCase
             'last_name' => 'Patel',
             'phone' => '0412345678',
             'email' => 'changed.migrate@example.com',
+            'dob' => '1990-05-01',
+            'marital_status' => 'Single',
+            'gender' => 'Female',
             'city' => 'Melbourne, VIC',
             'current_visa' => 'Student (500)',
             'visa_expiry' => '2027-01-31',
             'qualification' => 'Bachelor Degree',
+            'qualification_type' => 'completed',
             'qualification_date' => '2020-06-15',
             'occupation' => 'Software Engineer',
+            'source' => 'Google',
         ])->assertOk()
             ->assertSee('Thank you');
 
@@ -191,7 +196,7 @@ class LeadMigrateInviteTest extends TestCase
 
         $this->assertNotNull($lead);
         $this->assertSame('0412345678', $lead->phone);
-        $this->assertSame(LeadMigrateInviteChannels::SOURCE_EMAIL, $lead->source);
+        $this->assertSame('Google', $lead->source);
         $this->assertSame(1, (int) $lead->manual_form_fill);
         $this->assertSame('Asha', $lead->first_name);
         $this->assertNull($lead->country);

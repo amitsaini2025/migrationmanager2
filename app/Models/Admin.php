@@ -66,6 +66,7 @@ class Admin extends Authenticatable
         // Legal CRM handoff (0 = not sent, 2 = pending cron, 1 = sent)
         'send_to_legal_crm',
         // Personal
+        'gender',
         'marital_status',
         // Client/Lead Tags
         'tagname',
@@ -660,7 +661,8 @@ class Admin extends Authenticatable
         if (strlen($digits) === 11 && str_starts_with($digits, '61')) {
             $variants[] = '0'.substr($digits, 2);
         }
-        if (strlen($digits) === 9 && str_starts_with($digits, '4')) {
+        // AU national without leading 0 (mobile 4… or landline 2/3/7/8…).
+        if (strlen($digits) === 9 && preg_match('/^[23478]/', $digits) === 1) {
             $variants[] = '61'.$digits;
             $variants[] = '0'.$digits;
         }

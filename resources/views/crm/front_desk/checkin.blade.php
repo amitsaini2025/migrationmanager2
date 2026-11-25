@@ -309,7 +309,8 @@
                 <h6 class="fd-step-title mb-3 text-uppercase small">Step 1 — Contact Details</h6>
                 <div class="form-group">
                     <label for="fdPhone" class="font-weight-600">Phone <span class="text-danger">*</span></label>
-                    <input type="tel" class="form-control form-control-lg" id="fdPhone" placeholder="e.g. 0412 345 678" maxlength="20" autocomplete="off">
+                    <input type="tel" class="form-control form-control-lg" id="fdPhone" inputmode="numeric" pattern="[0-9]*" placeholder="e.g. 0412345678" maxlength="10" autocomplete="off">
+                    <small class="form-text text-muted">Digits only — Australian 10-digit number (with or without the leading 0). No +, letters, or spaces.</small>
                     <div class="invalid-feedback" id="fdPhoneError"></div>
                 </div>
                 <div class="form-group">
@@ -369,6 +370,8 @@
 
             {{-- ── STEP 2c: New lead form (Migration Client Enquiry fields) ── --}}
             <div class="fd-wizard-step" id="fdStepLeadForm">
+                <h6 class="text-uppercase small text-muted mb-3">01 — Personal &amp; Contact Information</h6>
+
                 <div class="row">
                     <div class="col-sm-6">
                         <div class="form-group">
@@ -391,12 +394,14 @@
                         <div class="form-group">
                             <label class="font-weight-600">Phone / WhatsApp Number <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="fdLeadPhoneDisplay" readonly>
+                            <div class="invalid-feedback" id="fdLeadPhoneError"></div>
                         </div>
                     </div>
                     <div class="col-sm-6">
                         <div class="form-group">
-                            <label class="font-weight-600">Email Address</label>
-                            <input type="text" class="form-control" id="fdLeadEmailDisplay" readonly>
+                            <label class="font-weight-600">Email Address <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="fdLeadEmailDisplay" maxlength="150" autocomplete="email" placeholder="e.g. john@example.com">
+                            <div class="invalid-feedback" id="fdLeadEmailError"></div>
                         </div>
                     </div>
                 </div>
@@ -404,25 +409,51 @@
                 <div class="row">
                     <div class="col-sm-6">
                         <div class="form-group">
-                            <label class="font-weight-600">Date of Birth</label>
+                            <label class="font-weight-600">Date of Birth <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" id="fdLeadDob">
+                            <div class="invalid-feedback" id="fdLeadDobError"></div>
                         </div>
                     </div>
                     <div class="col-sm-6">
                         <div class="form-group">
-                            <label class="font-weight-600">Marital Status</label>
+                            <label class="font-weight-600">Marital Status <span class="text-danger">*</span></label>
                             <select class="form-control" id="fdLeadMaritalStatus">
-                                <option value="">Select (optional)</option>
+                                <option value="">Select</option>
                                 @foreach (['Single','Married','De facto','Separated / Divorced','Widowed'] as $opt)
                                     <option value="{{ $opt }}">{{ $opt }}</option>
                                 @endforeach
                             </select>
+                            <div class="invalid-feedback" id="fdLeadMaritalStatusError"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="font-weight-600">Gender <span class="text-danger">*</span></label>
+                            <select class="form-control" id="fdLeadGender">
+                                <option value="">Select</option>
+                                @foreach (['Male','Female','Other'] as $opt)
+                                    <option value="{{ $opt }}">{{ $opt }}</option>
+                                @endforeach
+                            </select>
+                            <div class="invalid-feedback" id="fdLeadGenderError"></div>
                         </div>
                     </div>
                 </div>
 
                 <hr class="my-3">
-                <h6 class="text-uppercase small text-muted mb-3">Location &amp; Visa Information</h6>
+                <h6 class="text-uppercase small text-muted mb-3">02 — Location &amp; Visa Information</h6>
+
+                <div class="row">
+                    <div class="col-sm-12">
+                        <div class="form-group">
+                            <label class="font-weight-600">Address</label>
+                            <input type="text" class="form-control" id="fdLeadAddress" maxlength="255" autocomplete="street-address" placeholder="Street address">
+                        </div>
+                    </div>
+                </div>
 
                 <div class="row">
                     <div class="col-sm-6">
@@ -454,7 +485,7 @@
                 </div>
 
                 <hr class="my-3">
-                <h6 class="text-uppercase small text-muted mb-3">Qualification &amp; Work Experience</h6>
+                <h6 class="text-uppercase small text-muted mb-3">03 — Qualification</h6>
 
                 <div class="row">
                     <div class="col-sm-6">
@@ -468,13 +499,69 @@
                             </select>
                         </div>
                     </div>
+                </div>
+
+                <div class="row">
                     <div class="col-sm-6">
                         <div class="form-group">
-                            <label class="font-weight-600">Qualification Completion Date</label>
+                            <label class="font-weight-600">Current Qualification Type</label>
+                            <select class="form-control" id="fdLeadQualificationType">
+                                <option value="">Select (optional)</option>
+                                <option value="completed">Completed</option>
+                                <option value="pursuing">Pursuing</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-sm-6" id="fdLeadQualificationDateWrap" style="display:none;">
+                        <div class="form-group">
+                            <label class="font-weight-600" id="fdLeadQualificationDateLabel">Completed Date</label>
                             <input type="date" class="form-control" id="fdLeadQualificationDate">
                         </div>
                     </div>
                 </div>
+
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="font-weight-600">Have you passed IELTS?</label>
+                            <select class="form-control" id="fdLeadIeltsPassed">
+                                <option value="">Select (optional)</option>
+                                <option value="yes">Yes</option>
+                                <option value="no">No</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-sm-6" id="fdLeadIeltsScoreWrap" style="display:none;">
+                        <div class="form-group">
+                            <label class="font-weight-600">IELTS score</label>
+                            <input type="number" class="form-control" id="fdLeadIeltsScore" min="0" max="9" step="0.5" placeholder="e.g. 7.0">
+                            <div class="invalid-feedback" id="fdLeadIeltsScoreError"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="font-weight-600">Have you passed PTE?</label>
+                            <select class="form-control" id="fdLeadPtePassed">
+                                <option value="">Select (optional)</option>
+                                <option value="yes">Yes</option>
+                                <option value="no">No</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-sm-6" id="fdLeadPteScoreWrap" style="display:none;">
+                        <div class="form-group">
+                            <label class="font-weight-600">PTE score</label>
+                            <input type="number" class="form-control" id="fdLeadPteScore" min="10" max="90" step="1" placeholder="e.g. 65">
+                            <div class="invalid-feedback" id="fdLeadPteScoreError"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-3">
+                <h6 class="text-uppercase small text-muted mb-3">04 — Work Experience</h6>
 
                 <div class="row">
                     <div class="col-sm-6">
@@ -485,8 +572,28 @@
                     </div>
                 </div>
 
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="font-weight-600">Have you any job experience?</label>
+                            <select class="form-control" id="fdLeadHasJobExperience">
+                                <option value="">Select (optional)</option>
+                                <option value="yes">Yes</option>
+                                <option value="no">No</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-sm-6" id="fdLeadJobYearsWrap" style="display:none;">
+                        <div class="form-group">
+                            <label class="font-weight-600">No of Years</label>
+                            <input type="number" class="form-control" id="fdLeadJobYears" min="0" max="60" step="0.5" placeholder="e.g. 3">
+                            <div class="invalid-feedback" id="fdLeadJobYearsError"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <hr class="my-3">
-                <h6 class="text-uppercase small text-muted mb-3">Visit</h6>
+                <h6 class="text-uppercase small text-muted mb-3">05 — Visit</h6>
 
                 <div class="form-group">
                     <label class="font-weight-600">Reason for Visit <span class="text-danger">*</span></label>
@@ -497,6 +604,17 @@
                         @endforeach
                     </select>
                     <div class="invalid-feedback" id="fdLeadVisitReasonError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="font-weight-600">How did you hear about us? <span class="text-danger">*</span></label>
+                    <select class="form-control" id="fdLeadSource">
+                        <option value="">- Source -</option>
+                        @foreach (\App\Services\LeadEnquiryProfileService::heardAboutOptions() as $opt)
+                            <option value="{{ $opt }}">{{ $opt }}</option>
+                        @endforeach
+                    </select>
+                    <div class="invalid-feedback" id="fdLeadSourceError"></div>
                 </div>
 
                 <div class="form-group" id="fdLeadVisitNotesGroup">
@@ -744,7 +862,23 @@
     }
 
     /* ── Step 1: Lookup ─────────────────────────────────────── */
+    function digitsOnlyPhone(value) {
+        return String(value || '').replace(/\D/g, '').slice(0, 10);
+    }
+    function sanitizeFdPhoneInput() {
+        var el = $('#fdPhone');
+        var cleaned = digitsOnlyPhone(el.value);
+        if (el.value !== cleaned) {
+            el.value = cleaned;
+        }
+    }
+    $('#fdPhone').addEventListener('input', sanitizeFdPhoneInput);
+    $('#fdPhone').addEventListener('paste', function () {
+        setTimeout(sanitizeFdPhoneInput, 0);
+    });
+
     $('#fdLookupBtn').addEventListener('click', function () {
+        sanitizeFdPhoneInput();
         var phone = $('#fdPhone').value.trim();
         if (!phone || phone.length < 6) {
             $('#fdPhone').classList.add('is-invalid');
@@ -867,32 +1001,88 @@
     /* ── Step 2b: New client? ───────────────────────────────── */
     $('#fdNewClientYes').addEventListener('click', function () {
         state.path = 'new_lead';
-        // Pre-fill the read-only phone/email fields from step-1 state
+        // Pre-fill phone (read-only) and email from step-1 state
         $('#fdLeadPhoneDisplay').value = state.phone;
-        $('#fdLeadEmailDisplay').value = state.email || '—';
         // Clear any previous lead-form values and validation state
         $('#fdLeadFirstName').value          = '';
         $('#fdLeadLastName').value           = '';
+        $('#fdLeadEmailDisplay').value       = state.email || '';
         $('#fdLeadDob').value                = '';
         $('#fdLeadMaritalStatus').value      = '';
+        $('#fdLeadGender').value             = '';
+        $('#fdLeadAddress').value            = '';
         $('#fdLeadCity').value               = '';
         $('#fdLeadCurrentVisa').value        = '';
         $('#fdLeadVisaExpiry').value         = '';
         $('#fdLeadQualification').value      = '';
+        $('#fdLeadQualificationType').value  = '';
         $('#fdLeadQualificationDate').value  = '';
+        $('#fdLeadQualificationDateLabel').textContent = 'Completed Date';
         $('#fdLeadOccupation').value         = '';
+        $('#fdLeadHasJobExperience').value   = '';
+        $('#fdLeadJobYears').value           = '';
+        $('#fdLeadIeltsPassed').value        = '';
+        $('#fdLeadIeltsScore').value         = '';
+        $('#fdLeadPtePassed').value          = '';
+        $('#fdLeadPteScore').value           = '';
+        hide($('#fdLeadQualificationDateWrap'));
+        hide($('#fdLeadJobYearsWrap'));
+        hide($('#fdLeadIeltsScoreWrap'));
+        hide($('#fdLeadPteScoreWrap'));
         $('#fdLeadVisitReason').value        = '';
+        $('#fdLeadSource').value             = '';
         $('#fdLeadVisitNotes').value         = '';
-        $('#fdLeadFirstName').classList.remove('is-invalid');
-        $('#fdLeadLastName').classList.remove('is-invalid');
-        $('#fdLeadVisitReason').classList.remove('is-invalid');
-        $('#fdLeadVisitNotes').classList.remove('is-invalid');
-        $('#fdLeadFirstNameError').textContent    = '';
-        $('#fdLeadLastNameError').textContent     = '';
-        $('#fdLeadVisitReasonError').textContent  = '';
-        $('#fdLeadVisitNotesError').textContent   = '';
+        ['fdLeadFirstName','fdLeadLastName','fdLeadPhoneDisplay','fdLeadEmailDisplay','fdLeadDob','fdLeadMaritalStatus','fdLeadGender','fdLeadJobYears','fdLeadIeltsScore','fdLeadPteScore','fdLeadVisitReason','fdLeadSource','fdLeadVisitNotes'].forEach(function (id) {
+            $('#' + id).classList.remove('is-invalid');
+        });
+        ['fdLeadFirstNameError','fdLeadLastNameError','fdLeadPhoneError','fdLeadEmailError','fdLeadDobError','fdLeadMaritalStatusError','fdLeadGenderError','fdLeadJobYearsError','fdLeadIeltsScoreError','fdLeadPteScoreError','fdLeadVisitReasonError','fdLeadSourceError','fdLeadVisitNotesError'].forEach(function (id) {
+            $('#' + id).textContent = '';
+        });
         hide($('#fdLeadNotesRequired'));
         setStep('lead-form');
+    });
+
+    $('#fdLeadQualificationType').addEventListener('change', function () {
+        if (this.value === 'completed' || this.value === 'pursuing') {
+            show($('#fdLeadQualificationDateWrap'));
+            $('#fdLeadQualificationDateLabel').textContent = this.value === 'pursuing'
+                ? 'Completion Date'
+                : 'Completed Date';
+        } else {
+            hide($('#fdLeadQualificationDateWrap'));
+            $('#fdLeadQualificationDate').value = '';
+            $('#fdLeadQualificationDateLabel').textContent = 'Completed Date';
+        }
+    });
+    $('#fdLeadHasJobExperience').addEventListener('change', function () {
+        if (this.value === 'yes') {
+            show($('#fdLeadJobYearsWrap'));
+        } else {
+            hide($('#fdLeadJobYearsWrap'));
+            $('#fdLeadJobYears').value = '';
+            $('#fdLeadJobYears').classList.remove('is-invalid');
+            $('#fdLeadJobYearsError').textContent = '';
+        }
+    });
+    $('#fdLeadIeltsPassed').addEventListener('change', function () {
+        if (this.value === 'yes') {
+            show($('#fdLeadIeltsScoreWrap'));
+        } else {
+            hide($('#fdLeadIeltsScoreWrap'));
+            $('#fdLeadIeltsScore').value = '';
+            $('#fdLeadIeltsScore').classList.remove('is-invalid');
+            $('#fdLeadIeltsScoreError').textContent = '';
+        }
+    });
+    $('#fdLeadPtePassed').addEventListener('change', function () {
+        if (this.value === 'yes') {
+            show($('#fdLeadPteScoreWrap'));
+        } else {
+            hide($('#fdLeadPteScoreWrap'));
+            $('#fdLeadPteScore').value = '';
+            $('#fdLeadPteScore').classList.remove('is-invalid');
+            $('#fdLeadPteScoreError').textContent = '';
+        }
     });
 
     $('#fdNewClientNo').addEventListener('click', function () {
@@ -924,32 +1114,59 @@
     $('#fdLeadSubmitBtn').addEventListener('click', function () {
         var firstName = $('#fdLeadFirstName').value.trim();
         var lastName  = $('#fdLeadLastName').value.trim();
+        var email     = $('#fdLeadEmailDisplay').value.trim();
+        var dob       = $('#fdLeadDob').value;
+        var marital   = $('#fdLeadMaritalStatus').value;
+        var gender    = $('#fdLeadGender').value;
         var reason    = $('#fdLeadVisitReason').value;
+        var source    = $('#fdLeadSource').value;
         var notes     = $('#fdLeadVisitNotes').value.trim();
         var valid     = true;
 
-        if (!firstName) {
-            $('#fdLeadFirstName').classList.add('is-invalid');
-            $('#fdLeadFirstNameError').textContent = 'First name is required.';
-            valid = false;
-        } else {
-            $('#fdLeadFirstName').classList.remove('is-invalid');
+        function requireField(inputId, errorId, message, value) {
+            if (!value) {
+                $('#' + inputId).classList.add('is-invalid');
+                $('#' + errorId).textContent = message;
+                valid = false;
+            } else {
+                $('#' + inputId).classList.remove('is-invalid');
+                $('#' + errorId).textContent = '';
+            }
         }
 
-        if (!lastName) {
-            $('#fdLeadLastName').classList.add('is-invalid');
-            $('#fdLeadLastNameError').textContent = 'Last name is required.';
-            valid = false;
-        } else {
-            $('#fdLeadLastName').classList.remove('is-invalid');
-        }
+        requireField('fdLeadFirstName', 'fdLeadFirstNameError', 'First name is required.', firstName);
+        requireField('fdLeadLastName', 'fdLeadLastNameError', 'Last name is required.', lastName);
+        requireField('fdLeadPhoneDisplay', 'fdLeadPhoneError', 'Phone is required.', state.phone);
+        requireField('fdLeadEmailDisplay', 'fdLeadEmailError', 'Email is required.', email);
+        requireField('fdLeadDob', 'fdLeadDobError', 'Date of birth is required.', dob);
+        requireField('fdLeadMaritalStatus', 'fdLeadMaritalStatusError', 'Marital status is required.', marital);
+        requireField('fdLeadGender', 'fdLeadGenderError', 'Gender is required.', gender);
+        requireField('fdLeadVisitReason', 'fdLeadVisitReasonError', 'Please select a reason for the visit.', reason);
+        requireField('fdLeadSource', 'fdLeadSourceError', 'Please tell us how you heard about us.', source);
 
-        if (!reason) {
-            $('#fdLeadVisitReason').classList.add('is-invalid');
-            $('#fdLeadVisitReasonError').textContent = 'Please select a reason for the visit.';
-            valid = false;
+        var hasJobExp = $('#fdLeadHasJobExperience').value;
+        var jobYears = $('#fdLeadJobYears').value.trim();
+        var ieltsPassed = $('#fdLeadIeltsPassed').value;
+        var ptePassed = $('#fdLeadPtePassed').value;
+        var ieltsScore = $('#fdLeadIeltsScore').value.trim();
+        var pteScore = $('#fdLeadPteScore').value.trim();
+        if (hasJobExp === 'yes') {
+            requireField('fdLeadJobYears', 'fdLeadJobYearsError', 'Please enter number of years.', jobYears);
         } else {
-            $('#fdLeadVisitReason').classList.remove('is-invalid');
+            $('#fdLeadJobYears').classList.remove('is-invalid');
+            $('#fdLeadJobYearsError').textContent = '';
+        }
+        if (ieltsPassed === 'yes') {
+            requireField('fdLeadIeltsScore', 'fdLeadIeltsScoreError', 'Please enter the IELTS score.', ieltsScore);
+        } else {
+            $('#fdLeadIeltsScore').classList.remove('is-invalid');
+            $('#fdLeadIeltsScoreError').textContent = '';
+        }
+        if (ptePassed === 'yes') {
+            requireField('fdLeadPteScore', 'fdLeadPteScoreError', 'Please enter the PTE score.', pteScore);
+        } else {
+            $('#fdLeadPteScore').classList.remove('is-invalid');
+            $('#fdLeadPteScoreError').textContent = '';
         }
 
         if (reason === 'other' && !notes) {
@@ -962,6 +1179,7 @@
 
         if (!valid) { return; }
 
+        state.email = email;
         show($('#fdLeadSubmitSpinner'));
         $('#fdLeadSubmitBtn').disabled = true;
 
@@ -969,17 +1187,29 @@
             first_name:   firstName,
             last_name:    lastName,
             phone:        state.phone,
-            email:        state.email || null,
-            dob:          $('#fdLeadDob').value || null,
-            marital_status: $('#fdLeadMaritalStatus').value || null,
+            email:        email,
+            dob:          dob,
+            marital_status: marital,
+            gender:       gender,
+            address:      $('#fdLeadAddress').value.trim() || null,
             city:         $('#fdLeadCity').value.trim() || null,
             current_visa: $('#fdLeadCurrentVisa').value || null,
             visa_expiry:  $('#fdLeadVisaExpiry').value || null,
             qualification: $('#fdLeadQualification').value || null,
-            qualification_date: $('#fdLeadQualificationDate').value || null,
+            qualification_type: $('#fdLeadQualificationType').value || null,
+            qualification_date: ($('#fdLeadQualificationType').value === 'completed' || $('#fdLeadQualificationType').value === 'pursuing')
+                ? ($('#fdLeadQualificationDate').value || null)
+                : null,
             occupation:   $('#fdLeadOccupation').value.trim() || null,
+            has_job_experience: hasJobExp || null,
+            job_experience_years: hasJobExp === 'yes' ? (jobYears || null) : null,
+            ielts_passed: ieltsPassed || null,
+            ielts_score:  ieltsPassed === 'yes' ? (ieltsScore || null) : null,
+            pte_passed:   ptePassed || null,
+            pte_score:    ptePassed === 'yes' ? (pteScore || null) : null,
             visit_reason: reason || null,
             visit_notes:  notes  || null,
+            source:       source,
         }).then(function (data) {
             hide($('#fdLeadSubmitSpinner'));
             $('#fdLeadSubmitBtn').disabled = false;
@@ -1222,6 +1452,7 @@
         $('#fdLeadFirstName').value   = '';
         $('#fdLeadLastName').value    = '';
         $('#fdLeadVisitReason').value = '';
+        $('#fdLeadSource').value      = '';
         $('#fdLeadVisitNotes').value  = '';
         $('#fdMatchList').innerHTML   = '';
         $('#fdApptList').innerHTML    = '';

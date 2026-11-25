@@ -305,7 +305,7 @@ class FrontDeskCheckInController extends Controller
             'first_name' => ['required', 'string', 'max:70'],
             'last_name' => ['required', 'string', 'max:70'],
             'phone' => ['required', 'string', 'min:6', 'max:25'],
-            'email' => ['nullable', 'email', 'max:150'],
+            'email' => ['required', 'email', 'max:150'],
             'visit_reason' => ['nullable', 'string', 'max:100', Rule::in($reasonKeys)],
             'visit_notes' => ['nullable', 'string', 'max:2000'],
         ], LeadEnquiryProfileService::detailRules()));

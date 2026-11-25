@@ -31,11 +31,38 @@ class CheckInLookupServiceTest extends TestCase
     }
 
     #[Test]
-    public function normalize_phone_strips_non_digits(): void
+    public function normalize_phone_uses_australian_national_form_when_possible(): void
     {
         $service = new CheckInLookupService;
 
         $this->assertSame('0412345678', $service->normalizePhone('0412 345-678'));
-        $this->assertSame('61412345678', $service->normalizePhone('+61 412 345 678'));
+        $this->assertSame('0412345678', $service->normalizePhone('+61 412 345 678'));
+        $this->assertSame('0412345678', $service->normalizePhone('412345678'));
+    }
+
+    #[Test]
+    public function canonical_australian_phone_accepts_with_or_without_leading_zero(): void
+    {
+        $service = new CheckInLookupService;
+
+        $this->assertSame('0406660960', $service->canonicalAustralianPhone('0406660960'));
+        $this->assertSame('0406660960', $service->canonicalAustralianPhone('406660960'));
+        $this->assertSame('0406660960', $service->canonicalAustralianPhone('+61 406 660 960'));
+        $this->assertSame('0406660960', $service->canonicalAustralianPhone('61406660960'));
+        $this->assertSame('', $service->canonicalAustralianPhone('12345'));
+        $this->assertSame('', $service->canonicalAustralianPhone('+44 7700 900123'));
+    }
+
+    #[Test]
+    public function phone_digit_match_variants_cover_zero_and_country_code_forms(): void
+    {
+        $withZero = Admin::phoneDigitMatchVariants('0406660960');
+        $withoutZero = Admin::phoneDigitMatchVariants('406660960');
+
+        $this->assertContains('0406660960', $withZero);
+        $this->assertContains('61406660960', $withZero);
+        $this->assertContains('0406660960', $withoutZero);
+        $this->assertContains('61406660960', $withoutZero);
+        $this->assertContains('406660960', $withoutZero);
     }
 }

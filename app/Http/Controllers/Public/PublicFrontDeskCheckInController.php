@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
 use App\Models\FrontDeskCheckIn;
+use App\Services\FrontDesk\CheckInLookupService;
 use App\Services\FrontDesk\PublicCheckInService;
 use App\Services\LeadEnquiryProfileService;
 use Illuminate\Http\JsonResponse;
@@ -14,7 +15,10 @@ use Illuminate\View\View;
 
 class PublicFrontDeskCheckInController extends Controller
 {
-    public function __construct(private readonly PublicCheckInService $checkIns) {}
+    public function __construct(
+        private readonly PublicCheckInService $checkIns,
+        private readonly CheckInLookupService $lookup,
+    ) {}
 
     public function index(): View
     {
@@ -26,7 +30,7 @@ class PublicFrontDeskCheckInController extends Controller
     public function lookup(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'phone' => ['required', 'string', 'min:6', 'max:20'],
+            'phone' => $this->lookup->australianPhoneValidationRules(),
             'email' => ['nullable', 'email', 'max:255'],
         ]);
 
@@ -40,7 +44,7 @@ class PublicFrontDeskCheckInController extends Controller
     public function appointments(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'phone' => ['required', 'string', 'min:6', 'max:20'],
+            'phone' => $this->lookup->australianPhoneValidationRules(),
             'email' => ['nullable', 'email', 'max:255'],
             'admin_id' => ['required', 'integer', 'min:1'],
         ]);
@@ -57,7 +61,7 @@ class PublicFrontDeskCheckInController extends Controller
     public function submit(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'phone' => ['required', 'string', 'min:6', 'max:20'],
+            'phone' => $this->lookup->australianPhoneValidationRules(),
             'email' => ['nullable', 'email', 'max:255'],
             'admin_id' => ['nullable', 'integer', 'min:1'],
             'admin_type' => ['nullable', 'string', Rule::in(['client', 'lead'])],
@@ -86,8 +90,8 @@ class PublicFrontDeskCheckInController extends Controller
         $validated = $request->validate(array_merge([
             'first_name' => ['required', 'string', 'max:70'],
             'last_name' => ['required', 'string', 'max:70'],
-            'phone' => ['required', 'string', 'min:6', 'max:25'],
-            'email' => ['nullable', 'email', 'max:150'],
+            'phone' => $this->lookup->australianPhoneValidationRules(),
+            'email' => ['required', 'email', 'max:150'],
             'visit_reason' => ['required', 'string', 'max:100', Rule::in(array_keys(FrontDeskCheckIn::visitReasons()))],
             'visit_notes' => ['nullable', 'string', 'max:2000'],
         ], LeadEnquiryProfileService::detailRules()));

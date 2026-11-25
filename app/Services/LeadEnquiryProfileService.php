@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Admin;
 use App\Models\ClientExperience;
 use App\Models\ClientQualification;
+use App\Models\ClientTestScore;
 use App\Models\ClientVisaCountry;
 use App\Models\Matter;
 use App\Support\LeadMigrateInviteChannels;
@@ -19,6 +20,33 @@ use Illuminate\Validation\Rule;
 class LeadEnquiryProfileService
 {
     /**
+     * "How did you hear about us?" options for enquiry / check-in visit forms.
+     *
+     * @return list<string>
+     */
+    public static function heardAboutOptions(): array
+    {
+        return [
+            'Facebook Advert',
+            'Whatsapp',
+            'Social Media',
+            'Google',
+            'Other Online Sources',
+            'Tiktok',
+            'Friends & Relatives',
+            'Visiting card QR',
+            'TV Advertisement',
+            'Newspaper Advertisement',
+            'Agent',
+            'Walk-In',
+            'Email',
+            'Phone',
+            'Existing Client',
+            'Others',
+        ];
+    }
+
+    /**
      * Validation rules for enquiry profile fields (excluding contact identity fields).
      *
      * @return array<string, mixed>
@@ -26,14 +54,24 @@ class LeadEnquiryProfileService
     public static function detailRules(): array
     {
         return [
-            'dob' => ['nullable', 'date'],
-            'marital_status' => ['nullable', 'string', 'max:70'],
+            'dob' => ['required', 'date'],
+            'marital_status' => ['required', 'string', Rule::in(['Single', 'Married', 'De facto', 'Separated / Divorced', 'Widowed'])],
+            'gender' => ['required', 'string', Rule::in(['Male', 'Female', 'Other'])],
+            'address' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:120'],
             'current_visa' => ['nullable', 'string', Rule::in(LeadMigrateInviteChannels::currentVisaOptions())],
             'visa_expiry' => ['nullable', 'date'],
             'qualification' => ['nullable', 'string', Rule::in(LeadMigrateInviteChannels::qualificationLevels())],
+            'qualification_type' => ['nullable', 'string', Rule::in(['completed', 'pursuing'])],
             'qualification_date' => ['nullable', 'date'],
             'occupation' => ['nullable', 'string', 'max:130'],
+            'has_job_experience' => ['nullable', 'string', Rule::in(['yes', 'no'])],
+            'job_experience_years' => ['nullable', 'required_if:has_job_experience,yes', 'numeric', 'min:0', 'max:60'],
+            'ielts_passed' => ['nullable', 'string', Rule::in(['yes', 'no'])],
+            'ielts_score' => ['nullable', 'required_if:ielts_passed,yes', 'numeric', 'min:0', 'max:9'],
+            'pte_passed' => ['nullable', 'string', Rule::in(['yes', 'no'])],
+            'pte_score' => ['nullable', 'required_if:pte_passed,yes', 'numeric', 'min:10', 'max:90'],
+            'source' => ['required', 'string', Rule::in(self::heardAboutOptions())],
         ];
     }
 
@@ -46,12 +84,16 @@ class LeadEnquiryProfileService
     public function adminAttributesFromPayload(array $payload): array
     {
         $city = $this->nullableString($payload['city'] ?? null);
+        $address = $this->nullableString($payload['address'] ?? null);
 
         return [
             'dob' => $this->nullableDate($payload['dob'] ?? null),
             'marital_status' => $this->nullableString($payload['marital_status'] ?? null),
+            'gender' => $this->nullableString($payload['gender'] ?? null),
             'city' => $city,
-            'address' => $city,
+            // Prefer explicit address; fall back to city so older submissions still populate address.
+            'address' => $address ?? $city,
+            'source' => $this->nullableString($payload['source'] ?? null),
             'country' => null,
             'country_code' => '+61',
         ];
@@ -67,6 +109,7 @@ class LeadEnquiryProfileService
         $this->createQualification($admin->id, $assigneeStaffId, $payload);
         $this->createExperience($admin->id, $assigneeStaffId, $payload);
         $this->createVisa($admin, $assigneeStaffId, $payload);
+        $this->createEnglishTestScores($admin->id, $assigneeStaffId, $payload);
     }
 
     /**
@@ -97,17 +140,23 @@ class LeadEnquiryProfileService
     private function createExperience(int $clientId, int $assigneeStaffId, array $payload): void
     {
         $occupation = trim((string) ($payload['occupation'] ?? ''));
-        if ($occupation === '') {
+        $hasExperience = ($payload['has_job_experience'] ?? null) === 'yes';
+        $years = $payload['job_experience_years'] ?? null;
+        $yearsLabel = ($hasExperience && $years !== null && $years !== '')
+            ? trim((string) $years).' years'
+            : null;
+
+        if ($occupation === '' && $yearsLabel === null) {
             return;
         }
 
         ClientExperience::create([
             'admin_id' => $assigneeStaffId,
             'client_id' => $clientId,
-            'job_title' => $occupation,
+            'job_title' => $occupation !== '' ? $occupation : 'Job experience',
             'job_country' => null,
             'job_state' => null,
-            'job_type' => null,
+            'job_type' => $yearsLabel,
             'relevant_experience' => 0,
             'fte_multiplier' => 1.00,
             'created_at' => now(),
@@ -145,6 +194,46 @@ class LeadEnquiryProfileService
                 'visa_type' => $matterId,
                 'updated_at' => now(),
             ]);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function createEnglishTestScores(int $clientId, int $assigneeStaffId, array $payload): void
+    {
+        if (! Schema::hasTable('client_testscore')) {
+            return;
+        }
+
+        if (($payload['ielts_passed'] ?? null) === 'yes') {
+            $score = $payload['ielts_score'] ?? null;
+            if ($score !== null && $score !== '') {
+                ClientTestScore::create([
+                    'admin_id' => $assigneeStaffId,
+                    'client_id' => $clientId,
+                    'test_type' => 'IELTS',
+                    'overall_score' => $score,
+                    'relevant_test' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        if (($payload['pte_passed'] ?? null) === 'yes') {
+            $score = $payload['pte_score'] ?? null;
+            if ($score !== null && $score !== '') {
+                ClientTestScore::create([
+                    'admin_id' => $assigneeStaffId,
+                    'client_id' => $clientId,
+                    'test_type' => 'PTE',
+                    'overall_score' => $score,
+                    'relevant_test' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
     }
 

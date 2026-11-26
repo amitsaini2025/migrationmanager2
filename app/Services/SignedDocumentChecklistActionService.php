@@ -82,23 +82,27 @@ class SignedDocumentChecklistActionService
     }
 
     /**
+     * One Action row only: Person Assisting when set, otherwise Person Responsible.
+     * Document owner / creator remain the last-resort fallback when the matter has neither.
+     *
      * @return list<int>
      */
     private function assigneeIds(Document $document, ?ClientMatter $matter): array
     {
-        $ids = [];
         if ($matter !== null) {
-            foreach (['sel_person_responsible', 'sel_person_assisting'] as $field) {
-                $id = (int) ($matter->{$field} ?? 0);
-                if ($id > 0) {
-                    $ids[$id] = true;
-                }
+            $assistingIds = $this->existingStaffIds([
+                (int) ($matter->sel_person_assisting ?? 0),
+            ]);
+            if ($assistingIds !== []) {
+                return $assistingIds;
             }
-        }
 
-        $assigneeIds = $this->existingStaffIds(array_keys($ids));
-        if ($assigneeIds !== []) {
-            return $assigneeIds;
+            $responsibleIds = $this->existingStaffIds([
+                (int) ($matter->sel_person_responsible ?? 0),
+            ]);
+            if ($responsibleIds !== []) {
+                return $responsibleIds;
+            }
         }
 
         return $this->existingStaffIds([

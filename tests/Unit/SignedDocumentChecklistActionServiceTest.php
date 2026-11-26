@@ -26,7 +26,7 @@ class SignedDocumentChecklistActionServiceTest extends TestCase
     }
 
     #[Test]
-    public function a_fully_signed_service_agreement_is_listed_once_for_both_assignees(): void
+    public function a_fully_signed_service_agreement_is_listed_once_for_person_assisting(): void
     {
         $client = $this->client('AVNE2503771');
         $responsible = $this->staff('Aman', 'Kaur');
@@ -42,22 +42,21 @@ class SignedDocumentChecklistActionServiceTest extends TestCase
         $this->actions->record($document);
         $this->actions->record($document->fresh());
 
-        $notes = Note::query()->orderBy('assigned_to')->get();
+        $notes = Note::query()->get();
 
-        $this->assertCount(2, $notes);
-        $this->assertSame(
-            ['AVNE2503771-JRP_1 signed the service agreement', 'AVNE2503771-JRP_1 signed the service agreement'],
-            $notes->pluck('description')->all()
-        );
-        $this->assertSame([$responsible->id, $assisting->id], $notes->pluck('assigned_to')->map(fn ($id) => (int) $id)->all());
-        $this->assertSame(['Checklist', 'Checklist'], $notes->pluck('task_group')->all());
-        $this->assertSame(['signed-doc-'.$document->id, 'signed-doc-'.$document->id], $notes->pluck('unique_group_id')->all());
-        $this->assertTrue($notes->every(fn (Note $note): bool => (int) $note->is_action === 1
-            && (string) $note->status === '0'
-            && (string) $note->type === 'client'
-            && (int) $note->client_id === $client->id
-            && (int) $note->matter_id === $matter->id
-            && (int) $note->user_id === $assisting->id));
+        $this->assertCount(1, $notes);
+        $note = $notes->first();
+        $this->assertSame('AVNE2503771-JRP_1 signed the service agreement', $note->description);
+        $this->assertSame($assisting->id, (int) $note->assigned_to);
+        $this->assertSame($assisting->id, (int) $note->user_id);
+        $this->assertSame('Checklist', $note->task_group);
+        $this->assertSame('signed-doc-'.$document->id, $note->unique_group_id);
+        $this->assertSame(1, (int) $note->is_action);
+        $this->assertSame('0', (string) $note->status);
+        $this->assertSame('client', (string) $note->type);
+        $this->assertSame($client->id, (int) $note->client_id);
+        $this->assertSame($matter->id, (int) $note->matter_id);
+        $this->assertNotSame($responsible->id, (int) $note->assigned_to);
     }
 
     #[Test]

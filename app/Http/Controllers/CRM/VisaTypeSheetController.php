@@ -418,9 +418,19 @@ class VisaTypeSheetController extends Controller
             ->leftJoin('branches', 'cm.office_id', '=', 'branches.id')
             ->whereRaw($matterCondition)
             ->whereRaw('cm.matter_status = 1')
-            ->where(function ($q) {
-                $q->whereRaw("LOWER(TRIM(COALESCE(ws.name, ''))) = 'checklist'");
-                if (Schema::hasTable('cp_doc_checklists')) {
+            ->where(function ($q) use ($config) {
+                $checklistStages = array_map('strtolower', $config['checklist_early_stages'] ?? ['Checklist']);
+                if (! empty($checklistStages)) {
+                    $ph = implode(',', array_fill(0, count($checklistStages), '?'));
+                    $q->whereRaw('LOWER(TRIM(COALESCE(ws.name, \'\'))) IN ('.$ph.')', $checklistStages);
+                } else {
+                    $q->whereRaw("LOWER(TRIM(COALESCE(ws.name, ''))) = 'checklist'");
+                }
+
+                // Default true so other sheets keep matters that still have portal doc checklists.
+                // Employer Sponsored sets checklist_match_doc_checklists => false (stage Checklist only).
+                $includeDocChecklists = $config['checklist_match_doc_checklists'] ?? true;
+                if ($includeDocChecklists && Schema::hasTable('cp_doc_checklists')) {
                     $q->orWhereExists(function ($sub) {
                         $sub->select(DB::raw('1'))
                             ->from('cp_doc_checklists as cpdc')

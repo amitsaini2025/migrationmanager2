@@ -51,6 +51,44 @@ class EmployerSponsorSheetTest extends TestCase
         $this->assertSame('employer-sponsored', $this->sheetType('407TV', '407-Training Visa'));
     }
 
+    #[Test]
+    public function employer_sponsored_tab_stages_follow_case_stage_mapping(): void
+    {
+        $config = config('sheets.visa_types.employer-sponsored');
+
+        $this->assertSame(['Checklist'], $config['checklist_early_stages']);
+        $this->assertFalse($config['checklist_match_doc_checklists']);
+        $this->assertSame([
+            'Application Lodged',
+            'Immi Request Received',
+            'Decision Received',
+            'Ready to Close',
+        ], $config['lodged_stages']);
+        $this->assertSame(['File Closed'], $config['discontinue_stages']);
+        $this->assertSame([
+            'Cost Agreement, form 956 and First email Sent',
+            'Cost Agreement, form 956 Received',
+            'Pending documents and payment requested',
+            'Documents Completed and Preparing for Lodgement',
+            'Verification: Payment, Service Agreement, Forms',
+            'Ready for Lodgement/Draft Application sent for confirmation',
+            'Draft Application confirmation received',
+        ], $config['ongoing_stages']);
+    }
+
+    #[Test]
+    public function other_visa_sheets_keep_legacy_lodged_and_discontinue_stages(): void
+    {
+        $tr = config('sheets.visa_types.tr');
+
+        $this->assertSame(['Application Lodged', 'Immi Request Received'], $tr['lodged_stages']);
+        $this->assertSame(
+            ['Decision Received', 'Ready to Close', 'File Closed', 'Withdrawn', 'Refund', 'Discontinued'],
+            $tr['discontinue_stages']
+        );
+        $this->assertTrue($tr['checklist_match_doc_checklists'] ?? true);
+    }
+
     private function sheetType(string $nickName, string $title): ?string
     {
         $matter = new Matter;

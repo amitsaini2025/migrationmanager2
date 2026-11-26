@@ -27,6 +27,7 @@ final class StatementOfServices
                 'description' => trim((string) ($row->description ?? '')),
                 'invoice_no' => $invoiceNo,
                 'charge' => self::signedCharge($row),
+                'payment_type' => strtolower(trim((string) ($row->payment_type ?? ''))),
             ];
         }
 
@@ -35,7 +36,19 @@ final class StatementOfServices
             $remaining[(string) $invoiceNo] = round(max(0.0, (float) $amount), 2);
         }
 
-        foreach ($built as $index => $line) {
+        $indexes = array_keys($built);
+        usort($indexes, function (int $left, int $right) use ($built): int {
+            $leftFee = ($built[$left]['payment_type'] ?? '') === 'professional fee' ? 0 : 1;
+            $rightFee = ($built[$right]['payment_type'] ?? '') === 'professional fee' ? 0 : 1;
+            if ($leftFee !== $rightFee) {
+                return $leftFee <=> $rightFee;
+            }
+
+            return $left <=> $right;
+        });
+
+        foreach ($indexes as $index) {
+            $line = $built[$index];
             $invoiceNo = $line['invoice_no'];
             if ($invoiceNo === '' || ! isset($remaining[$invoiceNo]) || $remaining[$invoiceNo] <= 0) {
                 continue;
@@ -48,6 +61,10 @@ final class StatementOfServices
             $applied = min($line['charge'], $remaining[$invoiceNo]);
             $built[$index]['charge'] = round($line['charge'] - $applied, 2);
             $remaining[$invoiceNo] = round($remaining[$invoiceNo] - $applied, 2);
+        }
+
+        foreach ($built as $index => $line) {
+            unset($built[$index]['payment_type']);
         }
 
         return self::sortByServiceDate($built);
@@ -88,16 +105,31 @@ final class StatementOfServices
             return null;
         }
 
-        $rows = DB::table('account_client_receipts')
-            ->where('client_id', $clientId)
-            ->where('client_matter_id', $matterId)
-            ->where('receipt_type', 3)
-            ->whereRaw("LOWER(COALESCE(save_type, '')) = ?", ['final'])
-            ->where(function ($query): void {
-                $query->whereNull('void_invoice')->orWhere('void_invoice', 0);
+        $rows = DB::table('account_all_invoice_receipts as lines')
+            ->where('lines.client_id', $clientId)
+            ->where('lines.client_matter_id', $matterId)
+            ->where('lines.receipt_type', 3)
+            ->whereRaw("LOWER(COALESCE(lines.save_type, '')) = ?", ['final'])
+            ->whereExists(function ($query): void {
+                $query->selectRaw('1')
+                    ->from('account_client_receipts as headers')
+                    ->whereColumn('headers.receipt_id', 'lines.receipt_id')
+                    ->whereColumn('headers.client_id', 'lines.client_id')
+                    ->where('headers.receipt_type', 3)
+                    ->whereRaw("LOWER(COALESCE(headers.save_type, '')) = ?", ['final'])
+                    ->where(function ($void): void {
+                        $void->whereNull('headers.void_invoice')->orWhere('headers.void_invoice', 0);
+                    });
             })
-            ->orderBy('id')
-            ->get(['trans_date', 'description', 'withdraw_amount', 'payment_type', 'invoice_no', 'trans_no']);
+            ->orderBy('lines.id')
+            ->get([
+                'lines.trans_date',
+                'lines.description',
+                'lines.withdraw_amount',
+                'lines.payment_type',
+                'lines.invoice_no',
+                'lines.trans_no',
+            ]);
 
         $discounts = [];
         $sync = app(InvoicePaymentSyncService::class);

@@ -179,7 +179,7 @@
                         <td>{{ $line['date'] }}</td>
                         <td>{{ $line['description'] }}</td>
                         <td>{{ $line['invoice_no'] }}</td>
-                        <td>${{ number_format($line['charge'], 2) }}</td>
+                        <td>{{ $line['charge'] < 0 ? '-' : '' }}${{ number_format(abs($line['charge']), 2) }}</td>
                     </tr>
                 @empty
                     <tr>
@@ -190,7 +190,7 @@
         </table>
 
         <div class="totals-section">
-            Total: ${{ number_format($total, 2) }}
+            Total: {{ $total < 0 ? '-' : '' }}${{ number_format(abs($total), 2) }}
         </div>
 
         <div class="statement-note">

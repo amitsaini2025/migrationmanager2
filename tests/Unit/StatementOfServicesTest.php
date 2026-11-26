@@ -133,6 +133,37 @@ class StatementOfServicesTest extends TestCase
     }
 
     #[Test]
+    public function office_adjustment_reduces_the_professional_fee_before_a_disbursement(): void
+    {
+        $rows = [
+            (object) [
+                'trans_date' => '01/03/2026',
+                'description' => 'Printing and Postage Charges',
+                'withdraw_amount' => 0.88,
+                'payment_type' => 'Disbursements',
+                'invoice_no' => 'INV-1',
+                'trans_no' => 'INV-1',
+            ],
+            (object) [
+                'trans_date' => '01/03/2026',
+                'description' => 'Professional fee — subclass 485',
+                'withdraw_amount' => 110,
+                'payment_type' => 'Professional Fee',
+                'invoice_no' => 'INV-1',
+                'trans_no' => 'INV-1',
+            ],
+        ];
+
+        $lines = StatementOfServices::lines($rows, [
+            'INV-1' => 10,
+        ]);
+
+        $this->assertSame(0.88, $lines[0]['charge']);
+        $this->assertSame('Printing and Postage Charges', $lines[0]['description']);
+        $this->assertSame(100.0, $lines[1]['charge']);
+    }
+
+    #[Test]
     public function statement_blade_names_each_service_and_its_charge(): void
     {
         $blade = (string) file_get_contents(resource_path('views/emails/statement-of-services.blade.php'));

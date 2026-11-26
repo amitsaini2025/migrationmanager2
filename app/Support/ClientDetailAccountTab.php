@@ -26,7 +26,8 @@ final class ClientDetailAccountTab
      *     receipts_lists_office: Collection,
      *     dibp_receipts_lists: \Illuminate\Support\Collection<int, Document>,
      *     dibp_receipts_unused_lists: \Illuminate\Support\Collection<int, Document>,
-     *     dibp_receipts_checklists: Collection<int, DocumentChecklist>
+     *     dibp_receipts_checklists: Collection<int, DocumentChecklist>,
+     *     statement_of_services: ?Document
      * }
      */
     public static function build(object $client, ?string $matterRefNo = null): array
@@ -87,7 +88,22 @@ final class ClientDetailAccountTab
             'dibp_receipts_lists' => ClientDetailDocumentsTab::dibpReceiptDocuments($clientId, $matterId),
             'dibp_receipts_unused_lists' => ClientDetailDocumentsTab::unusedDibpReceiptDocuments($clientId, $matterId),
             'dibp_receipts_checklists' => DocumentChecklist::activeDibpReceipts(),
+            'statement_of_services' => self::statementOfServices($clientId, $matterId),
         ];
+    }
+
+    private static function statementOfServices(int $clientId, ?int $matterId): ?Document
+    {
+        if ($clientId <= 0 || $matterId === null || $matterId <= 0) {
+            return null;
+        }
+
+        return Document::query()
+            ->where('client_id', $clientId)
+            ->where('client_matter_id', (string) $matterId)
+            ->where('type', 'statement_of_services')
+            ->orderByDesc('id')
+            ->first();
     }
 
     private static function resolveMatterId(int $clientId, ?string $matterRefNo): ?int

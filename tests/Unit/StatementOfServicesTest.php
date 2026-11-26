@@ -102,5 +102,8 @@ class StatementOfServicesTest extends TestCase
         $this->assertStringContainsString('Statement of services', $blade);
         $this->assertStringContainsString('clients.statementOfServices', $blade);
         $this->assertStringContainsString('client_selected_matter_id', $blade);
+        $this->assertStringContainsString('statement-of-services-row', $blade);
+        $this->assertStringContainsString('send-statement-to-client', $blade);
+        $this->assertStringContainsString('>Invoice</div>', $blade);
     }
 }

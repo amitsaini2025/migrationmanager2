@@ -58,6 +58,20 @@ class AccountClientSendComposerTest extends TestCase
     }
 
     #[Test]
+    public function statement_draft_names_the_statement_and_matter_reference(): void
+    {
+        $draft = AccountClientSendComposer::draft('statement', 'Jane', 'JOHN2608773-482SD_1', null, 'JOHN2608773-482SD_1');
+
+        $this->assertSame(
+            'Statement of services from Bansal Immigration (Our REF: JOHN2608773-482SD_1)',
+            $draft['subject']
+        );
+        $this->assertSame('Statement-of-services-JOHN2608773-482SD_1.pdf', $draft['attachment_name']);
+        $this->assertSame('statement of services', $draft['document_label']);
+        $this->assertStringContainsString('Please find attached your statement of services #JOHN2608773-482SD_1.', $draft['message']);
+    }
+
+    #[Test]
     public function receipt_draft_without_amount_still_confirms_payment(): void
     {
         $draft = AccountClientSendComposer::draft('client-fund', 'Sam', 'CFL-1');

@@ -3582,11 +3582,86 @@ class ClientAccountsController extends Controller
         ])->loadView('emails.statement-of-services', $statement);
 
         $fileName = 'Statement-of-services-'.($statement['client_matter_no'] !== '' ? $statement['client_matter_no'] : $matterId).'.pdf';
+        $fileName = str_replace(['/', '\\'], '-', $fileName);
+        $this->storeStatementOfServicesPdf($clientId, $matterId, $pdf->output(), $fileName, (string) $statement['client_matter_no']);
+
         if ($request->has('download')) {
             return $pdf->download($fileName);
         }
 
         return $pdf->stream($fileName);
+    }
+
+    public function statementOfServicesDocument(Request $request, int $id): Response
+    {
+        $document = Document::query()
+            ->where('id', $id)
+            ->where('type', 'statement_of_services')
+            ->first();
+
+        if (! $document) {
+            abort(404, 'Statement of services not found');
+        }
+
+        $this->ensureAccountsListClient((int) $document->client_id);
+        $content = $this->getDocumentPdfContent($document, (int) $document->client_id, 'statements');
+        if ($content === null || $content === '') {
+            abort(404, 'Statement of services file not found');
+        }
+
+        $fileName = str_replace(['/', '\\', '"'], '-', (string) ($document->file_name ?: 'Statement-of-services.pdf'));
+        $disposition = $request->has('download') ? 'attachment' : 'inline';
+
+        return response($content, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => $disposition.'; filename="'.$fileName.'"',
+        ]);
+    }
+
+    protected function storeStatementOfServicesPdf(int $clientId, int $matterId, string $pdfContent, string $fileName, string $matterNo): void
+    {
+        try {
+            $clientUniqueId = DB::table('admins')->where('id', $clientId)->value('client_id') ?? 'unknown';
+            $docType = 'statements';
+            $s3FileName = time().'_'.uniqid().'_'.$fileName;
+            $filePath = $clientUniqueId.'/'.$docType.'/'.$s3FileName;
+            Storage::disk('s3')->put($filePath, $pdfContent);
+
+            $document = Document::query()
+                ->where('client_id', $clientId)
+                ->where('client_matter_id', (string) $matterId)
+                ->where('type', 'statement_of_services')
+                ->orderByDesc('id')
+                ->first();
+            $isNew = $document === null;
+            if ($isNew) {
+                $document = new Document;
+                $document->client_id = $clientId;
+                $document->client_matter_id = (string) $matterId;
+                $document->type = 'statement_of_services';
+                $document->doc_type = $docType;
+                $document->filetype = 'pdf';
+            }
+
+            $document->file_name = $fileName;
+            $document->user_id = Auth::id() ?? 1;
+            $document->myfile = $this->s3PublicUrl($filePath);
+            $document->myfile_key = $s3FileName;
+            $document->file_size = strlen($pdfContent);
+            $document->save();
+
+            $label = $matterNo !== '' ? $matterNo : (string) $matterId;
+            $this->logAccountDocumentSent(
+                $clientId,
+                $isNew ? 'Statement of services created' : 'Statement of services updated',
+                'Statement of services for '.$label.' saved in the invoice list.'
+            );
+        } catch (\Exception $e) {
+            Log::error('Statement of services save failed: '.$e->getMessage(), [
+                'client_id' => $clientId,
+                'matter_id' => $matterId,
+            ]);
+        }
     }
 
     public function uploadclientreceiptdocument(Request $request)
@@ -6694,6 +6769,7 @@ class ClientAccountsController extends Controller
     protected function accountSendContext(string $kind, int $id): array|JsonResponse
     {
         $amount = null;
+        $matterId = 0;
 
         if ($kind === 'invoice') {
             $record = AccountAllInvoiceReceipt::where('receipt_type', 3)
@@ -6713,6 +6789,23 @@ class ClientAccountsController extends Controller
 
             $clientId = (int) $record->client_id;
             $number = (string) ($entry->invoice_no ?: $entry->trans_no ?: $id);
+            $matterId = (int) ($entry->client_matter_id ?? 0);
+        } elseif ($kind === 'statement') {
+            $document = Document::query()
+                ->where('id', $id)
+                ->where('type', 'statement_of_services')
+                ->first();
+
+            if (! $document) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Statement of services not found',
+                ], 404);
+            }
+
+            $clientId = (int) $document->client_id;
+            $matterId = (int) ($document->client_matter_id ?? 0);
+            $number = 'statement';
         } elseif ($kind === 'office') {
             $entry = DB::table('account_client_receipts')
                 ->where('receipt_type', 2)
@@ -6729,6 +6822,7 @@ class ClientAccountsController extends Controller
             $clientId = (int) $entry->client_id;
             $number = (string) ($entry->trans_no ?: $id);
             $amount = isset($entry->deposit_amount) ? (float) $entry->deposit_amount : null;
+            $matterId = (int) ($entry->client_matter_id ?? 0);
         } else {
             $entry = DB::table('account_client_receipts')
                 ->where('receipt_type', 1)
@@ -6745,6 +6839,7 @@ class ClientAccountsController extends Controller
             $clientId = (int) $entry->client_id;
             $number = (string) ($entry->trans_no ?: $id);
             $amount = isset($entry->deposit_amount) ? (float) $entry->deposit_amount : null;
+            $matterId = (int) ($entry->client_matter_id ?? 0);
         }
 
         $this->ensureCrmRecordAccess($clientId);
@@ -6758,13 +6853,18 @@ class ClientAccountsController extends Controller
             ], 404);
         }
 
+        $matterReference = $this->accountMatterReference($client, $matterId);
+        if ($kind === 'statement' && $matterReference !== '') {
+            $number = $matterReference;
+        }
+
         return [
             'client_id' => $clientId,
             'client_name' => trim(($client->first_name ?? '').' '.($client->last_name ?? '')),
             'email' => (string) $clientEmail,
             'number' => $number,
             'amount' => $amount,
-            'matter_reference' => $this->accountMatterReference($client, (int) ($entry->client_matter_id ?? 0)),
+            'matter_reference' => $matterReference,
         ];
     }
 
@@ -6851,6 +6951,106 @@ class ClientAccountsController extends Controller
         $objs->task_status = 0;
         $objs->pin = 0;
         $objs->save();
+    }
+
+    public function sendStatementOfServicesToClient(Request $request, int $id): JsonResponse
+    {
+        try {
+            $document = Document::query()
+                ->where('id', $id)
+                ->where('type', 'statement_of_services')
+                ->first();
+
+            if (! $document) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Statement of services not found',
+                ], 404);
+            }
+
+            $this->ensureCrmRecordAccess((int) $document->client_id);
+
+            $clientname = DB::table('admins')->where('id', $document->client_id)->first();
+            $clientEmail = $clientname ? ($clientname->email ?? null) : null;
+            if (! $clientname || empty($clientEmail)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Client email not found',
+                ], 404);
+            }
+
+            $pdfContent = $this->getDocumentPdfContent($document, (int) $document->client_id, 'statements');
+            if ($pdfContent === null || $pdfContent === '') {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to load the statement of services',
+                ], 500);
+            }
+
+            $clientFullName = trim(($clientname->first_name ?? '').' '.($clientname->last_name ?? ''));
+            $matterReference = $this->accountMatterReference($clientname, (int) ($document->client_matter_id ?? 0));
+            $draft = AccountClientSendComposer::draft('statement', $clientFullName, $matterReference !== '' ? $matterReference : 'statement', null, $matterReference);
+            $composed = $this->resolveAccountClientSendPayload(
+                $request,
+                $draft['subject'],
+                AccountClientSendComposer::plainToHtml($draft['message'])
+            );
+            if ($composed instanceof JsonResponse) {
+                return $composed;
+            }
+
+            $invoiceArray = [
+                'view' => 'emails.template',
+                'from' => $composed['from'],
+                'name' => $composed['from_name'],
+                'subject' => $composed['subject'],
+                'file_content' => $pdfContent,
+                'file_name' => $draft['attachment_name'],
+                'content' => $composed['html'],
+            ];
+
+            $systemEmailLog = app(SystemEmailLogService::class);
+            $log = $systemEmailLog->createPending([
+                'category' => 'other',
+                'from_mail' => $composed['from'],
+                'to_mail' => $clientEmail,
+                'subject' => $composed['subject'],
+                'message' => $composed['html'],
+                'client_id' => $document->client_id,
+                'client_matter_id' => $document->client_matter_id,
+                'user_id' => Auth::user()->id,
+                'has_attachments' => true,
+            ]);
+            $invoiceArray['email_log_id'] = $log->id;
+
+            $this->archiveAccountSendEmailPdf(
+                $log,
+                $composed['subject'],
+                $composed['html'],
+                $pdfContent,
+                $draft['attachment_name']
+            );
+
+            $this->sendAccountClientMail($clientEmail, $invoiceArray, $composed['from'], $log);
+
+            $this->logAccountDocumentSent(
+                (int) $document->client_id,
+                'Statement of services sent to client',
+                'Statement of services'.($matterReference !== '' ? ' for '.$matterReference : '').' sent to '.$clientEmail.' from '.$composed['from'].'. Subject: '.$composed['subject']
+            );
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Statement of services sent successfully to '.$clientEmail,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error sending statement of services to client: '.$e->getMessage());
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to send statement of services: '.$e->getMessage(),
+            ], 500);
+        }
     }
 
     public function sendInvoiceToClient(Request $request, $id)

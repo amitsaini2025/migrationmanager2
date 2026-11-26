@@ -570,6 +570,9 @@
         if (kind === 'invoice') {
             return base + '/clients/genInvoice/' + id;
         }
+        if (kind === 'statement') {
+            return base + '/clients/statement-of-services/document/' + id;
+        }
         if (kind === 'office') {
             return base + '/clients/genOfficeReceipt/' + id;
         }
@@ -618,7 +621,9 @@
             $btn: $btn
         };
 
-        var title = kind === 'invoice' ? 'Send invoice to client' : 'Send receipt to client';
+        var title = kind === 'invoice'
+            ? 'Send invoice to client'
+            : (kind === 'statement' ? 'Send statement of services to client' : 'Send receipt to client');
         if (recordNo) {
             title += ' #' + recordNo;
         }
@@ -697,6 +702,10 @@
             sendInvoiceToClientAjax(pending.id, pending.number, pending.$btn);
             return;
         }
+        if (pending.kind === 'statement') {
+            sendStatementToClientAjax(pending.id, pending.number, pending.$btn);
+            return;
+        }
         if (pending.kind === 'office') {
             sendOfficeReceiptToClientAjax(pending.id, pending.number, pending.$btn);
             return;
@@ -712,7 +721,52 @@
         });
     }
 
+    function handleSendStatementToClient($btn) {
+        var urls = (window.ClientDetailConfig && window.ClientDetailConfig.urls) || {};
+        openAccountSendModal('statement', $btn.data('statement-id'), $btn.data('statement-no'), urls.sendStatementToClient, $btn);
+    }
+
+    function sendStatementToClientAjax(statementId, statementNo, $btn) {
+        var originalHtml = $btn.html();
+        $btn.html(crmI('fas fa-spinner fa-spin') + ' Sending...');
+        $btn.prop('disabled', true);
+        showSendInProgress('Sending statement...', 'Sending the statement of services to the client.');
+
+        $.ajax({
+            url: window.ClientDetailConfig.urls.sendStatementToClient + '/' + statementId,
+            type: 'POST',
+            dataType: 'json',
+            data: accountSendPayload(),
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function(response) {
+                $btn.html(originalHtml);
+                $btn.prop('disabled', false);
+                $('#accountSendToClientSubmit').prop('disabled', false);
+                if (response.status) {
+                    $('#accountSendToClientModal').modal('hide');
+                    showSendResult(true, response.message);
+                    refreshClientActivities();
+                } else {
+                    showSendResult(false, response.message || 'Failed to send the statement of services.');
+                }
+            },
+            error: function(xhr) {
+                var errorMsg = 'Failed to send the statement of services. Please try again.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                $btn.html(originalHtml);
+                $btn.prop('disabled', false);
+                $('#accountSendToClientSubmit').prop('disabled', false);
+                showSendResult(false, errorMsg);
+            }
+        });
+    }
+
     bindSendToClientClick('.send-invoice-to-client', handleSendInvoiceToClient);
+    bindSendToClientClick('.send-statement-to-client', handleSendStatementToClient);
     bindSendToClientClick('.send-client-fund-receipt-to-client', handleSendClientFundReceiptToClient);
     bindSendToClientClick('.send-office-receipt-to-client', handleSendOfficeReceiptToClient);
     bindSendToClientClick('.send-to-client-portal-btn', handleSendInvoiceToClientApplication);

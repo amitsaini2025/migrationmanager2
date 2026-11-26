@@ -1286,6 +1286,7 @@ $(document).ready(function() {
             deleteVisaCategory: '{{ route("clients.documents.deleteVisaDocCategory") }}',
             accountSendDraft: '{{ url("/clients/account-send-draft") }}',
             sendInvoiceToClient: '{{ url("/clients/send-invoice-to-client") }}',
+            sendStatementToClient: '{{ url("/clients/send-statement-of-services") }}',
             sendClientFundReceiptToClient: '{{ url("/clients/send-client-fund-receipt-to-client") }}',
             sendOfficeReceiptToClient: '{{ url("/clients/send-office-receipt-to-client") }}',
             applyInvoiceDiscount: '{{ route("clients.applyInvoiceDiscount") }}',

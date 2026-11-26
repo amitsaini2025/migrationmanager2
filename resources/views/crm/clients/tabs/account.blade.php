@@ -21,6 +21,7 @@
     $dibp_receipts_lists = $accountTabPayload['dibp_receipts_lists'] ?? collect();
     $dibp_receipts_unused_lists = $accountTabPayload['dibp_receipts_unused_lists'] ?? collect();
     $dibp_receipts_checklists = $accountTabPayload['dibp_receipts_checklists'] ?? collect();
+    $statement_of_services = $accountTabPayload['statement_of_services'] ?? null;
 @endphp
 
            <!-- Account Tab -->
@@ -283,7 +284,7 @@
                 <table class="transaction-table">
                     <thead>
                         <tr>
-                            <th style="text-align: center;">Inv #</th>
+                            <th style="text-align: center;">Type</th>
                             <th style="text-align: left;">Date</th>
                             <th style="text-align: left;">Description</th>
                             <th style="text-align: right;">Amount</th>
@@ -291,6 +292,39 @@
                         </tr>
                     </thead>
                     <tbody class="productitemList_invoice">
+                        @if($statement_of_services)
+                            <tr class="statement-of-services-row">
+                                <td style="text-align: center; vertical-align: middle;">
+                                    <div style="font-size: 11px; font-weight: 700; color: #1e3a8a; text-transform: uppercase;">Statement</div>
+                                    <div class="dropdown d-inline-block">
+                                        <span class="reference-dropdown-trigger dropdown-toggle" id="dropdownStatement{{ $statement_of_services->id }}" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-haspopup="true" aria-expanded="false" style="cursor: pointer;">
+                                            Statement @icon('fa-caret-down', ['style' => 'font-size: 11px; opacity: 0.6; margin-left: 3px;'])
+                                        </span>
+                                        <div class="dropdown-menu" aria-labelledby="dropdownStatement{{ $statement_of_services->id }}">
+                                            <a class="dropdown-item" href="{{ route('clients.statementOfServicesDocument', ['id' => $statement_of_services->id]) }}" target="_blank">
+                                                @icon('fa-eye') View statement
+                                            </a>
+                                            <a class="dropdown-item" href="{{ route('clients.statementOfServices', ['clientId' => $fetchedData->id, 'matterId' => $client_selected_matter_id]) }}" target="_blank">
+                                                @icon('fa-sync-alt') Update statement
+                                            </a>
+                                            <a class="dropdown-item" href="{{ route('clients.statementOfServicesDocument', ['id' => $statement_of_services->id, 'download' => 1]) }}">
+                                                @icon('fa-download') Download PDF
+                                            </a>
+                                            <div class="dropdown-divider"></div>
+                                            <a class="dropdown-item send-statement-to-client" href="javascript:;" data-statement-id="{{ $statement_of_services->id }}" data-statement-no="Statement">
+                                                @icon('fa-envelope') Send to Client
+                                            </a>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="text-align: left; vertical-align: middle;">{{ optional($statement_of_services->updated_at ?? $statement_of_services->created_at)->format('d/m/Y') }}</td>
+                                <td style="text-align: left; vertical-align: middle;">Statement of services</td>
+                                <td></td>
+                                <td style="text-align: left; vertical-align: middle;">
+                                    <span class="status-badge" style="background: #eef2ff; color: #1e3a8a;">On file</span>
+                                </td>
+                            </tr>
+                        @endif
                         <?php
                         if(!empty($receipts_lists_invoice) && count($receipts_lists_invoice)>0 )
                         {
@@ -317,6 +351,7 @@
                                     data-invoice-status="{{$inc_val->invoice_status}}">
                                         <td style="text-align: center; vertical-align: middle;">
                                             <div class="dropdown d-inline-block">
+                                            <div style="font-size: 11px; font-weight: 700; color: #374151; text-transform: uppercase;">Invoice</div>
                                             <span class="reference-dropdown-trigger dropdown-toggle" id="dropdownInvoice{{$inc_val->id}}" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-haspopup="true" aria-expanded="false" style="cursor: pointer;">
                                                 <?php echo $inc_val->trans_no;?> @icon('fa-caret-down', ['style' => 'font-size: 11px; opacity: 0.6; margin-left: 3px;'])
                                             </span>

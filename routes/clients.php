@@ -351,6 +351,9 @@ Route::get('/clients/statement-of-services/{clientId}/{matterId}', [ClientAccoun
     ->whereNumber('clientId')
     ->whereNumber('matterId')
     ->name('clients.statementOfServices');
+Route::get('/clients/statement-of-services/document/{id}', [ClientAccountsController::class, 'statementOfServicesDocument'])
+    ->whereNumber('id')
+    ->name('clients.statementOfServicesDocument');
 Route::post('/clients/sendToHubdoc/{id}', [ClientAccountsController::class, 'sendToHubdoc'])->name('clients.sendToHubdoc');
 Route::get('/clients/checkHubdocStatus/{id}', [ClientAccountsController::class, 'checkHubdocStatus'])->name('clients.checkHubdocStatus');
 Route::post('/clients/send-invoice-to-client-application/{id}', [ClientAccountsController::class, 'sendInvoiceToClientApplication'])->name('clients.sendInvoiceToClientApplication');
@@ -379,12 +382,15 @@ Route::get('/clients/genOfficeReceipt/{id}', [ClientAccountsController::class, '
 
 // Send to client routes
 Route::get('/clients/account-send-draft/{kind}/{id}', [ClientAccountsController::class, 'accountSendDraft'])
-    ->where('kind', 'invoice|client-fund|office')
+    ->where('kind', 'invoice|client-fund|office|statement')
     ->whereNumber('id')
     ->name('clients.accountSendDraft');
 Route::post('/clients/send-invoice-to-client/{id}', [ClientAccountsController::class, 'sendInvoiceToClient'])->name('clients.sendInvoiceToClient');
 Route::post('/clients/send-client-fund-receipt-to-client/{id}', [ClientAccountsController::class, 'sendClientFundReceiptToClient'])->name('clients.sendClientFundReceiptToClient');
 Route::post('/clients/send-office-receipt-to-client/{id}', [ClientAccountsController::class, 'sendOfficeReceiptToClient'])->name('clients.sendOfficeReceiptToClient');
+Route::post('/clients/send-statement-of-services/{id}', [ClientAccountsController::class, 'sendStatementOfServicesToClient'])
+    ->whereNumber('id')
+    ->name('clients.sendStatementOfServicesToClient');
 
 Route::post('/update-client-funds-ledger', [ClientAccountsController::class, 'updateClientFundsLedger'])->name('clients.update-client-funds-ledger');
 Route::post('/update-office-receipt', [ClientAccountsController::class, 'updateOfficeReceipt'])->name('clients.updateOfficeReceipt');

@@ -20,22 +20,30 @@ final class AccountClientSendComposer
         $documentLabel = match ($kind) {
             'invoice' => 'invoice',
             'office' => 'office receipt',
+            'statement' => 'statement of services',
             default => 'client fund receipt',
         };
 
-        $subject = $kind === 'invoice'
-            ? 'Invoice #'.$number.' from Bansal Immigration'
-            : self::receiptSubject($number, $matterReference);
+        $reference = trim((string) $matterReference);
+        $subject = match ($kind) {
+            'invoice' => 'Invoice #'.$number.' from Bansal Immigration',
+            'statement' => $reference !== ''
+                ? 'Statement of services from Bansal Immigration (Our REF: '.$reference.')'
+                : 'Statement of services from Bansal Immigration',
+            default => self::receiptSubject($number, $matterReference),
+        };
 
         $attachmentPrefix = match ($kind) {
             'invoice' => 'Invoice',
             'office' => 'Office-Receipt',
+            'statement' => 'Statement-of-services',
             default => 'Receipt',
         };
 
-        $message = $kind === 'invoice'
-            ? self::invoiceMessage($name, $documentLabel, $number)
-            : self::receiptPaymentMessage($name, $amount);
+        $message = match ($kind) {
+            'invoice', 'statement' => self::invoiceMessage($name, $documentLabel, $kind === 'statement' && $reference !== '' ? $reference : $number),
+            default => self::receiptPaymentMessage($name, $amount),
+        };
 
         return [
             'subject' => $subject,

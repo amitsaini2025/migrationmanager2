@@ -270,11 +270,11 @@
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px;">
                     <h4 style="margin: 0; font-weight: 600;">Invoices Issued</h4>
                     @if($client_selected_matter_id)
-                        <div>
-                            <a class="btn btn-sm btn-outline-primary" target="_blank" href="{{ route('clients.statementOfServices', ['clientId' => $fetchedData->id, 'matterId' => $client_selected_matter_id]) }}">
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end;">
+                            <a class="btn btn-sm statement-of-services-link" target="_blank" href="{{ route('clients.statementOfServices', ['clientId' => $fetchedData->id, 'matterId' => $client_selected_matter_id]) }}">
                                 @icon('fa-file-alt') Statement of services
                             </a>
-                            <a class="btn btn-sm btn-outline-secondary" target="_blank" href="{{ route('clients.statementOfServices', ['clientId' => $fetchedData->id, 'matterId' => $client_selected_matter_id, 'download' => 1]) }}">
+                            <a class="btn btn-sm statement-of-services-download" target="_blank" href="{{ route('clients.statementOfServices', ['clientId' => $fetchedData->id, 'matterId' => $client_selected_matter_id, 'download' => 1]) }}">
                                 @icon('fa-download') Download
                             </a>
                         </div>
@@ -2413,6 +2413,25 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
+/* Theme outline buttons are white until hover. Keep these readable in every state. */
+#account-tab .statement-of-services-link,
+#account-tab .statement-of-services-link:hover,
+#account-tab .statement-of-services-link:focus,
+#account-tab .statement-of-services-link:active {
+    background: #1d4ed8 !important;
+    color: #ffffff !important;
+    border: 1px solid #1d4ed8 !important;
+}
+
+#account-tab .statement-of-services-download,
+#account-tab .statement-of-services-download:hover,
+#account-tab .statement-of-services-download:focus,
+#account-tab .statement-of-services-download:active {
+    background: #ffffff !important;
+    color: #1f2937 !important;
+    border: 1px solid #4b5563 !important;
+}
+
 /* Account page specific styles */
 #account-tab .transaction-table tbody tr {
     transition: background-color 0.3s;

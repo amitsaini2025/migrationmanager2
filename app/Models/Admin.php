@@ -656,10 +656,19 @@ class Admin extends Authenticatable
 
         $variants = [$digits];
         if (strlen($digits) === 10 && str_starts_with($digits, '0')) {
-            $variants[] = '61'.substr($digits, 1);
+            $national = substr($digits, 1);
+            $variants[] = '61'.$national;
+            // Also match rows stored without the leading 0 (e.g. 412264458).
+            if (preg_match('/^[23478]/', $national) === 1) {
+                $variants[] = $national;
+            }
         }
         if (strlen($digits) === 11 && str_starts_with($digits, '61')) {
-            $variants[] = '0'.substr($digits, 2);
+            $national = substr($digits, 2);
+            $variants[] = '0'.$national;
+            if (strlen($national) === 9 && preg_match('/^[23478]/', $national) === 1) {
+                $variants[] = $national;
+            }
         }
         // AU national without leading 0 (mobile 4… or landline 2/3/7/8…).
         if (strlen($digits) === 9 && preg_match('/^[23478]/', $digits) === 1) {

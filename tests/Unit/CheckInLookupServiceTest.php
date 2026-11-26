@@ -56,13 +56,19 @@ class CheckInLookupServiceTest extends TestCase
     #[Test]
     public function phone_digit_match_variants_cover_zero_and_country_code_forms(): void
     {
+        $expected = ['0406660960', '406660960', '61406660960'];
+
         $withZero = Admin::phoneDigitMatchVariants('0406660960');
         $withoutZero = Admin::phoneDigitMatchVariants('406660960');
+        $withCountryCode = Admin::phoneDigitMatchVariants('61406660960');
 
-        $this->assertContains('0406660960', $withZero);
-        $this->assertContains('61406660960', $withZero);
-        $this->assertContains('0406660960', $withoutZero);
-        $this->assertContains('61406660960', $withoutZero);
-        $this->assertContains('406660960', $withoutZero);
+        sort($expected, SORT_STRING);
+        sort($withZero, SORT_STRING);
+        sort($withoutZero, SORT_STRING);
+        sort($withCountryCode, SORT_STRING);
+
+        $this->assertSame($expected, $withZero);
+        $this->assertSame($expected, $withoutZero);
+        $this->assertSame($expected, $withCountryCode);
     }
 }

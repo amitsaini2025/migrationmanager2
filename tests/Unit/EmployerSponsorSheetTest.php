@@ -77,16 +77,23 @@ class EmployerSponsorSheetTest extends TestCase
     }
 
     #[Test]
-    public function other_visa_sheets_keep_legacy_lodged_and_discontinue_stages(): void
+    public function all_visa_sheets_use_case_stage_tab_mapping(): void
     {
-        $tr = config('sheets.visa_types.tr');
+        $expectedLodged = [
+            'Application Lodged',
+            'Immi Request Received',
+            'Decision Received',
+            'Ready to Close',
+        ];
 
-        $this->assertSame(['Application Lodged', 'Immi Request Received'], $tr['lodged_stages']);
-        $this->assertSame(
-            ['Decision Received', 'Ready to Close', 'File Closed', 'Withdrawn', 'Refund', 'Discontinued'],
-            $tr['discontinue_stages']
-        );
-        $this->assertTrue($tr['checklist_match_doc_checklists'] ?? true);
+        foreach (array_keys(config('sheets.visa_types')) as $sheetKey) {
+            $config = config('sheets.visa_types.'.$sheetKey);
+
+            $this->assertSame(['Checklist'], $config['checklist_early_stages'], $sheetKey);
+            $this->assertFalse($config['checklist_match_doc_checklists'] ?? true, $sheetKey);
+            $this->assertSame($expectedLodged, $config['lodged_stages'], $sheetKey);
+            $this->assertSame(['File Closed'], $config['discontinue_stages'], $sheetKey);
+        }
     }
 
     private function sheetType(string $nickName, string $title): ?string

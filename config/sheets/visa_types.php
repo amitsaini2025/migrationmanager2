@@ -41,9 +41,18 @@ return [
             'Ready for Lodgement/Draft Application sent for confirmation',
             'Draft Application confirmation received',
         ],
-        'lodged_stages' => ['Application Lodged', 'Immi Request Received'],
+        // Lodged: Application Lodged through Ready to Close (Decision Received included).
+        'lodged_stages' => [
+            'Application Lodged',
+            'Immi Request Received',
+            'Decision Received',
+            'Ready to Close',
+        ],
         'checklist_early_stages' => ['Checklist'],
-        'discontinue_stages' => ['Decision Received', 'Ready to Close', 'File Closed', 'Withdrawn', 'Refund', 'Discontinued'],
+        // Checklist tab: workflow stage Checklist only (do not keep later stages via cp_doc_checklists).
+        'checklist_match_doc_checklists' => false,
+        // Discontinue: File Closed stage only (inactive matters still appear via matter_status = 0).
+        'discontinue_stages' => ['File Closed'],
         'checklist_convert_to_client_stage' => 'Cost Agreement, form 956 and First email Sent',
 
         'has_refused_visa_type' => true,
@@ -90,9 +99,18 @@ return [
             'Ready for Lodgement/Draft Application sent for confirmation',
             'Draft Application confirmation received',
         ],
-        'lodged_stages' => ['Application Lodged', 'Immi Request Received'],
+        // Lodged: Application Lodged through Ready to Close (Decision Received included).
+        'lodged_stages' => [
+            'Application Lodged',
+            'Immi Request Received',
+            'Decision Received',
+            'Ready to Close',
+        ],
         'checklist_early_stages' => ['Checklist'],
-        'discontinue_stages' => ['Decision Received', 'Ready to Close', 'File Closed', 'Withdrawn', 'Refund', 'Discontinued'],
+        // Checklist tab: workflow stage Checklist only (do not keep later stages via cp_doc_checklists).
+        'checklist_match_doc_checklists' => false,
+        // Discontinue: File Closed stage only (inactive matters still appear via matter_status = 0).
+        'discontinue_stages' => ['File Closed'],
         'checklist_convert_to_client_stage' => 'Cost Agreement, form 956 and First email Sent',
 
         'has_refused_visa_type' => true,
@@ -128,9 +146,18 @@ return [
             'Ready for Lodgement/Draft Application sent for confirmation',
             'Draft Application confirmation received',
         ],
-        'lodged_stages' => ['Application Lodged', 'Immi Request Received'],
+        // Lodged: Application Lodged through Ready to Close (Decision Received included).
+        'lodged_stages' => [
+            'Application Lodged',
+            'Immi Request Received',
+            'Decision Received',
+            'Ready to Close',
+        ],
         'checklist_early_stages' => ['Checklist'],
-        'discontinue_stages' => ['Decision Received', 'Ready to Close', 'File Closed', 'Withdrawn', 'Refund', 'Discontinued'],
+        // Checklist tab: workflow stage Checklist only (do not keep later stages via cp_doc_checklists).
+        'checklist_match_doc_checklists' => false,
+        // Discontinue: File Closed stage only (inactive matters still appear via matter_status = 0).
+        'discontinue_stages' => ['File Closed'],
         'checklist_convert_to_client_stage' => 'Cost Agreement, form 956 and First email Sent',
 
         'has_refused_visa_type' => true,
@@ -172,9 +199,18 @@ return [
             'Ready for Lodgement/Draft Application sent for confirmation',
             'Draft Application confirmation received',
         ],
-        'lodged_stages' => ['Application Lodged', 'Immi Request Received'],
+        // Lodged: Application Lodged through Ready to Close (Decision Received included).
+        'lodged_stages' => [
+            'Application Lodged',
+            'Immi Request Received',
+            'Decision Received',
+            'Ready to Close',
+        ],
         'checklist_early_stages' => ['Checklist'],
-        'discontinue_stages' => ['Decision Received', 'Ready to Close', 'File Closed', 'Withdrawn', 'Refund', 'Discontinued'],
+        // Checklist tab: workflow stage Checklist only (do not keep later stages via cp_doc_checklists).
+        'checklist_match_doc_checklists' => false,
+        // Discontinue: File Closed stage only (inactive matters still appear via matter_status = 0).
+        'discontinue_stages' => ['File Closed'],
         'checklist_convert_to_client_stage' => 'Cost Agreement, form 956 and First email Sent',
 
         'has_refused_visa_type' => true,
@@ -218,9 +254,18 @@ return [
             'Ready for Lodgement/Draft Application sent for confirmation',
             'Draft Application confirmation received',
         ],
-        'lodged_stages' => ['Application Lodged', 'Immi Request Received'],
+        // Lodged: Application Lodged through Ready to Close (Decision Received included).
+        'lodged_stages' => [
+            'Application Lodged',
+            'Immi Request Received',
+            'Decision Received',
+            'Ready to Close',
+        ],
         'checklist_early_stages' => ['Checklist'],
-        'discontinue_stages' => ['Decision Received', 'Ready to Close', 'File Closed', 'Withdrawn', 'Refund', 'Discontinued'],
+        // Checklist tab: workflow stage Checklist only (do not keep later stages via cp_doc_checklists).
+        'checklist_match_doc_checklists' => false,
+        // Discontinue: File Closed stage only (inactive matters still appear via matter_status = 0).
+        'discontinue_stages' => ['File Closed'],
         'checklist_convert_to_client_stage' => 'Cost Agreement, form 956 and First email Sent',
     ],
 
@@ -303,9 +348,18 @@ return [
             'Ready for Lodgement/Draft Application sent for confirmation',
             'Draft Application confirmation received',
         ],
-        'lodged_stages' => ['Application Lodged', 'Immi Request Received'],
+        // Lodged: Application Lodged through Ready to Close (Decision Received included).
+        'lodged_stages' => [
+            'Application Lodged',
+            'Immi Request Received',
+            'Decision Received',
+            'Ready to Close',
+        ],
         'checklist_early_stages' => ['Checklist'],
-        'discontinue_stages' => ['Decision Received', 'Ready to Close', 'File Closed', 'Withdrawn', 'Refund', 'Discontinued'],
+        // Checklist tab: workflow stage Checklist only (do not keep later stages via cp_doc_checklists).
+        'checklist_match_doc_checklists' => false,
+        // Discontinue: File Closed stage only (inactive matters still appear via matter_status = 0).
+        'discontinue_stages' => ['File Closed'],
         'checklist_convert_to_client_stage' => 'Cost Agreement, form 956 and First email Sent',
     ],
 
@@ -334,9 +388,18 @@ return [
             'Ready for Lodgement/Draft Application sent for confirmation',
             'Draft Application confirmation received',
         ],
-        'lodged_stages' => ['Application Lodged', 'Immi Request Received'],
+        // Lodged: Application Lodged through Ready to Close (Decision Received included).
+        'lodged_stages' => [
+            'Application Lodged',
+            'Immi Request Received',
+            'Decision Received',
+            'Ready to Close',
+        ],
         'checklist_early_stages' => ['Checklist'],
-        'discontinue_stages' => ['Decision Received', 'Ready to Close', 'File Closed', 'Withdrawn', 'Refund', 'Discontinued'],
+        // Checklist tab: workflow stage Checklist only (do not keep later stages via cp_doc_checklists).
+        'checklist_match_doc_checklists' => false,
+        // Discontinue: File Closed stage only (inactive matters still appear via matter_status = 0).
+        'discontinue_stages' => ['File Closed'],
         'checklist_convert_to_client_stage' => 'Cost Agreement, form 956 and First email Sent',
     ],
 
@@ -365,9 +428,18 @@ return [
             'Ready for Lodgement/Draft Application sent for confirmation',
             'Draft Application confirmation received',
         ],
-        'lodged_stages' => ['Application Lodged', 'Immi Request Received'],
+        // Lodged: Application Lodged through Ready to Close (Decision Received included).
+        'lodged_stages' => [
+            'Application Lodged',
+            'Immi Request Received',
+            'Decision Received',
+            'Ready to Close',
+        ],
         'checklist_early_stages' => ['Checklist'],
-        'discontinue_stages' => ['Decision Received', 'Ready to Close', 'File Closed', 'Withdrawn', 'Refund', 'Discontinued'],
+        // Checklist tab: workflow stage Checklist only (do not keep later stages via cp_doc_checklists).
+        'checklist_match_doc_checklists' => false,
+        // Discontinue: File Closed stage only (inactive matters still appear via matter_status = 0).
+        'discontinue_stages' => ['File Closed'],
         'checklist_convert_to_client_stage' => 'Cost Agreement, form 956 and First email Sent',
     ],
 ];

@@ -201,7 +201,7 @@
                             <b>Migration Agent:</b>
                             @if(!empty($migration_agent_name)){{ $migration_agent_name }}@endif
                             @if(!empty($migration_agent_marn))
-                                @if(!empty($migration_agent_name)) &mdash; @endifMARN {{ $migration_agent_marn }}
+                                @if(!empty($migration_agent_name)) &mdash; @endif MARN {{ $migration_agent_marn }}
                             @endif
                             <br/>
                         @endif

@@ -5524,7 +5524,19 @@ class ClientAccountsController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            // Fall back to direct PDF generation
+            $pdf = PDF::setOptions([
+                'isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true,
+                'logOutputFile' => storage_path('logs/log.htm'),
+                'tempDir' => storage_path('logs/'),
+            ])->loadView('emails.genclientfundreceipt', compact([
+                'record_get',
+                'clientname',
+                'client_matter_no',
+                'client_matter_display',
+                'migration_agent_name',
+                'migration_agent_marn',
+            ]));
+
             return $pdf->stream('Receipt-'.($record_get->trans_no ?? $id).'.pdf');
         }
     }

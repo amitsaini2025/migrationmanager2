@@ -168,7 +168,7 @@
             <thead>
                 <tr>
                     <th>Date</th>
-                    <th>Service</th>
+                    <th>Item</th>
                     <th>Invoice No</th>
                     <th>Charge</th>
                 </tr>
@@ -183,18 +183,18 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4">No professional services have been invoiced for this matter.</td>
+                        <td colspan="4">No invoice items have been issued for this matter.</td>
                     </tr>
                 @endforelse
             </tbody>
         </table>
 
         <div class="totals-section">
-            Total professional fees: ${{ number_format($total, 2) }}
+            Total: ${{ number_format($total, 2) }}
         </div>
 
         <div class="statement-note">
-            This statement sets out each service performed and the charge for that service.
+            This statement sets out each invoice item and the charge for that item.
         </div>
     </div>
 </body>

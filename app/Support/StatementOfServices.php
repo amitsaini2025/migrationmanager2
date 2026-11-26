@@ -7,7 +7,7 @@ use App\Services\InvoicePaymentSyncService;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Matter-level statement of services: final professional-fee invoice lines,
+ * Matter-level statement of services: every final invoice line,
  * with the charge reduced by any office adjustment on that invoice.
  */
 final class StatementOfServices
@@ -26,7 +26,7 @@ final class StatementOfServices
                 'date' => trim((string) ($row->trans_date ?? '')),
                 'description' => trim((string) ($row->description ?? '')),
                 'invoice_no' => $invoiceNo,
-                'charge' => round((float) ($row->withdraw_amount ?? 0), 2),
+                'charge' => self::signedCharge($row),
             ];
         }
 
@@ -38,6 +38,10 @@ final class StatementOfServices
         foreach ($built as $index => $line) {
             $invoiceNo = $line['invoice_no'];
             if ($invoiceNo === '' || ! isset($remaining[$invoiceNo]) || $remaining[$invoiceNo] <= 0) {
+                continue;
+            }
+
+            if ($line['charge'] <= 0) {
                 continue;
             }
 
@@ -88,13 +92,12 @@ final class StatementOfServices
             ->where('client_id', $clientId)
             ->where('client_matter_id', $matterId)
             ->where('receipt_type', 3)
-            ->whereRaw('LOWER(payment_type) = ?', ['professional fee'])
             ->whereRaw("LOWER(COALESCE(save_type, '')) = ?", ['final'])
             ->where(function ($query): void {
                 $query->whereNull('void_invoice')->orWhere('void_invoice', 0);
             })
             ->orderBy('id')
-            ->get(['trans_date', 'description', 'withdraw_amount', 'invoice_no', 'trans_no']);
+            ->get(['trans_date', 'description', 'withdraw_amount', 'payment_type', 'invoice_no', 'trans_no']);
 
         $discounts = [];
         $sync = app(InvoicePaymentSyncService::class);
@@ -126,6 +129,17 @@ final class StatementOfServices
             'lines' => $lines,
             'total' => round(array_sum(array_column($lines, 'charge')), 2),
         ];
+    }
+
+    private static function signedCharge(object $row): float
+    {
+        $amount = round((float) ($row->withdraw_amount ?? 0), 2);
+        $paymentType = strtolower(trim((string) ($row->payment_type ?? '')));
+        if ($paymentType === 'discount') {
+            return round(-abs($amount), 2);
+        }
+
+        return $amount;
     }
 
     private static function invoiceKey(object $row): string

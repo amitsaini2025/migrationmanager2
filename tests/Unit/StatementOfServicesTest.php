@@ -82,12 +82,63 @@ class StatementOfServicesTest extends TestCase
     }
 
     #[Test]
+    public function lines_include_every_invoice_item_including_a_card_paid_disbursement(): void
+    {
+        $rows = [
+            (object) [
+                'trans_date' => '01/03/2026',
+                'description' => 'Professional fee — subclass 485',
+                'withdraw_amount' => 110,
+                'payment_type' => 'Professional Fee',
+                'invoice_no' => 'INV-1',
+                'trans_no' => 'INV-1',
+            ],
+            (object) [
+                'trans_date' => '01/03/2026',
+                'description' => 'ART Fees',
+                'withdraw_amount' => 65,
+                'payment_type' => 'Disbursements',
+                'invoice_no' => 'INV-1',
+                'trans_no' => 'INV-1',
+            ],
+            (object) [
+                'trans_date' => '02/03/2026',
+                'description' => 'Department charge — visa application',
+                'withdraw_amount' => 50,
+                'payment_type' => 'Department Charges',
+                'invoice_no' => 'INV-1',
+                'trans_no' => 'INV-1',
+            ],
+            (object) [
+                'trans_date' => '02/03/2026',
+                'description' => 'Discount',
+                'withdraw_amount' => 10,
+                'payment_type' => 'Discount',
+                'invoice_no' => 'INV-1',
+                'trans_no' => 'INV-1',
+            ],
+        ];
+
+        $lines = StatementOfServices::lines($rows, [
+            'INV-1' => 30,
+        ]);
+
+        $this->assertSame('Professional fee — subclass 485', $lines[0]['description']);
+        $this->assertSame(80.0, $lines[0]['charge']);
+        $this->assertSame('ART Fees', $lines[1]['description']);
+        $this->assertSame(65.0, $lines[1]['charge']);
+        $this->assertSame('Department charge — visa application', $lines[2]['description']);
+        $this->assertSame(50.0, $lines[2]['charge']);
+        $this->assertSame(-10.0, $lines[3]['charge']);
+    }
+
+    #[Test]
     public function statement_blade_names_each_service_and_its_charge(): void
     {
         $blade = (string) file_get_contents(resource_path('views/emails/statement-of-services.blade.php'));
 
         $this->assertStringContainsString('Statement of services', $blade);
-        $this->assertStringContainsString('This statement sets out each service performed and the charge for that service.', $blade);
+        $this->assertStringContainsString('This statement sets out each invoice item and the charge for that item.', $blade);
         $this->assertStringContainsString('MARN', $blade);
         $this->assertStringContainsString('Invoice No', $blade);
         $this->assertStringContainsString('$line[\'description\']', $blade);

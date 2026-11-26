@@ -33,6 +33,8 @@ use App\Support\AccountReceiptDocumentUrls;
 use App\Support\AccountsListAccess;
 use App\Support\InvoiceListAging;
 use App\Support\MailFromAllowedDomains;
+use App\Support\MatterMigrationAgent;
+use App\Support\OfficeReceiptServiceDescription;
 use App\Support\StaffClientVisibility;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Carbon\Carbon;
@@ -1992,6 +1994,27 @@ class ClientAccountsController extends Controller
             // Handle office receipt processing (receipt_type=2 only)
             $receipt_id = $this->getNextReceiptId(2);
 
+            // Section 49(b): reject the whole save before any row is inserted.
+            for ($i = 0; $i < count($requestData['trans_date']); $i++) {
+                if (empty($requestData['trans_date'][$i]) || empty($requestData['deposit_amount'][$i])) {
+                    continue;
+                }
+
+                $invoiceNo = isset($requestData['invoice_no'][$i]) && $requestData['invoice_no'][$i] !== ''
+                    ? $requestData['invoice_no'][$i]
+                    : null;
+                $pmOffice = trim((string) ($requestData['payment_method'][$i] ?? ''));
+
+                if (strcasecmp($pmOffice, 'Refund') !== 0 && empty($invoiceNo)) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'An invoice number is required for office receipts that are not refunds.',
+                        'requestData' => [],
+                        'awsUrl' => '',
+                    ], 422);
+                }
+            }
+
             // Process each transaction individually (no invoice grouping)
             $savedIds = []; // Track all saved receipt IDs
             for ($i = 0; $i < count($requestData['trans_date']); $i++) {
@@ -2322,6 +2345,27 @@ class ClientAccountsController extends Controller
         // Get the original receipt data BEFORE updating (needed for overpayment check and surcharge calc)
         $originalReceipt = DB::table('account_client_receipts')->where('id', $id)->first();
 
+        if (! $originalReceipt) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Office receipt not found',
+            ], 404);
+        }
+
+        $effectivePaymentMethod = $request->has('payment_method')
+            ? trim((string) $request->input('payment_method'))
+            : trim((string) ($originalReceipt->payment_method ?? ''));
+        $effectiveInvoiceNo = $request->has('invoice_no')
+            ? trim((string) $request->input('invoice_no', ''))
+            : trim((string) ($originalReceipt->invoice_no ?? ''));
+
+        if (strcasecmp($effectivePaymentMethod, 'Refund') !== 0 && $effectiveInvoiceNo === '') {
+            return response()->json([
+                'status' => false,
+                'message' => 'An invoice number is required for office receipts that are not refunds.',
+            ], 422);
+        }
+
         if ($request->has('deposit_amount') && $originalReceipt) {
             $principal = floatval($request->input('deposit_amount'));
             $pm = trim((string) ($request->input('payment_method', $originalReceipt->payment_method ?? '')));
@@ -2599,10 +2643,19 @@ class ClientAccountsController extends Controller
                 Log::info('Fallback query returned '.$invoices->count().' invoices');
             }
 
-            // Add status text
-            $invoices = $invoices->map(function ($invoice) {
+            // Add status text and the invoice's service lines (not only the header description).
+            $invoices = $invoices->map(function ($invoice) use ($clientId) {
                 $statusMap = ['0' => 'Unpaid', '1' => 'Paid', '2' => 'Partial', '3' => 'Void'];
                 $invoice->status = $statusMap[$invoice->invoice_status] ?? 'Unknown';
+
+                $service = OfficeReceiptServiceDescription::resolve(
+                    '',
+                    (string) ($invoice->trans_no ?? ''),
+                    (int) $clientId
+                );
+                if ($service !== '') {
+                    $invoice->description = $service;
+                }
 
                 return $invoice;
             });
@@ -3365,6 +3418,12 @@ class ClientAccountsController extends Controller
             $client_matter_display = '';
         }
 
+        $migrationAgent = MatterMigrationAgent::forClientMatter(
+            ! empty($record_get[0]->client_matter_id) ? (int) $record_get[0]->client_matter_id : null
+        );
+        $migration_agent_name = $migrationAgent['agent_name'];
+        $migration_agent_marn = $migrationAgent['agent_marn'];
+
         try {
             // Generate PDF if it doesn't exist or was deleted
             $pdf = PDF::setOptions([
@@ -3400,6 +3459,8 @@ class ClientAccountsController extends Controller
                     'invoice_payment_method',
                     'client_matter_no',
                     'client_matter_display',
+                    'migration_agent_name',
+                    'migration_agent_marn',
                 ]));
 
             // Save PDF to AWS S3
@@ -3486,6 +3547,8 @@ class ClientAccountsController extends Controller
                     'invoice_payment_method',
                     'client_matter_no',
                     'client_matter_display',
+                    'migration_agent_name',
+                    'migration_agent_marn',
                 ]));
 
             // Return appropriate response based on download parameter
@@ -5286,13 +5349,26 @@ class ClientAccountsController extends Controller
             }
         }
 
+        $migrationAgent = MatterMigrationAgent::forClientMatter(
+            ! empty($record_get->client_matter_id) ? (int) $record_get->client_matter_id : null
+        );
+        $migration_agent_name = $migrationAgent['agent_name'];
+        $migration_agent_marn = $migrationAgent['agent_marn'];
+
         try {
             // Generate PDF if it doesn't exist or was deleted
             $pdf = PDF::setOptions([
                 'isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true,
                 'logOutputFile' => storage_path('logs/log.htm'),
                 'tempDir' => storage_path('logs/'),
-            ])->loadView('emails.genclientfundreceipt', compact(['record_get', 'clientname', 'client_matter_no', 'client_matter_display']));
+            ])->loadView('emails.genclientfundreceipt', compact([
+                'record_get',
+                'clientname',
+                'client_matter_no',
+                'client_matter_display',
+                'migration_agent_name',
+                'migration_agent_marn',
+            ]));
 
             // Save PDF to AWS S3
             $pdfContent = $pdf->output();
@@ -5603,11 +5679,27 @@ class ClientAccountsController extends Controller
                 $client_unique_matter_no = '';
                 $client_matter_no = '';
                 $client_matter_display = '';
+                $client_matter_name = '';
             }
         } else {
             $client_matter_no = '';
             $client_matter_display = '';
+            $client_matter_name = '';
         }
+
+        $migrationAgent = MatterMigrationAgent::forClientMatter(
+            ! empty($record_get->client_matter_id) ? (int) $record_get->client_matter_id : null
+        );
+        $migration_agent_name = $migrationAgent['agent_name'];
+        $migration_agent_marn = $migrationAgent['agent_marn'];
+
+        $office_receipt_invoice_no = trim((string) ($record_get->invoice_no ?? ''));
+        $office_receipt_service = OfficeReceiptServiceDescription::resolve(
+            $record_get->description ?? null,
+            $office_receipt_invoice_no !== '' ? $office_receipt_invoice_no : null,
+            isset($record_get->client_id) ? (int) $record_get->client_id : null,
+            $client_matter_name ?? null
+        );
 
         try {
             // Generate PDF if it doesn't exist or was deleted
@@ -5615,7 +5707,16 @@ class ClientAccountsController extends Controller
                 'isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true,
                 'logOutputFile' => storage_path('logs/log.htm'),
                 'tempDir' => storage_path('logs/'),
-            ])->loadView('emails.genofficereceipt', compact(['record_get', 'clientname', 'client_matter_no', 'client_matter_display']));
+            ])->loadView('emails.genofficereceipt', compact([
+                'record_get',
+                'clientname',
+                'client_matter_no',
+                'client_matter_display',
+                'migration_agent_name',
+                'migration_agent_marn',
+                'office_receipt_service',
+                'office_receipt_invoice_no',
+            ]));
 
             // Save PDF to AWS S3
             $pdfContent = $pdf->output();
@@ -5675,7 +5776,16 @@ class ClientAccountsController extends Controller
                 'isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true,
                 'logOutputFile' => storage_path('logs/log.htm'),
                 'tempDir' => storage_path('logs/'),
-            ])->loadView('emails.genofficereceipt', compact(['record_get', 'clientname', 'client_matter_no', 'client_matter_display']));
+            ])->loadView('emails.genofficereceipt', compact([
+                'record_get',
+                'clientname',
+                'client_matter_no',
+                'client_matter_display',
+                'migration_agent_name',
+                'migration_agent_marn',
+                'office_receipt_service',
+                'office_receipt_invoice_no',
+            ]));
 
             return $pdf->stream('Office-Receipt-'.($record_get->trans_no ?? $id).'.pdf');
         }
@@ -6206,6 +6316,12 @@ class ClientAccountsController extends Controller
                 $client_matter_display = '';
             }
 
+            $migrationAgent = MatterMigrationAgent::forClientMatter(
+                ! empty($record_get[0]->client_matter_id) ? (int) $record_get[0]->client_matter_id : null
+            );
+            $migration_agent_name = $migrationAgent['agent_name'];
+            $migration_agent_marn = $migrationAgent['agent_marn'];
+
             // Generate PDF with optimized settings
             $pdf = PDF::setOptions([
                 'isHtml5ParserEnabled' => true,
@@ -6247,6 +6363,8 @@ class ClientAccountsController extends Controller
                     'invoice_payment_method',
                     'client_matter_no',
                     'client_matter_display',
+                    'migration_agent_name',
+                    'migration_agent_marn',
                 ]));
 
             // Save PDF to temporary file

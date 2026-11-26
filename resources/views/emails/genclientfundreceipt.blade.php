@@ -194,6 +194,14 @@
 							<h1 class="document-title">Client Fund Receipt</h1>
 							<div class="document-info">
 								<b>ABN</b> 70 958 120 428<br/>
+								@if(!empty($migration_agent_name) || !empty($migration_agent_marn))
+									<b>Migration Agent:</b>
+									@if(!empty($migration_agent_name)){{ $migration_agent_name }}@endif
+									@if(!empty($migration_agent_marn))
+										@if(!empty($migration_agent_name)) &mdash; @endifMARN {{ $migration_agent_marn }}
+									@endif
+									<br/>
+								@endif
 								<b>Receipt Date:</b> {{@$record_get->trans_date ? $record_get->trans_date : date('d/m/Y')}}<br/>
 								<b>Receipt No:</b> {{@$record_get->trans_no}}
 							</div>

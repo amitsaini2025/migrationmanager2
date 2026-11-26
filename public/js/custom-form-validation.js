@@ -1617,6 +1617,17 @@ function customValidate(formName, savetype = '')
                         let paymentMethodSelects = officeFormEl ? officeFormEl.querySelectorAll('[name="payment_method[]"]') : [];
                         let shouldProceed = true;
 
+                        // Fee/disbursement receipts require an invoice (refunds do not).
+                        for (let i = 0; i < paymentMethodSelects.length; i++) {
+                            let pmRequired = (paymentMethodSelects[i].value || '').trim();
+                            let invoiceRequired = invoiceNos[i] ? (invoiceNos[i].value || '').trim() : '';
+                            if (pmRequired && pmRequired.toLowerCase() !== 'refund' && !invoiceRequired) {
+                                alert('An invoice number is required for office receipts that are not refunds.');
+                                $('.popuploader').hide();
+                                return false;
+                            }
+                        }
+
                         // Group received amounts by invoice number
                         let invoiceTotals = {};
 

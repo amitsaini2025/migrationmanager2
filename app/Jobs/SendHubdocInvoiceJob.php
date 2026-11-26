@@ -6,6 +6,7 @@ use App\Mail\HubdocInvoiceMail;
 use App\Models\AccountAllInvoiceReceipt;
 use App\Services\InvoicePaymentSyncService;
 use App\Services\SystemEmailLogService;
+use App\Support\MatterMigrationAgent;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -176,6 +177,12 @@ class SendHubdocInvoiceJob implements ShouldQueue
                 }
             }
 
+            $migrationAgent = MatterMigrationAgent::forClientMatter(
+                ! empty($record_get[0]->client_matter_id) ? (int) $record_get[0]->client_matter_id : null
+            );
+            $migration_agent_name = $migrationAgent['agent_name'];
+            $migration_agent_marn = $migrationAgent['agent_marn'];
+
             // Generate PDF with optimized settings
             $pdf = PDF::setOptions([
                 'isHtml5ParserEnabled' => true,
@@ -216,6 +223,8 @@ class SendHubdocInvoiceJob implements ShouldQueue
                     'clientname',
                     'invoice_payment_method',
                     'client_matter_no',
+                    'migration_agent_name',
+                    'migration_agent_marn',
                 ]));
 
             // Save PDF to temporary file

@@ -168,6 +168,14 @@
                     <h1 class="document-title">Office Receipt</h1>
                     <div class="document-info">
                         <b>ABN</b> 70 958 120 428<br/>
+                        @if(!empty($migration_agent_name) || !empty($migration_agent_marn))
+                            <b>Migration Agent:</b>
+                            @if(!empty($migration_agent_name)){{ $migration_agent_name }}@endif
+                            @if(!empty($migration_agent_marn))
+                                @if(!empty($migration_agent_name)) &mdash; @endifMARN {{ $migration_agent_marn }}
+                            @endif
+                            <br/>
+                        @endif
                         <b>Receipt Date:</b> {{@$record_get->trans_date ? $record_get->trans_date : date('d/m/Y')}}<br/>
                         <b>Receipt No:</b> {{@$record_get->trans_no}}
                     </div>
@@ -200,6 +208,20 @@
             <strong>Matter:</strong> {{ $client_matter_display ?? $client_matter_no ?? 'N/A' }}
         </div>
 
+        @php
+            $displayOfficeService = $office_receipt_service
+                ?? ($record_get->description ?? '');
+            $displayOfficeInvoiceNo = $office_receipt_invoice_no
+                ?? ($record_get->invoice_no ?? '');
+        @endphp
+
+        <div class="matter-info">
+            <strong>Service:</strong> {{ $displayOfficeService !== '' ? $displayOfficeService : 'N/A' }}
+        </div>
+        <div class="matter-info">
+            <strong>Invoice No:</strong> {{ $displayOfficeInvoiceNo !== '' ? $displayOfficeInvoiceNo : 'N/A' }}
+        </div>
+
         <div class="ledger-table-wrapper">
             <table class="ledger-table">
                 <thead>
@@ -222,7 +244,7 @@
                         <tr>
                             <td>{{@$record_get->trans_date}}</td>
                             <td>{{@$record_get->entry_date}}</td>
-                            <td>{{@$record_get->description}}@if(!empty($record_get->invoice_no)) ({{@$record_get->invoice_no}})@endif</td>
+                            <td>{{ $displayOfficeService !== '' ? $displayOfficeService : ($record_get->description ?? '') }}</td>
                             <td>{{ $officeReceiptPaymentMethodLabel }}</td>
                             <td style="text-align:right;">${{number_format($record_get->deposit_amount, 2)}}</td>
                         </tr>
@@ -241,7 +263,12 @@
         </div>
 
         <div class="acknowledgement">
-            <p><strong>Receipt Acknowledgement:</strong> This receipt confirms payment received for matter <strong>{{ $client_matter_display ?? $client_matter_no ?? 'N/A' }}</strong>.</p>
+            <p><strong>Receipt Acknowledgement:</strong> This receipt confirms payment received for
+                <strong>{{ $displayOfficeService !== '' ? $displayOfficeService : 'the services listed above' }}</strong>
+                @if($displayOfficeInvoiceNo !== '')
+                    relating to invoice <strong>{{ $displayOfficeInvoiceNo }}</strong>
+                @endif
+                on matter <strong>{{ $client_matter_display ?? $client_matter_no ?? 'N/A' }}</strong>.</p>
         </div>
     </div>
 </body>

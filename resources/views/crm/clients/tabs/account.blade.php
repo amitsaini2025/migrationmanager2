@@ -887,6 +887,25 @@ document.addEventListener('DOMContentLoaded', function() {
         return $.trim($option.text()).replace(/\([^)]*\)\s*$/, '').trim();
     }
 
+    function invoiceLineDescriptionLabel(paymentType, matterName) {
+        var labels = {
+            'Professional Fee': 'Professional fee',
+            'Department Charges': 'Department charge',
+            'Disbursements': 'Disbursement',
+            'Other Cost': 'Other cost',
+            'Surcharge': 'Surcharge',
+            'Discount': 'Discount'
+        };
+        var prefix = labels[paymentType] || paymentType;
+        if (!prefix) {
+            return '';
+        }
+        if (matterName) {
+            return prefix + ' — ' + matterName;
+        }
+        return prefix;
+    }
+
     function prefillReceiptDescriptionForAccount(formSelector, rowSelector) {
         var matterName = getCurrentMatterNameForAccount();
         if (!matterName) {
@@ -905,9 +924,101 @@ document.addEventListener('DOMContentLoaded', function() {
         prefillReceiptDescriptionForAccount('#client_receipt_form .productitem', 'tr.clonedrow');
     }
 
+    // Do not prefill office receipts with only the matter name (section 49(b)).
+    // Description is filled from the linked invoice when one is selected.
     function prefillDirectOfficeReceiptDescription() {
-        prefillReceiptDescriptionForAccount('#office_receipt_form .productitem_office', 'tr.clonedrow_office');
+        return;
     }
+
+    function syncOfficeReceiptInvoiceRequirement($row) {
+        var $rowEl = $row && $row.length ? $row : $('#office_receipt_form tr.clonedrow_office').first();
+        if (!$rowEl.length) {
+            return;
+        }
+        var paymentMethod = $.trim($rowEl.find('select[name="payment_method[]"]').val() || '');
+        var $invoiceSelect = $rowEl.find('select[name="invoice_no[]"]');
+        if (!$invoiceSelect.length) {
+            return;
+        }
+        if (paymentMethod === 'Refund') {
+            $invoiceSelect.removeAttr('data-valid');
+            var $firstOption = $invoiceSelect.find('option:first');
+            if ($firstOption.length) {
+                $firstOption.text('Select Invoice (Optional)');
+            }
+        } else {
+            $invoiceSelect.attr('data-valid', 'required');
+            var $requiredFirst = $invoiceSelect.find('option:first');
+            if ($requiredFirst.length && !$requiredFirst.val()) {
+                $requiredFirst.text('Select Invoice');
+            }
+        }
+    }
+
+    $(document).on('change', '#office_receipt_form select[name="payment_method[]"]', function() {
+        syncOfficeReceiptInvoiceRequirement($(this).closest('tr'));
+    });
+
+    $(document).on('change', '#office_receipt_form select[name="invoice_no[]"]', function() {
+        var $row = $(this).closest('tr');
+        var $desc = $row.find('input[name="description[]"]');
+        var selectedInvoice = $(this).find('option:selected').data('description');
+        if (!selectedInvoice) {
+            return;
+        }
+        var current = $.trim($desc.val() || '');
+        var matterName = getCurrentMatterNameForAccount();
+        var genericWords = ['cash', 'fees', 'fee', 'pf', 'payment', 'paid', 'receipt', 'test'];
+        var isGeneric = current === '' ||
+            genericWords.indexOf(current.toLowerCase()) !== -1 ||
+            (matterName && current.toLowerCase() === matterName.toLowerCase());
+        if (isGeneric) {
+            $desc.val(selectedInvoice);
+        }
+    });
+
+    $(document).on('change', '#invoice_receipt_form select.payment_type_invoice_per_row', function() {
+        var $row = $(this).closest('tr');
+        var $desc = $row.find('input[name="description[]"]');
+        var paymentType = $.trim($(this).val() || '');
+        if (!paymentType) {
+            return;
+        }
+        var matterName = getCurrentMatterNameForAccount();
+        var suggested = invoiceLineDescriptionLabel(paymentType, matterName);
+        if (!suggested) {
+            return;
+        }
+        var current = $.trim($desc.val() || '');
+        var genericWords = ['cash', 'fees', 'fee', 'pf', 'payment', 'paid', 'receipt', 'test'];
+        var isGeneric = current === '' ||
+            genericWords.indexOf(current.toLowerCase()) !== -1 ||
+            (matterName && current.toLowerCase() === matterName.toLowerCase());
+        if (isGeneric) {
+            $desc.val(suggested);
+        }
+    });
+
+    $(document).on('change', '#edit_office_payment_method', function() {
+        var paymentMethod = $.trim($(this).val() || '');
+        var $invoiceSelect = $('#edit_office_invoice_no');
+        if (!$invoiceSelect.length) {
+            return;
+        }
+        if (paymentMethod === 'Refund') {
+            $invoiceSelect.removeAttr('data-valid');
+            var $opt = $invoiceSelect.find('option:first');
+            if ($opt.length && !$opt.val()) {
+                $opt.text('Select Invoice (Optional)');
+            }
+        } else {
+            $invoiceSelect.attr('data-valid', 'required');
+            var $req = $invoiceSelect.find('option:first');
+            if ($req.length && !$req.val()) {
+                $req.text('Select Invoice');
+            }
+        }
+    });
 
     /** #createreceiptmodal is a lazy stub until ensureClientDetailModal loads real HTML (see lazy-modals.js). */
     function ensureAccountCreatereceiptModal() {
@@ -1009,6 +1120,9 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (receiptType == '2') {
                 $('#client_matter_id_office').val(selectedMatter);
                 prefillDirectOfficeReceiptDescription();
+                $('#office_receipt_form tr.clonedrow_office').each(function() {
+                    syncOfficeReceiptInvoiceRequirement($(this));
+                });
             }
         }, 100);
     }
@@ -1164,18 +1278,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 var $select = $('#office_receipt_form').find('select[name="invoice_no[]"]');
                 $select.empty();
-                $select.append('<option value="">Select Invoice (Optional)</option>');
+                $select.append('<option value="">Select Invoice</option>');
                 
                 if(response.status && response.invoices && response.invoices.length > 0) {
                     response.invoices.forEach(function(invoice) {
-                        $select.append('<option value="' + invoice.trans_no + '">' + 
-                            invoice.trans_no + ' - $' + parseFloat(invoice.balance_amount).toFixed(2) + 
-                            ' (' + invoice.status + ')</option>');
+                        $select.append(
+                            $('<option></option>')
+                                .attr('value', invoice.trans_no)
+                                .attr('data-description', invoice.description || '')
+                                .text(
+                                    invoice.trans_no + ' - $' + parseFloat(invoice.balance_amount).toFixed(2) +
+                                    ' (' + invoice.status + ')'
+                                )
+                        );
                     });
                     console.log('✅ Populated ' + response.invoices.length + ' invoices in dropdown');
                 } else {
                     console.log('ℹ️ No unpaid invoices found for this matter');
                 }
+                $('#office_receipt_form tr.clonedrow_office').each(function() {
+                    syncOfficeReceiptInvoiceRequirement($(this));
+                });
             },
             error: function(xhr) {
                 console.error('❌ Failed to load invoices:', xhr);
@@ -1197,6 +1320,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function updateOfficeReceipt(saveType) {
+        var paymentMethod = $.trim($('#edit_office_payment_method').val() || '');
+        var invoiceNo = $.trim($('#edit_office_invoice_no').val() || '');
+        if (paymentMethod && paymentMethod !== 'Refund' && !invoiceNo) {
+            alert('An invoice number is required for office receipts that are not refunds.');
+            return;
+        }
+
         var form = $('#editOfficeReceiptForm')[0];
         var formData = new FormData(form);
         formData.append('save_type', saveType);
@@ -1225,7 +1355,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             },
             error: function(xhr, status, error) {
-                alert('An error occurred while updating. Please try again.');
+                var message = (xhr.responseJSON && xhr.responseJSON.message)
+                    ? xhr.responseJSON.message
+                    : 'An error occurred while updating. Please try again.';
+                alert(message);
                 console.error('AJAX error:', status, error, xhr.responseText);
             }
         });
@@ -2900,16 +3033,25 @@ $(document).ready(function() {
             success: function(response) {
                 var $select = $('#edit_office_invoice_no');
                 $select.empty();
-                $select.append('<option value="">Select Invoice (Optional)</option>');
+                $select.append('<option value="">Select Invoice</option>');
                 
                 if(response.invoices && response.invoices.length > 0) {
                     response.invoices.forEach(function(invoice) {
-                        var selected = (invoice.trans_no == selectedInvoice) ? 'selected' : '';
-                        $select.append('<option value="' + invoice.trans_no + '" ' + selected + '>' + 
-                            invoice.trans_no + ' - $' + parseFloat(invoice.balance_amount).toFixed(2) + 
-                            ' (' + invoice.status + ')</option>');
+                        var $opt = $('<option></option>')
+                            .attr('value', invoice.trans_no)
+                            .attr('data-description', invoice.description || '')
+                            .text(
+                                invoice.trans_no + ' - $' + parseFloat(invoice.balance_amount).toFixed(2) +
+                                ' (' + invoice.status + ')'
+                            );
+                        if (invoice.trans_no == selectedInvoice) {
+                            $opt.prop('selected', true);
+                        }
+                        $select.append($opt);
                     });
                 }
+
+                $('#edit_office_payment_method').trigger('change');
                 
                 console.log('✅ Loaded invoices for matter:', matterId);
             },

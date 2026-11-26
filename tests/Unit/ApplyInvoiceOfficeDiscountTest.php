@@ -192,6 +192,11 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
         Assert::assertStringContainsString('invoice_paid_amount', $blade);
         Assert::assertStringNotContainsString('totals-label">Discount:', $blade);
         Assert::assertStringNotContainsString('$displayOfficeDiscount', $blade);
+        Assert::assertStringContainsString('migration_agent_marn', $blade);
+        Assert::assertStringContainsString('MARN {{ $migration_agent_marn }}', $blade);
+        Assert::assertStringContainsString('<b>Migration Agent:</b>', $blade);
+        Assert::assertStringContainsString('Tax Invoice', $blade);
+        Assert::assertStringNotContainsString('Statement of Services', $blade);
     }
 
     #[Test]
@@ -256,6 +261,28 @@ class ApplyInvoiceOfficeDiscountTest extends TestCase
         Assert::assertStringContainsString('officeReceiptPaymentMethodLabel = $isOfficeAdjustmentReceipt', $blade);
         Assert::assertStringContainsString("'Adjustment'", $blade);
         Assert::assertStringContainsString("displayInvoicePaymentMethod = 'Adjustment'", $invoiceBlade);
+        Assert::assertStringContainsString('migration_agent_marn', $blade);
+        Assert::assertStringContainsString('MARN {{ $migration_agent_marn }}', $blade);
+        Assert::assertStringContainsString('<strong>Service:</strong>', $blade);
+        Assert::assertStringContainsString('<strong>Invoice No:</strong>', $blade);
+        Assert::assertStringContainsString('office_receipt_service', $blade);
+        Assert::assertStringContainsString('office_receipt_invoice_no', $blade);
+        Assert::assertStringContainsString('relating to invoice', $blade);
+        Assert::assertStringNotContainsString(
+            'This receipt confirms payment received for matter <strong>{{ $client_matter_display ?? $client_matter_no ?? \'N/A\' }}</strong>.',
+            $blade
+        );
+    }
+
+    #[Test]
+    public function client_fund_receipt_pdf_shows_migration_agent_marn(): void
+    {
+        $blade = (string) file_get_contents(resource_path('views/emails/genclientfundreceipt.blade.php'));
+
+        Assert::assertStringContainsString('migration_agent_marn', $blade);
+        Assert::assertStringContainsString('MARN {{ $migration_agent_marn }}', $blade);
+        Assert::assertStringContainsString('<b>Migration Agent:</b>', $blade);
+        Assert::assertStringContainsString('Client Trust Account', $blade);
     }
 
     #[Test]

@@ -36,12 +36,14 @@ use App\Support\MailFromAllowedDomains;
 use App\Support\MatterMigrationAgent;
 use App\Support\OfficeReceiptServiceDescription;
 use App\Support\StaffClientVisibility;
+use App\Support\StatementOfServices;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -3561,6 +3563,30 @@ class ClientAccountsController extends Controller
         }
 
         // ============= END CACHING LOGIC =============
+    }
+
+    public function statementOfServices(Request $request, int $clientId, int $matterId): Response
+    {
+        $this->ensureAccountsListClient($clientId);
+
+        $statement = StatementOfServices::forMatter($clientId, $matterId);
+        if ($statement === null) {
+            abort(404, 'Statement of services not found for this matter');
+        }
+
+        $pdf = PDF::setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => true,
+            'logOutputFile' => storage_path('logs/log.htm'),
+            'tempDir' => storage_path('logs/'),
+        ])->loadView('emails.statement-of-services', $statement);
+
+        $fileName = 'Statement-of-services-'.($statement['client_matter_no'] !== '' ? $statement['client_matter_no'] : $matterId).'.pdf';
+        if ($request->has('download')) {
+            return $pdf->download($fileName);
+        }
+
+        return $pdf->stream($fileName);
     }
 
     public function uploadclientreceiptdocument(Request $request)

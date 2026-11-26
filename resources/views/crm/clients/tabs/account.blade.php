@@ -267,7 +267,19 @@
                 Tracks invoices issued and payments received directly by the office.
             </p>
             <div class="transaction-table-wrapper">
-                <h4 style="margin-top:0; margin-bottom: 10px; font-weight: 600;">Invoices Issued</h4>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px;">
+                    <h4 style="margin: 0; font-weight: 600;">Invoices Issued</h4>
+                    @if($client_selected_matter_id)
+                        <div>
+                            <a class="btn btn-sm btn-outline-primary" target="_blank" href="{{ route('clients.statementOfServices', ['clientId' => $fetchedData->id, 'matterId' => $client_selected_matter_id]) }}">
+                                @icon('fa-file-alt') Statement of services
+                            </a>
+                            <a class="btn btn-sm btn-outline-secondary" target="_blank" href="{{ route('clients.statementOfServices', ['clientId' => $fetchedData->id, 'matterId' => $client_selected_matter_id, 'download' => 1]) }}">
+                                @icon('fa-download') Download
+                            </a>
+                        </div>
+                    @endif
+                </div>
                 <table class="transaction-table">
                     <thead>
                         <tr>

@@ -347,6 +347,10 @@ Route::post('/clients/listOfInvoice', [ClientAccountsController::class, 'listOfI
 Route::post('/clients/getTopReceiptValInDB', [ClientAccountsController::class, 'getTopReceiptValInDB'])->name('clients.getTopReceiptValInDB');
 Route::post('/clients/getInfoByReceiptId', [ClientAccountsController::class, 'getInfoByReceiptId'])->name('clients.getInfoByReceiptId');
 Route::get('/clients/genInvoice/{id}/{client_id?}', [ClientAccountsController::class, 'genInvoice']);
+Route::get('/clients/statement-of-services/{clientId}/{matterId}', [ClientAccountsController::class, 'statementOfServices'])
+    ->whereNumber('clientId')
+    ->whereNumber('matterId')
+    ->name('clients.statementOfServices');
 Route::post('/clients/sendToHubdoc/{id}', [ClientAccountsController::class, 'sendToHubdoc'])->name('clients.sendToHubdoc');
 Route::get('/clients/checkHubdocStatus/{id}', [ClientAccountsController::class, 'checkHubdocStatus'])->name('clients.checkHubdocStatus');
 Route::post('/clients/send-invoice-to-client-application/{id}', [ClientAccountsController::class, 'sendInvoiceToClientApplication'])->name('clients.sendInvoiceToClientApplication');

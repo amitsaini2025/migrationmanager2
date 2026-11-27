@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\CRM;
 
 use App\Helpers\IconHelper;
-use App\Http\Controllers\Concerns\EnsuresCrmRecordAccess;
 use App\Http\Controllers\Controller;
 use App\Models\ActivitiesLog;
 use App\Models\Admin;
@@ -26,10 +25,13 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
+/**
+ * In Person queue / Front Desk visit actions intentionally skip CRM allocation
+ * and 15-minute cross-access gates so all authenticated staff can run the desk.
+ * Opening a full client/lead file still uses the normal access gate elsewhere.
+ */
 class OfficeVisitController extends Controller
 {
-    use EnsuresCrmRecordAccess;
-
     /**
      * Create a new controller instance.
      *
@@ -115,8 +117,6 @@ class OfficeVisitController extends Controller
             if (! $clientExists) {
                 return redirect()->back()->with('error', 'Selected contact does not exist.');
             }
-
-            $this->ensureCrmRecordAccess($contactId);
 
             // Verify assignee exists (staff table)
             $assigneeExists = Staff::where('id', $assigneeId)->exists();
@@ -221,9 +221,6 @@ class OfficeVisitController extends Controller
     public function getcheckin(Request $request)
     {
         $CheckinLog = CheckinLog::where('id', '=', $request->id)->first();
-        if ($CheckinLog && $CheckinLog->client_id) {
-            $this->ensureCrmRecordAccess((int) $CheckinLog->client_id);
-        }
 
         if ($CheckinLog) {
             ob_start();
@@ -481,9 +478,6 @@ class OfficeVisitController extends Controller
     public function update_visit_purpose(Request $request)
     {
         $obj = CheckinLog::find($request->id);
-        if ($obj && $obj->client_id) {
-            $this->ensureCrmRecordAccess((int) $obj->client_id);
-        }
         $obj->visit_purpose = $request->visit_purpose;
         $saved = $obj->save();
         if ($saved) {
@@ -498,10 +492,6 @@ class OfficeVisitController extends Controller
 
     public function update_visit_comment(Request $request)
     {
-        $checkinForAuth = CheckinLog::select('client_id')->where('id', $request->id)->first();
-        if ($checkinForAuth && $checkinForAuth->client_id) {
-            $this->ensureCrmRecordAccess((int) $checkinForAuth->client_id);
-        }
         $objs = new CheckinHistory;
         $objs->subject = 'has commented';
         $objs->created_by = Auth::user()->id;
@@ -521,9 +511,6 @@ class OfficeVisitController extends Controller
     public function change_assignee(Request $request)
     {
         $objs = CheckinLog::find($request->id);
-        if ($objs && $objs->client_id) {
-            $this->ensureCrmRecordAccess((int) $objs->client_id);
-        }
         $objs->user_id = $request->assinee;
 
         $saved = $objs->save();
@@ -578,10 +565,6 @@ class OfficeVisitController extends Controller
                 'status' => false,
                 'message' => 'Selected staff is not allowed for this assignment.',
             ], 422);
-        }
-
-        if ($visit->client_id) {
-            $this->ensureCrmRecordAccess((int) $visit->client_id);
         }
 
         $actor = Auth::user();
@@ -677,10 +660,6 @@ class OfficeVisitController extends Controller
             ], 422);
         }
 
-        if ($visit->client_id) {
-            $this->ensureCrmRecordAccess((int) $visit->client_id);
-        }
-
         $actor = Auth::user();
         if (! $actor instanceof Staff) {
             return response()->json([
@@ -743,9 +722,6 @@ class OfficeVisitController extends Controller
     public function attend_session(Request $request)
     {
         $obj = CheckinLog::find($request->id);
-        if ($obj && $obj->client_id) {
-            $this->ensureCrmRecordAccess((int) $obj->client_id);
-        }
         $obj->sesion_start = date('Y-m-d H:i');
         $obj->wait_time = $request->waitcountdata;
 
@@ -801,9 +777,6 @@ class OfficeVisitController extends Controller
     public function complete_session(Request $request)
     {
         $obj = CheckinLog::find($request->id);
-        if ($obj && $obj->client_id) {
-            $this->ensureCrmRecordAccess((int) $obj->client_id);
-        }
         $obj->sesion_end = date('Y-m-d H:i');
         $obj->attend_time = $request->attendcountdata;
         $obj->status = 1;

@@ -26,6 +26,11 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
+/**
+ * Staff Front-Desk Check-In wizard (/front-desk/checkin).
+ * Any authenticated staff may use this page; role allowlists remain only for
+ * header shortcuts via the Staff front-desk role helper.
+ */
 class FrontDeskCheckInController extends Controller
 {
     use EnsuresCrmRecordAccess;
@@ -460,11 +465,13 @@ class FrontDeskCheckInController extends Controller
     // Authorisation helper
     // -------------------------------------------------------------------------
 
+    /**
+     * Create In Person / front-desk wizard: any logged-in staff (auth:admin).
+     * Does not use front_desk_checkin_role_ids so desk work is not role-gated.
+     */
     private function authorised(): bool
     {
-        $user = Auth::guard('admin')->user();
-
-        return $user instanceof Staff && $user->canAccessFrontDeskCheckIn();
+        return Auth::guard('admin')->user() instanceof Staff;
     }
 
     /**

@@ -366,7 +366,8 @@ class Staff extends Authenticatable
     }
 
     /**
-     * Whether this staff member may use the front-desk check-in feature.
+     * Whether this staff member sees front-desk check-in header shortcuts.
+     * The /front-desk/checkin wizard itself allows any authenticated staff.
      */
     public function canAccessFrontDeskCheckIn(): bool
     {

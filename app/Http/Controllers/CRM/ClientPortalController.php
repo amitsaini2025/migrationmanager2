@@ -31,6 +31,7 @@ use App\Services\ClientPortalActionNoteService;
 use App\Services\MatterEmailBodyCleanupService;
 use App\Services\MessageAttachmentStorageService;
 use App\Models\WorkflowStage;
+use App\Support\VisaSheetChecklistStatus;
 use App\Support\WorkflowStageNavigation;
 use App\Models\Message;
 use App\Models\MessageRecipient;
@@ -3652,6 +3653,7 @@ class ClientPortalController extends Controller
 		$prevIndex = $stages->search(fn($s) => $s->id == $prevStage->id) + 1;
 		$width = $stages->count() > 0 ? round(($prevIndex / $stages->count()) * 100) : 0;
 		$clientMatter->workflow_stage_id = $prevStage->id;
+		VisaSheetChecklistStatus::restoreActiveIfReturnedToChecklist($clientMatter, (string) ($prevStage->name ?? ''));
 		$saved = $clientMatter->save();
 		if ($saved) {
 			$comments = 'moved the stage from <b>' . $currentStage->name . '</b> to <b>' . $prevStage->name . '</b>';
@@ -3965,6 +3967,7 @@ class ClientPortalController extends Controller
 			}
 
 			$clientMatter->workflow_stage_id = $prevStage->id;
+			VisaSheetChecklistStatus::restoreActiveIfReturnedToChecklist($clientMatter, (string) ($prevStage->name ?? ''));
 			$saved = $clientMatter->save();
 
 			if ($saved) {

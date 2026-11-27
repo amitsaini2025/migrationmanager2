@@ -1996,26 +1996,8 @@ class ClientAccountsController extends Controller
             // Handle office receipt processing (receipt_type=2 only)
             $receipt_id = $this->getNextReceiptId(2);
 
-            // Section 49(b): reject the whole save before any row is inserted.
-            for ($i = 0; $i < count($requestData['trans_date']); $i++) {
-                if (empty($requestData['trans_date'][$i]) || empty($requestData['deposit_amount'][$i])) {
-                    continue;
-                }
-
-                $invoiceNo = isset($requestData['invoice_no'][$i]) && $requestData['invoice_no'][$i] !== ''
-                    ? $requestData['invoice_no'][$i]
-                    : null;
-                $pmOffice = trim((string) ($requestData['payment_method'][$i] ?? ''));
-
-                if (strcasecmp($pmOffice, 'Refund') !== 0 && empty($invoiceNo)) {
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'An invoice number is required for office receipts that are not refunds.',
-                        'requestData' => [],
-                        'awsUrl' => '',
-                    ], 422);
-                }
-            }
+            // Invoice is optional on create: unallocated receipts are allowed.
+            // When invoice_no is present, payment sync still runs below for finals.
 
             // Process each transaction individually (no invoice grouping)
             $savedIds = []; // Track all saved receipt IDs
@@ -2354,19 +2336,7 @@ class ClientAccountsController extends Controller
             ], 404);
         }
 
-        $effectivePaymentMethod = $request->has('payment_method')
-            ? trim((string) $request->input('payment_method'))
-            : trim((string) ($originalReceipt->payment_method ?? ''));
-        $effectiveInvoiceNo = $request->has('invoice_no')
-            ? trim((string) $request->input('invoice_no', ''))
-            : trim((string) ($originalReceipt->invoice_no ?? ''));
-
-        if (strcasecmp($effectivePaymentMethod, 'Refund') !== 0 && $effectiveInvoiceNo === '') {
-            return response()->json([
-                'status' => false,
-                'message' => 'An invoice number is required for office receipts that are not refunds.',
-            ], 422);
-        }
+        // Invoice remains optional on update (including non-refund payment methods).
 
         if ($request->has('deposit_amount') && $originalReceipt) {
             $principal = floatval($request->input('deposit_amount'));

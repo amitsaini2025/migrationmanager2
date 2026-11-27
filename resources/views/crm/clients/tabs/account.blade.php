@@ -982,23 +982,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!$rowEl.length) {
             return;
         }
-        var paymentMethod = $.trim($rowEl.find('select[name="payment_method[]"]').val() || '');
         var $invoiceSelect = $rowEl.find('select[name="invoice_no[]"]');
         if (!$invoiceSelect.length) {
             return;
         }
-        if (paymentMethod === 'Refund') {
-            $invoiceSelect.removeAttr('data-valid');
-            var $firstOption = $invoiceSelect.find('option:first');
-            if ($firstOption.length) {
-                $firstOption.text('Select Invoice (Optional)');
-            }
-        } else {
-            $invoiceSelect.attr('data-valid', 'required');
-            var $requiredFirst = $invoiceSelect.find('option:first');
-            if ($requiredFirst.length && !$requiredFirst.val()) {
-                $requiredFirst.text('Select Invoice');
-            }
+        // Invoice is always optional for direct office receipts (allocate later if needed).
+        $invoiceSelect.removeAttr('data-valid');
+        var $firstOption = $invoiceSelect.find('option:first');
+        if ($firstOption.length && !$firstOption.val()) {
+            $firstOption.text('Select Invoice (Optional)');
         }
     }
 
@@ -1047,23 +1039,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     $(document).on('change', '#edit_office_payment_method', function() {
-        var paymentMethod = $.trim($(this).val() || '');
         var $invoiceSelect = $('#edit_office_invoice_no');
         if (!$invoiceSelect.length) {
             return;
         }
-        if (paymentMethod === 'Refund') {
-            $invoiceSelect.removeAttr('data-valid');
-            var $opt = $invoiceSelect.find('option:first');
-            if ($opt.length && !$opt.val()) {
-                $opt.text('Select Invoice (Optional)');
-            }
-        } else {
-            $invoiceSelect.attr('data-valid', 'required');
-            var $req = $invoiceSelect.find('option:first');
-            if ($req.length && !$req.val()) {
-                $req.text('Select Invoice');
-            }
+        // Invoice stays optional on edit for all payment methods.
+        $invoiceSelect.removeAttr('data-valid');
+        var $opt = $invoiceSelect.find('option:first');
+        if ($opt.length && !$opt.val()) {
+            $opt.text('Select Invoice (Optional)');
         }
     });
 
@@ -1367,13 +1351,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function updateOfficeReceipt(saveType) {
-        var paymentMethod = $.trim($('#edit_office_payment_method').val() || '');
-        var invoiceNo = $.trim($('#edit_office_invoice_no').val() || '');
-        if (paymentMethod && paymentMethod !== 'Refund' && !invoiceNo) {
-            alert('An invoice number is required for office receipts that are not refunds.');
-            return;
-        }
-
         var form = $('#editOfficeReceiptForm')[0];
         var formData = new FormData(form);
         formData.append('save_type', saveType);

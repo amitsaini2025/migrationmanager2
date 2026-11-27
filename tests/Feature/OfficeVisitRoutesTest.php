@@ -74,6 +74,8 @@ class OfficeVisitRoutesTest extends TestCase
         $blade = file_get_contents(resource_path('views/crm/officevisits/index.blade.php'));
         $this->assertNotFalse($blade);
 
+        $this->assertStringContainsString('badge badge-info', $blade);
+        $this->assertStringContainsString('>Attending</span>', $blade);
         $this->assertStringContainsString('markcompletesession', $blade);
         $this->assertStringContainsString('Mark Complete', $blade);
         $this->assertStringContainsString('/complete_session', $blade);

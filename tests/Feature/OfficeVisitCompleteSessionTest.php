@@ -77,6 +77,7 @@ class OfficeVisitCompleteSessionTest extends TestCase
         $this->assertNotFalse($blade);
 
         $this->assertStringContainsString('attendsessionforclient', $blade);
+        $this->assertStringContainsString('badge badge-info', $blade);
         $this->assertStringContainsString('markcompletesession', $blade);
         $this->assertStringContainsString('badge badge-secondary', $blade);
         $this->assertStringNotContainsString('class="btn btn-success completesession"', $blade);

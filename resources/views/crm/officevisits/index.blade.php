@@ -190,8 +190,9 @@ body, html { overflow-x: hidden !important; max-width: 100% !important; }
 																<a href="javascript:;" data-id="{{@$list->id}}" data-waitingtype="{{@$list->wait_type}}" class="btn btn-danger attendsessionforclient">Waiting</a>
 															<?php }
 														} elseif ($list->status == 2) { ?>
+															<span class="badge badge-info" style="font-size: 0.9em;">Attending</span>
 															{{-- Listing-only action; uses markcompletesession so modal .completesession handler is not double-fired --}}
-															<a href="javascript:;" data-id="{{@$list->id}}" class="btn btn-success markcompletesession">Mark Complete</a>
+															<a href="javascript:;" data-id="{{@$list->id}}" class="btn btn-success markcompletesession" style="margin-left:6px;">Mark Complete</a>
 														<?php } elseif ($list->status == 1) { ?>
 															<span class="badge badge-secondary" style="font-size: 0.9em;">Completed</span>
 														<?php } ?>

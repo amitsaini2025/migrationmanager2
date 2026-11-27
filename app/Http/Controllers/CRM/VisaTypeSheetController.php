@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\ClientMatter;
 use App\Models\Staff;
+use App\Models\WorkflowStage;
 use App\Support\ArtAppealSubject;
 use App\Support\CurrentVisaExpiry;
 use App\Support\StaffClientVisibility;
 use App\Support\VisaSheetCategory;
+use App\Support\WorkflowStageNavigation;
 use App\Traits\ClientAuthorization;
 use App\Traits\LogsClientActivity;
 use Carbon\Carbon;
@@ -1665,7 +1667,13 @@ class VisaTypeSheetController extends Controller
             ->where('cm.id', $matterInternalId)
             ->whereRaw($matterCondition)
             ->whereRaw('cm.matter_status = 1')
-            ->select('cm.id', 'cm.client_id')
+            ->select(
+                'cm.id',
+                'cm.client_id',
+                'cm.workflow_id',
+                'cm.workflow_stage_id',
+                'cm.client_unique_matter_no'
+            )
             ->first();
 
         if (! $matterRow) {
@@ -1677,21 +1685,88 @@ class VisaTypeSheetController extends Controller
         }
 
         try {
+            $update = [
+                $checklistCol => $status,
+                'updated_at' => now(),
+            ];
+
+            $fromStageName = null;
+            $toStageName = null;
+
+            // Convert to client: move workflow to the configured post-Checklist stage (Ongoing tab).
+            // Other statuses only update the checklist status column (existing behaviour).
+            if ($status === 'convert_to_client') {
+                $target = $this->resolveChecklistConvertToClientStage($config, $matterRow);
+                if ($target !== null && (int) $target->id !== (int) ($matterRow->workflow_stage_id ?? 0)) {
+                    $fromStage = $matterRow->workflow_stage_id
+                        ? WorkflowStage::query()->find((int) $matterRow->workflow_stage_id)
+                        : null;
+                    $fromStageName = (string) ($fromStage->name ?? 'Checklist');
+                    $toStageName = (string) ($target->name ?? '');
+                    $update['workflow_stage_id'] = (int) $target->id;
+                }
+            }
+
             DB::table('client_matters')
                 ->where('id', $matterInternalId)
-                ->update([
-                    $checklistCol => $status,
-                    'updated_at' => now(),
-                ]);
+                ->update($update);
+
+            if ($toStageName !== null && $toStageName !== '') {
+                $matterNo = $matterRow->client_unique_matter_no ?? ('ID: '.$matterInternalId);
+                $this->logClientActivity(
+                    (int) $matterRow->client_id,
+                    $matterNo.' Stage: '.$fromStageName,
+                    'moved the stage from <b>'.$fromStageName.'</b> to <b>'.$toStageName.'</b> (Convert to client)',
+                    'stage'
+                );
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Status updated',
                 'status' => $status,
+                'workflow_stage' => $toStageName,
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Could not update status'], 500);
         }
+    }
+
+    /**
+     * Resolve the post-Checklist stage for Convert to client (config name, else next after current).
+     */
+    protected function resolveChecklistConvertToClientStage(array $config, object $matterRow): ?WorkflowStage
+    {
+        $currentStageWorkflowId = null;
+        if (! empty($matterRow->workflow_stage_id)) {
+            $currentStageWorkflowId = WorkflowStage::query()
+                ->where('id', (int) $matterRow->workflow_stage_id)
+                ->value('workflow_id');
+            $currentStageWorkflowId = $currentStageWorkflowId ? (int) $currentStageWorkflowId : null;
+        }
+
+        $stages = WorkflowStageNavigation::orderedStages(
+            ! empty($matterRow->workflow_id) ? (int) $matterRow->workflow_id : null,
+            $currentStageWorkflowId
+        );
+
+        if ($stages->isEmpty()) {
+            return null;
+        }
+
+        $configuredName = trim((string) ($config['checklist_convert_to_client_stage'] ?? ''));
+        $byName = $configuredName !== ''
+            ? WorkflowStageNavigation::findByName($stages, $configuredName)
+            : null;
+        if ($byName !== null) {
+            return $byName;
+        }
+
+        if (! empty($matterRow->workflow_stage_id)) {
+            return WorkflowStageNavigation::nextAfter($stages, (int) $matterRow->workflow_stage_id);
+        }
+
+        return null;
     }
 
     /**

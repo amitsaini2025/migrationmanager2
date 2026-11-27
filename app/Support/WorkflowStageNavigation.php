@@ -57,6 +57,23 @@ class WorkflowStageNavigation
         return $index === false ? null : (int) $index;
     }
 
+    /**
+     * Find a stage by name (case-insensitive, trimmed) in an ordered list.
+     */
+    public static function findByName(Collection $stages, string $name): ?WorkflowStage
+    {
+        $needle = strtolower(trim($name));
+        if ($needle === '') {
+            return null;
+        }
+
+        $match = $stages->first(
+            fn ($stage) => strtolower(trim((string) ($stage->name ?? ''))) === $needle
+        );
+
+        return $match instanceof WorkflowStage ? $match : null;
+    }
+
     private static function adjacent(Collection $stages, int $currentStageId, int $delta): ?WorkflowStage
     {
         $index = self::indexOf($stages, $currentStageId);

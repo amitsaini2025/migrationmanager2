@@ -65,6 +65,10 @@ class EmployerSponsorSheetTest extends TestCase
             'Ready to Close',
         ], $config['lodged_stages']);
         $this->assertSame(['File Closed'], $config['discontinue_stages']);
+        $this->assertSame(
+            'Cost Agreement, form 956 and First email Sent',
+            $config['checklist_convert_to_client_stage']
+        );
         $this->assertSame([
             'Cost Agreement, form 956 and First email Sent',
             'Cost Agreement, form 956 Received',

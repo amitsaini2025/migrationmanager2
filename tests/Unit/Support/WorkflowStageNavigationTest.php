@@ -93,4 +93,24 @@ class WorkflowStageNavigationTest extends TestCase
         Assert::assertNull(WorkflowStageNavigation::indexOf($stages, 999));
         Assert::assertNull(WorkflowStageNavigation::nextAfter($stages, 999));
     }
+
+    #[Test]
+    public function find_by_name_is_case_insensitive_and_trimmed(): void
+    {
+        $stages = collect([
+            $this->stage(1, 'Checklist', 1),
+            $this->stage(2, 'Cost Agreement, form 956 and First email Sent', 2),
+            $this->stage(3, 'Application Lodged', 3),
+        ]);
+
+        $found = WorkflowStageNavigation::findByName(
+            $stages,
+            '  cost agreement, form 956 and first email sent  '
+        );
+        Assert::assertNotNull($found);
+        Assert::assertSame(2, (int) $found->id);
+
+        Assert::assertNull(WorkflowStageNavigation::findByName($stages, ''));
+        Assert::assertNull(WorkflowStageNavigation::findByName($stages, 'Unknown Stage'));
+    }
 }

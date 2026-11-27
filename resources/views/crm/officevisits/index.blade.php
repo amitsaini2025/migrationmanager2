@@ -190,7 +190,8 @@ body, html { overflow-x: hidden !important; max-width: 100% !important; }
 																<a href="javascript:;" data-id="{{@$list->id}}" data-waitingtype="{{@$list->wait_type}}" class="btn btn-danger attendsessionforclient">Waiting</a>
 															<?php }
 														} elseif ($list->status == 2) { ?>
-															<span class="badge badge-info" style="font-size: 0.9em;">Attending</span>
+															{{-- Listing-only action; uses markcompletesession so modal .completesession handler is not double-fired --}}
+															<a href="javascript:;" data-id="{{@$list->id}}" class="btn btn-success markcompletesession">Mark Complete</a>
 														<?php } elseif ($list->status == 1) { ?>
 															<span class="badge badge-secondary" style="font-size: 0.9em;">Completed</span>
 														<?php } ?>
@@ -356,6 +357,34 @@ jQuery(document).ready(function($){
 			success: function(response){
 				var obj = $.parseJSON(response);
 				if(obj.status){ location.reload(); }else{ alert(obj.message); }
+			}
+		});
+	});
+	// Listing Attending tab only — does not use .completesession (modal handler on layout).
+	$(document).delegate('.markcompletesession', 'click', function(){
+		var appliid = $(this).attr('data-id');
+		$('.popuploader').show();
+		$.ajax({
+			url: site_url+'/complete_session',
+			type:'POST',
+			data:{id: appliid, attendcountdata: $('#attendcountdata').val() || ''},
+			success: function(response){
+				var obj;
+				try {
+					obj = $.parseJSON(response);
+				} catch (e) {
+					$('.popuploader').hide();
+					return;
+				}
+				if (obj.status) {
+					location.reload();
+				} else {
+					$('.popuploader').hide();
+					alert(obj.message);
+				}
+			},
+			error: function(){
+				$('.popuploader').hide();
 			}
 		});
 	});

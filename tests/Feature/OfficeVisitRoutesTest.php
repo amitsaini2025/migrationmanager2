@@ -68,4 +68,19 @@ class OfficeVisitRoutesTest extends TestCase
             );
         }
     }
+
+    public function test_office_visit_attending_action_exposes_mark_complete_without_replacing_modal_complete(): void
+    {
+        $blade = file_get_contents(resource_path('views/crm/officevisits/index.blade.php'));
+        $this->assertNotFalse($blade);
+
+        $this->assertStringContainsString('markcompletesession', $blade);
+        $this->assertStringContainsString('Mark Complete', $blade);
+        $this->assertStringContainsString('/complete_session', $blade);
+
+        // Modal Complete Session still uses .completesession on the shared layout / getcheckin HTML.
+        $controller = file_get_contents(app_path('Http/Controllers/CRM/OfficeVisitController.php'));
+        $this->assertNotFalse($controller);
+        $this->assertStringContainsString('class="btn btn-success completesession"', $controller);
+    }
 }

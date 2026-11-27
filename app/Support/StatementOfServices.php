@@ -7,8 +7,8 @@ use App\Services\InvoicePaymentSyncService;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Matter-level statement of services: every final invoice line,
- * with the charge reduced by any office adjustment on that invoice.
+ * Matter-level statement of services: one row per final invoice,
+ * with line charges summed after any office adjustment on that invoice.
  */
 final class StatementOfServices
 {
@@ -63,11 +63,70 @@ final class StatementOfServices
             $remaining[$invoiceNo] = round($remaining[$invoiceNo] - $applied, 2);
         }
 
-        foreach ($built as $index => $line) {
-            unset($built[$index]['payment_type']);
+        return self::sortByServiceDate(self::groupByInvoice($built));
+    }
+
+    /**
+     * @param  list<array{date: string, description: string, invoice_no: string, charge: float, payment_type?: string}>  $lines
+     * @return list<array{date: string, description: string, invoice_no: string, charge: float}>
+     */
+    private static function groupByInvoice(array $lines): array
+    {
+        $grouped = [];
+
+        foreach ($lines as $index => $line) {
+            $invoiceNo = $line['invoice_no'];
+            $key = $invoiceNo !== '' ? $invoiceNo : '__row_'.$index;
+
+            if (! isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'date' => $line['date'],
+                    'description' => $line['description'],
+                    'invoice_no' => $invoiceNo,
+                    'charge' => round((float) $line['charge'], 2),
+                    'has_professional_fee_description' => ($line['payment_type'] ?? '') === 'professional fee',
+                ];
+
+                continue;
+            }
+
+            $grouped[$key]['charge'] = round($grouped[$key]['charge'] + (float) $line['charge'], 2);
+
+            if (
+                ! $grouped[$key]['has_professional_fee_description']
+                && ($line['payment_type'] ?? '') === 'professional fee'
+                && $line['description'] !== ''
+            ) {
+                $grouped[$key]['description'] = $line['description'];
+                $grouped[$key]['has_professional_fee_description'] = true;
+            }
+
+            $grouped[$key]['date'] = self::earlierServiceDate($grouped[$key]['date'], $line['date']);
         }
 
-        return self::sortByServiceDate($built);
+        $result = [];
+        foreach ($grouped as $line) {
+            unset($line['has_professional_fee_description']);
+            $result[] = $line;
+        }
+
+        return $result;
+    }
+
+    private static function earlierServiceDate(string $left, string $right): string
+    {
+        $leftDate = \DateTimeImmutable::createFromFormat('!d/m/Y', $left) ?: null;
+        $rightDate = \DateTimeImmutable::createFromFormat('!d/m/Y', $right) ?: null;
+
+        if ($leftDate instanceof \DateTimeImmutable && $rightDate instanceof \DateTimeImmutable) {
+            return $rightDate < $leftDate ? $right : $left;
+        }
+
+        if ($left === '' && $right !== '') {
+            return $right;
+        }
+
+        return $left;
     }
 
     /**

@@ -40,11 +40,13 @@ class StatementOfServicesTest extends TestCase
             'INV-2' => 70,
         ]);
 
+        $this->assertCount(2, $lines);
         $this->assertSame(100.0, $lines[0]['charge']);
-        $this->assertSame(0.0, $lines[1]['charge']);
-        $this->assertSame(30.0, $lines[2]['charge']);
+        $this->assertSame(30.0, $lines[1]['charge']);
         $this->assertSame('INV-1', $lines[0]['invoice_no']);
+        $this->assertSame('INV-2', $lines[1]['invoice_no']);
         $this->assertSame('Professional fee — subclass 485 Temporary Graduate visa application', $lines[0]['description']);
+        $this->assertSame('Professional fee — subclass 500 Student visa application', $lines[1]['description']);
     }
 
     #[Test]
@@ -82,7 +84,7 @@ class StatementOfServicesTest extends TestCase
     }
 
     #[Test]
-    public function lines_include_every_invoice_item_including_a_card_paid_disbursement(): void
+    public function lines_group_one_row_per_invoice_including_disbursements_and_discounts(): void
     {
         $rows = [
             (object) [
@@ -123,13 +125,11 @@ class StatementOfServicesTest extends TestCase
             'INV-1' => 30,
         ]);
 
+        $this->assertCount(1, $lines);
+        $this->assertSame('INV-1', $lines[0]['invoice_no']);
         $this->assertSame('Professional fee — subclass 485', $lines[0]['description']);
-        $this->assertSame(80.0, $lines[0]['charge']);
-        $this->assertSame('ART Fees', $lines[1]['description']);
-        $this->assertSame(65.0, $lines[1]['charge']);
-        $this->assertSame('Department charge — visa application', $lines[2]['description']);
-        $this->assertSame(50.0, $lines[2]['charge']);
-        $this->assertSame(-10.0, $lines[3]['charge']);
+        $this->assertSame('01/03/2026', $lines[0]['date']);
+        $this->assertSame(185.0, $lines[0]['charge']);
     }
 
     #[Test]
@@ -158,9 +158,10 @@ class StatementOfServicesTest extends TestCase
             'INV-1' => 10,
         ]);
 
-        $this->assertSame(0.88, $lines[0]['charge']);
-        $this->assertSame('Printing and Postage Charges', $lines[0]['description']);
-        $this->assertSame(100.0, $lines[1]['charge']);
+        $this->assertCount(1, $lines);
+        $this->assertSame('Professional fee — subclass 485', $lines[0]['description']);
+        $this->assertSame(100.88, $lines[0]['charge']);
+        $this->assertSame('INV-1', $lines[0]['invoice_no']);
     }
 
     #[Test]
@@ -169,7 +170,7 @@ class StatementOfServicesTest extends TestCase
         $blade = (string) file_get_contents(resource_path('views/emails/statement-of-services.blade.php'));
 
         $this->assertStringContainsString('Statement of services', $blade);
-        $this->assertStringContainsString('This statement sets out each invoice item and the charge for that item.', $blade);
+        $this->assertStringContainsString('This statement sets out each invoice and the charge for that invoice.', $blade);
         $this->assertStringContainsString('MARN', $blade);
         $this->assertStringContainsString('Invoice No', $blade);
         $this->assertStringContainsString('$line[\'description\']', $blade);

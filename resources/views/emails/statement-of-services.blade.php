@@ -183,7 +183,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4">No invoice items have been issued for this matter.</td>
+                        <td colspan="4">No invoices have been issued for this matter.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -194,7 +194,7 @@
         </div>
 
         <div class="statement-note">
-            This statement sets out each invoice item and the charge for that item.
+            This statement sets out each invoice and the charge for that invoice.
         </div>
     </div>
 </body>

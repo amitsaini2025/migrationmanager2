@@ -17,14 +17,15 @@ body, html { overflow-x: hidden !important; max-width: 100% !important; }
 .table.text_wrap { width: 100% !important; max-width: 100% !important; font-size: 0.85em; table-layout: fixed; }
 .table.text_wrap th, .table.text_wrap td { padding: 8px 4px !important; white-space: normal !important; word-wrap: break-word !important; overflow: hidden !important; text-overflow: ellipsis !important; vertical-align: middle !important; }
 .table.text_wrap th:nth-child(1) { width: 5%; }
-.table.text_wrap th:nth-child(2) { width: 10%; }
-.table.text_wrap th:nth-child(3) { width: 8%; }
-.table.text_wrap th:nth-child(4) { width: 15%; }
-.table.text_wrap th:nth-child(5) { width: 10%; }
-.table.text_wrap th:nth-child(6) { width: 12%; }
-.table.text_wrap th:nth-child(7) { width: 15%; }
-.table.text_wrap th:nth-child(8) { width: 10%; }
-.table.text_wrap th:nth-child(9) { width: 15%; }
+.table.text_wrap th:nth-child(2) { width: 9%; }
+.table.text_wrap th:nth-child(3) { width: 7%; }
+.table.text_wrap th:nth-child(4) { width: 13%; }
+.table.text_wrap th:nth-child(5) { width: 9%; }
+.table.text_wrap th:nth-child(6) { width: 11%; }
+.table.text_wrap th:nth-child(7) { width: 13%; }
+.table.text_wrap th:nth-child(8) { width: 9%; }
+.table.text_wrap th:nth-child(9) { width: 9%; }
+.table.text_wrap th:nth-child(10) { width: 15%; }
 .card .card-body table.table th, .card .card-body table.table td { color: #666 !important; }
 .card .card-body table.table thead th { color: #666 !important; font-weight: bold; }
 .card .card-body table.table tbody td { color: #666 !important; }
@@ -102,6 +103,7 @@ body, html { overflow-x: hidden !important; max-width: 100% !important; }
 													<th>Visit Purpose</th>
 													<th>Assignee</th>
 													<th>Wait Time</th>
+													<th>Status</th>
 													<th>Action</th>
 												</tr>
 											</thead>
@@ -182,6 +184,18 @@ body, html { overflow-x: hidden !important; max-width: 100% !important; }
 													<td id="count{{$list->id}}" data-checkintime="{{date('Y-m-d H:i:s',strtotime($list->created_at))}}"><?php if($list->status == 0){ ?><span id="waitcount"> 00h:00m:00s</span><?php }else if($list->status == 2){ echo '<span>'.$list->wait_time.'</span>'; }else if($list->status == 1){ echo '<span>'.($list->wait_time ?? '-').'</span>'; }else{ echo '<span>-</span>'; } ?></td>
 													<td style="white-space: initial;">
 														<?php
+														if ($list->status == 0) { ?>
+															<span class="badge badge-warning" style="font-size: 0.9em;">Waiting</span>
+														<?php } elseif ($list->status == 2) { ?>
+															<span class="badge badge-info" style="font-size: 0.9em;">Attending</span>
+														<?php } elseif ($list->status == 1) { ?>
+															<span class="badge badge-secondary" style="font-size: 0.9em;">Completed</span>
+														<?php } else { ?>
+															<span class="text-muted">—</span>
+														<?php } ?>
+													</td>
+													<td style="white-space: initial;">
+														<?php
 														if ($list->status == 0) {
 															// Waiting: also check wait_type
 															if ($list->wait_type == 1) { ?>
@@ -190,11 +204,8 @@ body, html { overflow-x: hidden !important; max-width: 100% !important; }
 																<a href="javascript:;" data-id="{{@$list->id}}" data-waitingtype="{{@$list->wait_type}}" class="btn btn-danger attendsessionforclient">Waiting</a>
 															<?php }
 														} elseif ($list->status == 2) { ?>
-															<span class="badge badge-info" style="font-size: 0.9em;">Attending</span>
 															{{-- Listing-only action; uses markcompletesession so modal .completesession handler is not double-fired --}}
-															<a href="javascript:;" data-id="{{@$list->id}}" class="btn btn-success markcompletesession" style="margin-left:6px;">Mark Complete</a>
-														<?php } elseif ($list->status == 1) { ?>
-															<span class="badge badge-secondary" style="font-size: 0.9em;">Completed</span>
+															<a href="javascript:;" data-id="{{@$list->id}}" class="btn btn-success markcompletesession">Mark Complete</a>
 														<?php } ?>
 														<input type="hidden" value="0-6h:0-24m:0-7s" id="lwaitcountdata{{@$list->id}}">
 													</td>

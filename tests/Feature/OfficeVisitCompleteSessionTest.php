@@ -76,6 +76,7 @@ class OfficeVisitCompleteSessionTest extends TestCase
         $blade = file_get_contents(resource_path('views/crm/officevisits/index.blade.php'));
         $this->assertNotFalse($blade);
 
+        $this->assertStringContainsString('<th>Status</th>', $blade);
         $this->assertStringContainsString('attendsessionforclient', $blade);
         $this->assertStringContainsString('badge badge-info', $blade);
         $this->assertStringContainsString('markcompletesession', $blade);

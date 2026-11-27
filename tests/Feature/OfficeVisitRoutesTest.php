@@ -74,6 +74,13 @@ class OfficeVisitRoutesTest extends TestCase
         $blade = file_get_contents(resource_path('views/crm/officevisits/index.blade.php'));
         $this->assertNotFalse($blade);
 
+        $this->assertStringContainsString('<th>Status</th>', $blade);
+        $this->assertStringContainsString('<th>Action</th>', $blade);
+        $this->assertLessThan(
+            strpos($blade, '<th>Action</th>'),
+            strpos($blade, '<th>Status</th>'),
+            'Status column should appear before Action.'
+        );
         $this->assertStringContainsString('badge badge-info', $blade);
         $this->assertStringContainsString('>Attending</span>', $blade);
         $this->assertStringContainsString('markcompletesession', $blade);

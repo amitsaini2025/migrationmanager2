@@ -170,11 +170,36 @@ $(document).ready(function() {
         }, 100);
     });
     
+    /**
+     * Normal compose: leave checklist PDFs unchecked.
+     * Checklists tab "Send Checklist": auto-tick matter checklist PDFs so sendmail records the KPI activity.
+     */
+    function applyComposeChecklistSelection($checklistCbs, fromSendChecklist) {
+        $checklistCbs.prop('checked', false);
+        if (!fromSendChecklist) {
+            return;
+        }
+        var ids = window.composeChecklistFilterIds || [];
+        if (!ids.length) {
+            return;
+        }
+        var idSet = {};
+        ids.forEach(function(id) {
+            idSet[String(id)] = true;
+        });
+        $checklistCbs.each(function() {
+            if (idSet[String($(this).val())]) {
+                $(this).prop('checked', true);
+            }
+        });
+    }
+
     // When compose modal opens: wait for CRM template/checklist lists, then apply matter defaults.
-    // Checklist attachment checkboxes stay unchecked until the user selects them.
+    // Checklist attachment checkboxes stay unchecked until the user selects them (except Send Checklist).
     $('#emailmodal').on('shown.bs.modal', function() {
         var runComposeShown = function() {
         var $templateSelect = $('#emailmodal select.selecttemplate');
+        var fromSendChecklist = !!$('#emailmodal').data('fromSendChecklist');
         if (typeof window.initComposeEmailTemplateSelect === 'function') {
             if (!$('#compose_client_matter_id').val() && typeof window.restoreComposeEmailTemplateCrmOptions === 'function') {
                 window.restoreComposeEmailTemplateCrmOptions($templateSelect);
@@ -187,8 +212,9 @@ $(document).ready(function() {
             if ($('#mychecklist-datatable').length && $.fn.DataTable && $.fn.DataTable.isDataTable('#mychecklist-datatable')) {
                 $('#mychecklist-datatable').DataTable().draw();
             }
-            $('#emailmodal').removeData('composeMacroValues').removeData('pdfUrlForSign').removeData('fromSignatureSend');
+            $('#emailmodal').removeData('composeMacroValues').removeData('pdfUrlForSign').removeData('fromSignatureSend').removeData('fromSendChecklist');
             $('#compose_signing_url').val('');
+            $('#compose_send_checklist_intent').val('0');
             return;
         }
         $.get(window.ClientDetailConfig.urls.getComposeDefaults, { client_matter_id: clientMatterId })
@@ -215,8 +241,8 @@ $(document).ready(function() {
                     if (typeof window.syncComposeEmailTemplateSelectFromDom === 'function') {
                         window.syncComposeEmailTemplateSelectFromDom($templateSelect);
                     }
-                    // Reply/Forward from client email tab sets preserveReplyForwardBody so quoted content is not replaced by a template
-                    if (!$('#emailmodal').data('preserveReplyForwardBody')) {
+                    // Reply/Forward and Send Checklist keep their prefilled subject/body (no First Email overwrite).
+                    if (!$('#emailmodal').data('preserveReplyForwardBody') && !fromSendChecklist) {
                         var fromSignature = $('#emailmodal').data('fromSignatureSend');
                         var toSelect = res.template ? res.template.id : (res.matter_templates && res.matter_templates[0] ? res.matter_templates[0].id : null);
                         if (toSelect) {
@@ -224,7 +250,7 @@ $(document).ready(function() {
                             if (fromSignature) $('#emailmodal').removeData('fromSignatureSend');
                         }
                     } else {
-                        // Keep body/subject from reply/forward; reset template UI without loading a template (empty val skips AJAX in .selecttemplate handler).
+                        // Keep body/subject from reply/forward or Send Checklist; reset template UI without loading a template.
                         $templateSelect.val('').trigger('change');
                     }
                 }
@@ -233,7 +259,7 @@ $(document).ready(function() {
                 if ($('#mychecklist-datatable').length && $.fn.DataTable && $.fn.DataTable.isDataTable('#mychecklist-datatable')) {
                     $('#mychecklist-datatable').DataTable().draw();
                 }
-                $checklistCbs.prop('checked', false);
+                applyComposeChecklistSelection($checklistCbs, fromSendChecklist);
             })
             .fail(function() {
                 window.composeChecklistFilterIds = null;
@@ -251,6 +277,7 @@ $(document).ready(function() {
 
     $('#emailmodal').on('hidden.bs.modal', function() {
         $('#compose_signing_url').val('');
-        $(this).removeData('pdfUrlForSign').removeData('fromSignatureSend');
+        $('#compose_send_checklist_intent').val('0');
+        $(this).removeData('pdfUrlForSign').removeData('fromSignatureSend').removeData('fromSendChecklist');
     });
 });

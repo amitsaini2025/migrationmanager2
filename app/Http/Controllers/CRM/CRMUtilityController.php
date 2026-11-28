@@ -1318,7 +1318,10 @@ class CRMUtilityController extends Controller
         if ($activityClientId === null && ! empty($emailToList) && ($requestData['type'] ?? '') !== 'agent') {
             $activityClientId = (int) reset($emailToList);
         }
-        $checklistWasSent = (! empty($requestData['checklistfile']) || ! empty($requestData['checklistfile_document']));
+        // Checklists tab "Send Checklist" sets send_checklist_intent=1 so the activity KPI still
+        // records even when the matter has no UploadChecklist PDF rows to attach.
+        $sendChecklistIntent = $this->requestFlagIsTruthy($requestData['send_checklist_intent'] ?? null);
+        $checklistWasSent = (! empty($requestData['checklistfile']) || ! empty($requestData['checklistfile_document']) || $sendChecklistIntent);
         $clientMatterId = $requestData['compose_client_matter_id'] ?? null;
         $isLead = (($requestData['type'] ?? '') === 'lead');
         $leadId = $requestData['lead_id'] ?? ($requestData['client_id'] ?? null);
@@ -1488,7 +1491,7 @@ class CRMUtilityController extends Controller
                     // Run once on first successful send so multi-recipient partial success
                     // still records activity even if a later recipient fails and returns early.
                     if (! $checklistSideEffectsDone && $checklistWasSent) {
-                        if (! empty($requestData['checklistfile']) && $activityClientId) {
+                        if ((! empty($requestData['checklistfile']) || $sendChecklistIntent) && $activityClientId) {
                             $objs = new ActivitiesLog;
                             $objs->client_id = $activityClientId;
                             $objs->created_by = Auth::user()->id;
@@ -1601,6 +1604,28 @@ class CRMUtilityController extends Controller
 
             return redirect()->back()->with('success', 'Email Sent Successfully');
         }
+    }
+
+    /**
+     * Truthy request flags from compose forms (hidden "0"/"1", booleans, "true"/"on").
+     */
+    private function requestFlagIsTruthy(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return (int) $value === 1;
+        }
+
+        if (! is_string($value)) {
+            return false;
+        }
+
+        $normalized = strtolower(trim($value));
+
+        return in_array($normalized, ['1', 'true', 'yes', 'on'], true);
     }
 
     /**

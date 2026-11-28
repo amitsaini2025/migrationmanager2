@@ -1186,6 +1186,9 @@
 
             // Set compose matter only — do not trigger sidebar matter dropdown change (that reloads the page).
             $('#emailmodal #compose_client_matter_id').val(clientMatterId || '');
+            // Mark compose so matter checklist PDFs are auto-ticked and the activity KPI can count this send.
+            $('#emailmodal').data('fromSendChecklist', true);
+            $('#compose_send_checklist_intent').val('1');
 
             // Default subject for checklist email
             var subject = 'Checklist sent to client';

@@ -17,6 +17,8 @@
                     <input type="hidden" name="mail_body_type" value="sent">
                     <input type="hidden" name="compose_client_matter_id" id="compose_client_matter_id" value="">
                     <input type="hidden" name="signing_url" id="compose_signing_url" value="">
+                    {{-- Set to 1 only by Checklists tab "Send Checklist"; cleared when compose closes. --}}
+                    <input type="hidden" name="send_checklist_intent" id="compose_send_checklist_intent" value="0">
 					<div class="row">
 						<div class="col-12 col-md-6 col-lg-6">
 							<div class="form-group">

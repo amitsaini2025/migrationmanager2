@@ -176,14 +176,19 @@
     }
     .visa-sheet-page .comment-cell-editable {
         cursor: text;
-        min-width: 140px;
-        max-width: 240px;
-        vertical-align: top;
+        min-width: 160px;
+        max-width: 300px;
+        vertical-align: middle;
+    }
+    .visa-sheet-page .comment-cell-editable .sheet-comment-text:not(.is-editing) {
+        padding: 6px 8px;
+        background: #f8fafc;
+        box-shadow: inset 0 0 0 1px #e2e8f0;
+        border-radius: 4px;
     }
     .visa-sheet-page .comment-cell-editable:hover .sheet-comment-text:not(.is-editing) {
-        background: #f8fafc;
+        background: #f1f5f9;
         box-shadow: inset 0 0 0 1px #cbd5e1;
-        border-radius: 4px;
     }
     .visa-sheet-page .comment-cell-editable .sheet-comment-text.is-placeholder {
         color: #94a3b8;

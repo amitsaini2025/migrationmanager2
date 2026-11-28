@@ -1517,6 +1517,7 @@ jQuery(document).ready(function($) {
 
     @if($tab === 'checklist')
     var sheetEmailMacroValues = null;
+    var sheetEmailReminderPendingBody = null;
     var sheetSmsClientName = '';
 
     function showSheetModal($modal) {
@@ -1602,10 +1603,24 @@ jQuery(document).ready(function($) {
         $('#compose_email_subject').val('');
         $('#sheet_reminder_template').val('');
         sheetEmailMacroValues = null;
+        sheetEmailReminderPendingBody = null;
         if (typeof tinymce !== 'undefined' && tinymce.get('compose_email_message')) {
             tinymce.get('compose_email_message').setContent('');
         } else {
             $('#compose_email_message').val('');
+        }
+    }
+
+    function applySheetEmailReminderPendingBody() {
+        if (sheetEmailReminderPendingBody === null) {
+            return;
+        }
+        var body = sheetEmailReminderPendingBody || '';
+        sheetEmailReminderPendingBody = null;
+        if (typeof tinymce !== 'undefined' && tinymce.get('compose_email_message')) {
+            tinymce.get('compose_email_message').setContent(body);
+        } else {
+            $('#compose_email_message').val(body);
         }
     }
 
@@ -1689,6 +1704,7 @@ jQuery(document).ready(function($) {
         var clientName = ($btn.data('client-name') || '').trim();
         var matterId = $btn.data('matter-id') || '';
         var crmRef = $btn.data('crm-ref') || '';
+        var clientFirst = clientName.split(' ')[0] || '';
 
         if (!clientId) {
             if (typeof iziToast !== 'undefined') {
@@ -1716,7 +1732,7 @@ jQuery(document).ready(function($) {
         }
 
         resetSheetEmailReminderForm();
-        $('#sheet_reminder_client_id').val(clientId).data('first-name', clientName.split(' ')[0] || '').data('crm-ref', crmRef);
+        $('#sheet_reminder_client_id').val(clientId).data('first-name', clientFirst).data('crm-ref', crmRef);
         $('#sheet_reminder_email_to').val(clientId);
         $('#compose_client_matter_id').val(matterId);
         $('#compose_checklist_reminder_type').val('email');
@@ -1739,6 +1755,24 @@ jQuery(document).ready(function($) {
                     res.matter_templates.forEach(function(t) {
                         $templateSelect.append($('<option></option>').attr('value', t.id).text(t.name || 'Template'));
                     });
+                }
+
+                // Auto-open this matter's First/Checklist email in the popup message box.
+                var firstTemplate = res.template
+                    || (res.matter_templates && res.matter_templates.length ? res.matter_templates[0] : null);
+                if (firstTemplate) {
+                    if (firstTemplate.id) {
+                        $templateSelect.val(String(firstTemplate.id));
+                    }
+                    $('#compose_email_subject').val(
+                        applySheetEmailMacroReplacements(firstTemplate.subject || '', clientFirst, crmRef)
+                    );
+                    sheetEmailReminderPendingBody = applySheetEmailMacroReplacements(
+                        firstTemplate.description || '',
+                        clientFirst,
+                        crmRef
+                    );
+                    $('#compose_email_message').val(sheetEmailReminderPendingBody);
                 }
             })
             .always(function() {
@@ -1867,6 +1901,7 @@ jQuery(document).ready(function($) {
 
     $('#emailmodal').on('shown.bs.modal', function() {
         initSheetEmailReminderTinyMce();
+        applySheetEmailReminderPendingBody();
     });
 
     $('#sheetSmsModal').on('hidden.bs.modal', function() {

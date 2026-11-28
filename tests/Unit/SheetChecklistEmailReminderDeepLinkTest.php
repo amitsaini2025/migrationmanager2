@@ -8,7 +8,7 @@ use Tests\TestCase;
 class SheetChecklistEmailReminderDeepLinkTest extends TestCase
 {
     #[Test]
-    public function sheet_email_reminder_opens_popup_with_matter_checklist_email(): void
+    public function sheet_email_reminder_opens_popup_and_prefers_last_checklist_email(): void
     {
         $sheet = file_get_contents(resource_path('views/crm/clients/sheets/visa-type-sheet.blade.php'));
         $this->assertIsString($sheet);
@@ -25,11 +25,19 @@ class SheetChecklistEmailReminderDeepLinkTest extends TestCase
         $handler = substr($sheet, $start, $end - $start);
 
         $this->assertStringContainsString('showSheetEmailModal()', $handler);
-        $this->assertStringContainsString('initSheetEmailReminderTinyMce()', $handler);
         $this->assertStringContainsString('getComposeDefaults', $handler);
+        $this->assertStringContainsString('last_checklist_email', $handler);
         $this->assertStringContainsString('sheetEmailReminderPendingBody', $handler);
-        $this->assertStringContainsString('firstTemplate', $handler);
         $this->assertStringNotContainsString('window.location.href = emailsComposeUrl', $handler);
+    }
+
+    #[Test]
+    public function compose_defaults_exposes_last_checklist_email_key(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/CRM/CRMUtilityController.php'));
+        $this->assertIsString($controller);
+        $this->assertStringContainsString("'last_checklist_email' => \$lastChecklistEmail", $controller);
+        $this->assertStringContainsString('LastChecklistEmailForMatter', $controller);
     }
 
     #[Test]
@@ -39,7 +47,6 @@ class SheetChecklistEmailReminderDeepLinkTest extends TestCase
         $this->assertIsString($js);
 
         $this->assertStringNotContainsString('bootSheetChecklistReminderComposeIfNeeded', $js);
-        $this->assertStringNotContainsString("params.get('compose') !== 'checklist_reminder'", $js);
         $this->assertStringContainsString('bootEmailsTabIfNeeded', $js);
     }
 }

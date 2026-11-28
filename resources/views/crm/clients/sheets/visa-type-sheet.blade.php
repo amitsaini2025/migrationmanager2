@@ -1582,6 +1582,21 @@ jQuery(document).ready(function($) {
         }
     };
 
+    function buildSheetAgreementSignLink(url) {
+        if (!url) {
+            return '';
+        }
+        if (typeof window.mmBuildServiceAgreementSignLink === 'function') {
+            return window.mmBuildServiceAgreementSignLink(url);
+        }
+        var safe = String(url)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        return '<a href="' + safe + '" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;">Sign Service Agreement</a>';
+    }
+
     function applySheetEmailMacroReplacements(text, clientFirstName, crmRef) {
         text = text || '';
         var first = clientFirstName || '';
@@ -1592,10 +1607,12 @@ jQuery(document).ready(function($) {
         text = text.replace(/\{client reference\}/g, crmRef || '');
         if (sheetEmailMacroValues) {
             Object.keys(sheetEmailMacroValues).forEach(function(key) {
+                var val = sheetEmailMacroValues[key] || '';
                 if (key === 'PDF_url_for_sign') {
+                    var pdfLink = buildSheetAgreementSignLink(val);
+                    text = text.replace(/\{PDF_url_for_sign\}/g, pdfLink);
                     return;
                 }
-                var val = sheetEmailMacroValues[key] || '';
                 text = text.replace(new RegExp('\\{' + key + '\\}', 'g'), val);
                 text = text.replace(new RegExp('\\$\\{' + key + '\\}', 'g'), val);
             });
@@ -1762,22 +1779,32 @@ jQuery(document).ready(function($) {
                     });
                 }
 
-                // Auto-open this matter's First/Checklist email in the popup message box.
-                var firstTemplate = res.template
-                    || (res.matter_templates && res.matter_templates.length ? res.matter_templates[0] : null);
-                if (firstTemplate) {
-                    if (firstTemplate.id) {
-                        $templateSelect.val(String(firstTemplate.id));
+                // Prefer last sent checklist email (agreement links as sent). Fallback: First Email template.
+                var lastChecklist = res.last_checklist_email || null;
+                if (lastChecklist && (lastChecklist.message || lastChecklist.subject)) {
+                    if (lastChecklist.template_id) {
+                        $templateSelect.val(String(lastChecklist.template_id));
                     }
-                    $('#compose_email_subject').val(
-                        applySheetEmailMacroReplacements(firstTemplate.subject || '', clientFirst, crmRef)
-                    );
-                    sheetEmailReminderPendingBody = applySheetEmailMacroReplacements(
-                        firstTemplate.description || '',
-                        clientFirst,
-                        crmRef
-                    );
+                    $('#compose_email_subject').val(lastChecklist.subject || '');
+                    sheetEmailReminderPendingBody = lastChecklist.message || '';
                     $('#compose_email_message').val(sheetEmailReminderPendingBody);
+                } else {
+                    var firstTemplate = res.template
+                        || (res.matter_templates && res.matter_templates.length ? res.matter_templates[0] : null);
+                    if (firstTemplate) {
+                        if (firstTemplate.id) {
+                            $templateSelect.val(String(firstTemplate.id));
+                        }
+                        $('#compose_email_subject').val(
+                            applySheetEmailMacroReplacements(firstTemplate.subject || '', clientFirst, crmRef)
+                        );
+                        sheetEmailReminderPendingBody = applySheetEmailMacroReplacements(
+                            firstTemplate.description || '',
+                            clientFirst,
+                            crmRef
+                        );
+                        $('#compose_email_message').val(sheetEmailReminderPendingBody);
+                    }
                 }
             })
             .always(function() {

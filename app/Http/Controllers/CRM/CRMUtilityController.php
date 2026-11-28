@@ -33,6 +33,7 @@ use App\Services\VisaSheetService;
 use App\Support\CachedHeaderCounts;
 use App\Support\ComposeEmailPayload;
 use App\Support\CurrentVisaExpiry;
+use App\Support\LastChecklistEmailForMatter;
 use App\Support\MailFromAllowedDomains;
 use App\Support\StaffClientVisibility;
 use Carbon\Carbon;
@@ -56,11 +57,17 @@ class CRMUtilityController extends Controller
 
     protected CrmSentEmailS3Service $crmSentEmailS3Service;
 
-    public function __construct(EmailService $emailService, CrmSentEmailS3Service $crmSentEmailS3Service)
-    {
+    protected LastChecklistEmailForMatter $lastChecklistEmailForMatter;
+
+    public function __construct(
+        EmailService $emailService,
+        CrmSentEmailS3Service $crmSentEmailS3Service,
+        LastChecklistEmailForMatter $lastChecklistEmailForMatter
+    ) {
         $this->middleware('auth:admin');
         $this->emailService = $emailService;
         $this->crmSentEmailS3Service = $crmSentEmailS3Service;
+        $this->lastChecklistEmailForMatter = $lastChecklistEmailForMatter;
     }
     // Dashboard functionality moved to DashboardController
 
@@ -901,11 +908,17 @@ class CRMUtilityController extends Controller
         // Build macro values for First email template replacement
         $macroValues = $this->getComposeMacroValues($clientId, $clientMatterId);
 
+        $lastChecklistEmail = $this->lastChecklistEmailForMatter->find(
+            (int) $clientMatterId,
+            $firstTemplate?->id !== null ? (int) $firstTemplate->id : null
+        );
+
         return response()->json([
             'template' => $firstTemplate ? ['id' => $firstTemplate->id, 'name' => $firstTemplate->name, 'subject' => $firstTemplate->subject, 'description' => $firstTemplate->description] : null,
             'matter_templates' => $allTemplates,
             'checklist_ids' => $checklistIds,
             'macro_values' => $macroValues,
+            'last_checklist_email' => $lastChecklistEmail,
         ]);
     }
 

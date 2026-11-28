@@ -5,6 +5,8 @@ namespace Tests\Unit;
 use App\Http\Controllers\CRM\CRMUtilityController;
 use App\Services\CrmSentEmailS3Service;
 use App\Services\EmailService;
+use App\Services\MatterEmailBodyCleanupService;
+use App\Support\LastChecklistEmailForMatter;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionMethod;
@@ -19,6 +21,7 @@ class SendChecklistIntentFlagTest extends TestCase
         $controller = new CRMUtilityController(
             $this->createMock(EmailService::class),
             $this->createMock(CrmSentEmailS3Service::class),
+            new LastChecklistEmailForMatter(app(MatterEmailBodyCleanupService::class)),
         );
 
         $method = new ReflectionMethod(CRMUtilityController::class, 'requestFlagIsTruthy');
